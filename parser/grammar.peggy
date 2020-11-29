@@ -4,7 +4,7 @@ package parser
 import "github.com/eaburns/peggy/peg"
 }
 
-File <- Import* (ConstDef / VarDef / TypeDef / FuncDef)* Eof
+File <- Import* (ConstDef / VarDef / TypeDef / FuncDef / TestDef)* Eof
 Import <- _ ("import" / "Import") Id? StrLit
 ConstDef <- _ ("const" / "Const") Id Type? _ "=" Expr
 VarDef <- _ ("var" / "Var") Id Type? _ "=" Expr
@@ -34,6 +34,7 @@ FuncParms <- FuncParm (_ "," FuncParm)* (_ ",") ?
 FuncParm <- Id Type (_ "=" Expr)?
 FuncDecl <- FuncName _ "(" Types _ ")" Type?
 FuncDecls <- FuncDecl (_ "," FuncDecl)* (_ ",")?
+TestDef <- _ "test" Id _ "{" Exprs? _ "}"
 Exprs <- Expr (_ "," Expr)* (_ ",")?
 Expr <- Kw / KwArg
 Kw <- (Kwd KwArg)+
@@ -87,7 +88,7 @@ TypeVar "type variable" <- _ !Id [A-Z]
 Id "identifier" <- _ !Reserved (![A-Z] L ("_" / L / D)*) / ([A-Z] ("_" / L / D)+)
 L <- r:. &{isLetter(r)}
 D <- [0-9]
-Reserved <- "import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "Type" / "func" / "Func"
+Reserved <- "import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "Type" / "func" / "Func" / "test"
 _ "" <- (Space / Cmnt)*
 Space <- r:. &{isSpace(r)}
 Cmnt <- "//" (!"\n" .)* / "/*" (!"*/" .)* "*/"
