@@ -29,7 +29,7 @@ Case <- Id / Id _ ":" Type
 Cases <- (_ "|")? Case (_ "|" Case)*
 FuncType <- _ "{" _ "}" / _ "{" Types? _ "|" Types? _"}"
 FuncDef <- _ ("func" / "Func") FuncName _ "(" FuncParms? _ ")" Type? (_ ":" FuncDecls) _ "{" Exprs? _ "}"
-FuncName <- Op / Id / Kwds
+FuncName <- _ "[" _ "]" / Op / Id / Kwds
 FuncParms <- FuncParm (_ "," FuncParm)* (_ ",") ?
 FuncParm <- Id Type (_ "=" Expr)?
 FuncDecl <- FuncName _ "(" Types _ ")" Type?
@@ -45,8 +45,11 @@ Bin1 <- Bin1Arg (Op1 Bin1Arg)+
 Bin1Arg <- Lab / UnArg
 Lab <- UnArg _ ":" Type
 Un <- Op UnArg
-UnArg <- Un / Sel / Call / Pri
-Call <- Pri (_ "(" Exprs _ ")")+
+UnArg <- Un / Idx / Sel / Call / Pri
+Idx <- IdxArg (_ "[" Exprs _ "]")+
+IdxArg <- Call / Sel / Pri
+Call <- CallArg (_ "(" Exprs _ ")")+
+CallArg <- Sel / Pri
 Sel <- Pri (_ "." Id)+
 Pri <-
 	_ "(" Expr _ ")" /
