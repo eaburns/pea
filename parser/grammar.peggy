@@ -6,9 +6,9 @@ import "github.com/eaburns/peggy/peg"
 
 File <- Import* (ConstDef / VarDef / TypeDef / FuncDef / TestDef)* Eof
 Import <- _ ("import" / "Import") Id? StrLit
-ConstDef <- _ ("const" / "Const") Id Type? _ "=" Expr
-VarDef <- _ ("var" / "Var") Id Type? _ "=" Expr
-TypeDef <- _ ("type" / "Type") TypeVars? Id Type
+ConstDef <- _ ("const" / "Const") Id Type? (_ "=" Expr)?
+VarDef <- _ ("var" / "Var") Id Type? (_ "=" Expr)?
+TypeDef <- _ ("type" / "Type") TypeVars? Id Type?
 TypeVars <- TypeVar / _ "(" TypeVar (_ "," TypeVar)* (_ ",")?
 Type <-
 	_"(" Type _ ")" /
@@ -28,7 +28,7 @@ UnionType <- _ "[" Cases _ "]"
 Case <- Id / Id _ ":" Type
 Cases <- (_ "|")? Case (_ "|" Case)*
 FuncType <- _ "{" _ "}" / _ "{" Types? _ "|" Types? _"}"
-FuncDef <- _ ("func" / "Func") FuncName _ "(" FuncParms? _ ")" Type? (_ ":" FuncDecls) _ "{" Exprs? _ "}"
+FuncDef <- _ ("func" / "Func") FuncName _ "(" FuncParms? _ ")" Type? (_ ":" FuncDecls) (_ "{" Exprs? _ "}")?
 FuncName <- _ "[" _ "]" / Op / Id / Kwds
 FuncParms <- FuncParm (_ "," FuncParm)* (_ ",") ?
 FuncParm <- Id Type (_ "=" Expr)?
