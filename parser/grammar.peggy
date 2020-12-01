@@ -53,7 +53,7 @@ CallArg <- Sel / Pri
 Sel <- Pri (_ "." Id)+
 Pri <-
 	_ "(" Expr _ ")" /
-	(Id _ ".")? Op /
+	_ "(" (Id _ ".")? (_ "[" _ "]" / Op) _ ")"/
 	(Id _ ".")? Kwds /
 	CompLit /
 	BlkLit /
