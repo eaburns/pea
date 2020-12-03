@@ -19234,23 +19234,28 @@ func _EofAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
+	// _ !.
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
 	// !.
 	{
-		pos1 := pos
-		perr3 := perr
+		pos2 := pos
+		perr4 := perr
 		// .
 		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
 			perr = _max(perr, pos)
-			goto ok0
+			goto ok1
 		} else {
 			pos += w
 		}
-		pos = pos1
-		perr = _max(perr3, pos)
+		pos = pos2
+		perr = _max(perr4, pos)
 		goto fail
-	ok0:
-		pos = pos1
-		perr = perr3
+	ok1:
+		pos = pos2
+		perr = perr4
 	}
 	return _memoize(parser, _Eof, start, pos, perr)
 fail:
@@ -19267,10 +19272,15 @@ func _EofFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _Eof}
+	// _ !.
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
 	// !.
 	{
-		pos1 := pos
-		nkids2 := len(failure.Kids)
+		pos2 := pos
+		nkids3 := len(failure.Kids)
 		// .
 		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
 			if pos >= errPos {
@@ -19279,12 +19289,12 @@ func _EofFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: ".",
 				})
 			}
-			goto ok0
+			goto ok1
 		} else {
 			pos += w
 		}
-		pos = pos1
-		failure.Kids = failure.Kids[:nkids2]
+		pos = pos2
+		failure.Kids = failure.Kids[:nkids3]
 		if pos >= errPos {
 			failure.Kids = append(failure.Kids, &peg.Fail{
 				Pos:  int(pos),
@@ -19292,9 +19302,9 @@ func _EofFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 			})
 		}
 		goto fail
-	ok0:
-		pos = pos1
-		failure.Kids = failure.Kids[:nkids2]
+	ok1:
+		pos = pos2
+		failure.Kids = failure.Kids[:nkids3]
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -19316,20 +19326,33 @@ func _EofAction(parser *_Parser, start int) (int, *string) {
 	}
 	var node string
 	pos := start
-	// !.
+	// _ !.
 	{
-		pos1 := pos
-		// .
-		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
-			goto ok0
+		var node0 string
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
 		} else {
-			pos += w
+			node0 = *n
+			pos = p
 		}
-		pos = pos1
-		goto fail
-	ok0:
-		pos = pos1
-		node = ""
+		node, node0 = node+node0, ""
+		// !.
+		{
+			pos2 := pos
+			// .
+			if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
+				goto ok1
+			} else {
+				pos += w
+			}
+			pos = pos2
+			goto fail
+		ok1:
+			pos = pos2
+			node0 = ""
+		}
+		node, node0 = node+node0, ""
 	}
 	parser.act[key] = node
 	return pos, &node

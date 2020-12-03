@@ -21,6 +21,7 @@ Import <- _ reserved:("import" / "Import") id:Id? path:StrLit {
 }
 
 Def <- ConstDef / VarDef / TypeDef / FuncDef / TestDef
+
 ConstDef <- _ reserved:("const" / "Const") name:Id t:Type? (_ "=" expr:Expr)? {
 	var typ Type; if t != nil { typ = *t }
 	return Def(&ConstDef{
@@ -409,4 +410,4 @@ L <- r:. &{isLetter(r)}
 _ "" <- (Space / Cmnt)*
 Space <- r:. &{isSpace(r)}
 Cmnt <- "//" (!"\n" .)* / "/*" (!"*/" .)* "*/"
-Eof <- !.
+Eof <- _ !.
