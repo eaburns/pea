@@ -50,7 +50,7 @@ func (fs Files) Location(l Loc) Location {
 	switch {
 	case len(fs) == 0:
 		panic("no files")
-	case l[0] < 0 || l[1] > fs.Len():
+	case l[0]-1 < 0 || l[1]-1 > fs.Len():
 		panic("out of range")
 	case l[0] > l[1]:
 		panic("bad Loc")
@@ -65,20 +65,22 @@ func (fs Files) Location(l Loc) Location {
 
 func (fs Files) loc(q int) (string, int, int) {
 	q-- // 0 value is no-location; locs start at 1
+	var i int
 	var f File
 	var offs int
-	for _, f = range fs {
-		if q < offs+f.Len() {
+	for i, f = range fs {
+		l := f.Len()
+		if q < offs+l || q == offs+l && i == len(fs)-1 {
 			break
 		}
 		offs += f.Len()
 	}
 	line, colStart := 1, offs-1
 	for _, nl := range f.NewLines() {
-		if nl >= q {
+		if offs+nl >= q {
 			break
 		}
-		colStart = nl
+		colStart = offs + nl
 		line++
 	}
 	return f.Path(), line, q - colStart
