@@ -3,14 +3,15 @@ package tree
 import "github.com/eaburns/pea/loc"
 
 type File struct {
-	Path    string
 	Imports []*Import
 	Defs    []Def
 
+	P      string
 	NLs    []int
 	Length int
 }
 
+func (f *File) Path() string    { return f.P }
 func (f *File) NewLines() []int { return f.NLs }
 func (f *File) Len() int        { return f.Length }
 
@@ -229,12 +230,9 @@ type TypeVar struct {
 	L    loc.Loc
 }
 
-func (t TypeVar) PrettyPrint() string { return "TypeVar(" + t.Name + ")" }
-
 type Id struct {
 	Name string
 	L    loc.Loc
 }
 
-func (i Id) Loc() loc.Loc        { return i.L }
-func (i Id) PrettyPrint() string { return "Id(" + i.Name + ")" }
+func (i Id) Loc() loc.Loc { return i.L }

@@ -40,7 +40,13 @@ func (p *Parser) Parse(path string, r io.Reader) error {
 		return parseError{path: path, loc: perr, text: _p.text, fail: t}
 	}
 	_, file := _FileAction(_p, 0)
-	file.Path = path
+	file.P = path
+	for i, r := range data {
+		if r == '\n' {
+			file.NLs = append(file.NLs, i)
+		}
+	}
+	file.Length = len(data)
 	p.Files = append(p.Files, file)
 	return nil
 }
