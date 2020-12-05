@@ -258,10 +258,10 @@ Idx <- expr:IdxArg indexes:Idxs+ {
 	return Expr(bins(expr, indexes))
 }
 
-Idxs <- _ "[" index:Expr _ "]" {
+Idxs <- _ "[" indices:Exprs _ "]" {
 	return &Call{
 		Fun: Id{Name: "[]", L: l(parser, start, end)},
-		Args: []Expr{nil, index},
+		Args: append([]Expr{nil}, indices...),
 		L: l(parser, start, end),
 	}
 }
