@@ -26,22 +26,13 @@ type Def interface {
 	Exported() bool
 }
 
-type ConstDef struct {
-	Exp  bool
-	Name Id
-	Type Type // nil if unspecified
-	Expr Expr // nil if unspecified
-	L    loc.Loc
-}
-
-func (c *ConstDef) Exported() bool { return c.Exp }
-
 type VarDef struct {
-	Exp  bool
-	Name Id
-	Type Type // nil if unspecified
-	Expr Expr // nil if unspecified
-	L    loc.Loc
+	Exp   bool
+	Const bool
+	Name  Id
+	Type  Type // nil if unspecified
+	Expr  Expr // nil if unspecified
+	L     loc.Loc
 }
 
 func (v *VarDef) Exported() bool { return v.Exp }

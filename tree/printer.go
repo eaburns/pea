@@ -73,20 +73,11 @@ func (i *Import) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (c *ConstDef) print(pc *config) {
-	pc.p("ConstDef{")
-	pc.loc(c.L)
-	pc.field("Exp", c.Exp)
-	pc.field("Name", c.Name)
-	pc.field("Type", c.Type)
-	pc.field("Expr", c.Expr)
-	pc.p("\n}")
-}
-
 func (v *VarDef) print(pc *config) {
 	pc.p("VarDef{")
 	pc.loc(v.L)
 	pc.field("Exp", v.Exp)
+	pc.field("Const", v.Const)
 	pc.field("Name", v.Name)
 	pc.field("Type", v.Type)
 	pc.field("Expr", v.Expr)

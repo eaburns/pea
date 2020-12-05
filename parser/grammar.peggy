@@ -24,8 +24,9 @@ Def <- ConstDef / VarDef / TypeDef / FuncDef / TestDef
 
 ConstDef <- _ reserved:("const" / "Const") name:Id t:Type? (_ "=" expr:Expr)? {
 	var typ Type; if t != nil { typ = *t }
-	return Def(&ConstDef{
+	return Def(&VarDef{
 		Exp: reserved == "Const",
+		Const: true,
 		Name: name,
 		Type: typ,
 		Expr: expr,
@@ -36,6 +37,7 @@ VarDef <- _ reserved:("var" / "Var") name:Id t:Type? (_ "=" expr:Expr)? {
 	var typ Type; if t != nil { typ = *t }
 	return Def(&VarDef{
 		Exp: reserved == "Var",
+		Const: false,
 		Name: name,
 		Type: typ,
 		Expr: expr,

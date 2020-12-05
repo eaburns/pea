@@ -1249,12 +1249,13 @@ func _ConstDefAction(parser *_Parser, start int) (int, *Def) {
 			if t != nil {
 				typ = *t
 			}
-			return Def(&ConstDef{
-				Exp:  reserved == "Const",
-				Name: name,
-				Type: typ,
-				Expr: expr,
-				L:    l(parser, start, end),
+			return Def(&VarDef{
+				Exp:   reserved == "Const",
+				Const: true,
+				Name:  name,
+				Type:  typ,
+				Expr:  expr,
+				L:     l(parser, start, end),
 			})
 		}(
 			start0, pos, label3, label1, label0, label2)
@@ -1629,11 +1630,12 @@ func _VarDefAction(parser *_Parser, start int) (int, *Def) {
 				typ = *t
 			}
 			return Def(&VarDef{
-				Exp:  reserved == "Var",
-				Name: name,
-				Type: typ,
-				Expr: expr,
-				L:    l(parser, start, end),
+				Exp:   reserved == "Var",
+				Const: false,
+				Name:  name,
+				Type:  typ,
+				Expr:  expr,
+				L:     l(parser, start, end),
 			})
 		}(
 			start0, pos, label3, label1, label0, label2)
