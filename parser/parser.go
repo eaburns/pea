@@ -134,18 +134,6 @@ func bins(expr Expr, calls []*Call) Expr {
 	return expr
 }
 
-func idxs(expr Expr, indexes []Expr) Expr {
-	l0 := expr.Loc()[0]
-	for _, idx := range indexes {
-		expr = &Index{
-			Expr:  expr,
-			Index: idx,
-			L:     loc.Loc{l0, idx.Loc()[1]},
-		}
-	}
-	return expr
-}
-
 func calls(expr Expr, calls []*Call) Expr {
 	l0 := expr.Loc()[0]
 	for _, call := range calls {

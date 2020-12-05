@@ -10152,7 +10152,7 @@ func _IdxAction(parser *_Parser, start int) (int, *Expr) {
 	var labels [2]string
 	use(labels)
 	var label0 Expr
-	var label1 []Expr
+	var label1 []*Call
 	dp := parser.deltaPos[start][_Idx]
 	if dp < 0 {
 		return -1, nil
@@ -10186,7 +10186,7 @@ func _IdxAction(parser *_Parser, start int) (int, *Expr) {
 			pos3 := pos
 			// Idxs+
 			{
-				var node6 Expr
+				var node6 *Call
 				// Idxs
 				if p, n := _IdxsAction(parser, pos); n == nil {
 					goto fail
@@ -10198,7 +10198,7 @@ func _IdxAction(parser *_Parser, start int) (int, *Expr) {
 			}
 			for {
 				pos5 := pos
-				var node6 Expr
+				var node6 *Call
 				// Idxs
 				if p, n := _IdxsAction(parser, pos); n == nil {
 					goto fail7
@@ -10215,8 +10215,8 @@ func _IdxAction(parser *_Parser, start int) (int, *Expr) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, expr Expr, indexes []Expr) Expr {
-			return Expr(idxs(expr, indexes))
+			start, end int, expr Expr, indexes []*Call) Expr {
+			return Expr(bins(expr, indexes))
 		}(
 			start0, pos, label0, label1)
 	}
@@ -10329,7 +10329,7 @@ fail:
 	return -1, failure
 }
 
-func _IdxsAction(parser *_Parser, start int) (int, *Expr) {
+func _IdxsAction(parser *_Parser, start int) (int, **Call) {
 	var labels [1]string
 	use(labels)
 	var label0 Expr
@@ -10340,10 +10340,10 @@ func _IdxsAction(parser *_Parser, start int) (int, *Expr) {
 	key := _key{start: start, rule: _Idxs}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Expr)
+		n := n.(*Call)
 		return start + int(dp-1), &n
 	}
-	var node Expr
+	var node *Call
 	pos := start
 	// action
 	{
@@ -10384,8 +10384,12 @@ func _IdxsAction(parser *_Parser, start int) (int, *Expr) {
 		}
 		pos++
 		node = func(
-			start, end int, index Expr) Expr {
-			return Expr(&Index{Index: index, L: l(parser, start, end)})
+			start, end int, index Expr) *Call {
+			return &Call{
+				Fun:  Id{Name: "[]", L: l(parser, start, end)},
+				Args: []Expr{nil, index},
+				L:    l(parser, start, end),
+			}
 		}(
 			start0, pos, label0)
 	}

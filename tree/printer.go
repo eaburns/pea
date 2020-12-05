@@ -202,14 +202,6 @@ func (c *Convert) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (i *Index) print(pc *config) {
-	pc.p("Index{")
-	pc.loc(i.L)
-	pc.field("Expr", i.Expr)
-	pc.field("Index", i.Index)
-	pc.p("\n}")
-}
-
 func (s *Selector) print(pc *config) {
 	pc.p("Selector{")
 	pc.loc(s.L)

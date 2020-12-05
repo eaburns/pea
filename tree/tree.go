@@ -143,14 +143,6 @@ type Convert struct {
 
 func (c *Convert) Loc() loc.Loc { return c.L }
 
-type Index struct {
-	Expr  Expr
-	Index Expr
-	L     loc.Loc
-}
-
-func (i *Index) Loc() loc.Loc { return i.L }
-
 type Selector struct {
 	Expr Expr
 	Id   Id

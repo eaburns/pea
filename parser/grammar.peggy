@@ -33,6 +33,7 @@ ConstDef <- _ reserved:("const" / "Const") name:Id t:Type? (_ "=" expr:Expr)? {
 		L: l(parser, start, end),
 	})
 }
+
 VarDef <- _ reserved:("var" / "Var") name:Id t:Type? (_ "=" expr:Expr)? {
 	var typ Type; if t != nil { typ = *t }
 	return Def(&VarDef{
@@ -254,11 +255,15 @@ Un <- name:Op arg:UnArg {
 UnArg <- Un / Idx / Sel / Call / Pri
 
 Idx <- expr:IdxArg indexes:Idxs+ {
-	return Expr(idxs(expr, indexes))
+	return Expr(bins(expr, indexes))
 }
 
 Idxs <- _ "[" index:Expr _ "]" {
-	return Expr(&Index{Index: index, L: l(parser, start, end)})
+	return &Call{
+		Fun: Id{Name: "[]", L: l(parser, start, end)},
+		Args: []Expr{nil, index},
+		L: l(parser, start, end),
+	}
 }
 
 IdxArg <- Call / Sel / Pri
