@@ -209,23 +209,8 @@ func (s *SubExpr) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (s *StructLit) print(pc *config) {
-	pc.p("StructLit{")
-	pc.loc(s.L)
-	pc.field("Fields", s.Fields)
-	pc.p("\n}")
-}
-
-func (f FieldVal) print(pc *config) {
-	pc.p("FieldVal{")
-	pc.loc(f.L)
-	pc.field("Name", f.Name)
-	pc.field("Expr", f.Expr)
-	pc.p("\n}")
-}
-
-func (a *ArrayLit) print(pc *config) {
-	pc.p("ArrayLit{")
+func (a *CompLit) print(pc *config) {
+	pc.p("CompLit{")
 	pc.loc(a.L)
 	pc.field("Exprs", a.Exprs)
 	pc.p("\n}")

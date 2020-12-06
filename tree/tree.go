@@ -150,25 +150,12 @@ type SubExpr struct {
 
 func (s *SubExpr) Loc() loc.Loc { return s.L }
 
-type StructLit struct {
-	Fields []FieldVal
-	L      loc.Loc
-}
-
-func (s *StructLit) Loc() loc.Loc { return s.L }
-
-type FieldVal struct {
-	Name Id
-	Expr Expr
-	L    loc.Loc
-}
-
-type ArrayLit struct {
+type CompLit struct {
 	Exprs []Expr
 	L     loc.Loc
 }
 
-func (a *ArrayLit) Loc() loc.Loc { return a.L }
+func (s *CompLit) Loc() loc.Loc { return s.L }
 
 type BlkLit struct {
 	Parms []FuncParm

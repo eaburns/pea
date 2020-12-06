@@ -332,8 +332,7 @@ Pri <-
 	} /
 	QualOp /
 	QualKwds /
-	StructLit /
-	ArrayLit /
+	CompLit /
 	BlkLit /
 	CharLit /
 	StrLit /
@@ -348,21 +347,8 @@ QualKwds <- (qual:Id _ ".")? name:Kwds {
 	return Expr(&Call{Fun: name, Args: []Expr{qual}, L: l(parser, start, end)})
 }
 
-StructLit <- "[" fs:FieldVals? _ "]" {
-	var fields []FieldVal; if fs != nil { fields = *fs }
-	return Expr(&StructLit{Fields: fields, L: l(parser, start, end)})
-}
-
-ArrayLit <- _ "[" exprs:Exprs _ "]" {
-	return Expr(&ArrayLit{Exprs: exprs, L: l(parser, start, end)})
-}
-
-FieldVal <- name:Id _ ":" expr:Expr {
-	return FieldVal{Name: name, Expr: expr, L: l(parser, start, end)}
-}
-
-FieldVals <- v0:FieldVal vs:(_ "," v:FieldVal { return FieldVal(v) })* (_ ",")? {
-	return []FieldVal(append([]FieldVal{v0}, vs...))
+CompLit <- _ "[" exprs:Exprs _ "]" {
+	return Expr(&CompLit{Exprs: exprs, L: l(parser, start, end)})
 }
 
 BlkLit <- _ "{" (parms:FuncParms _ "|")? es:Exprs? _ "}" {
