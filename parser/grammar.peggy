@@ -341,11 +341,11 @@ Pri <-
 	id:Id { return Expr(id) }
 
 QualOp <- _ "(" (qual:Id _ ".")? name:(IdxOp / Op) _ ")" {
-	return Expr(&Selector{Expr: qual, Id: name, L: l(parser, start, end)})
+	return Expr(&Call{Fun: name, Args: []Expr{qual}, L: l(parser, start, end)})
 }
 
 QualKwds <- (qual:Id _ ".")? name:Kwds {
-	return Expr(&Selector{Expr: qual, Id: name, L: l(parser, start, end)})
+	return Expr(&Call{Fun: name, Args: []Expr{qual}, L: l(parser, start, end)})
 }
 
 StructLit <- "[" fs:FieldVals? _ "]" {

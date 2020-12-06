@@ -154,7 +154,7 @@ func args(as *[]Expr) []Expr {
 func sel(expr Expr, ids []Id) Expr {
 	l0 := expr.Loc()[0]
 	for _, id := range ids {
-		expr = &Selector{Expr: expr, Id: id, L: loc.Loc{l0, id.L[1]}}
+		expr = &Call{Fun: id, Args: []Expr{expr}, L: loc.Loc{l0, id.L[1]}}
 	}
 	return expr
 }

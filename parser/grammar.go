@@ -13963,7 +13963,7 @@ func _QualOpAction(parser *_Parser, start int) (int, *Expr) {
 		pos++
 		node = func(
 			start, end int, name Id, qual Id) Expr {
-			return Expr(&Selector{Expr: qual, Id: name, L: l(parser, start, end)})
+			return Expr(&Call{Fun: name, Args: []Expr{qual}, L: l(parser, start, end)})
 		}(
 			start0, pos, label1, label0)
 	}
@@ -14157,7 +14157,7 @@ func _QualKwdsAction(parser *_Parser, start int) (int, *Expr) {
 		}
 		node = func(
 			start, end int, name Id, qual Id) Expr {
-			return Expr(&Selector{Expr: qual, Id: name, L: l(parser, start, end)})
+			return Expr(&Call{Fun: name, Args: []Expr{qual}, L: l(parser, start, end)})
 		}(
 			start0, pos, label1, label0)
 	}

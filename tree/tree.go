@@ -150,14 +150,6 @@ type SubExpr struct {
 
 func (s *SubExpr) Loc() loc.Loc { return s.L }
 
-type Selector struct {
-	Expr Expr
-	Id   Id
-	L    loc.Loc
-}
-
-func (s *Selector) Loc() loc.Loc { return s.L }
-
 type StructLit struct {
 	Fields []FieldVal
 	L      loc.Loc
