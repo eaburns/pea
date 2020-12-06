@@ -357,8 +357,8 @@ ArrayLit <- _ "[" exprs:Exprs _ "]" {
 	return Expr(&ArrayLit{Exprs: exprs, L: l(parser, start, end)})
 }
 
-FieldVal <- id:Id _ ":" expr:Expr {
-	return FieldVal{Id: id, Expr: expr, L: l(parser, start, end)}
+FieldVal <- name:Id _ ":" expr:Expr {
+	return FieldVal{Name: name, Expr: expr, L: l(parser, start, end)}
 }
 
 FieldVals <- v0:FieldVal vs:(_ "," v:FieldVal { return FieldVal(v) })* (_ ",")? {
@@ -408,7 +408,7 @@ RawStr <- _ [`] data:("\\`" / [^`])* [`] {
 	})
 }
 
-NumLit "number" <- DecLit / HexLit / FloatLit
+NumLit "number" <- FloatLit / HexLit / DecLit
 
 DecLit <- _ text:(D+) {
 	return Expr(&IntLit{Text: text, L: l(parser, start, end)})

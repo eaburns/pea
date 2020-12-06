@@ -219,7 +219,7 @@ func (s *StructLit) print(pc *config) {
 func (f FieldVal) print(pc *config) {
 	pc.p("FieldVal{")
 	pc.loc(f.L)
-	pc.field("Id", f.Id)
+	pc.field("Name", f.Name)
 	pc.field("Expr", f.Expr)
 	pc.p("\n}")
 }

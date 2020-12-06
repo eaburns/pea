@@ -14529,8 +14529,8 @@ func _FieldValAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// id:Id _ ":" expr:Expr
-	// id:Id
+	// name:Id _ ":" expr:Expr
+	// name:Id
 	{
 		pos1 := pos
 		// Id
@@ -14576,8 +14576,8 @@ func _FieldValFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _FieldVal}
 	// action
-	// id:Id _ ":" expr:Expr
-	// id:Id
+	// name:Id _ ":" expr:Expr
+	// name:Id
 	{
 		pos1 := pos
 		// Id
@@ -14637,8 +14637,8 @@ func _FieldValAction(parser *_Parser, start int) (int, *FieldVal) {
 	// action
 	{
 		start0 := pos
-		// id:Id _ ":" expr:Expr
-		// id:Id
+		// name:Id _ ":" expr:Expr
+		// name:Id
 		{
 			pos2 := pos
 			// Id
@@ -14674,8 +14674,8 @@ func _FieldValAction(parser *_Parser, start int) (int, *FieldVal) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, expr Expr, id Id) FieldVal {
-			return FieldVal{Id: id, Expr: expr, L: l(parser, start, end)}
+			start, end int, expr Expr, name Id) FieldVal {
+			return FieldVal{Name: name, Expr: expr, L: l(parser, start, end)}
 		}(
 			start0, pos, label1, label0)
 	}
@@ -17064,11 +17064,11 @@ func _NumLitAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// DecLit/HexLit/FloatLit
+	// FloatLit/HexLit/DecLit
 	{
 		pos3 := pos
-		// DecLit
-		if !_accept(parser, _DecLitAccepts, &pos, &perr) {
+		// FloatLit
+		if !_accept(parser, _FloatLitAccepts, &pos, &perr) {
 			goto fail4
 		}
 		goto ok0
@@ -17081,8 +17081,8 @@ func _NumLitAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto ok0
 	fail5:
 		pos = pos3
-		// FloatLit
-		if !_accept(parser, _FloatLitAccepts, &pos, &perr) {
+		// DecLit
+		if !_accept(parser, _DecLitAccepts, &pos, &perr) {
 			goto fail6
 		}
 		goto ok0
@@ -17107,11 +17107,11 @@ func _NumLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _NumLit}
-	// DecLit/HexLit/FloatLit
+	// FloatLit/HexLit/DecLit
 	{
 		pos3 := pos
-		// DecLit
-		if !_fail(parser, _DecLitFail, errPos, failure, &pos) {
+		// FloatLit
+		if !_fail(parser, _FloatLitFail, errPos, failure, &pos) {
 			goto fail4
 		}
 		goto ok0
@@ -17124,8 +17124,8 @@ func _NumLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto ok0
 	fail5:
 		pos = pos3
-		// FloatLit
-		if !_fail(parser, _FloatLitFail, errPos, failure, &pos) {
+		// DecLit
+		if !_fail(parser, _DecLitFail, errPos, failure, &pos) {
 			goto fail6
 		}
 		goto ok0
@@ -17157,12 +17157,12 @@ func _NumLitAction(parser *_Parser, start int) (int, *Expr) {
 	}
 	var node Expr
 	pos := start
-	// DecLit/HexLit/FloatLit
+	// FloatLit/HexLit/DecLit
 	{
 		pos3 := pos
 		var node2 Expr
-		// DecLit
-		if p, n := _DecLitAction(parser, pos); n == nil {
+		// FloatLit
+		if p, n := _FloatLitAction(parser, pos); n == nil {
 			goto fail4
 		} else {
 			node = *n
@@ -17183,8 +17183,8 @@ func _NumLitAction(parser *_Parser, start int) (int, *Expr) {
 	fail5:
 		node = node2
 		pos = pos3
-		// FloatLit
-		if p, n := _FloatLitAction(parser, pos); n == nil {
+		// DecLit
+		if p, n := _DecLitAction(parser, pos); n == nil {
 			goto fail6
 		} else {
 			node = *n

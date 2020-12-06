@@ -158,7 +158,7 @@ type StructLit struct {
 func (s *StructLit) Loc() loc.Loc { return s.L }
 
 type FieldVal struct {
-	Id   Id
+	Name Id
 	Expr Expr
 	L    loc.Loc
 }
