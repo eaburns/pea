@@ -154,7 +154,7 @@ FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" 
 	})
 }
 
-FuncName <- IdxOp / Op / Id / Kwds
+FuncName <- DotId / IdxOp / Op / Id / Kwds
 
 IdxOp "index operator" <- _ "[" _ "]" {
 	return Id{Name: "[]", L: l(parser, start, end)}
@@ -319,8 +319,12 @@ ArgList <- _ "(" as:Exprs? _ ")" {
 
 CallArg <- Sel / Pri
 
-Sel <- expr:Pri ids:(_ "." id:Id { return Id(id) })+ {
+Sel <- expr:Pri ids:(id:DotId { return Id(id) })+ {
 	return Expr(sel(expr, ids))
+}
+
+DotId <- _ "." id:Id {
+	return Id{Name: "." + id.Name, L: l(parser, start, end)}
 }
 
 Pri <-
