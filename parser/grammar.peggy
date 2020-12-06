@@ -156,6 +156,10 @@ FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" 
 
 FuncName <- IdxOp / Op / Id / Kwds
 
+IdxOp "index operator" <- _ "[" _ "]" {
+	return Id{Name: "[]", L: l(parser, start, end)}
+}
+
 FuncParms <- p0:FuncParm ps:(_ "," p1:FuncParm { return FuncParm(p1) })* (_ ",") ? {
 	return []FuncParm(append([]FuncParm{p0}, ps...))
 }
@@ -196,7 +200,13 @@ Exprs <- e0:Expr es:(_ "," e1:Expr { return Expr(e1) })* (_ ",")? {
 	return []Expr(append([]Expr{e0}, es...))
 }
 
-Expr <- KwCall / KwArg
+Expr <- Asgn / AsgnArg
+
+Asgn <- Bin<AsgnOp, AsgnArg>
+AsgnArg <- KwCall / KwArg
+AsgnOp "assignment operator" <- _ name:":=" {
+	return Id{Name: name, L: l(parser, start, end)}
+}
 
 KwCall <- kws:Kw+ {
 	return Expr(kwCall(l(parser, start, end), kws))
@@ -206,35 +216,62 @@ Kw <- name:Kwd arg:KwArg {
 	return kw{name: name, arg: arg}
 }
 
-KwArg <- Bin2 / Bin2Arg
-
-Bin2 <- arg0:Bin2Arg calls:Bin2Tail+ {
-	return Expr(bins(arg0, calls))
+Kwd "keyword" <- _ id:Id ":" {
+	return Id{Name: id.Name + ":", L: l(parser, start, end)}
 }
 
-Bin2Tail <- name:Op2 arg1:Bin2Arg {
-	return &Call{
-		Fun: name,
-		Args: []Expr{nil, arg1},
-		L: l(parser, start, end),
+Kwds "keywords" <- _ keywords:Kwd+ {
+	var name string
+	for _, k := range keywords {
+		name += k.Name
 	}
+	return Id{Name: name, L: l(parser, start, end)}
 }
 
+KwArg <- Bin5 / Bin5Arg
+
+Bin5 <- Bin<Bin5Op, Bin5Arg>
+Bin5Arg <- Bin4 / Bin4Arg
+Bin5Op "operator" <- _ name:("|" O*) {
+	return Id{Name: name, L: l(parser, start, end)}
+}
+
+Bin4 <- Bin<Bin4Op, Bin4Arg>
+Bin4Arg <- Bin3 / Bin3Arg
+Bin4Op "operator" <- _ name:("&" O*) {
+	return Id{Name: name, L: l(parser, start, end)}
+}
+
+Bin3 <- Bin<Bin3Op, Bin3Arg>
+Bin3Arg <- Bin2 / Bin2Arg
+Bin3Op "operator 3" <- _ name:([=!<>] O*) {
+	return Id{Name: name, L: l(parser, start, end)}
+}
+
+Bin2 <- Bin<Bin2Op, Bin2Arg>
 Bin2Arg <- Bin1 / Bin1Arg
+Bin2Op "operator" <- _ name:([+\-^] O*) {
+	return Id{Name: name, L: l(parser, start, end)}
+}
 
-Bin1 <- arg0:Bin1Arg calls:Bin1Tail+ {
+# TODO: what precedence are [~?@$]?
+Bin1 <- Bin<Bin1Op, Bin1Arg>
+Bin1Arg <- Cvt / UnArg
+Bin1Op "operator" <- _ name:([*/%] O*) {
+	return Id{Name: name, L: l(parser, start, end)}
+}
+
+Bin<O, A> <- arg0:A calls:BinTail<O, A>+ {
 	return Expr(bins(arg0, calls))
 }
 
-Bin1Tail <- name:Op1 arg1:Bin1Arg {
+BinTail<O, A> <- name:O arg1:A {
 	return &Call{
 		Fun: name,
 		Args: []Expr{nil, arg1},
 		L: l(parser, start, end),
 	}
 }
-
-Bin1Arg <- Cvt / UnArg
 
 Cvt <- expr:UnArg _ ":" typ:Type {
 	return Expr(&Convert{
@@ -253,6 +290,10 @@ Un <- name:Op arg:UnArg {
 }
 
 UnArg <- Un / Idx / Sel / Call / Pri
+
+Op "operator" <- _ name:[\-+*/%~!?^<>=&|@$]+ {
+	return Id{Name: name, L: l(parser, start, end)}
+}
 
 Idx <- expr:IdxArg indexes:Idxs+ {
 	return Expr(bins(expr, indexes))
@@ -376,32 +417,6 @@ FloatLit <- _ text:(D+ "." D+ ([eE] [+\-]? D+)?) {
 	return Expr(&FloatLit{Text: text, L: l(parser, start, end)})
 }
 
-Op "operator" <- _ name:[\-+*/%~!?^<>=&|@$]+ {
-	return Id{Name: name, L: l(parser, start, end)}
-}
-
-Op2 "operator2" <- _ !Op1 name:[\-+*/%~!?^<>=&|@$]+ {
-	return Id{Name: name, L: l(parser, start, end)}
-}
-
-Op1 "operator1" <- _ name:([*/%] [\-+*/%~!?^<>=&|@$]*) {
-	return Id{Name: name, L: l(parser, start, end)}
-}
-
-IdxOp "index operator" <- _ "[" _ "]" {
-	return Id{Name: "[]", L: l(parser, start, end)}
-}
-
-Kwd "keyword" <- _ id:Id ":" { return Id(id) }
-
-Kwds "keywords" <- _ keywords:Kwd+ {
-	var name string
-	for _, k := range keywords {
-		name += k.Name
-	}
-	return Id{Name: name, L: l(parser, start, end)}
-}
-
 Id "identifier" <- _ !Reserved !TypeVar name:(("_" / L) ("_" / L / D)*) {
 	return Id{Name: name, L: l(parser, start, end)}
 }
@@ -414,6 +429,7 @@ Reserved <- "import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "
 D <- [0-9]
 X <- [a-fA-F0-9]
 L <- r:. &{isLetter(r)}
+O <- [*/%+\-^=!<>&|~?@$]
 _ "" <- (Space / Cmnt)*
 Space <- r:. &{isSpace(r)}
 Cmnt <- "//" (!"\n" .)* / "/*" (!"*/" .)* "*/"
