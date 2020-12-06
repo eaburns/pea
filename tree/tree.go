@@ -143,6 +143,13 @@ type Convert struct {
 
 func (c *Convert) Loc() loc.Loc { return c.L }
 
+type SubExpr struct {
+	Expr
+	L loc.Loc
+}
+
+func (s *SubExpr) Loc() loc.Loc { return s.L }
+
 type Selector struct {
 	Expr Expr
 	Id   Id

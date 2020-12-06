@@ -202,11 +202,10 @@ func (c *Convert) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (s *Selector) print(pc *config) {
-	pc.p("Selector{")
+func (s *SubExpr) print(pc *config) {
+	pc.p("SubExpr{")
 	pc.loc(s.L)
 	pc.field("Expr", s.Expr)
-	pc.field("Id", s.Id)
 	pc.p("\n}")
 }
 

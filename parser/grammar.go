@@ -13517,7 +13517,10 @@ func _PriAction(parser *_Parser, start int) (int, *Expr) {
 			pos++
 			node = func(
 				start, end int, expr Expr) Expr {
-				return Expr(expr)
+				return Expr(&SubExpr{
+					Expr: expr,
+					L:    l(parser, start, end),
+				})
 			}(
 				start5, pos, label0)
 		}

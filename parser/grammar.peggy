@@ -324,7 +324,12 @@ Sel <- expr:Pri ids:(_ "." id:Id { return Id(id) })+ {
 }
 
 Pri <-
-	_ "(" expr:Expr _ ")" { return Expr(expr) } /
+	_ "(" expr:Expr _ ")" {
+		return Expr(&SubExpr{
+			Expr: expr,
+			L: l(parser, start, end),
+		})
+	} /
 	QualOp /
 	QualKwds /
 	StructLit /
