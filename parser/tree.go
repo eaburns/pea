@@ -1,4 +1,4 @@
-package tree
+package parser
 
 import "github.com/eaburns/pea/loc"
 

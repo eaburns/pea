@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/eaburns/pea/parser"
-	"github.com/eaburns/pea/tree"
 )
 
 func main() {
@@ -26,5 +25,5 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	p.Files[0].Print(os.Stdout, tree.PrintLocs(p.Files[0]))
+	p.Files[0].Print(os.Stdout, parser.PrintLocs(p.Files[0]))
 }

@@ -1,9 +1,6 @@
 package parser
 
-import (
-	. "github.com/eaburns/pea/tree"
-	"github.com/eaburns/peggy/peg"
-)
+import "github.com/eaburns/peggy/peg"
 
 const (
 	_File                     int = 0

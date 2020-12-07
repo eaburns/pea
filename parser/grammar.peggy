@@ -1,10 +1,7 @@
 {
 package parser
 
-import (
-	. "github.com/eaburns/pea/tree"
-	"github.com/eaburns/peggy/peg"
-)
+import "github.com/eaburns/peggy/peg"
 }
 
 File <- imports:Import* defs:Def* Eof {

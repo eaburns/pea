@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/eaburns/pea/loc"
-	. "github.com/eaburns/pea/tree"
 	"github.com/eaburns/peggy/peg"
 )
 
