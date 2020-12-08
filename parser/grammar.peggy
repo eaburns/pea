@@ -91,7 +91,7 @@ QName <- id0:Id id1:(_ "." id:Id { return Id(id) })? {
 	return qname(makeQname(id0, id1))
 }
 
-StructType <- "[" fs:Fields? _ "]" {
+StructType <- _ "[" fs:Fields? _ "]" {
 	var fields []Field; if fs != nil { fields = *fs }
 	return Type(&StructType{Fields: fields, L: l(parser, start, end)})
 }

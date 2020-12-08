@@ -4054,7 +4054,11 @@ func _StructTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// "[" fs:Fields? _ "]"
+	// _ "[" fs:Fields? _ "]"
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
 	// "["
 	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
 		perr = _max(perr, pos)
@@ -4106,7 +4110,11 @@ func _StructTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _StructType}
 	// action
-	// "[" fs:Fields? _ "]"
+	// _ "[" fs:Fields? _ "]"
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
 	// "["
 	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
 		if pos >= errPos {
@@ -4176,7 +4184,13 @@ func _StructTypeAction(parser *_Parser, start int) (int, *Type) {
 	// action
 	{
 		start0 := pos
-		// "[" fs:Fields? _ "]"
+		// _ "[" fs:Fields? _ "]"
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
 		// "["
 		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
 			goto fail
