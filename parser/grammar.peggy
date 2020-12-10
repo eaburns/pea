@@ -126,7 +126,7 @@ Cases <- (_ "|")? c0:Case cs:(_ "|" c1:Case { return Case(c1) })* {
 
 FuncType <-
 	_ "{" _ "}" { return Type(&FuncType{L: l(parser, start, end)}) } /
-	_ "{" ps:Types? _ "|" r:Types? _"}" {
+	_ "{" ps:Types? _ "|" r:Type? _"}" {
 		var parms []Type; if ps != nil { parms = *ps }
 		var ret Type; if r != nil { ret = *r }
 		return Type(&FuncType{

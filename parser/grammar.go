@@ -5365,7 +5365,7 @@ func _FuncTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// _ "{" _ "}" {…}/_ "{" ps:Types? _ "|" r:Types? _ "}" {…}
+	// _ "{" _ "}" {…}/_ "{" ps:Types? _ "|" r:Type? _ "}" {…}
 	{
 		pos3 := pos
 		// action
@@ -5394,7 +5394,7 @@ func _FuncTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	fail4:
 		pos = pos3
 		// action
-		// _ "{" ps:Types? _ "|" r:Types? _ "}"
+		// _ "{" ps:Types? _ "|" r:Type? _ "}"
 		// _
 		if !_accept(parser, __Accepts, &pos, &perr) {
 			goto fail6
@@ -5432,14 +5432,14 @@ func _FuncTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 			goto fail6
 		}
 		pos++
-		// r:Types?
+		// r:Type?
 		{
 			pos13 := pos
-			// Types?
+			// Type?
 			{
 				pos15 := pos
-				// Types
-				if !_accept(parser, _TypesAccepts, &pos, &perr) {
+				// Type
+				if !_accept(parser, _TypeAccepts, &pos, &perr) {
 					goto fail16
 				}
 				goto ok17
@@ -5482,7 +5482,7 @@ func _FuncTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _FuncType}
-	// _ "{" _ "}" {…}/_ "{" ps:Types? _ "|" r:Types? _ "}" {…}
+	// _ "{" _ "}" {…}/_ "{" ps:Types? _ "|" r:Type? _ "}" {…}
 	{
 		pos3 := pos
 		// action
@@ -5521,7 +5521,7 @@ func _FuncTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	fail4:
 		pos = pos3
 		// action
-		// _ "{" ps:Types? _ "|" r:Types? _ "}"
+		// _ "{" ps:Types? _ "|" r:Type? _ "}"
 		// _
 		if !_fail(parser, __Fail, errPos, failure, &pos) {
 			goto fail6
@@ -5569,14 +5569,14 @@ func _FuncTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 			goto fail6
 		}
 		pos++
-		// r:Types?
+		// r:Type?
 		{
 			pos13 := pos
-			// Types?
+			// Type?
 			{
 				pos15 := pos
-				// Types
-				if !_fail(parser, _TypesFail, errPos, failure, &pos) {
+				// Type
+				if !_fail(parser, _TypeFail, errPos, failure, &pos) {
 					goto fail16
 				}
 				goto ok17
@@ -5618,7 +5618,7 @@ func _FuncTypeAction(parser *_Parser, start int) (int, *Type) {
 	var labels [2]string
 	use(labels)
 	var label0 *[]Type
-	var label1 *[]Type
+	var label1 *Type
 	dp := parser.deltaPos[start][_FuncType]
 	if dp < 0 {
 		return -1, nil
@@ -5631,7 +5631,7 @@ func _FuncTypeAction(parser *_Parser, start int) (int, *Type) {
 	}
 	var node Type
 	pos := start
-	// _ "{" _ "}" {…}/_ "{" ps:Types? _ "|" r:Types? _ "}" {…}
+	// _ "{" _ "}" {…}/_ "{" ps:Types? _ "|" r:Type? _ "}" {…}
 	{
 		pos3 := pos
 		var node2 Type
@@ -5674,7 +5674,7 @@ func _FuncTypeAction(parser *_Parser, start int) (int, *Type) {
 		// action
 		{
 			start8 := pos
-			// _ "{" ps:Types? _ "|" r:Types? _ "}"
+			// _ "{" ps:Types? _ "|" r:Type? _ "}"
 			// _
 			if p, n := __Action(parser, pos); n == nil {
 				goto fail7
@@ -5719,15 +5719,15 @@ func _FuncTypeAction(parser *_Parser, start int) (int, *Type) {
 				goto fail7
 			}
 			pos++
-			// r:Types?
+			// r:Type?
 			{
 				pos15 := pos
-				// Types?
+				// Type?
 				{
 					pos17 := pos
-					label1 = new([]Type)
-					// Types
-					if p, n := _TypesAction(parser, pos); n == nil {
+					label1 = new(Type)
+					// Type
+					if p, n := _TypeAction(parser, pos); n == nil {
 						goto fail18
 					} else {
 						*label1 = *n
@@ -5753,7 +5753,7 @@ func _FuncTypeAction(parser *_Parser, start int) (int, *Type) {
 			}
 			pos++
 			node = func(
-				start, end int, ps *[]Type, r *[]Type) Type {
+				start, end int, ps *[]Type, r *Type) Type {
 				var parms []Type
 				if ps != nil {
 					parms = *ps
