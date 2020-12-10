@@ -61,6 +61,11 @@ type NamedType struct {
 	L    loc.Loc
 }
 
+type ArrayType struct {
+	ElemType Type
+	L        loc.Loc
+}
+
 type StructType struct {
 	Fields []Field
 	L      loc.Loc

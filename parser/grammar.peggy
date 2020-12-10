@@ -66,6 +66,7 @@ Type <-
 	NamedType /
 	tvar:TypeVar { return Type(tvar) } /
 	_"(" typ:Type _ ")" { return Type(typ) } /
+	ArrayType /
 	StructType /
 	UnionType /
 	FuncType
@@ -89,6 +90,10 @@ TypeArgs <-
 
 QName <- id0:Id id1:(_ "." id:Id { return Id(id) })? {
 	return qname(makeQname(id0, id1))
+}
+
+ArrayType <- _ "[" elem:Type _ "]" {
+	return Type(&ArrayType{ElemType: elem, L: l(parser, start, end)})
 }
 
 StructType <- _ "[" fs:Fields? _ "]" {

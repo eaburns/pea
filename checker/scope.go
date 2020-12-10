@@ -52,9 +52,6 @@ func (*TypeDef) key() string  { panic("impossible") }
 func (f *FuncDef) key() string { return f.Name }
 
 func findBuiltInType(args []Type, name string, l loc.Loc) Type {
-	if len(args) == 1 && name == "array" {
-		return &ArrayType{ElemType: args[0], L: l}
-	}
 	if len(args) > 0 {
 		return nil
 	}

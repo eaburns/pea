@@ -16,97 +16,98 @@ const (
 	_NamedType                int = 10
 	_TypeArgs                 int = 11
 	_QName                    int = 12
-	_StructType               int = 13
-	_Field                    int = 14
-	_Fields                   int = 15
-	_UnionType                int = 16
-	_Case                     int = 17
-	_Cases                    int = 18
-	_FuncType                 int = 19
-	_FuncDef                  int = 20
-	_FuncName                 int = 21
-	_IdxOp                    int = 22
-	_FuncParms                int = 23
-	_FuncParm                 int = 24
-	_FuncDecl                 int = 25
-	_FuncDecls                int = 26
-	_TestDef                  int = 27
-	_Exprs                    int = 28
-	_Expr                     int = 29
-	_Asgn                     int = 30
-	_AsgnArg                  int = 31
-	_AsgnOp                   int = 32
-	_KwCall                   int = 33
-	_Kw                       int = 34
-	_Kwd                      int = 35
-	_Kwds                     int = 36
-	_KwArg                    int = 37
-	_Bin5                     int = 38
-	_Bin5Arg                  int = 39
-	_Bin5Op                   int = 40
-	_Bin4                     int = 41
-	_Bin4Arg                  int = 42
-	_Bin4Op                   int = 43
-	_Bin3                     int = 44
-	_Bin3Arg                  int = 45
-	_Bin3Op                   int = 46
-	_Bin2                     int = 47
-	_Bin2Arg                  int = 48
-	_Bin2Op                   int = 49
-	_Bin1                     int = 50
-	_Bin1Arg                  int = 51
-	_Bin1Op                   int = 52
-	_Cvt                      int = 53
-	_Un                       int = 54
-	_UnArg                    int = 55
-	_Op                       int = 56
-	_Idx                      int = 57
-	_Idxs                     int = 58
-	_IdxArg                   int = 59
-	_Call                     int = 60
-	_ArgList                  int = 61
-	_CallArg                  int = 62
-	_Sel                      int = 63
-	_DotId                    int = 64
-	_Pri                      int = 65
-	_QualOp                   int = 66
-	_QualKwds                 int = 67
-	_CompLit                  int = 68
-	_BlkLit                   int = 69
-	_CharLit                  int = 70
-	_StrLit                   int = 71
-	_InterpStr                int = 72
-	_Esc                      int = 73
-	_RawStr                   int = 74
-	_NumLit                   int = 75
-	_DecLit                   int = 76
-	_HexLit                   int = 77
-	_FloatLit                 int = 78
-	_Id                       int = 79
-	_TypeVar                  int = 80
-	_Reserved                 int = 81
-	_D                        int = 82
-	_X                        int = 83
-	_L                        int = 84
-	_O                        int = 85
-	__                        int = 86
-	_Space                    int = 87
-	_Cmnt                     int = 88
-	_Eof                      int = 89
-	_Bin__AsgnOp__AsgnArg     int = 90
-	_Bin__Bin5Op__Bin5Arg     int = 91
-	_Bin__Bin4Op__Bin4Arg     int = 92
-	_Bin__Bin3Op__Bin3Arg     int = 93
-	_Bin__Bin2Op__Bin2Arg     int = 94
-	_Bin__Bin1Op__Bin1Arg     int = 95
-	_BinTail__AsgnOp__AsgnArg int = 96
-	_BinTail__Bin5Op__Bin5Arg int = 97
-	_BinTail__Bin4Op__Bin4Arg int = 98
-	_BinTail__Bin3Op__Bin3Arg int = 99
-	_BinTail__Bin2Op__Bin2Arg int = 100
-	_BinTail__Bin1Op__Bin1Arg int = 101
+	_ArrayType                int = 13
+	_StructType               int = 14
+	_Field                    int = 15
+	_Fields                   int = 16
+	_UnionType                int = 17
+	_Case                     int = 18
+	_Cases                    int = 19
+	_FuncType                 int = 20
+	_FuncDef                  int = 21
+	_FuncName                 int = 22
+	_IdxOp                    int = 23
+	_FuncParms                int = 24
+	_FuncParm                 int = 25
+	_FuncDecl                 int = 26
+	_FuncDecls                int = 27
+	_TestDef                  int = 28
+	_Exprs                    int = 29
+	_Expr                     int = 30
+	_Asgn                     int = 31
+	_AsgnArg                  int = 32
+	_AsgnOp                   int = 33
+	_KwCall                   int = 34
+	_Kw                       int = 35
+	_Kwd                      int = 36
+	_Kwds                     int = 37
+	_KwArg                    int = 38
+	_Bin5                     int = 39
+	_Bin5Arg                  int = 40
+	_Bin5Op                   int = 41
+	_Bin4                     int = 42
+	_Bin4Arg                  int = 43
+	_Bin4Op                   int = 44
+	_Bin3                     int = 45
+	_Bin3Arg                  int = 46
+	_Bin3Op                   int = 47
+	_Bin2                     int = 48
+	_Bin2Arg                  int = 49
+	_Bin2Op                   int = 50
+	_Bin1                     int = 51
+	_Bin1Arg                  int = 52
+	_Bin1Op                   int = 53
+	_Cvt                      int = 54
+	_Un                       int = 55
+	_UnArg                    int = 56
+	_Op                       int = 57
+	_Idx                      int = 58
+	_Idxs                     int = 59
+	_IdxArg                   int = 60
+	_Call                     int = 61
+	_ArgList                  int = 62
+	_CallArg                  int = 63
+	_Sel                      int = 64
+	_DotId                    int = 65
+	_Pri                      int = 66
+	_QualOp                   int = 67
+	_QualKwds                 int = 68
+	_CompLit                  int = 69
+	_BlkLit                   int = 70
+	_CharLit                  int = 71
+	_StrLit                   int = 72
+	_InterpStr                int = 73
+	_Esc                      int = 74
+	_RawStr                   int = 75
+	_NumLit                   int = 76
+	_DecLit                   int = 77
+	_HexLit                   int = 78
+	_FloatLit                 int = 79
+	_Id                       int = 80
+	_TypeVar                  int = 81
+	_Reserved                 int = 82
+	_D                        int = 83
+	_X                        int = 84
+	_L                        int = 85
+	_O                        int = 86
+	__                        int = 87
+	_Space                    int = 88
+	_Cmnt                     int = 89
+	_Eof                      int = 90
+	_Bin__AsgnOp__AsgnArg     int = 91
+	_Bin__Bin5Op__Bin5Arg     int = 92
+	_Bin__Bin4Op__Bin4Arg     int = 93
+	_Bin__Bin3Op__Bin3Arg     int = 94
+	_Bin__Bin2Op__Bin2Arg     int = 95
+	_Bin__Bin1Op__Bin1Arg     int = 96
+	_BinTail__AsgnOp__AsgnArg int = 97
+	_BinTail__Bin5Op__Bin5Arg int = 98
+	_BinTail__Bin4Op__Bin4Arg int = 99
+	_BinTail__Bin3Op__Bin3Arg int = 100
+	_BinTail__Bin2Op__Bin2Arg int = 101
+	_BinTail__Bin1Op__Bin1Arg int = 102
 
-	_N int = 102
+	_N int = 103
 )
 
 type _Parser struct {
@@ -2456,7 +2457,7 @@ func _TypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// RefType/NamedType/tvar:TypeVar {…}/_ "(" typ:Type _ ")" {…}/StructType/UnionType/FuncType
+	// RefType/NamedType/tvar:TypeVar {…}/_ "(" typ:Type _ ")" {…}/ArrayType/StructType/UnionType/FuncType
 	{
 		pos3 := pos
 		// RefType
@@ -2520,26 +2521,33 @@ func _TypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto ok0
 	fail8:
 		pos = pos3
-		// StructType
-		if !_accept(parser, _StructTypeAccepts, &pos, &perr) {
+		// ArrayType
+		if !_accept(parser, _ArrayTypeAccepts, &pos, &perr) {
 			goto fail11
 		}
 		goto ok0
 	fail11:
 		pos = pos3
-		// UnionType
-		if !_accept(parser, _UnionTypeAccepts, &pos, &perr) {
+		// StructType
+		if !_accept(parser, _StructTypeAccepts, &pos, &perr) {
 			goto fail12
 		}
 		goto ok0
 	fail12:
 		pos = pos3
-		// FuncType
-		if !_accept(parser, _FuncTypeAccepts, &pos, &perr) {
+		// UnionType
+		if !_accept(parser, _UnionTypeAccepts, &pos, &perr) {
 			goto fail13
 		}
 		goto ok0
 	fail13:
+		pos = pos3
+		// FuncType
+		if !_accept(parser, _FuncTypeAccepts, &pos, &perr) {
+			goto fail14
+		}
+		goto ok0
+	fail14:
 		pos = pos3
 		goto fail
 	ok0:
@@ -2561,7 +2569,7 @@ func _TypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _Type}
-	// RefType/NamedType/tvar:TypeVar {…}/_ "(" typ:Type _ ")" {…}/StructType/UnionType/FuncType
+	// RefType/NamedType/tvar:TypeVar {…}/_ "(" typ:Type _ ")" {…}/ArrayType/StructType/UnionType/FuncType
 	{
 		pos3 := pos
 		// RefType
@@ -2635,26 +2643,33 @@ func _TypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto ok0
 	fail8:
 		pos = pos3
-		// StructType
-		if !_fail(parser, _StructTypeFail, errPos, failure, &pos) {
+		// ArrayType
+		if !_fail(parser, _ArrayTypeFail, errPos, failure, &pos) {
 			goto fail11
 		}
 		goto ok0
 	fail11:
 		pos = pos3
-		// UnionType
-		if !_fail(parser, _UnionTypeFail, errPos, failure, &pos) {
+		// StructType
+		if !_fail(parser, _StructTypeFail, errPos, failure, &pos) {
 			goto fail12
 		}
 		goto ok0
 	fail12:
 		pos = pos3
-		// FuncType
-		if !_fail(parser, _FuncTypeFail, errPos, failure, &pos) {
+		// UnionType
+		if !_fail(parser, _UnionTypeFail, errPos, failure, &pos) {
 			goto fail13
 		}
 		goto ok0
 	fail13:
+		pos = pos3
+		// FuncType
+		if !_fail(parser, _FuncTypeFail, errPos, failure, &pos) {
+			goto fail14
+		}
+		goto ok0
+	fail14:
 		pos = pos3
 		goto fail
 	ok0:
@@ -2683,7 +2698,7 @@ func _TypeAction(parser *_Parser, start int) (int, *Type) {
 	}
 	var node Type
 	pos := start
-	// RefType/NamedType/tvar:TypeVar {…}/_ "(" typ:Type _ ")" {…}/StructType/UnionType/FuncType
+	// RefType/NamedType/tvar:TypeVar {…}/_ "(" typ:Type _ ")" {…}/ArrayType/StructType/UnionType/FuncType
 	{
 		pos3 := pos
 		var node2 Type
@@ -2782,8 +2797,8 @@ func _TypeAction(parser *_Parser, start int) (int, *Type) {
 	fail9:
 		node = node2
 		pos = pos3
-		// StructType
-		if p, n := _StructTypeAction(parser, pos); n == nil {
+		// ArrayType
+		if p, n := _ArrayTypeAction(parser, pos); n == nil {
 			goto fail13
 		} else {
 			node = *n
@@ -2793,8 +2808,8 @@ func _TypeAction(parser *_Parser, start int) (int, *Type) {
 	fail13:
 		node = node2
 		pos = pos3
-		// UnionType
-		if p, n := _UnionTypeAction(parser, pos); n == nil {
+		// StructType
+		if p, n := _StructTypeAction(parser, pos); n == nil {
 			goto fail14
 		} else {
 			node = *n
@@ -2804,8 +2819,8 @@ func _TypeAction(parser *_Parser, start int) (int, *Type) {
 	fail14:
 		node = node2
 		pos = pos3
-		// FuncType
-		if p, n := _FuncTypeAction(parser, pos); n == nil {
+		// UnionType
+		if p, n := _UnionTypeAction(parser, pos); n == nil {
 			goto fail15
 		} else {
 			node = *n
@@ -2813,6 +2828,17 @@ func _TypeAction(parser *_Parser, start int) (int, *Type) {
 		}
 		goto ok0
 	fail15:
+		node = node2
+		pos = pos3
+		// FuncType
+		if p, n := _FuncTypeAction(parser, pos); n == nil {
+			goto fail16
+		} else {
+			node = *n
+			pos = p
+		}
+		goto ok0
+	fail16:
 		node = node2
 		pos = pos3
 		goto fail
@@ -4039,6 +4065,175 @@ func _QNameAction(parser *_Parser, start int) (int, *qname) {
 			return qname(makeQname(id0, id1))
 		}(
 			start0, pos, label1, label0, label2)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _ArrayTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [1]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _ArrayType, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// _ "[" elem:Type _ "]"
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// "["
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos++
+	// elem:Type
+	{
+		pos1 := pos
+		// Type
+		if !_accept(parser, _TypeAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// "]"
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos++
+	return _memoize(parser, _ArrayType, start, pos, perr)
+fail:
+	return _memoize(parser, _ArrayType, start, -1, perr)
+}
+
+func _ArrayTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [1]string
+	use(labels)
+	pos, failure := _failMemo(parser, _ArrayType, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "ArrayType",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _ArrayType}
+	// action
+	// _ "[" elem:Type _ "]"
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// "["
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\"[\"",
+			})
+		}
+		goto fail
+	}
+	pos++
+	// elem:Type
+	{
+		pos1 := pos
+		// Type
+		if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// "]"
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\"]\"",
+			})
+		}
+		goto fail
+	}
+	pos++
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _ArrayTypeAction(parser *_Parser, start int) (int, *Type) {
+	var labels [1]string
+	use(labels)
+	var label0 Type
+	dp := parser.deltaPos[start][_ArrayType]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _ArrayType}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Type)
+		return start + int(dp-1), &n
+	}
+	var node Type
+	pos := start
+	// action
+	{
+		start0 := pos
+		// _ "[" elem:Type _ "]"
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// "["
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
+			goto fail
+		}
+		pos++
+		// elem:Type
+		{
+			pos2 := pos
+			// Type
+			if p, n := _TypeAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label0 = *n
+				pos = p
+			}
+			labels[0] = parser.text[pos2:pos]
+		}
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// "]"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
+			goto fail
+		}
+		pos++
+		node = func(
+			start, end int, elem Type) Type {
+			return Type(&ArrayType{ElemType: elem, L: l(parser, start, end)})
+		}(
+			start0, pos, label0)
 	}
 	parser.act[key] = node
 	return pos, &node

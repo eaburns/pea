@@ -229,6 +229,8 @@ func findTypeVars(parserType parser.Type, typeVars map[string]loc.Loc) {
 		for _, parserArg := range parserType.Args {
 			findTypeVars(parserArg, typeVars)
 		}
+	case *parser.ArrayType:
+		findTypeVars(parserType.ElemType, typeVars)
 	case *parser.StructType:
 		for _, parserField := range parserType.Fields {
 			findTypeVars(parserField.Type, typeVars)
@@ -281,6 +283,10 @@ func makeType(x scope, parserType parser.Type) (typ Type, fails []*fail) {
 				loc: parserType.L,
 			})
 		}
+	case *parser.ArrayType:
+		var elemType Type
+		elemType, fails = makeType(x, parserType.ElemType)
+		typ = &ArrayType{ElemType: elemType, L: parserType.L}
 	case *parser.StructType:
 		var fields []Field
 		fields, fails = makeFields(x, parserType.Fields)

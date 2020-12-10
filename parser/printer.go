@@ -110,6 +110,13 @@ func (n *NamedType) print(pc *config) {
 	pc.p("\n}")
 }
 
+func (a *ArrayType) print(pc *config) {
+	pc.p("ArrayType{")
+	pc.loc(a.L)
+	pc.field("ElemType", a.ElemType)
+	pc.p("\n}")
+}
+
 func (s *StructType) print(pc *config) {
 	pc.p("StructType{")
 	pc.loc(s.L)

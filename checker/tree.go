@@ -72,6 +72,11 @@ type NamedType struct {
 	L    loc.Loc
 }
 
+type ArrayType struct {
+	ElemType Type
+	L        loc.Loc
+}
+
 type StructType struct {
 	Fields []Field
 	L      loc.Loc
@@ -98,11 +103,6 @@ type FuncType struct {
 	Parms []Type
 	Ret   Type // nil if no return
 	L     loc.Loc
-}
-
-type ArrayType struct {
-	ElemType Type
-	L        loc.Loc
 }
 
 type TypeVar struct {
