@@ -170,7 +170,8 @@ FuncParm <- name:Id typ:Type (_ "=" init:Expr)? {
 	}
 }
 
-FuncDecl <- name:FuncName _ "(" parms:Types _ ")" r:Type? {
+FuncDecl <- name:FuncName _ "(" ps:Types? _ ")" r:Type? {
+	var parms []Type; if ps != nil { parms = *ps }
 	var ret Type; if r != nil { ret = *r }
 	return FuncDecl{
 		Name: name,

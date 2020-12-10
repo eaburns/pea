@@ -7313,7 +7313,7 @@ func _FuncDeclAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// name:FuncName _ "(" parms:Types _ ")" r:Type?
+	// name:FuncName _ "(" ps:Types? _ ")" r:Type?
 	// name:FuncName
 	{
 		pos1 := pos
@@ -7333,12 +7333,20 @@ func _FuncDeclAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto fail
 	}
 	pos++
-	// parms:Types
+	// ps:Types?
 	{
 		pos2 := pos
-		// Types
-		if !_accept(parser, _TypesAccepts, &pos, &perr) {
-			goto fail
+		// Types?
+		{
+			pos4 := pos
+			// Types
+			if !_accept(parser, _TypesAccepts, &pos, &perr) {
+				goto fail5
+			}
+			goto ok6
+		fail5:
+			pos = pos4
+		ok6:
 		}
 		labels[1] = parser.text[pos2:pos]
 	}
@@ -7354,20 +7362,20 @@ func _FuncDeclAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	pos++
 	// r:Type?
 	{
-		pos3 := pos
+		pos7 := pos
 		// Type?
 		{
-			pos5 := pos
+			pos9 := pos
 			// Type
 			if !_accept(parser, _TypeAccepts, &pos, &perr) {
-				goto fail6
+				goto fail10
 			}
-			goto ok7
-		fail6:
-			pos = pos5
-		ok7:
+			goto ok11
+		fail10:
+			pos = pos9
+		ok11:
 		}
-		labels[2] = parser.text[pos3:pos]
+		labels[2] = parser.text[pos7:pos]
 	}
 	return _memoize(parser, _FuncDecl, start, pos, perr)
 fail:
@@ -7387,7 +7395,7 @@ func _FuncDeclFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _FuncDecl}
 	// action
-	// name:FuncName _ "(" parms:Types _ ")" r:Type?
+	// name:FuncName _ "(" ps:Types? _ ")" r:Type?
 	// name:FuncName
 	{
 		pos1 := pos
@@ -7412,12 +7420,20 @@ func _FuncDeclFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto fail
 	}
 	pos++
-	// parms:Types
+	// ps:Types?
 	{
 		pos2 := pos
-		// Types
-		if !_fail(parser, _TypesFail, errPos, failure, &pos) {
-			goto fail
+		// Types?
+		{
+			pos4 := pos
+			// Types
+			if !_fail(parser, _TypesFail, errPos, failure, &pos) {
+				goto fail5
+			}
+			goto ok6
+		fail5:
+			pos = pos4
+		ok6:
 		}
 		labels[1] = parser.text[pos2:pos]
 	}
@@ -7438,20 +7454,20 @@ func _FuncDeclFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	pos++
 	// r:Type?
 	{
-		pos3 := pos
+		pos7 := pos
 		// Type?
 		{
-			pos5 := pos
+			pos9 := pos
 			// Type
 			if !_fail(parser, _TypeFail, errPos, failure, &pos) {
-				goto fail6
+				goto fail10
 			}
-			goto ok7
-		fail6:
-			pos = pos5
-		ok7:
+			goto ok11
+		fail10:
+			pos = pos9
+		ok11:
 		}
-		labels[2] = parser.text[pos3:pos]
+		labels[2] = parser.text[pos7:pos]
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -7464,7 +7480,7 @@ func _FuncDeclAction(parser *_Parser, start int) (int, *FuncDecl) {
 	var labels [3]string
 	use(labels)
 	var label0 Id
-	var label1 []Type
+	var label1 *[]Type
 	var label2 *Type
 	dp := parser.deltaPos[start][_FuncDecl]
 	if dp < 0 {
@@ -7481,7 +7497,7 @@ func _FuncDeclAction(parser *_Parser, start int) (int, *FuncDecl) {
 	// action
 	{
 		start0 := pos
-		// name:FuncName _ "(" parms:Types _ ")" r:Type?
+		// name:FuncName _ "(" ps:Types? _ ")" r:Type?
 		// name:FuncName
 		{
 			pos2 := pos
@@ -7505,15 +7521,25 @@ func _FuncDeclAction(parser *_Parser, start int) (int, *FuncDecl) {
 			goto fail
 		}
 		pos++
-		// parms:Types
+		// ps:Types?
 		{
 			pos3 := pos
-			// Types
-			if p, n := _TypesAction(parser, pos); n == nil {
-				goto fail
-			} else {
-				label1 = *n
-				pos = p
+			// Types?
+			{
+				pos5 := pos
+				label1 = new([]Type)
+				// Types
+				if p, n := _TypesAction(parser, pos); n == nil {
+					goto fail6
+				} else {
+					*label1 = *n
+					pos = p
+				}
+				goto ok7
+			fail6:
+				label1 = nil
+				pos = pos5
+			ok7:
 			}
 			labels[1] = parser.text[pos3:pos]
 		}
@@ -7530,28 +7556,32 @@ func _FuncDeclAction(parser *_Parser, start int) (int, *FuncDecl) {
 		pos++
 		// r:Type?
 		{
-			pos4 := pos
+			pos8 := pos
 			// Type?
 			{
-				pos6 := pos
+				pos10 := pos
 				label2 = new(Type)
 				// Type
 				if p, n := _TypeAction(parser, pos); n == nil {
-					goto fail7
+					goto fail11
 				} else {
 					*label2 = *n
 					pos = p
 				}
-				goto ok8
-			fail7:
+				goto ok12
+			fail11:
 				label2 = nil
-				pos = pos6
-			ok8:
+				pos = pos10
+			ok12:
 			}
-			labels[2] = parser.text[pos4:pos]
+			labels[2] = parser.text[pos8:pos]
 		}
 		node = func(
-			start, end int, name Id, parms []Type, r *Type) FuncDecl {
+			start, end int, name Id, ps *[]Type, r *Type) FuncDecl {
+			var parms []Type
+			if ps != nil {
+				parms = *ps
+			}
 			var ret Type
 			if r != nil {
 				ret = *r
