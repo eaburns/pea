@@ -250,7 +250,7 @@ func (f FuncParm) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f *FuncDecl) print(pc *config) {
+func (f FuncDecl) print(pc *config) {
 	pc.p("FuncDecl{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
