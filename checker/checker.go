@@ -221,6 +221,8 @@ func findTypeParms(parserFuncDef *parser.FuncDef) []TypeParm {
 
 func findTypeVars(parserType parser.Type, typeVars map[string]loc.Loc) {
 	switch parserType := parserType.(type) {
+	case nil:
+		return
 	case *parser.RefType:
 		findTypeVars(parserType.Type, typeVars)
 	case *parser.NamedType:
