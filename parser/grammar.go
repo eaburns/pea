@@ -2453,13 +2453,13 @@ fail:
 }
 
 func _TypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [2]string
+	var labels [1]string
 	use(labels)
 	if dp, de, ok := _memo(parser, _Type, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// RefType/NamedType/tvar:TypeVar {…}/FuncType/_ "(" typ:Type _ ")" {…}/ArrayType/StructType/UnionType
+	// RefType/NamedType/tvar:TypeVar {…}/FuncType/ArrayType/StructType/UnionType
 	{
 		pos3 := pos
 		// RefType
@@ -2496,60 +2496,26 @@ func _TypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto ok0
 	fail8:
 		pos = pos3
-		// action
-		// _ "(" typ:Type _ ")"
-		// _
-		if !_accept(parser, __Accepts, &pos, &perr) {
+		// ArrayType
+		if !_accept(parser, _ArrayTypeAccepts, &pos, &perr) {
 			goto fail9
 		}
-		// "("
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
-			perr = _max(perr, pos)
-			goto fail9
-		}
-		pos++
-		// typ:Type
-		{
-			pos11 := pos
-			// Type
-			if !_accept(parser, _TypeAccepts, &pos, &perr) {
-				goto fail9
-			}
-			labels[1] = parser.text[pos11:pos]
-		}
-		// _
-		if !_accept(parser, __Accepts, &pos, &perr) {
-			goto fail9
-		}
-		// ")"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
-			perr = _max(perr, pos)
-			goto fail9
-		}
-		pos++
 		goto ok0
 	fail9:
 		pos = pos3
-		// ArrayType
-		if !_accept(parser, _ArrayTypeAccepts, &pos, &perr) {
-			goto fail12
-		}
-		goto ok0
-	fail12:
-		pos = pos3
 		// StructType
 		if !_accept(parser, _StructTypeAccepts, &pos, &perr) {
-			goto fail13
+			goto fail10
 		}
 		goto ok0
-	fail13:
+	fail10:
 		pos = pos3
 		// UnionType
 		if !_accept(parser, _UnionTypeAccepts, &pos, &perr) {
-			goto fail14
+			goto fail11
 		}
 		goto ok0
-	fail14:
+	fail11:
 		pos = pos3
 		goto fail
 	ok0:
@@ -2560,7 +2526,7 @@ fail:
 }
 
 func _TypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [2]string
+	var labels [1]string
 	use(labels)
 	pos, failure := _failMemo(parser, _Type, start, errPos)
 	if failure != nil {
@@ -2571,7 +2537,7 @@ func _TypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _Type}
-	// RefType/NamedType/tvar:TypeVar {…}/FuncType/_ "(" typ:Type _ ")" {…}/ArrayType/StructType/UnionType
+	// RefType/NamedType/tvar:TypeVar {…}/FuncType/ArrayType/StructType/UnionType
 	{
 		pos3 := pos
 		// RefType
@@ -2608,70 +2574,26 @@ func _TypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto ok0
 	fail8:
 		pos = pos3
-		// action
-		// _ "(" typ:Type _ ")"
-		// _
-		if !_fail(parser, __Fail, errPos, failure, &pos) {
+		// ArrayType
+		if !_fail(parser, _ArrayTypeFail, errPos, failure, &pos) {
 			goto fail9
 		}
-		// "("
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
-			if pos >= errPos {
-				failure.Kids = append(failure.Kids, &peg.Fail{
-					Pos:  int(pos),
-					Want: "\"(\"",
-				})
-			}
-			goto fail9
-		}
-		pos++
-		// typ:Type
-		{
-			pos11 := pos
-			// Type
-			if !_fail(parser, _TypeFail, errPos, failure, &pos) {
-				goto fail9
-			}
-			labels[1] = parser.text[pos11:pos]
-		}
-		// _
-		if !_fail(parser, __Fail, errPos, failure, &pos) {
-			goto fail9
-		}
-		// ")"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
-			if pos >= errPos {
-				failure.Kids = append(failure.Kids, &peg.Fail{
-					Pos:  int(pos),
-					Want: "\")\"",
-				})
-			}
-			goto fail9
-		}
-		pos++
 		goto ok0
 	fail9:
 		pos = pos3
-		// ArrayType
-		if !_fail(parser, _ArrayTypeFail, errPos, failure, &pos) {
-			goto fail12
-		}
-		goto ok0
-	fail12:
-		pos = pos3
 		// StructType
 		if !_fail(parser, _StructTypeFail, errPos, failure, &pos) {
-			goto fail13
+			goto fail10
 		}
 		goto ok0
-	fail13:
+	fail10:
 		pos = pos3
 		// UnionType
 		if !_fail(parser, _UnionTypeFail, errPos, failure, &pos) {
-			goto fail14
+			goto fail11
 		}
 		goto ok0
-	fail14:
+	fail11:
 		pos = pos3
 		goto fail
 	ok0:
@@ -2684,10 +2606,9 @@ fail:
 }
 
 func _TypeAction(parser *_Parser, start int) (int, *Type) {
-	var labels [2]string
+	var labels [1]string
 	use(labels)
 	var label0 TypeVar
-	var label1 Type
 	dp := parser.deltaPos[start][_Type]
 	if dp < 0 {
 		return -1, nil
@@ -2700,7 +2621,7 @@ func _TypeAction(parser *_Parser, start int) (int, *Type) {
 	}
 	var node Type
 	pos := start
-	// RefType/NamedType/tvar:TypeVar {…}/FuncType/_ "(" typ:Type _ ")" {…}/ArrayType/StructType/UnionType
+	// RefType/NamedType/tvar:TypeVar {…}/FuncType/ArrayType/StructType/UnionType
 	{
 		pos3 := pos
 		var node2 Type
@@ -2762,85 +2683,37 @@ func _TypeAction(parser *_Parser, start int) (int, *Type) {
 	fail9:
 		node = node2
 		pos = pos3
-		// action
-		{
-			start11 := pos
-			// _ "(" typ:Type _ ")"
-			// _
-			if p, n := __Action(parser, pos); n == nil {
-				goto fail10
-			} else {
-				pos = p
-			}
-			// "("
-			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
-				goto fail10
-			}
-			pos++
-			// typ:Type
-			{
-				pos13 := pos
-				// Type
-				if p, n := _TypeAction(parser, pos); n == nil {
-					goto fail10
-				} else {
-					label1 = *n
-					pos = p
-				}
-				labels[1] = parser.text[pos13:pos]
-			}
-			// _
-			if p, n := __Action(parser, pos); n == nil {
-				goto fail10
-			} else {
-				pos = p
-			}
-			// ")"
-			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
-				goto fail10
-			}
-			pos++
-			node = func(
-				start, end int, tvar TypeVar, typ Type) Type {
-				return Type(typ)
-			}(
-				start11, pos, label0, label1)
+		// ArrayType
+		if p, n := _ArrayTypeAction(parser, pos); n == nil {
+			goto fail10
+		} else {
+			node = *n
+			pos = p
 		}
 		goto ok0
 	fail10:
 		node = node2
 		pos = pos3
-		// ArrayType
-		if p, n := _ArrayTypeAction(parser, pos); n == nil {
-			goto fail14
-		} else {
-			node = *n
-			pos = p
-		}
-		goto ok0
-	fail14:
-		node = node2
-		pos = pos3
 		// StructType
 		if p, n := _StructTypeAction(parser, pos); n == nil {
-			goto fail15
+			goto fail11
 		} else {
 			node = *n
 			pos = p
 		}
 		goto ok0
-	fail15:
+	fail11:
 		node = node2
 		pos = pos3
 		// UnionType
 		if p, n := _UnionTypeAction(parser, pos); n == nil {
-			goto fail16
+			goto fail12
 		} else {
 			node = *n
 			pos = p
 		}
 		goto ok0
-	fail16:
+	fail12:
 		node = node2
 		pos = pos3
 		goto fail

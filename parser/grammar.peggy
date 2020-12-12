@@ -66,7 +66,6 @@ Type <-
 	NamedType /
 	tvar:TypeVar { return Type(tvar) } /
 	FuncType /
-	_"(" typ:Type _ ")" { return Type(typ) } /
 	ArrayType /
 	StructType /
 	UnionType
