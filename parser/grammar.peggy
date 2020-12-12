@@ -328,9 +328,13 @@ Pri <-
 	NumLit /
 	id:Id { return Expr(id) }
 
-SubExpr <- _ "(" expr:Expr _ ")" {
-	return Expr(&SubExpr{Expr: expr, L: l(parser, start, end)})
-}
+SubExpr <-
+	_ "(" expr:Expr _ ")" {
+		return Expr(&SubExpr{Expr: expr, L: l(parser, start, end)})
+	} /
+	_ "(" id:(DotId / IdxOp / Op / Kwds) _ ")" {
+		return Expr(&SubExpr{Expr: id, L: l(parser, start, end)})
+	}
 
 ModSel <-
 	mod0:Id _ "#" name0:FuncName {
