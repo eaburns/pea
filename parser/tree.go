@@ -22,9 +22,7 @@ type Import struct {
 	L    loc.Loc
 }
 
-type Def interface {
-	Exported() bool
-}
+type Def interface{}
 
 type VarDef struct {
 	Exp   bool
@@ -35,8 +33,6 @@ type VarDef struct {
 	L     loc.Loc
 }
 
-func (v *VarDef) Exported() bool { return v.Exp }
-
 type TypeDef struct {
 	Exp       bool
 	TypeParms []TypeVar
@@ -44,8 +40,6 @@ type TypeDef struct {
 	Type      Type // nil if unspecified
 	L         loc.Loc
 }
-
-func (t *TypeDef) Exported() bool { return t.Exp }
 
 type Type interface{}
 
@@ -104,8 +98,6 @@ type FuncDef struct {
 	L     loc.Loc
 }
 
-func (f *FuncDef) Exported() bool { return f.Exp }
-
 type FuncParm struct {
 	Name Id
 	Type Type
@@ -125,8 +117,6 @@ type TestDef struct {
 	Exprs []Expr
 	L     loc.Loc
 }
-
-func (t *TestDef) Exported() bool { return false }
 
 type Expr interface {
 	Loc() loc.Loc
