@@ -65,11 +65,11 @@ Type <-
 	RefType /
 	NamedType /
 	tvar:TypeVar { return Type(tvar) } /
+	FuncType /
 	_"(" typ:Type _ ")" { return Type(typ) } /
 	ArrayType /
 	StructType /
-	UnionType /
-	FuncType
+	UnionType
 
 Types <- t0:Type ts:(_ "," t1:Type { return Type(t1) })* (_ ",")? {
 	return []Type(append([]Type{t0}, ts...))
@@ -129,17 +129,15 @@ Cases <- (_ "|")? c0:Case cs:(_ "|" c1:Case { return Case(c1) })* {
 	return []Case(append([]Case{c0}, cs...))
 }
 
-FuncType <-
-	_ "{" _ "}" { return Type(&FuncType{L: l(parser, start, end)}) } /
-	_ "{" ps:Types? _ "|" r:Type? _"}" {
-		var parms []Type; if ps != nil { parms = *ps }
-		var ret Type; if r != nil { ret = *r }
-		return Type(&FuncType{
-			Parms: parms,
-			Ret: ret,
-			L: l(parser, start, end),
-		})
-	}
+FuncType <- _ "(" ps:Types? _ ")" _ "{" r:Type? _ "}" {
+	var parms []Type; if ps != nil { parms = *ps }
+	var ret Type; if r != nil { ret = *r }
+	return Type(&FuncType{
+		Parms: parms,
+		Ret: ret,
+		L: l(parser, start, end),
+	})
+}
 
 FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:FuncDecls)? (_ "{" es:Exprs? _ "}")? {
 	var parms []FuncParm; if ps != nil { parms = *ps }
@@ -156,7 +154,7 @@ FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" 
 	})
 }
 
-FuncParms <- p0:FuncParm ps:(_ "," p1:FuncParm { return FuncParm(p1) })* (_ ",") ? {
+FuncParms <- p0:FuncParm ps:(_ "," p1:FuncParm { return FuncParm(p1) })* (_ ",")? {
 	return []FuncParm(append([]FuncParm{p0}, ps...))
 }
 
@@ -321,10 +319,10 @@ Sel <- expr:Pri ids:(id:DotId { return Id(id) })+ {
 }
 
 Pri <-
+	BlkLit /
 	SubExpr /
 	ModSel /
 	CompLit /
-	BlkLit /
 	CharLit /
 	StrLit /
 	NumLit /
@@ -364,13 +362,23 @@ CompLit <- _ "[" exprs:Exprs _ "]" {
 	return Expr(&CompLit{Exprs: exprs, L: l(parser, start, end)})
 }
 
-BlkLit <- _ "{" (parms:FuncParms _ "|")? es:Exprs? _ "}" {
+BlkLit <- _ "(" ps:BlkParms? _ ")" _ "{" es:Exprs? _ "}" {
+	var parms []FuncParm; if ps != nil { parms = *ps }
 	var exprs []Expr; if es != nil { exprs = *es }
 	return Expr(&BlkLit{
 		Parms: parms,
 		Exprs: exprs,
 		L: l(parser, start, end),
 	})
+}
+
+BlkParm <- id:Id t:Type? {
+	var typ Type; if t != nil { typ = *t }
+	return FuncParm{Name: id, Type: typ, L: l(parser, start, end)}
+}
+
+BlkParms <- p0:BlkParm ps:(_ "," p1:BlkParm { return FuncParm(p1) })* (_ ",")? {
+	return []FuncParm(append([]FuncParm{p0}, ps...))
 }
 
 CharLit "character" <- _ data:(['] !"\n" Esc / "\\'" / [^'] [']) {
