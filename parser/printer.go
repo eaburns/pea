@@ -216,6 +216,14 @@ func (s *SubExpr) print(pc *config) {
 	pc.p("\n}")
 }
 
+func (m *ModSel) print(pc *config) {
+	pc.p("ModSel{")
+	pc.loc(m.L)
+	pc.field("Mod", m.Mod)
+	pc.field("Name", m.Name)
+	pc.p("\n}")
+}
+
 func (a *CompLit) print(pc *config) {
 	pc.p("CompLit{")
 	pc.loc(a.L)

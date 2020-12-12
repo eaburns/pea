@@ -155,6 +155,14 @@ type SubExpr struct {
 
 func (s *SubExpr) Loc() loc.Loc { return s.L }
 
+type ModSel struct {
+	Mod Id
+	Name Id
+	L loc.Loc
+}
+
+func (m *ModSel) Loc() loc.Loc { return m.L }
+
 type CompLit struct {
 	Exprs []Expr
 	L     loc.Loc

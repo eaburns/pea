@@ -156,12 +156,6 @@ FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" 
 	})
 }
 
-FuncName <- DotId / IdxOp / Op / Id / Kwds
-
-IdxOp "index operator" <- _ "[" _ "]" {
-	return Id{Name: "[]", L: l(parser, start, end)}
-}
-
 FuncParms <- p0:FuncParm ps:(_ "," p1:FuncParm { return FuncParm(p1) })* (_ ",") ? {
 	return []FuncParm(append([]FuncParm{p0}, ps...))
 }
@@ -326,19 +320,9 @@ Sel <- expr:Pri ids:(id:DotId { return Id(id) })+ {
 	return Expr(sel(expr, ids))
 }
 
-DotId <- _ "." id:Id {
-	return Id{Name: "." + id.Name, L: l(parser, start, end)}
-}
-
 Pri <-
-	_ "(" expr:Expr _ ")" {
-		return Expr(&SubExpr{
-			Expr: expr,
-			L: l(parser, start, end),
-		})
-	} /
-	QualOp /
-	QualKwds /
+	SubExpr /
+	ModSel /
 	CompLit /
 	BlkLit /
 	CharLit /
@@ -346,12 +330,34 @@ Pri <-
 	NumLit /
 	id:Id { return Expr(id) }
 
-QualOp <- _ "(" (qual:Id _ ".")? name:(IdxOp / Op) _ ")" {
-	return Expr(&Call{Fun: name, Args: []Expr{qual}, L: l(parser, start, end)})
+SubExpr <- _ "(" expr:Expr _ ")" {
+	return Expr(&SubExpr{Expr: expr, L: l(parser, start, end)})
 }
 
-QualKwds <- (qual:Id _ ".")? name:Kwds {
-	return Expr(&Call{Fun: name, Args: []Expr{qual}, L: l(parser, start, end)})
+ModSel <-
+	mod0:Id _ "#" name0:FuncName {
+		return Expr(&ModSel{
+			Mod: mod0,
+			Name: name0,
+			L: l(parser, start, end),
+		})
+	} /
+	mod1:Id _ "#" _ "(" name1:FuncName _")" {
+		return Expr(&ModSel{
+			Mod: mod1,
+			Name: name1,
+			L: l(parser, start, end),
+		})
+	}
+
+FuncName <- DotId / IdxOp / Op / Kwds / Id
+
+IdxOp "index operator" <- _ "[" _ "]" {
+	return Id{Name: "[]", L: l(parser, start, end)}
+}
+
+DotId <- _ "." id:Id {
+	return Id{Name: "." + id.Name, L: l(parser, start, end)}
 }
 
 CompLit <- _ "[" exprs:Exprs _ "]" {
