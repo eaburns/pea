@@ -156,9 +156,9 @@ type SubExpr struct {
 func (s *SubExpr) Loc() loc.Loc { return s.L }
 
 type ModSel struct {
-	Mod Id
+	Mod  Id
 	Name Id
-	L loc.Loc
+	L    loc.Loc
 }
 
 func (m *ModSel) Loc() loc.Loc { return m.L }
