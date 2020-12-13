@@ -44,7 +44,7 @@ func Check(modPath string, files []*parser.File) (*Mod, loc.Files, []error) {
 	for _, parserFile := range files {
 		var imports []*Import
 		for _, parserImport := range parserFile.Imports {
-			defs, err := importer.Load(parserImport.Path)
+			m, err := importer.Load(parserImport.Path)
 			if err != nil {
 				fails = append(fails, &fail{
 					msg: err.Error(),
@@ -66,7 +66,7 @@ func Check(modPath string, files []*parser.File) (*Mod, loc.Files, []error) {
 				Path: parserImport.Path,
 				Exp:  parserImport.Exp,
 				L:    parserImport.L,
-				Defs: defs,
+				Defs: m.Defs,
 			}
 			imports = append(imports, imp)
 		}
@@ -89,11 +89,12 @@ func Check(modPath string, files []*parser.File) (*Mod, loc.Files, []error) {
 				continue
 			}
 			typeNames[name] = parserTypeDef.L
+			parms := makeTypeParms(importer.Files(), parserTypeDef.TypeParms)
 			typeDef := &TypeDef{
 				File:  file,
 				Mod:   modPath,
 				Name:  name,
-				Parms: makeTypeParms(parserTypeDef.TypeParms),
+				Parms: parms,
 				Exp:   parserTypeDef.Exp,
 				L:     parserTypeDef.L,
 			}
@@ -135,11 +136,12 @@ func Check(modPath string, files []*parser.File) (*Mod, loc.Files, []error) {
 					L:     parserDef.L,
 				})
 			case *parser.FuncDef:
+				typeParms := findTypeParms(importer.Files(), parserDef)
 				fun := &FuncDef{
 					File:      file,
 					Mod:       modPath,
 					Name:      parserDef.Name.Name,
-					TypeParms: findTypeParms(parserDef),
+					TypeParms: typeParms,
 					Exp:       parserDef.Exp,
 					L:         parserDef.L,
 				}
@@ -184,18 +186,19 @@ func Check(modPath string, files []*parser.File) (*Mod, loc.Files, []error) {
 	return mod, importer.Files(), nil
 }
 
-func makeTypeParms(parserTypeVars []parser.TypeVar) []TypeParm {
+func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) []TypeParm {
 	var typeParms []TypeParm
 	for _, parserTypeVar := range parserTypeVars {
 		typeParms = append(typeParms, TypeParm{
-			Name: parserTypeVar.Name,
-			L:    parserTypeVar.L,
+			Name:     parserTypeVar.Name,
+			L:        parserTypeVar.L,
+			location: files.Location(parserTypeVar.L),
 		})
 	}
 	return typeParms
 }
 
-func findTypeParms(parserFuncDef *parser.FuncDef) []TypeParm {
+func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
 	typeVars := make(map[string]loc.Loc)
 	for _, parserFuncParm := range parserFuncDef.Parms {
 		findTypeVars(parserFuncParm.Type, typeVars)
@@ -204,8 +207,9 @@ func findTypeParms(parserFuncDef *parser.FuncDef) []TypeParm {
 	var typeParms []TypeParm
 	for name, l := range typeVars {
 		typeParms = append(typeParms, TypeParm{
-			Name: name,
-			L:    l,
+			Name:     name,
+			L:        l,
+			location: files.Location(l),
 		})
 	}
 	sort.Slice(typeParms, func(i, j int) bool {
@@ -261,9 +265,6 @@ func makeType(x scope, parserType parser.Type) (typ Type, fails []*fail) {
 		typ, fails = makeType(x, parserType.Type)
 		typ = &RefType{Type: typ, L: parserType.L}
 	case *parser.NamedType:
-		if parserType.Mod != nil {
-			panic("unimplemented")
-		}
 		var args []Type
 		for _, parserArg := range parserType.Args {
 			arg, fs := makeType(x, parserArg)
@@ -275,6 +276,25 @@ func makeType(x scope, parserType parser.Type) (typ Type, fails []*fail) {
 		}
 		if len(fails) > 0 {
 			break
+		}
+		if parserType.Mod != nil {
+			modName := parserType.Mod.Name
+			modLoc := parserType.Mod.L
+			ds := x.find(parserType.Mod.Name)
+			switch {
+			case len(ds) > 1:
+				fails = append(fails, ambig(modName, modLoc))
+				return nil, fails
+			case len(ds) == 0:
+				fails = append(fails, notFound(modName, modLoc))
+				return nil, fails
+			}
+			imp, ok := ds[0].(*Import)
+			if !ok {
+				fails = append(fails, notImport(modName, modLoc))
+				return nil, fails
+			}
+			x = imp
 		}
 		name := parserType.Name.Name
 		if typ = x.findType(args, name, parserType.L); typ == nil {

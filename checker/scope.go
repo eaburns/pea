@@ -1,6 +1,31 @@
 package checker
 
-import "github.com/eaburns/pea/loc"
+import (
+	"fmt"
+
+	"github.com/eaburns/pea/loc"
+)
+
+func notFound(name string, l loc.Loc) *fail {
+	return &fail{
+		msg: fmt.Sprintf("%s: not found", name),
+		loc: l,
+	}
+}
+
+func ambig(name string, l loc.Loc) *fail {
+	return &fail{
+		msg: fmt.Sprintf("%s: ambiguous", name),
+		loc: l,
+	}
+}
+
+func notImport(name string, l loc.Loc) *fail {
+	return &fail{
+		msg: fmt.Sprintf("%s: is not a module name", name),
+		loc: l,
+	}
+}
 
 type scope interface {
 	find(key string) []Def

@@ -190,40 +190,7 @@ func (t TypeVar) print(pc *config) {
 }
 
 func (b BasicType) print(pc *config) {
-	var name string
-	switch b.Kind {
-	case Bool:
-		name = "bool"
-	case Int:
-		name = "int"
-	case Int8:
-		name = "int8"
-	case Int16:
-		name = "int16"
-	case Int32:
-		name = "int32"
-	case Int64:
-		name = "int64"
-	case Uint:
-		name = "uint"
-	case Uint8:
-		name = "uint8"
-	case Uint16:
-		name = "uint16"
-	case Uint32:
-		name = "uint32"
-	case Uint64:
-		name = "uint64"
-	case Float32:
-		name = "float32"
-	case Float64:
-		name = "float64"
-	case String:
-		name = "string"
-	default:
-		panic("impossible")
-	}
-	pc.p("BasicType{%s}", name)
+	pc.p("BasicType{%s}", b)
 	pc.loc(b.L)
 }
 

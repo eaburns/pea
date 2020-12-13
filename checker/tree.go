@@ -1,11 +1,21 @@
 package checker
 
-import "github.com/eaburns/pea/loc"
+import (
+	"path/filepath"
+	"strings"
+
+	"github.com/eaburns/pea/loc"
+)
 
 type Mod struct {
-	Path  string
-	Files []*File
-	Defs  []Def
+	Path     string
+	Imported bool
+	Files    []*File
+	Defs     []Def
+}
+
+func (m *Mod) Name() string {
+	return filepath.Base(m.Path)
 }
 
 type File struct {
@@ -56,9 +66,18 @@ type TypeDef struct {
 type TypeParm struct {
 	Name string
 	L    loc.Loc
+	// Used for String(); we need to store it,
+	// since the String() method doesn't
+	// otherwise have access to loc.Files.
+	location loc.Location
 }
 
-type Type interface{}
+type Type interface {
+	// String returns a human-readable string representation
+	// appropriate for error messages.
+	String() string
+	buildString(w *strings.Builder) *strings.Builder
+}
 
 type RefType struct {
 	Type Type
@@ -169,7 +188,5 @@ type TestDef struct {
 	Exprs []Expr
 	L     loc.Loc
 }
-
-func (t *TestDef) key() string { return "test " + t.Name }
 
 type Expr interface{}

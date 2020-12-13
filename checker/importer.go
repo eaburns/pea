@@ -9,7 +9,7 @@ import (
 
 type Importer interface {
 	Files() loc.Files
-	Load(path string) ([]Def, error)
+	Load(path string) (*Mod, error)
 }
 
 type defaultImporter struct {
@@ -31,6 +31,6 @@ func (imp *defaultImporter) Files() loc.Files {
 	return imp.files
 }
 
-func (imp *defaultImporter) Load(path string) ([]Def, error) {
+func (imp *defaultImporter) Load(path string) (*Mod, error) {
 	return nil, errors.New("importing is not implemented")
 }

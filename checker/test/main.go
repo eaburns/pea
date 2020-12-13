@@ -34,4 +34,12 @@ func main() {
 		os.Exit(1)
 	}
 	m.Print(os.Stdout, checker.PrintLocs(fs))
+
+	for _, def := range m.Defs {
+		td, ok := def.(*checker.TypeDef)
+		if !ok {
+			continue
+		}
+		fmt.Printf("%s: %s\n", td.Name, td.Type.String())
+	}
 }
