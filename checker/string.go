@@ -43,14 +43,21 @@ func (r *RefType) buildString(w *strings.Builder) *strings.Builder {
 }
 
 func (n *NamedType) buildString(w *strings.Builder) *strings.Builder {
-	w.WriteRune('(')
+	if len(n.Args) > 1 {
+		w.WriteRune('(')
+	}
 	for i, a := range n.Args {
 		if i > 0 {
 			w.WriteString(", ")
 		}
 		a.buildString(w)
 	}
-	w.WriteString(") ")
+	switch {
+	case len(n.Args) > 1:
+		w.WriteString(") ")
+	case len(n.Args) == 1:
+		w.WriteRune(' ')
+	}
 	if n.Def != nil && n.Def.File.Mod.Imported {
 		w.WriteString(n.Def.File.Mod.Name())
 		w.WriteRune('#')
@@ -82,9 +89,12 @@ func (s *StructType) buildString(w *strings.Builder) *strings.Builder {
 
 func (u *UnionType) buildString(w *strings.Builder) *strings.Builder {
 	w.WriteRune('[')
+	if len(u.Cases) == 1 && u.Cases[0].Type == nil {
+		w.WriteString("|")
+	}
 	for i, c := range u.Cases {
 		if i > 0 {
-			w.WriteString("| ")
+			w.WriteString(" | ")
 		}
 		w.WriteString(c.Name)
 		if c.Type != nil {

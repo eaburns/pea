@@ -34,13 +34,15 @@ func redef(l loc.Loc, name string, prev loc.Loc) *fail {
 }
 
 // Check does semantic checking, and returns a *Mod on success.
-func Check(modPath string, files []*parser.File) (*Mod, loc.Files, []error) {
+func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.Files, []error) {
 	var fails []*fail
 	idNames := make(map[string]loc.Loc)
 	typeDefs := make(map[*parser.TypeDef]*TypeDef)
 	typeNames := make(map[string]loc.Loc)
 	mod := &Mod{Path: modPath}
-	importer := newDefaultImporter(files)
+	if importer == nil {
+		importer = newDefaultImporter(files)
+	}
 	for _, parserFile := range files {
 		var imports []*Import
 		for _, parserImport := range parserFile.Imports {
