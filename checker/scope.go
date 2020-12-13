@@ -50,6 +50,7 @@ func (*TypeDef) key() string  { panic("impossible") }
 
 // TODO: FuncDef key should allow keywords specified in any order.
 func (f *FuncDef) key() string { return f.Name }
+func (t *TestDef) key() string { return "test " + t.Name }
 
 func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 	if len(args) > 0 {
