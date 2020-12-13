@@ -75,37 +75,6 @@ func (err parseError) Error() string {
 	return e.Error()
 }
 
-func namedType(l loc.Loc, args []Type, qnames []qname) Type {
-	for _, qn := range qnames {
-		args = []Type{
-			&NamedType{
-				Args: args,
-				Mod:  qn.Mod,
-				Name: qn.Name,
-				L:    loc.Loc{l[0], qn.Name.L[1]},
-			},
-		}
-	}
-	if len(args) != 1 {
-		// There is at least 1 qnames, so we must have done one loop,
-		// and therefore args has 1 element.
-		panic("impossible")
-	}
-	return args[0]
-}
-
-type qname struct {
-	Mod  *Id
-	Name Id
-}
-
-func makeQname(id0 Id, id1 *Id) qname {
-	if id1 == nil {
-		return qname{Name: id0}
-	}
-	return qname{Mod: &id0, Name: *id1}
-}
-
 type kw struct {
 	name Id
 	arg  Expr

@@ -78,18 +78,19 @@ RefType <- _ "&" typ:Type {
 	return Type(&RefType{Type: typ, L: l(parser, start, end)})
 }
 
-NamedType <- (args:TypeArgs)? names:QName+ {
-	return Type(namedType(l(parser, start, end), args, names))
+NamedType <- (args:TypeArgs)? mod:(m:Id _ "#" { return Id(m) })? name:Id {
+	return Type(&NamedType{
+		Args: args,
+		Mod: mod,
+		Name: name,
+		L: l(parser, start, end),
+	})
 }
 
 TypeArgs <-
 	tv:TypeVar { return []Type{tv} } /
 	_ "(" arg:Type _ ")" { return []Type{arg} } /
 	_ "(" args: Types _ ")" { return []Type(args) }
-
-QName <- id0:Id id1:(_ "." id:Id { return Id(id) })? {
-	return qname(makeQname(id0, id1))
-}
 
 ArrayType <- _ "[" elem:Type _ "]" {
 	return Type(&ArrayType{ElemType: elem, L: l(parser, start, end)})
