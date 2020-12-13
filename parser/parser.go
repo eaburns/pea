@@ -25,6 +25,11 @@ func NewParser() *Parser {
 	return &Parser{offs: 1}
 }
 
+// NewParserOffset returns a new parser with the given location offset.
+func NewParserOffset(offs int) *Parser {
+	return &Parser{offs: offs}
+}
+
 // Parse parses a file from an io.Reader.
 // The first argument is the file path or "" if unspecified.
 func (p *Parser) Parse(path string, r io.Reader) error {
@@ -73,6 +78,15 @@ func (err parseError) Error() string {
 	e := peg.SimpleError(err.text, err.fail)
 	e.FilePath = err.path
 	return e.Error()
+}
+
+func namedType(args []Type, names []*NamedType, l loc.Loc) Type {
+	for _, name := range names {
+		name.Args = args
+		name.L[0] = l[0]
+		args = []Type{name}
+	}
+	return args[0]
 }
 
 type kw struct {
