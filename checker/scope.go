@@ -46,6 +46,9 @@ func (f *File) find(key string) []Def {
 		if i.Exp {
 			ds = append(ds, i.find(key)...)
 		}
+		if i.key() == key {
+			ds = append(ds, i)
+		}
 	}
 	return ds
 }
