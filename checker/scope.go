@@ -44,9 +44,9 @@ func findInDefs(defs []Def, key string) []Def {
 	return matches
 }
 
-func (i *Import) key() string { return i.Name }
-func (v *VarDef) key() string { return v.Name }
-func (*TypeDef) key() string  { panic("impossible") }
+func (i *Import) key() string  { return i.Name }
+func (v *VarDef) key() string  { return v.Name }
+func (t *TypeDef) key() string { return fmt.Sprintf("%d %s", len(t.Parms), t.Name) }
 
 // TODO: FuncDef key should allow keywords specified in any order.
 func (f *FuncDef) key() string { return f.Name }
