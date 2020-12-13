@@ -77,6 +77,8 @@ type Type interface {
 	// appropriate for error messages.
 	String() string
 	buildString(w *strings.Builder) *strings.Builder
+
+	eq(Type) bool
 }
 
 type RefType struct {
