@@ -37,6 +37,7 @@ func (m *Mod) find(key string) []Def {
 }
 
 func (i *Import) find(key string) []Def {
+	// TODO: only return exported definitions.
 	return findInDefs(i.Defs, key)
 }
 
