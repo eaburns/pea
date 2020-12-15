@@ -142,10 +142,7 @@ func TestString(t *testing.T) {
 			if len(errs) > 0 {
 				t.Fatalf("%s", errs[0])
 			}
-			typ := findTypeDef("t", mod)
-			if typ == nil {
-				t.Fatal("no t type")
-			}
+			typ := findTypeDef(t, "t", mod)
 			if str := typ.Type.String(); str != test.want {
 				t.Errorf("got %s, want %s", str, test.want)
 			}

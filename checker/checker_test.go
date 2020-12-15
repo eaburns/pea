@@ -3,6 +3,7 @@ package checker
 import (
 	"fmt"
 	"strings"
+	"testing"
 
 	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
@@ -75,11 +76,22 @@ func check(path string, files []string, mods []testMod) (*Mod, []error) {
 	return mod, errs
 }
 
-func findTypeDef(name string, mod *Mod) *TypeDef {
+func findTypeDef(t *testing.T, name string, mod *Mod) *TypeDef {
 	for _, def := range mod.Defs {
 		if td, ok := def.(*TypeDef); ok && td.Name == name {
 			return td
 		}
 	}
-	return nil
+	t.Fatalf("failed to find type definition %s", name)
+	panic("impossible")
+}
+
+func findVarDef(t *testing.T, name string, mod *Mod) *VarDef {
+	for _, def := range mod.Defs {
+		if vd, ok := def.(*VarDef); ok && vd.Name == name {
+			return vd
+		}
+	}
+	t.Fatalf("failed to find variable definition %s", name)
+	panic("impossible")
 }

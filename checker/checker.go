@@ -390,6 +390,8 @@ func instType(typ Type) {
 		instType(typ.Ret)
 	case *TypeVar:
 		break
+	case *BasicType:
+		break
 	default:
 		panic(fmt.Sprintf("unsupported Type type: %T", typ))
 	}
