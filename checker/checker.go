@@ -81,7 +81,9 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 		}
 		mod.Files = append(mod.Files, file)
 		// Make TypeDefs, but not their Types yet.
-		// The Types cannot be made until all TypeDefs are made.
+		// The Types cannot be made until all TypeDefs are made,
+		// because making Types requires looking up the def
+		// for each type name.
 		for _, parserDef := range parserFile.Defs {
 			parserTypeDef, ok := parserDef.(*parser.TypeDef)
 			if !ok {
@@ -107,7 +109,9 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 		}
 	}
 	// Make TypeDef.Types, but don't instantiate them.
-	// They cannot be instantiated until all are made.
+	// They cannot be instantiated until all are made,
+	// because instantiation requires the instantiated def
+	// to have it's type already built.
 	for _, parserFile := range files {
 		for _, parserDef := range parserFile.Defs {
 			parserTypeDef, ok := parserDef.(*parser.TypeDef)
@@ -122,7 +126,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			typeDef.Type = t
 		}
 	}
-	// At this point, all TypeDefs are made and so are their Types.
+	// At this point, all TypeDefs and their types are made.
 	// From here on, we can fully make and instantiate types.
 	testNames := make(map[string]loc.Loc)
 	for i, file := range mod.Files {
