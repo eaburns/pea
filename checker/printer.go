@@ -20,10 +20,11 @@ func (m *Mod) Print(w io.Writer, opts ...PrintOpt) error {
 }
 
 type config struct {
-	w     io.Writer
-	files loc.Files
-	n     int
-	ident string
+	w              io.Writer
+	files          loc.Files
+	n              int
+	ident          string
+	printTypeInsts bool
 }
 
 type printerError struct{ error }
@@ -44,7 +45,11 @@ func print(w io.Writer, tree printer, opts ...PrintOpt) (err error) {
 			panic(r)
 		}
 	}()
-	pc := &config{w: w, ident: "  "}
+	pc := &config{
+		w:              w,
+		ident:          "  ",
+		printTypeInsts: true,
+	}
 	for _, opt := range opts {
 		opt(pc)
 	}
@@ -94,15 +99,26 @@ func (t *TypeDef) print(pc *config) {
 	pc.loc(t.L)
 	pc.field("Mod", t.Mod)
 	pc.field("Name", t.Name)
-	pc.field("Parms", t.Parms)
-	pc.field("Type", t.Type)
 	pc.field("Exp", t.Exp)
+	pc.field("Parms", t.Parms)
+	printTypeInsts := pc.printTypeInsts
+	pc.printTypeInsts = false
+	pc.field("Type", t.Type)
+	pc.field("Insts", t.Insts)
+	pc.printTypeInsts = printTypeInsts
 	pc.p("\n}")
 }
 
 func (t TypeParm) print(pc *config) {
 	pc.p("TypeParm(%s)", t.Name)
 	pc.loc(t.L)
+}
+
+func (t *TypeInst) print(pc *config) {
+	pc.p("TypeInst{	<%p>", t)
+	pc.field("Args", t.Args)
+	pc.field("Type", t.Type)
+	pc.p("\n}")
 }
 
 func (r *RefType) print(pc *config) {
@@ -125,6 +141,13 @@ func (n *NamedType) print(pc *config) {
 	if n.Def != nil {
 		pc.field("Def", fmt.Sprintf("{ Mod: %s, Name: %s }", n.Def.Mod, n.Def.Name))
 		pc.loc(n.Def.L)
+	}
+	if pc.printTypeInsts {
+		pc.printTypeInsts = false
+		pc.field("Inst", n.Inst)
+		pc.printTypeInsts = true
+	} else {
+		pc.field("Inst", fmt.Sprintf("<%p>", n.Inst))
 	}
 	pc.p("\n}")
 }
@@ -190,7 +213,7 @@ func (t TypeVar) print(pc *config) {
 }
 
 func (b BasicType) print(pc *config) {
-	pc.p("BasicType{%s}", b)
+	pc.p("BasicType{%s}", b.Kind)
 	pc.loc(b.L)
 }
 

@@ -80,6 +80,8 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			Imports: imports,
 		}
 		mod.Files = append(mod.Files, file)
+		// Make TypeDefs, but not their Types yet.
+		// The Types cannot be made until all TypeDefs are made.
 		for _, parserDef := range parserFile.Defs {
 			parserTypeDef, ok := parserDef.(*parser.TypeDef)
 			if !ok {
@@ -104,19 +106,33 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			mod.Defs = append(mod.Defs, typeDef)
 		}
 	}
-
+	// Make TypeDef.Types, but don't instantiate them.
+	// They cannot be instantiated until all are made.
+	for _, parserFile := range files {
+		for _, parserDef := range parserFile.Defs {
+			parserTypeDef, ok := parserDef.(*parser.TypeDef)
+			if !ok {
+				continue
+			}
+			typeDef := typeDefs[parserTypeDef]
+			t, fs := _makeType(typeDef, parserTypeDef.Type, false)
+			if len(fs) > 0 {
+				fails = append(fails, fs...)
+			}
+			typeDef.Type = t
+		}
+	}
+	// At this point, all TypeDefs are made and so are their Types.
+	// From here on, we can fully make and instantiate types.
 	testNames := make(map[string]loc.Loc)
 	for i, file := range mod.Files {
 		parserFile := files[i]
 		for _, parserDef := range parserFile.Defs {
 			switch parserDef := parserDef.(type) {
 			case *parser.TypeDef:
+				// Now all the types are built, so we can inst them.
 				typeDef := typeDefs[parserDef]
-				t, fs := makeType(typeDef, parserDef.Type)
-				if len(fs) > 0 {
-					fails = append(fails, fs...)
-				}
-				typeDef.Type = t
+				instType(typeDef.Type)
 			case *parser.VarDef:
 				name := parserDef.Name.Name
 				if prev, ok := idNames[name]; ok {
@@ -200,6 +216,318 @@ func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) []TypeParm 
 	return typeParms
 }
 
+func makeType(x scope, parserType parser.Type) (typ Type, fails []*fail) {
+	return _makeType(x, parserType, true)
+}
+
+func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*fail) {
+	switch parserType := parserType.(type) {
+	case nil:
+		return nil, nil
+	case *parser.RefType:
+		typ, fails = _makeType(x, parserType.Type, inst)
+		typ = &RefType{Type: typ, L: parserType.L}
+	case *parser.NamedType:
+		var args []Type
+		for _, parserArg := range parserType.Args {
+			arg, fs := _makeType(x, parserArg, inst)
+			if len(fs) > 0 {
+				fails = append(fails, fs...)
+				continue
+			}
+			args = append(args, arg)
+		}
+		if len(fails) > 0 {
+			break
+		}
+		if parserType.Mod != nil {
+			modName := parserType.Mod.Name
+			modLoc := parserType.Mod.L
+			ds := x.find(parserType.Mod.Name)
+			switch {
+			case len(ds) > 1:
+				fails = append(fails, ambig(modName, modLoc))
+				return nil, fails
+			case len(ds) == 0:
+				fails = append(fails, notFound(modName, modLoc))
+				return nil, fails
+			}
+			imp, ok := ds[0].(*Import)
+			if !ok {
+				fails = append(fails, notImport(modName, modLoc))
+				return nil, fails
+			}
+			x = imp
+		}
+		name := parserType.Name.Name
+		if typ = x.findType(args, name, parserType.L); typ == nil {
+			fails = append(fails, &fail{
+				msg: fmt.Sprintf("undefined: %s", name),
+				loc: parserType.L,
+			})
+		}
+		if nt, ok := typ.(*NamedType); ok && inst {
+			instType(nt)
+		}
+	case *parser.ArrayType:
+		var elemType Type
+		elemType, fails = _makeType(x, parserType.ElemType, inst)
+		typ = &ArrayType{ElemType: elemType, L: parserType.L}
+	case *parser.StructType:
+		var fields []Field
+		for _, parserField := range parserType.Fields {
+			t, fs := _makeType(x, parserField.Type, inst)
+			if len(fs) > 0 {
+				fails = append(fails, fs...)
+			}
+			fields = append(fields, Field{
+				Name: parserField.Name.Name,
+				Type: t,
+				L:    parserField.L,
+			})
+		}
+		typ = &StructType{Fields: fields, L: parserType.L}
+	case *parser.UnionType:
+		var cases []Case
+		for _, parserCase := range parserType.Cases {
+			t, fs := _makeType(x, parserCase.Type, inst)
+			if len(fs) > 0 {
+				fails = append(fails, fs...)
+			}
+			cases = append(cases, Case{
+				Name: parserCase.Name.Name,
+				Type: t,
+				L:    parserCase.L,
+			})
+		}
+		typ = &UnionType{Cases: cases, L: parserType.L}
+	case *parser.FuncType:
+		parms, fs := _makeTypes(x, parserType.Parms, inst)
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		ret, fs := _makeType(x, parserType.Ret, inst)
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		typ = &FuncType{Parms: parms, Ret: ret, L: parserType.L}
+	case parser.TypeVar:
+		name := parserType.Name
+		if typ = x.findType(nil, name, parserType.L); typ == nil {
+			fails = append(fails, &fail{
+				msg: fmt.Sprintf("undefined: %s", name),
+				loc: parserType.L,
+			})
+		}
+	default:
+		panic(fmt.Sprintf("unsupported Type type: %T", parserType))
+	}
+	if len(fails) > 0 {
+		return nil, fails
+	}
+	return typ, nil
+}
+
+func makeTypes(x scope, parserTypes []parser.Type) ([]Type, []*fail) {
+	return _makeTypes(x, parserTypes, true)
+}
+
+func _makeTypes(x scope, parserTypes []parser.Type, inst bool) ([]Type, []*fail) {
+	var fails []*fail
+	var types []Type
+	for _, parserType := range parserTypes {
+		t, fs := _makeType(x, parserType, inst)
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		types = append(types, t)
+	}
+	return types, fails
+}
+
+func instType(typ Type) {
+	switch typ := typ.(type) {
+	case nil:
+		break
+	case *RefType:
+		instType(typ.Type)
+	case *NamedType:
+		if typ.Def == nil {
+			return
+		}
+		if typ.Inst = findInst(typ.Def, typ.Args); typ.Inst == nil {
+			typ.Inst = newInst(typ.Def, typ.Args)
+		}
+	case *ArrayType:
+		instType(typ.ElemType)
+	case *StructType:
+		for i := range typ.Fields {
+			instType(typ.Fields[i].Type)
+		}
+	case *UnionType:
+		for i := range typ.Cases {
+			instType(typ.Cases[i].Type)
+		}
+	case *FuncType:
+		for i := range typ.Parms {
+			instType(typ.Parms[i])
+		}
+		instType(typ.Ret)
+	case *TypeVar:
+		break
+	default:
+		panic(fmt.Sprintf("unsupported Type type: %T", typ))
+	}
+}
+
+func findInst(def *TypeDef, args []Type) *TypeInst {
+next:
+	for _, inst := range def.Insts {
+		for i, a := range inst.Args {
+			if !args[i].eq(a) {
+				continue next
+			}
+		}
+		return inst
+	}
+	return nil
+}
+
+func newInst(def *TypeDef, args []Type) *TypeInst {
+	inst := &TypeInst{Args: make([]Type, len(args))}
+	sub := make(map[*TypeParm]Type, len(def.Parms))
+	for i, arg := range args {
+		// We are making one canonical instance.
+		// For location-independence,
+		// set the canonical instance's arguments
+		// to the corresponding parameter locations.
+		inst.Args[i] = copyTypeWithLoc(arg, def.Parms[i].L)
+		sub[&def.Parms[i]] = inst.Args[i]
+	}
+	def.Insts = append(def.Insts, inst)
+	inst.Type = subType(sub, def.Type)
+	return inst
+}
+
+func subType(sub map[*TypeParm]Type, typ Type) Type {
+	switch typ := typ.(type) {
+	case nil:
+		return nil
+	case *RefType:
+		copy := *typ
+		copy.Type = subType(sub, typ.Type)
+		return &copy
+	case *NamedType:
+		copy := *typ
+		copy.Args = nil
+		for _, arg := range typ.Args {
+			copy.Args = append(copy.Args, subType(sub, arg))
+		}
+		instType(&copy)
+		return &copy
+	case *ArrayType:
+		copy := *typ
+		copy.ElemType = subType(sub, typ.ElemType)
+		return &copy
+	case *StructType:
+		var copy StructType
+		for i := range typ.Fields {
+			f := typ.Fields[i]
+			f.Type = subType(sub, f.Type)
+			copy.Fields = append(copy.Fields, f)
+		}
+		return &copy
+	case *UnionType:
+		var copy UnionType
+		for i := range typ.Cases {
+			c := typ.Cases[i]
+			c.Type = subType(sub, c.Type)
+			copy.Cases = append(copy.Cases, c)
+		}
+		return &copy
+	case *FuncType:
+		var copy FuncType
+		for _, p := range typ.Parms {
+			copy.Parms = append(copy.Parms, subType(sub, p))
+		}
+		copy.Ret = subType(sub, typ.Ret)
+		return &copy
+	case *TypeVar:
+		if s, ok := sub[typ.Def]; ok {
+			return s
+		}
+		copy := *typ
+		return &copy
+	case *BasicType:
+		copy := *typ
+		return &copy
+	default:
+		panic(fmt.Sprintf("unsupported Type type: %T", typ))
+	}
+}
+
+func copyTypeWithLoc(typ Type, l loc.Loc) Type {
+	switch typ := typ.(type) {
+	case nil:
+		return nil
+	case *RefType:
+		return &RefType{
+			Type: copyTypeWithLoc(typ.Type, l),
+			L:    l,
+		}
+	case *NamedType:
+		copy := *typ
+		for i := range copy.Args {
+			copy.Args[i] = copyTypeWithLoc(copy.Args[i], l)
+		}
+		copy.L = l
+		return &copy
+	case *ArrayType:
+		return &ArrayType{
+			ElemType: copyTypeWithLoc(typ.ElemType, l),
+			L:        l,
+		}
+	case *StructType:
+		var copy StructType
+		for i := range typ.Fields {
+			f := typ.Fields[i]
+			f.L = l
+			f.Type = copyTypeWithLoc(f.Type, l)
+			copy.Fields = append(copy.Fields, f)
+		}
+		copy.L = l
+		return &copy
+	case *UnionType:
+		var copy UnionType
+		for i := range typ.Cases {
+			c := typ.Cases[i]
+			c.L = l
+			c.Type = copyTypeWithLoc(c.Type, l)
+			copy.Cases = append(copy.Cases, c)
+		}
+		copy.L = l
+		return &copy
+	case *FuncType:
+		var copy FuncType
+		for _, p := range typ.Parms {
+			copy.Parms = append(copy.Parms, copyTypeWithLoc(p, l))
+		}
+		copy.Ret = copyTypeWithLoc(typ.Ret, l)
+		copy.L = l
+		return &copy
+	case *TypeVar:
+		copy := *typ
+		copy.L = l
+		return &copy
+	case *BasicType:
+		copy := *typ
+		copy.L = l
+		return &copy
+	default:
+		panic(fmt.Sprintf("unsupported Type type: %T", typ))
+	}
+}
+
 func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
 	typeVars := make(map[string]loc.Loc)
 	for _, parserFuncParm := range parserFuncDef.Parms {
@@ -259,104 +587,6 @@ func findTypeVars(parserType parser.Type, typeVars map[string]loc.Loc) {
 	}
 }
 
-func makeType(x scope, parserType parser.Type) (typ Type, fails []*fail) {
-	switch parserType := parserType.(type) {
-	case nil:
-		return nil, nil
-	case *parser.RefType:
-		typ, fails = makeType(x, parserType.Type)
-		typ = &RefType{Type: typ, L: parserType.L}
-	case *parser.NamedType:
-		var args []Type
-		for _, parserArg := range parserType.Args {
-			arg, fs := makeType(x, parserArg)
-			if len(fs) > 0 {
-				fails = append(fails, fs...)
-				continue
-			}
-			args = append(args, arg)
-		}
-		if len(fails) > 0 {
-			break
-		}
-		if parserType.Mod != nil {
-			modName := parserType.Mod.Name
-			modLoc := parserType.Mod.L
-			ds := x.find(parserType.Mod.Name)
-			switch {
-			case len(ds) > 1:
-				fails = append(fails, ambig(modName, modLoc))
-				return nil, fails
-			case len(ds) == 0:
-				fails = append(fails, notFound(modName, modLoc))
-				return nil, fails
-			}
-			imp, ok := ds[0].(*Import)
-			if !ok {
-				fails = append(fails, notImport(modName, modLoc))
-				return nil, fails
-			}
-			x = imp
-		}
-		name := parserType.Name.Name
-		if typ = x.findType(args, name, parserType.L); typ == nil {
-			fails = append(fails, &fail{
-				msg: fmt.Sprintf("undefined: %s", name),
-				loc: parserType.L,
-			})
-		}
-	case *parser.ArrayType:
-		var elemType Type
-		elemType, fails = makeType(x, parserType.ElemType)
-		typ = &ArrayType{ElemType: elemType, L: parserType.L}
-	case *parser.StructType:
-		var fields []Field
-		fields, fails = makeFields(x, parserType.Fields)
-		typ = &StructType{Fields: fields, L: parserType.L}
-	case *parser.UnionType:
-		var cases []Case
-		cases, fails = makeCases(x, parserType.Cases)
-		typ = &UnionType{Cases: cases, L: parserType.L}
-	case *parser.FuncType:
-		parms, fs := makeTypes(x, parserType.Parms)
-		if len(fs) > 0 {
-			fails = append(fails, fs...)
-		}
-		ret, fs := makeType(x, parserType.Ret)
-		if len(fs) > 0 {
-			fails = append(fails, fs...)
-		}
-		typ = &FuncType{Parms: parms, Ret: ret, L: parserType.L}
-	case parser.TypeVar:
-		name := parserType.Name
-		if typ = x.findType(nil, name, parserType.L); typ == nil {
-			fails = append(fails, &fail{
-				msg: fmt.Sprintf("undefined: %s", name),
-				loc: parserType.L,
-			})
-		}
-	default:
-		panic(fmt.Sprintf("unsupported Type type: %T", parserType))
-	}
-	if len(fails) > 0 {
-		return nil, fails
-	}
-	return typ, nil
-}
-
-func makeTypes(x scope, parserTypes []parser.Type) ([]Type, []*fail) {
-	var fails []*fail
-	var types []Type
-	for _, parserType := range parserTypes {
-		t, fs := makeType(x, parserType)
-		if len(fs) > 0 {
-			fails = append(fails, fs...)
-		}
-		types = append(types, t)
-	}
-	return types, fails
-}
-
 func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]FuncParm, []*fail) {
 	var fails []*fail
 	var parms []FuncParm
@@ -394,38 +624,4 @@ func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []*fail)
 		})
 	}
 	return decls, fails
-}
-
-func makeFields(x scope, parserFields []parser.Field) ([]Field, []*fail) {
-	var fails []*fail
-	var fields []Field
-	for _, parserField := range parserFields {
-		t, fs := makeType(x, parserField.Type)
-		if len(fs) > 0 {
-			fails = append(fails, fs...)
-		}
-		fields = append(fields, Field{
-			Name: parserField.Name.Name,
-			Type: t,
-			L:    parserField.L,
-		})
-	}
-	return fields, fails
-}
-
-func makeCases(x scope, parserCases []parser.Case) ([]Case, []*fail) {
-	var fails []*fail
-	var cases []Case
-	for _, parserCase := range parserCases {
-		t, fs := makeType(x, parserCase.Type)
-		if len(fs) > 0 {
-			fails = append(fails, fs...)
-		}
-		cases = append(cases, Case{
-			Name: parserCase.Name.Name,
-			Type: t,
-			L:    parserCase.L,
-		})
-	}
-	return cases, fails
 }

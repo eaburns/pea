@@ -60,6 +60,7 @@ type TypeDef struct {
 	Parms []TypeParm
 	Type  Type
 	Exp   bool
+	Insts []*TypeInst
 	L     loc.Loc
 }
 
@@ -70,6 +71,11 @@ type TypeParm struct {
 	// since the String() method doesn't
 	// otherwise have access to loc.Files.
 	location loc.Location
+}
+
+type TypeInst struct {
+	Args []Type
+	Type Type
 }
 
 type Type interface {
@@ -90,6 +96,7 @@ type NamedType struct {
 	Name string
 	Args []Type
 	Def  *TypeDef
+	Inst *TypeInst
 	L    loc.Loc
 }
 

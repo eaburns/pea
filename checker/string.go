@@ -127,38 +127,42 @@ func (t *TypeVar) buildString(w *strings.Builder) *strings.Builder {
 	return w
 }
 
-func (b *BasicType) buildString(w *strings.Builder) *strings.Builder {
-	switch b.Kind {
+func (k BasicTypeKind) String() string {
+	switch k {
 	case Bool:
-		w.WriteString("bool")
+		return "bool"
 	case Int:
-		w.WriteString("int")
+		return "int"
 	case Int8:
-		w.WriteString("int8")
+		return "int8"
 	case Int16:
-		w.WriteString("int16")
+		return "int16"
 	case Int32:
-		w.WriteString("int32")
+		return "int32"
 	case Int64:
-		w.WriteString("int64")
+		return "int64"
 	case Uint:
-		w.WriteString("uint")
+		return "uint"
 	case Uint8:
-		w.WriteString("uint8")
+		return "uint8"
 	case Uint16:
-		w.WriteString("uint16")
+		return "uint16"
 	case Uint32:
-		w.WriteString("uint32")
+		return "uint32"
 	case Uint64:
-		w.WriteString("uint64")
+		return "uint64"
 	case Float32:
-		w.WriteString("float32")
+		return "float32"
 	case Float64:
-		w.WriteString("float64")
+		return "float64"
 	case String:
-		w.WriteString("string")
+		return "string"
 	default:
 		panic("impossible")
 	}
+}
+
+func (b *BasicType) buildString(w *strings.Builder) *strings.Builder {
+	w.WriteString(b.Kind.String())
 	return w
 }
