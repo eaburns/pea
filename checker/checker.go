@@ -95,7 +95,10 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				continue
 			}
 			typeNames[name] = parserTypeDef.L
-			parms := makeTypeParms(importer.Files(), parserTypeDef.TypeParms)
+			parms, fs := makeTypeParms(importer.Files(), parserTypeDef.TypeParms)
+			if len(fs) > 0 {
+				fails = append(fails, fs...)
+			}
 			typeDef := &TypeDef{
 				File:  file,
 				Mod:   modPath,
@@ -208,16 +211,24 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	return mod, importer.Files(), nil
 }
 
-func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) []TypeParm {
+func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm, []*fail) {
+	var fails []*fail
+	seen := make(map[string]loc.Loc)
 	var typeParms []TypeParm
 	for _, parserTypeVar := range parserTypeVars {
+		name := parserTypeVar.Name
+		if prev, ok := seen[name]; ok {
+			fails = append(fails, redef(parserTypeVar.L, name, prev))
+		} else {
+			seen[name] = parserTypeVar.L
+		}
 		typeParms = append(typeParms, TypeParm{
-			Name:     parserTypeVar.Name,
+			Name:     name,
 			L:        parserTypeVar.L,
 			location: files.Location(parserTypeVar.L),
 		})
 	}
-	return typeParms
+	return typeParms, fails
 }
 
 func makeType(x scope, parserType parser.Type) (typ Type, fails []*fail) {
@@ -592,15 +603,22 @@ func findTypeVars(parserType parser.Type, typeVars map[string]loc.Loc) {
 }
 
 func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]FuncParm, []*fail) {
+	seen := make(map[string]loc.Loc)
 	var fails []*fail
 	var parms []FuncParm
 	for _, parserParm := range parserParms {
+		name := parserParm.Name.Name
+		if prev, ok := seen[name]; ok {
+			fails = append(fails, redef(parserParm.L, name, prev))
+		} else {
+			seen[name] = parserParm.L
+		}
 		t, fs := makeType(x, parserParm.Type)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
 		}
 		parms = append(parms, FuncParm{
-			Name: parserParm.Name.Name,
+			Name: name,
 			Type: t,
 			L:    parserParm.L,
 		})
