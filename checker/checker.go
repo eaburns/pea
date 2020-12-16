@@ -1,9 +1,11 @@
 package checker
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
@@ -13,7 +15,6 @@ type fail struct {
 	msg   string
 	loc   loc.Loc
 	notes []note
-	cause []*fail
 }
 
 type note struct {
@@ -22,7 +23,20 @@ type note struct {
 }
 
 func (f *fail) error(files loc.Files) error {
-	return fmt.Errorf("%v: %s", files.Location(f.loc), f.msg)
+	var s strings.Builder
+	s.WriteString(files.Location(f.loc).String())
+	s.WriteString(": ")
+	s.WriteString(f.msg)
+	for _, note := range f.notes {
+		s.WriteString("\n\t")
+		s.WriteString(note.msg)
+		if note.loc != (loc.Loc{}) {
+			s.WriteString(" (")
+			s.WriteString(files.Location(note.loc).String())
+			s.WriteRune(')')
+		}
+	}
+	return errors.New(s.String())
 }
 
 func redef(l loc.Loc, name string, prev loc.Loc) *fail {
@@ -101,6 +115,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			}
 			typeDef := &TypeDef{
 				File:  file,
+				Alias: parserTypeDef.Alias,
 				Mod:   modPath,
 				Name:  name,
 				Parms: parms,
@@ -129,6 +144,19 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			typeDef.Type = t
 		}
 	}
+	// Type instantiation assumes no alias cycles,
+	// so we check them here.
+	// Alias cycles are an error, but this loop will
+	// report and then break any cycles it finds
+	// in order to allow checking to continue
+	// reporting more errors.
+	for _, def := range mod.Defs {
+		if typeDef, ok := def.(*TypeDef); ok && typeDef.Alias {
+			if fail := checkAliasCycle(typeDef); fail != nil {
+				fails = append(fails, fail)
+			}
+		}
+	}
 	// At this point, all TypeDefs and their types are made.
 	// From here on, we can fully make and instantiate types.
 	testNames := make(map[string]loc.Loc)
@@ -139,7 +167,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			case *parser.TypeDef:
 				// Now all the types are built, so we can inst them.
 				typeDef := typeDefs[parserDef]
-				instType(typeDef.Type)
+				typeDef.Type = instType(typeDef.Type)
 			case *parser.VarDef:
 				name := parserDef.Name.Name
 				if prev, ok := idNames[name]; ok {
@@ -282,7 +310,7 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*f
 			})
 		}
 		if nt, ok := typ.(*NamedType); ok && inst {
-			instType(nt)
+			typ = instType(nt)
 		}
 	case *parser.ArrayType:
 		var elemType Type
@@ -360,34 +388,77 @@ func _makeTypes(x scope, parserTypes []parser.Type, inst bool) ([]Type, []*fail)
 	return types, fails
 }
 
-func instType(typ Type) {
+func checkAliasCycle(root *TypeDef) *fail {
+	var path []*TypeDef
+	seen := make(map[*TypeDef]bool)
+	var check func(*TypeDef) bool
+	check = func(typeDef *TypeDef) bool {
+		path = append(path, typeDef)
+		if seen[typeDef] {
+			return false
+		}
+		seen[typeDef] = true
+		namedType, ok := typeDef.Type.(*NamedType)
+		if !ok || !namedType.Def.Alias || check(namedType.Def) {
+			path = path[:len(path)-1]
+			return true
+		}
+		return false
+	}
+	if !check(root) {
+		var notes []note
+		for i := 0; i < len(path); i++ {
+			if path[i] == path[len(path)-1] {
+				path = path[i:]
+				break
+			}
+		}
+		for _, def := range path {
+			notes = append(notes, note{
+				msg: def.Type.String(),
+				loc: def.Type.(*NamedType).L,
+			})
+		}
+		// Break the alias so that checking can continue reporting more errors.
+		root.Alias = false
+		return &fail{
+			msg:   "alias cycle",
+			loc:   root.L,
+			notes: notes,
+		}
+	}
+	return nil
+}
+
+func instType(typ Type) Type {
+	typ = resolveAlias(typ)
 	switch typ := typ.(type) {
 	case nil:
 		break
 	case *RefType:
-		instType(typ.Type)
+		typ.Type = instType(typ.Type)
 	case *NamedType:
 		if typ.Def == nil {
-			return
+			return typ
 		}
 		if typ.Inst = findInst(typ.Def, typ.Args); typ.Inst == nil {
 			typ.Inst = newInst(typ.Def, typ.Args)
 		}
 	case *ArrayType:
-		instType(typ.ElemType)
+		typ.ElemType = instType(typ.ElemType)
 	case *StructType:
 		for i := range typ.Fields {
-			instType(typ.Fields[i].Type)
+			typ.Fields[i].Type = instType(typ.Fields[i].Type)
 		}
 	case *UnionType:
 		for i := range typ.Cases {
-			instType(typ.Cases[i].Type)
+			typ.Cases[i].Type = instType(typ.Cases[i].Type)
 		}
 	case *FuncType:
 		for i := range typ.Parms {
-			instType(typ.Parms[i])
+			typ.Parms[i] = instType(typ.Parms[i])
 		}
-		instType(typ.Ret)
+		typ.Ret = instType(typ.Ret)
 	case *TypeVar:
 		break
 	case *BasicType:
@@ -395,6 +466,20 @@ func instType(typ Type) {
 	default:
 		panic(fmt.Sprintf("unsupported Type type: %T", typ))
 	}
+	return typ
+}
+
+func resolveAlias(typ Type) Type {
+	namedType, ok := typ.(*NamedType)
+	if !ok || !namedType.Def.Alias {
+		return typ
+	}
+	aliased := copyTypeWithLoc(namedType.Def.Type, namedType.L)
+	sub := make(map[*TypeParm]Type)
+	for i, arg := range namedType.Args {
+		sub[&namedType.Def.Parms[i]] = arg
+	}
+	return resolveAlias(subType(sub, aliased))
 }
 
 func findInst(def *TypeDef, args []Type) *TypeInst {
@@ -411,6 +496,9 @@ next:
 }
 
 func newInst(def *TypeDef, args []Type) *TypeInst {
+	if def.Alias {
+		panic(fmt.Sprintf("should-be resolved alias: %s", def.Name))
+	}
 	inst := &TypeInst{Args: make([]Type, len(args))}
 	sub := make(map[*TypeParm]Type, len(def.Parms))
 	for i, arg := range args {
@@ -440,7 +528,9 @@ func subType(sub map[*TypeParm]Type, typ Type) Type {
 		for _, arg := range typ.Args {
 			copy.Args = append(copy.Args, subType(sub, arg))
 		}
-		instType(&copy)
+		if typ.Inst != nil {
+			return instType(&copy)
+		}
 		return &copy
 	case *ArrayType:
 		copy := *typ

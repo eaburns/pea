@@ -88,6 +88,7 @@ func (t *TypeDef) print(pc *config) {
 	pc.p("TypeDef{")
 	pc.loc(t.L)
 	pc.field("Exp", t.Exp)
+	pc.field("Alias", t.Alias)
 	pc.field("TypeParms", t.TypeParms)
 	pc.field("Name", t.Name)
 	pc.field("Type", t.Type)

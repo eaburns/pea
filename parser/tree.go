@@ -35,6 +35,7 @@ type VarDef struct {
 
 type TypeDef struct {
 	Exp       bool
+	Alias     bool
 	TypeParms []TypeVar
 	Name      Id
 	Type      Type // nil if unspecified

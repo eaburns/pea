@@ -916,7 +916,7 @@ func _ConstDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ reserved:("const"/"Const") name:Id t:Type? (_ "=" expr:Expr)?
+	// _ reserved:("const"/"Const") name:Id t:Type? (_ ":=" expr:Expr)?
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
@@ -977,21 +977,21 @@ func _ConstDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[2] = parser.text[pos9:pos]
 	}
-	// (_ "=" expr:Expr)?
+	// (_ ":=" expr:Expr)?
 	{
 		pos15 := pos
-		// (_ "=" expr:Expr)
-		// _ "=" expr:Expr
+		// (_ ":=" expr:Expr)
+		// _ ":=" expr:Expr
 		// _
 		if !_accept(parser, __Accepts, &pos, &perr) {
 			goto fail16
 		}
-		// "="
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "=" {
+		// ":="
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
 			perr = _max(perr, pos)
 			goto fail16
 		}
-		pos++
+		pos += 2
 		// expr:Expr
 		{
 			pos18 := pos
@@ -1024,7 +1024,7 @@ func _ConstDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _ConstDef}
 	// action
-	// _ reserved:("const"/"Const") name:Id t:Type? (_ "=" expr:Expr)?
+	// _ reserved:("const"/"Const") name:Id t:Type? (_ ":=" expr:Expr)?
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
@@ -1095,26 +1095,26 @@ func _ConstDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		}
 		labels[2] = parser.text[pos9:pos]
 	}
-	// (_ "=" expr:Expr)?
+	// (_ ":=" expr:Expr)?
 	{
 		pos15 := pos
-		// (_ "=" expr:Expr)
-		// _ "=" expr:Expr
+		// (_ ":=" expr:Expr)
+		// _ ":=" expr:Expr
 		// _
 		if !_fail(parser, __Fail, errPos, failure, &pos) {
 			goto fail16
 		}
-		// "="
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "=" {
+		// ":="
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
 			if pos >= errPos {
 				failure.Kids = append(failure.Kids, &peg.Fail{
 					Pos:  int(pos),
-					Want: "\"=\"",
+					Want: "\":=\"",
 				})
 			}
 			goto fail16
 		}
-		pos++
+		pos += 2
 		// expr:Expr
 		{
 			pos18 := pos
@@ -1158,7 +1158,7 @@ func _ConstDefAction(parser *_Parser, start int) (int, *Def) {
 	// action
 	{
 		start0 := pos
-		// _ reserved:("const"/"Const") name:Id t:Type? (_ "=" expr:Expr)?
+		// _ reserved:("const"/"Const") name:Id t:Type? (_ ":=" expr:Expr)?
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
@@ -1232,22 +1232,22 @@ func _ConstDefAction(parser *_Parser, start int) (int, *Def) {
 			}
 			labels[2] = parser.text[pos10:pos]
 		}
-		// (_ "=" expr:Expr)?
+		// (_ ":=" expr:Expr)?
 		{
 			pos16 := pos
-			// (_ "=" expr:Expr)
-			// _ "=" expr:Expr
+			// (_ ":=" expr:Expr)
+			// _ ":=" expr:Expr
 			// _
 			if p, n := __Action(parser, pos); n == nil {
 				goto fail17
 			} else {
 				pos = p
 			}
-			// "="
-			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "=" {
+			// ":="
+			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
 				goto fail17
 			}
-			pos++
+			pos += 2
 			// expr:Expr
 			{
 				pos19 := pos
@@ -1296,7 +1296,7 @@ func _VarDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ reserved:("var"/"Var") name:Id t:Type? (_ "=" expr:Expr)?
+	// _ reserved:("var"/"Var") name:Id t:Type? (_ ":=" expr:Expr)?
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
@@ -1357,21 +1357,21 @@ func _VarDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[2] = parser.text[pos9:pos]
 	}
-	// (_ "=" expr:Expr)?
+	// (_ ":=" expr:Expr)?
 	{
 		pos15 := pos
-		// (_ "=" expr:Expr)
-		// _ "=" expr:Expr
+		// (_ ":=" expr:Expr)
+		// _ ":=" expr:Expr
 		// _
 		if !_accept(parser, __Accepts, &pos, &perr) {
 			goto fail16
 		}
-		// "="
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "=" {
+		// ":="
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
 			perr = _max(perr, pos)
 			goto fail16
 		}
-		pos++
+		pos += 2
 		// expr:Expr
 		{
 			pos18 := pos
@@ -1404,7 +1404,7 @@ func _VarDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _VarDef}
 	// action
-	// _ reserved:("var"/"Var") name:Id t:Type? (_ "=" expr:Expr)?
+	// _ reserved:("var"/"Var") name:Id t:Type? (_ ":=" expr:Expr)?
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
@@ -1475,26 +1475,26 @@ func _VarDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		}
 		labels[2] = parser.text[pos9:pos]
 	}
-	// (_ "=" expr:Expr)?
+	// (_ ":=" expr:Expr)?
 	{
 		pos15 := pos
-		// (_ "=" expr:Expr)
-		// _ "=" expr:Expr
+		// (_ ":=" expr:Expr)
+		// _ ":=" expr:Expr
 		// _
 		if !_fail(parser, __Fail, errPos, failure, &pos) {
 			goto fail16
 		}
-		// "="
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "=" {
+		// ":="
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
 			if pos >= errPos {
 				failure.Kids = append(failure.Kids, &peg.Fail{
 					Pos:  int(pos),
-					Want: "\"=\"",
+					Want: "\":=\"",
 				})
 			}
 			goto fail16
 		}
-		pos++
+		pos += 2
 		// expr:Expr
 		{
 			pos18 := pos
@@ -1538,7 +1538,7 @@ func _VarDefAction(parser *_Parser, start int) (int, *Def) {
 	// action
 	{
 		start0 := pos
-		// _ reserved:("var"/"Var") name:Id t:Type? (_ "=" expr:Expr)?
+		// _ reserved:("var"/"Var") name:Id t:Type? (_ ":=" expr:Expr)?
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
@@ -1612,22 +1612,22 @@ func _VarDefAction(parser *_Parser, start int) (int, *Def) {
 			}
 			labels[2] = parser.text[pos10:pos]
 		}
-		// (_ "=" expr:Expr)?
+		// (_ ":=" expr:Expr)?
 		{
 			pos16 := pos
-			// (_ "=" expr:Expr)
-			// _ "=" expr:Expr
+			// (_ ":=" expr:Expr)
+			// _ ":=" expr:Expr
 			// _
 			if p, n := __Action(parser, pos); n == nil {
 				goto fail17
 			} else {
 				pos = p
 			}
-			// "="
-			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "=" {
+			// ":="
+			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
 				goto fail17
 			}
-			pos++
+			pos += 2
 			// expr:Expr
 			{
 				pos19 := pos
@@ -1669,14 +1669,14 @@ fail:
 }
 
 func _TypeDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [4]string
+	var labels [5]string
 	use(labels)
 	if dp, de, ok := _memo(parser, _TypeDef, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
 	// action
-	// _ reserved:("type"/"Type") ps:TypeVars? name:Id t:Type?
+	// _ reserved:("type"/"Type") ps:TypeVars? name:Id alias:(_ ":=")? t:Type?
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
@@ -1737,22 +1737,47 @@ func _TypeDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[2] = parser.text[pos13:pos]
 	}
-	// t:Type?
+	// alias:(_ ":=")?
 	{
 		pos14 := pos
-		// Type?
+		// (_ ":=")?
 		{
 			pos16 := pos
-			// Type
-			if !_accept(parser, _TypeAccepts, &pos, &perr) {
+			// (_ ":=")
+			// _ ":="
+			// _
+			if !_accept(parser, __Accepts, &pos, &perr) {
 				goto fail17
 			}
-			goto ok18
+			// ":="
+			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
+				perr = _max(perr, pos)
+				goto fail17
+			}
+			pos += 2
+			goto ok19
 		fail17:
 			pos = pos16
-		ok18:
+		ok19:
 		}
 		labels[3] = parser.text[pos14:pos]
+	}
+	// t:Type?
+	{
+		pos20 := pos
+		// Type?
+		{
+			pos22 := pos
+			// Type
+			if !_accept(parser, _TypeAccepts, &pos, &perr) {
+				goto fail23
+			}
+			goto ok24
+		fail23:
+			pos = pos22
+		ok24:
+		}
+		labels[4] = parser.text[pos20:pos]
 	}
 	return _memoize(parser, _TypeDef, start, pos, perr)
 fail:
@@ -1760,7 +1785,7 @@ fail:
 }
 
 func _TypeDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [4]string
+	var labels [5]string
 	use(labels)
 	pos, failure := _failMemo(parser, _TypeDef, start, errPos)
 	if failure != nil {
@@ -1772,7 +1797,7 @@ func _TypeDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _TypeDef}
 	// action
-	// _ reserved:("type"/"Type") ps:TypeVars? name:Id t:Type?
+	// _ reserved:("type"/"Type") ps:TypeVars? name:Id alias:(_ ":=")? t:Type?
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
@@ -1843,22 +1868,52 @@ func _TypeDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		}
 		labels[2] = parser.text[pos13:pos]
 	}
-	// t:Type?
+	// alias:(_ ":=")?
 	{
 		pos14 := pos
-		// Type?
+		// (_ ":=")?
 		{
 			pos16 := pos
-			// Type
-			if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+			// (_ ":=")
+			// _ ":="
+			// _
+			if !_fail(parser, __Fail, errPos, failure, &pos) {
 				goto fail17
 			}
-			goto ok18
+			// ":="
+			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "\":=\"",
+					})
+				}
+				goto fail17
+			}
+			pos += 2
+			goto ok19
 		fail17:
 			pos = pos16
-		ok18:
+		ok19:
 		}
 		labels[3] = parser.text[pos14:pos]
+	}
+	// t:Type?
+	{
+		pos20 := pos
+		// Type?
+		{
+			pos22 := pos
+			// Type
+			if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+				goto fail23
+			}
+			goto ok24
+		fail23:
+			pos = pos22
+		ok24:
+		}
+		labels[4] = parser.text[pos20:pos]
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -1868,12 +1923,13 @@ fail:
 }
 
 func _TypeDefAction(parser *_Parser, start int) (int, *Def) {
-	var labels [4]string
+	var labels [5]string
 	use(labels)
 	var label0 string
 	var label1 *[]TypeVar
 	var label2 Id
-	var label3 *Type
+	var label3 string
+	var label4 *Type
 	dp := parser.deltaPos[start][_TypeDef]
 	if dp < 0 {
 		return -1, nil
@@ -1889,7 +1945,7 @@ func _TypeDefAction(parser *_Parser, start int) (int, *Def) {
 	// action
 	{
 		start0 := pos
-		// _ reserved:("type"/"Type") ps:TypeVars? name:Id t:Type?
+		// _ reserved:("type"/"Type") ps:TypeVars? name:Id alias:(_ ":=")? t:Type?
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
@@ -1963,30 +2019,64 @@ func _TypeDefAction(parser *_Parser, start int) (int, *Def) {
 			}
 			labels[2] = parser.text[pos14:pos]
 		}
-		// t:Type?
+		// alias:(_ ":=")?
 		{
 			pos15 := pos
-			// Type?
+			// (_ ":=")?
 			{
 				pos17 := pos
-				label3 = new(Type)
-				// Type
-				if p, n := _TypeAction(parser, pos); n == nil {
-					goto fail18
-				} else {
-					*label3 = *n
-					pos = p
+				// (_ ":=")
+				// _ ":="
+				{
+					var node19 string
+					// _
+					if p, n := __Action(parser, pos); n == nil {
+						goto fail18
+					} else {
+						node19 = *n
+						pos = p
+					}
+					label3, node19 = label3+node19, ""
+					// ":="
+					if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
+						goto fail18
+					}
+					node19 = parser.text[pos : pos+2]
+					pos += 2
+					label3, node19 = label3+node19, ""
 				}
-				goto ok19
+				goto ok20
 			fail18:
-				label3 = nil
+				label3 = ""
 				pos = pos17
-			ok19:
+			ok20:
 			}
 			labels[3] = parser.text[pos15:pos]
 		}
+		// t:Type?
+		{
+			pos21 := pos
+			// Type?
+			{
+				pos23 := pos
+				label4 = new(Type)
+				// Type
+				if p, n := _TypeAction(parser, pos); n == nil {
+					goto fail24
+				} else {
+					*label4 = *n
+					pos = p
+				}
+				goto ok25
+			fail24:
+				label4 = nil
+				pos = pos23
+			ok25:
+			}
+			labels[4] = parser.text[pos21:pos]
+		}
 		node = func(
-			start, end int, name Id, ps *[]TypeVar, reserved string, t *Type) Def {
+			start, end int, alias string, name Id, ps *[]TypeVar, reserved string, t *Type) Def {
 			var parms []TypeVar
 			if ps != nil {
 				parms = *ps
@@ -1997,13 +2087,14 @@ func _TypeDefAction(parser *_Parser, start int) (int, *Def) {
 			}
 			return Def(&TypeDef{
 				Exp:       reserved == "Type",
+				Alias:     alias != "",
 				TypeParms: parms,
 				Name:      name,
 				Type:      typ,
 				L:         l(parser, start, end),
 			})
 		}(
-			start0, pos, label2, label1, label0, label3)
+			start0, pos, label3, label2, label1, label0, label4)
 	}
 	parser.act[key] = node
 	return pos, &node

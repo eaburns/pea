@@ -19,7 +19,7 @@ Import <- _ reserved:("import" / "Import") id:Id? path:StrLit {
 
 Def <- ConstDef / VarDef / TypeDef / FuncDef / TestDef
 
-ConstDef <- _ reserved:("const" / "Const") name:Id t:Type? (_ "=" expr:Expr)? {
+ConstDef <- _ reserved:("const" / "Const") name:Id t:Type? (_ ":=" expr:Expr)? {
 	var typ Type; if t != nil { typ = *t }
 	return Def(&VarDef{
 		Exp: reserved == "Const",
@@ -31,7 +31,7 @@ ConstDef <- _ reserved:("const" / "Const") name:Id t:Type? (_ "=" expr:Expr)? {
 	})
 }
 
-VarDef <- _ reserved:("var" / "Var") name:Id t:Type? (_ "=" expr:Expr)? {
+VarDef <- _ reserved:("var" / "Var") name:Id t:Type? (_ ":=" expr:Expr)? {
 	var typ Type; if t != nil { typ = *t }
 	return Def(&VarDef{
 		Exp: reserved == "Var",
@@ -43,11 +43,12 @@ VarDef <- _ reserved:("var" / "Var") name:Id t:Type? (_ "=" expr:Expr)? {
 	})
 }
 
-TypeDef <- _ reserved:("type" / "Type") ps:TypeVars? name:Id t:Type? {
+TypeDef <- _ reserved:("type" / "Type") ps:TypeVars? name:Id alias:(_ ":=")? t:Type? {
 	var parms []TypeVar; if ps != nil { parms = *ps }
 	var typ Type; if t != nil { typ = *t }
 	return Def(&TypeDef{
 		Exp: reserved == "Type",
+		Alias: alias != "",
 		TypeParms: parms,
 		Name: name,
 		Type: typ,

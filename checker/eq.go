@@ -6,8 +6,17 @@ func (r *RefType) eq(other Type) bool {
 }
 
 func (n *NamedType) eq(other Type) bool {
+	if n.Def.Alias {
+		panic("impossible")
+	}
 	o, ok := other.(*NamedType)
-	if !ok || len(o.Args) != len(n.Args) || o.Def != n.Def {
+	if !ok {
+		return false
+	}
+	if o.Def.Alias {
+		panic("impossible")
+	}
+	if len(o.Args) != len(n.Args) || o.Def != n.Def {
 		return false
 	}
 	for i, nArg := range n.Args {

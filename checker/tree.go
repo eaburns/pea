@@ -55,6 +55,7 @@ type VarDef struct {
 
 type TypeDef struct {
 	File  *File
+	Alias bool
 	Mod   string
 	Name  string
 	Parms []TypeParm
@@ -84,6 +85,7 @@ type Type interface {
 	String() string
 	buildString(w *strings.Builder) *strings.Builder
 
+	// eq must not be called on a type before aliases have been resolved.
 	eq(Type) bool
 }
 
