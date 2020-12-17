@@ -43,7 +43,7 @@ func (r *RefType) buildString(w *strings.Builder) *strings.Builder {
 }
 
 func (n *NamedType) buildString(w *strings.Builder) *strings.Builder {
-	if len(n.Args) > 1 {
+	if needParens(n) {
 		w.WriteRune('(')
 	}
 	for i, a := range n.Args {
@@ -53,7 +53,7 @@ func (n *NamedType) buildString(w *strings.Builder) *strings.Builder {
 		a.buildString(w)
 	}
 	switch {
-	case len(n.Args) > 1:
+	case needParens(n):
 		w.WriteString(") ")
 	case len(n.Args) == 1:
 		w.WriteRune(' ')
@@ -64,6 +64,18 @@ func (n *NamedType) buildString(w *strings.Builder) *strings.Builder {
 	}
 	w.WriteString(n.Name)
 	return w
+}
+
+func needParens(n *NamedType) bool {
+	switch {
+	case len(n.Args) == 0:
+		return false
+	case len(n.Args) > 1:
+		return true
+	default:
+		_, ok := n.Args[0].(*RefType)
+		return ok
+	}
 }
 
 func (a *ArrayType) buildString(w *strings.Builder) *strings.Builder {

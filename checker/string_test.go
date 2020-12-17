@@ -134,6 +134,20 @@ func TestString(t *testing.T) {
 			},
 			want: "(int, string) pair#pair",
 		},
+		{
+			src: `
+				type X list
+				type t &int list
+			`,
+			want: "&int list",
+		},
+		{
+			src: `
+				type X list
+				type t (&int) list
+			`,
+			want: "(&int) list",
+		},
 	}
 	for _, test := range tests {
 		test := test
