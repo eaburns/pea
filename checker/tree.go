@@ -320,10 +320,9 @@ const (
 )
 
 type Builtin struct {
-	Op        Op
-	TypeParms []TypeParm
-	Ps        []Type
-	R         Type // nil if no return
+	Op Op
+	Ps []Type
+	R  Type // nil if no return
 }
 
 func (b *Builtin) Parms() []Type { return b.Ps }
@@ -398,7 +397,12 @@ type BlockLit struct {
 	Locals []FuncLocal
 	Ret    Type // result type of the block
 	Exprs  []Expr
+	T      Type
+	L      loc.Loc
 }
+
+func (b *BlockLit) Type() Type   { return b.T }
+func (b *BlockLit) Loc() loc.Loc { return b.L }
 
 type BlockCap struct {
 	Name string

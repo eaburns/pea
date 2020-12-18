@@ -226,7 +226,7 @@ func (f *FuncDef) print(pc *config) {
 	pc.field("Parms", f.Parms)
 	pc.field("Ret", f.Ret)
 	pc.field("Iface", f.Iface)
-	//pc.field("Exprs", f.Exprs)
+	pc.field("Exprs", f.Exprs)
 	pc.field("Exp", f.Exp)
 	pc.p("\n}")
 }
@@ -236,7 +236,7 @@ func (f FuncParm) print(pc *config) {
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
 	pc.field("Type", f.Type)
-	//pc.field("Init", f.Init)
+	pc.field("Init", f.Init)
 	pc.p("\n}")
 }
 
@@ -254,7 +254,137 @@ func (t *TestDef) print(pc *config) {
 	pc.loc(t.L)
 	pc.field("Mod", t.Mod)
 	pc.field("Name", t.Name)
-	//pc.field("Exprs", t.Exprs)
+	pc.field("Exprs", t.Exprs)
+	pc.p("\n}")
+}
+
+func (c *Call) print(pc *config) {
+	pc.p("Call{")
+	pc.loc(c.L)
+	pc.field("Fun", c.Fun)
+	pc.field("Args", c.Args)
+	pc.field("Type", c.Type)
+	pc.p("\n}")
+}
+
+func (s *Select) print(pc *config) {
+	pc.p("Select{")
+	pc.field("Type", s.Type)
+	pc.field("Field", s.Field)
+	pc.p("\n}")
+}
+
+func (s *Switch) print(pc *config) {
+	pc.p("Switch{")
+	pc.field("Type", s.Type)
+	pc.field("Cases", s.Cases)
+	pc.field("Ret", s.Ret)
+	pc.p("\n}")
+}
+
+func (b *Builtin) print(pc *config) {
+	pc.p("Builtin{")
+	pc.field("Op", b.Op)
+	pc.field("Parms", b.Ps)
+	pc.field("Ret", b.R)
+	pc.p("\n}")
+}
+
+func (r *Ref) print(pc *config) {
+	pc.p("Ref{")
+	pc.loc(r.L)
+	pc.field("Expr", r.Expr)
+	pc.field("Type", r.T)
+	pc.p("\n}")
+}
+
+func (d *Deref) print(pc *config) {
+	pc.p("Deref{")
+	pc.loc(d.L)
+	pc.field("Expr", d.Expr)
+	pc.field("Type", d.T)
+	pc.p("\n}")
+}
+
+func (v *Var) print(pc *config) {
+	pc.p("Var{")
+	pc.loc(v.L)
+	pc.field("Global", v.Global)
+	pc.field("Local", v.Local)
+	pc.field("Parm", v.Parm)
+	pc.field("Cap", v.Cap)
+	pc.field("Type", v.T)
+	pc.p("\n}")
+}
+
+func (a *ArrayLit) print(pc *config) {
+	pc.p("ArrayLit{")
+	pc.loc(a.L)
+	pc.field("Elems", a.Elems)
+	pc.field("Type", a.T)
+	pc.p("\n}")
+}
+
+func (s *StructLit) print(pc *config) {
+	pc.p("StructLit{")
+	pc.loc(s.L)
+	pc.field("Fields", s.Fields)
+	pc.field("Type", s.T)
+	pc.p("\n}")
+}
+
+func (u *UnionLit) print(pc *config) {
+	pc.p("UnionLit{")
+	pc.loc(u.L)
+	pc.field("Case", u.Case)
+	pc.field("Val", u.Val)
+	pc.field("Type", u.T)
+	pc.p("\n}")
+}
+
+func (b *BlockLit) print(pc *config) {
+	pc.p("BlockLit{")
+	pc.loc(b.L)
+	pc.field("Caps", b.Caps)
+	pc.field("Parms", b.Parms)
+	pc.field("Locals", b.Locals)
+	pc.field("Ret", b.Ret)
+	pc.field("Type", b.T)
+	pc.field("Exprs", b.Exprs)
+	pc.p("\n}")
+}
+
+func (b *BlockCap) print(pc *config) {
+	pc.p("BlockCap{")
+	pc.loc(b.L)
+	pc.field("Parm", b.Parm)
+	pc.field("Local", b.Local)
+	pc.field("Cap", b.Cap)
+	pc.field("Type", b.T)
+	pc.p("\n}")
+}
+
+func (s *StrLit) print(pc *config) {
+	pc.p("StrLit{")
+	pc.loc(s.L)
+	pc.field("Text", s.Text)
+	pc.field("Type", s.T)
+	pc.p("\n}")
+}
+
+func (i *IntLit) print(pc *config) {
+	pc.p("IntLit{")
+	pc.loc(i.L)
+	pc.field("Text", i.Text)
+	pc.field("Type", i.T)
+	pc.p("\n}")
+}
+
+func (f *FloatLit) print(pc *config) {
+	pc.p("FloatLit{")
+	pc.loc(f.L)
+	pc.field("Text", f.Text)
+	pc.field("Type", f.T)
 	pc.p("\n}")
 }
 

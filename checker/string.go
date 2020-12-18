@@ -178,3 +178,64 @@ func (b *BasicType) buildString(w *strings.Builder) *strings.Builder {
 	w.WriteString(b.Kind.String())
 	return w
 }
+
+func (o Op) String() string {
+	switch o {
+	case Assign:
+		return "Assign"
+	case NewArray:
+		return "NewArray"
+	case BitNot:
+		return "BitNot"
+	case BitXor:
+		return "BitXor"
+	case BitAnd:
+		return "BitAnd"
+	case BitOr:
+		return "BitOr"
+	case LeftShift:
+		return "LeftShift"
+	case RightShift:
+		return "RightShift"
+	case Negate:
+		return "Negate"
+	case Minus:
+		return "Minus"
+	case Plus:
+		return "Plus"
+	case Times:
+		return "Times"
+	case Divide:
+		return "Divide"
+	case Modulus:
+		return "Modulus"
+	case Eq:
+		return "Eq"
+	case Neq:
+		return "Neq"
+	case Less:
+		return "Less"
+	case LessEq:
+		return "LessEq"
+	case Greater:
+		return "Greater"
+	case GreaterEq:
+		return "GreaterEq"
+	case NumConvert:
+		return "NumConvert"
+	case StrConvert:
+		return "StrConvert"
+	case Index:
+		return "Index"
+	case Slice:
+		return "Slice"
+	case Length:
+		return "Length"
+	case Panic:
+		return "Panic"
+	case Print:
+		return "Print"
+	default:
+		panic("impossible")
+	}
+}
