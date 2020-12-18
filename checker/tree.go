@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"math/big"
 	"path/filepath"
 	"strings"
 
@@ -171,10 +172,12 @@ type FuncDef struct {
 	Name      string
 	TypeParms []TypeParm
 	Parms     []FuncParm
+	Locals    []FuncLocal
 	Ret       Type // nil if no return
 	Iface     []FuncDecl
 	Exprs     []Expr // nil if unspecified, non-nil, len()==0 if empty
 	Exp       bool
+	Insts     []*FuncInst
 	L         loc.Loc
 }
 
@@ -185,12 +188,27 @@ type FuncParm struct {
 	L    loc.Loc
 }
 
+type FuncLocal struct {
+	Name string
+	Type Type
+	L    loc.Loc
+}
+
 type FuncDecl struct {
 	Name  string
 	Parms []Type
 	Ret   Type // nil if no return
 	L     loc.Loc
 }
+
+type FuncInst struct {
+	Ps  []Type
+	R   Type
+	Def *FuncDef
+}
+
+func (f *FuncInst) Parms() []Type { return f.Ps }
+func (f *FuncInst) Ret() Type     { return f.R }
 
 type TestDef struct {
 	File  *File
@@ -200,4 +218,207 @@ type TestDef struct {
 	L     loc.Loc
 }
 
-type Expr interface{}
+type Expr interface {
+	Type() Type
+	Loc() loc.Loc
+}
+
+type Call struct {
+	Fun  Callable
+	Args []Expr
+	T    Type
+	L    loc.Loc
+}
+
+func (c *Call) Type() Type   { return c.T }
+func (c *Call) Loc() loc.Loc { return c.L }
+
+type Callable interface {
+	Parms() []Type
+	Ret() Type // returns nil if no return
+	String() string
+}
+
+type Select struct {
+	Type   Type
+	Struct *StructType
+	Field  *Field
+}
+
+func (s *Select) Parms() []Type { return []Type{s.Type} }
+func (s *Select) Ret() Type     { return s.Field.Type }
+
+type Switch struct {
+	Type  Type
+	Union *UnionType
+	Cases []*Case
+	R     Type // inferred return type; nil if no return
+}
+
+func (s *Switch) Parms() []Type {
+	var parms []Type
+	for _, cas := range s.Cases {
+		parm := &FuncType{Parms: nil, Ret: s.R, L: cas.L}
+		if cas.Type != nil {
+			parm.Parms = []Type{cas.Type}
+		}
+		parms = append(parms, parm)
+	}
+	return parms
+}
+
+func (s *Switch) Ret() Type { return s.R }
+
+type Op int
+
+const (
+	Assign Op = iota + 1
+	NewArray
+	BitNot
+	BitXor
+	BitAnd
+	BitOr
+	LeftShift
+	RightShift
+	Negate
+	Minus
+	Plus
+	Times
+	Divide
+	Modulus
+	Eq
+	Neq
+	Less
+	LessEq
+	Greater
+	GreaterEq
+	NumConvert
+	StrConvert // string([int8])
+	Index
+	Slice
+	Length
+	Panic
+
+	Print
+)
+
+type Builtin struct {
+	Op        Op
+	TypeParms []TypeParm
+	Ps        []Type
+	R         Type // nil if no return
+}
+
+func (b *Builtin) Parms() []Type { return b.Ps }
+func (b *Builtin) Ret() Type     { return b.R }
+
+type Ref struct {
+	Expr Expr
+	T    Type
+	L    loc.Loc
+}
+
+func (r *Ref) Type() Type   { return r.T }
+func (r *Ref) Loc() loc.Loc { return r.L }
+
+type Deref struct {
+	Expr Expr
+	T    Type
+	L    loc.Loc
+}
+
+func (d *Deref) Type() Type   { return d.T }
+func (d *Deref) Loc() loc.Loc { return d.L }
+
+type Var struct {
+	// Global, Local, Parm, and Cap are mutually exclusive;
+	// exactly one of them is non-nil.
+	Global *VarDef
+	Local  *FuncLocal
+	Parm   *FuncParm
+	Cap    *BlockCap
+	T      Type
+	L      loc.Loc
+}
+
+func (v *Var) Type() Type   { return v.T }
+func (v *Var) Loc() loc.Loc { return v.L }
+
+type ArrayLit struct {
+	Array *ArrayType
+	Elems []Expr
+	T     Type
+	L     loc.Loc
+}
+
+func (a *ArrayLit) Type() Type   { return a.T }
+func (a *ArrayLit) Loc() loc.Loc { return a.L }
+
+type StructLit struct {
+	Struct *StructType
+	Fields []Expr
+	T      Type
+	L      loc.Loc
+}
+
+func (s *StructLit) Type() Type   { return s.T }
+func (s *StructLit) Loc() loc.Loc { return s.L }
+
+type UnionLit struct {
+	Union *UnionType
+	Case  *Case
+	Val   Expr // nil for type-less case
+	T     Type
+	L     loc.Loc
+}
+
+func (u *UnionLit) Type() Type   { return u.T }
+func (u *UnionLit) Loc() loc.Loc { return u.L }
+
+type BlockLit struct {
+	Caps   []BlockCap
+	Parms  []FuncParm
+	Locals []FuncLocal
+	Ret    Type // result type of the block
+	Exprs  []Expr
+}
+
+type BlockCap struct {
+	Name string
+	T    Type
+	L    loc.Loc
+
+	// Parm, Local, and Cap are mutually exclusive.
+	Parm  *FuncParm
+	Local *FuncLocal
+	Cap   *BlockCap
+}
+
+type StrLit struct {
+	Text string
+	T    Type
+	L    loc.Loc
+}
+
+func (s *StrLit) Type() Type   { return s.T }
+func (s *StrLit) Loc() loc.Loc { return s.L }
+
+type IntLit struct {
+	Text string
+	Val  big.Int
+	T    Type
+	L    loc.Loc
+}
+
+func (i *IntLit) Type() Type   { return i.T }
+func (i *IntLit) Loc() loc.Loc { return i.L }
+
+type FloatLit struct {
+	Text string
+	Val  big.Float
+	T    Type
+	L    loc.Loc
+}
+
+func (f *FloatLit) Type() Type   { return f.T }
+func (f *FloatLit) Loc() loc.Loc { return f.L }
