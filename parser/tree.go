@@ -132,8 +132,8 @@ type Call struct {
 func (c *Call) Loc() loc.Loc { return c.L }
 
 type Convert struct {
-	Expr Expr
 	Type Type
+	Expr Expr
 	L    loc.Loc
 }
 

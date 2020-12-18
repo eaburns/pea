@@ -275,7 +275,7 @@ BinTail<O, A> <- name:O arg1:A {
 	}
 }
 
-Cvt <- expr:UnArg _ ":" typ:Type {
+Cvt <- typ:Type _ ":" expr:UnArg {
 	return Expr(&Convert{
 		Expr: expr,
 		Type: typ,

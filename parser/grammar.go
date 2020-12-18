@@ -11243,12 +11243,12 @@ func _CvtAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// expr:UnArg _ ":" typ:Type
-	// expr:UnArg
+	// typ:Type _ ":" expr:UnArg
+	// typ:Type
 	{
 		pos1 := pos
-		// UnArg
-		if !_accept(parser, _UnArgAccepts, &pos, &perr) {
+		// Type
+		if !_accept(parser, _TypeAccepts, &pos, &perr) {
 			goto fail
 		}
 		labels[0] = parser.text[pos1:pos]
@@ -11263,11 +11263,11 @@ func _CvtAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto fail
 	}
 	pos++
-	// typ:Type
+	// expr:UnArg
 	{
 		pos2 := pos
-		// Type
-		if !_accept(parser, _TypeAccepts, &pos, &perr) {
+		// UnArg
+		if !_accept(parser, _UnArgAccepts, &pos, &perr) {
 			goto fail
 		}
 		labels[1] = parser.text[pos2:pos]
@@ -11290,12 +11290,12 @@ func _CvtFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _Cvt}
 	// action
-	// expr:UnArg _ ":" typ:Type
-	// expr:UnArg
+	// typ:Type _ ":" expr:UnArg
+	// typ:Type
 	{
 		pos1 := pos
-		// UnArg
-		if !_fail(parser, _UnArgFail, errPos, failure, &pos) {
+		// Type
+		if !_fail(parser, _TypeFail, errPos, failure, &pos) {
 			goto fail
 		}
 		labels[0] = parser.text[pos1:pos]
@@ -11315,11 +11315,11 @@ func _CvtFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto fail
 	}
 	pos++
-	// typ:Type
+	// expr:UnArg
 	{
 		pos2 := pos
-		// Type
-		if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+		// UnArg
+		if !_fail(parser, _UnArgFail, errPos, failure, &pos) {
 			goto fail
 		}
 		labels[1] = parser.text[pos2:pos]
@@ -11334,8 +11334,8 @@ fail:
 func _CvtAction(parser *_Parser, start int) (int, *Expr) {
 	var labels [2]string
 	use(labels)
-	var label0 Expr
-	var label1 Type
+	var label0 Type
+	var label1 Expr
 	dp := parser.deltaPos[start][_Cvt]
 	if dp < 0 {
 		return -1, nil
@@ -11351,12 +11351,12 @@ func _CvtAction(parser *_Parser, start int) (int, *Expr) {
 	// action
 	{
 		start0 := pos
-		// expr:UnArg _ ":" typ:Type
-		// expr:UnArg
+		// typ:Type _ ":" expr:UnArg
+		// typ:Type
 		{
 			pos2 := pos
-			// UnArg
-			if p, n := _UnArgAction(parser, pos); n == nil {
+			// Type
+			if p, n := _TypeAction(parser, pos); n == nil {
 				goto fail
 			} else {
 				label0 = *n
@@ -11375,11 +11375,11 @@ func _CvtAction(parser *_Parser, start int) (int, *Expr) {
 			goto fail
 		}
 		pos++
-		// typ:Type
+		// expr:UnArg
 		{
 			pos3 := pos
-			// Type
-			if p, n := _TypeAction(parser, pos); n == nil {
+			// UnArg
+			if p, n := _UnArgAction(parser, pos); n == nil {
 				goto fail
 			} else {
 				label1 = *n
@@ -11395,7 +11395,7 @@ func _CvtAction(parser *_Parser, start int) (int, *Expr) {
 				L:    l(parser, start, end),
 			})
 		}(
-			start0, pos, label0, label1)
+			start0, pos, label1, label0)
 	}
 	parser.act[key] = node
 	return pos, &node

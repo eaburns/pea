@@ -205,8 +205,8 @@ func (c *Call) print(pc *config) {
 func (c *Convert) print(pc *config) {
 	pc.p("Convert{")
 	pc.loc(c.L)
-	pc.field("Expr", c.Expr)
 	pc.field("Type", c.Type)
+	pc.field("Expr", c.Expr)
 	pc.p("\n}")
 }
 
