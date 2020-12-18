@@ -3,6 +3,7 @@ package checker
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -58,7 +59,7 @@ func redef(l loc.Loc, name string, prev loc.Loc) *fail {
 func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.Files, []error) {
 	var fails []*fail
 	idNames := make(map[string]loc.Loc)
-	typeDefs := make(map[*parser.TypeDef]*TypeDef)
+	defs := make(map[parser.Def]Def)
 	typeNames := make(map[string]loc.Loc)
 	mod := &Mod{Path: modPath}
 	if importer == nil {
@@ -129,7 +130,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				Exp:   parserTypeDef.Exp,
 				L:     parserTypeDef.L,
 			}
-			typeDefs[parserTypeDef] = typeDef
+			defs[parserDef] = typeDef
 			mod.Defs = append(mod.Defs, typeDef)
 		}
 	}
@@ -143,7 +144,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			if !ok {
 				continue
 			}
-			typeDef := typeDefs[parserTypeDef]
+			typeDef := defs[parserTypeDef].(*TypeDef)
 			t, fs := _makeType(typeDef, parserTypeDef.Type, false)
 			if len(fs) > 0 {
 				fails = append(fails, fs...)
@@ -167,13 +168,13 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	// At this point, all TypeDefs and their types are made.
 	// From here on, we can fully make and instantiate types.
 	testNames := make(map[string]loc.Loc)
-	for i, file := range mod.Files {
-		parserFile := files[i]
+	for i, parserFile := range files {
+		file := mod.Files[i]
 		for _, parserDef := range parserFile.Defs {
 			switch parserDef := parserDef.(type) {
 			case *parser.TypeDef:
 				// Now all the types are built, so we can inst them.
-				typeDef := typeDefs[parserDef]
+				typeDef := defs[parserDef].(*TypeDef)
 				typeDef.Type = instType(typeDef.Type)
 			case *parser.VarDef:
 				name := parserDef.Name.Name
@@ -186,7 +187,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				if len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
-				mod.Defs = append(mod.Defs, &VarDef{
+				varDef := &VarDef{
 					File:  file,
 					Mod:   modPath,
 					Name:  name,
@@ -194,10 +195,12 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 					Const: parserDef.Const,
 					Exp:   parserDef.Exp,
 					L:     parserDef.L,
-				})
+				}
+				mod.Defs = append(mod.Defs, varDef)
+				defs[parserDef] = varDef
 			case *parser.FuncDef:
 				typeParms := findTypeParms(importer.Files(), parserDef)
-				fun := &FuncDef{
+				funDef := &FuncDef{
 					File:      file,
 					Mod:       modPath,
 					Name:      parserDef.Name.Name,
@@ -206,17 +209,18 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 					L:         parserDef.L,
 				}
 				var fs []*fail
-				if fun.Parms, fs = makeFuncParms(fun, parserDef.Parms); len(fs) > 0 {
+				if funDef.Parms, fs = makeFuncParms(funDef, parserDef.Parms); len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
 
-				if fun.Ret, fs = makeType(fun, parserDef.Ret); len(fs) > 0 {
+				if funDef.Ret, fs = makeType(funDef, parserDef.Ret); len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
-				if fun.Iface, fs = makeFuncDecls(fun, parserDef.Iface); len(fs) > 0 {
+				if funDef.Iface, fs = makeFuncDecls(funDef, parserDef.Iface); len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
-				mod.Defs = append(mod.Defs, fun)
+				mod.Defs = append(mod.Defs, funDef)
+				defs[parserDef] = funDef
 			case *parser.TestDef:
 				name := parserDef.Name.Name
 				if prev, ok := testNames[name]; ok {
@@ -224,18 +228,37 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 					continue
 				}
 				testNames[name] = parserDef.L
-				mod.Defs = append(mod.Defs, &TestDef{
+				testDef := &TestDef{
 					File: file,
 					Mod:  modPath,
 					Name: name,
 					L:    parserDef.L,
-				})
+				}
+				mod.Defs = append(mod.Defs, testDef)
+				defs[parserDef] = testDef
 			default:
 				panic(fmt.Sprintf("bad def type: %T", parserDef))
 			}
 		}
 	}
-
+	for _, parserFile := range files {
+		var fs []*fail
+		for _, parserDef := range parserFile.Defs {
+			switch def := defs[parserDef].(type) {
+			case *TypeDef:
+				break // nothing to do really.
+			case *VarDef:
+				fs = checkVarDef(def, parserDef.(*parser.VarDef))
+			case *FuncDef:
+				// TODO
+			case *TestDef:
+				// TODO
+			}
+		}
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+	}
 	if len(fails) > 0 {
 		var errs []error
 		for _, fail := range fails {
@@ -736,4 +759,190 @@ func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []*fail)
 		})
 	}
 	return decls, fails
+}
+
+func checkVarDef(def *VarDef, parserDef *parser.VarDef) []*fail {
+	var fails []*fail
+	if parserDef.Expr != nil {
+		expr, fs := checkExpr(def, parserDef.Expr, def.Type)
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		def.Expr = expr
+	}
+	if def.Type == nil && def.Expr != nil {
+		def.Type = def.Expr.Type()
+	}
+	if def.Type == nil && def.Expr == nil {
+		fails = append(fails, &fail{
+			msg: "cannot infer variable type",
+			loc: def.L,
+		})
+	}
+	return fails
+}
+
+func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
+	var expr Expr
+	var fails []*fail
+	switch parserExpr := parserExpr.(type) {
+	case *parser.Call:
+		// TODO
+	case *parser.Convert:
+		// TODO
+	case *parser.SubExpr:
+		// TODO
+	case *parser.ModSel:
+		// TODO
+	case *parser.CompLit:
+		// TODO
+	case *parser.BlkLit:
+		// TODO
+	case *parser.CharLit:
+		// TODO
+	case *parser.StrLit:
+		// TODO
+	case *parser.IntLit:
+		expr, fails = checkIntLit(parserExpr, want)
+	case *parser.FloatLit:
+		expr, fails = checkFloatLit(parserExpr, want)
+	case parser.Id:
+		// TODO
+	default:
+		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
+	}
+	return expr, fails
+}
+
+func checkIntLit(parserIntLit *parser.IntLit, want Type) (Expr, []*fail) {
+	intLit := &IntLit{Text: parserIntLit.Text, L: parserIntLit.L}
+	if _, ok := intLit.Val.SetString(parserIntLit.Text, 0); !ok {
+		panic("malformed int")
+	}
+	var bits uint
+	var signed bool
+	var base Type
+	if want != nil {
+		base = want.baseType()
+	}
+	switch b, ok := base.(*BasicType); {
+	case want == nil:
+		fallthrough
+	case !ok:
+		fallthrough
+	default:
+		intLit.T = &BasicType{Kind: Int, L: parserIntLit.L}
+		return intLit, nil
+	case b.Kind == Float32 || b.Kind == Float64:
+		parserFloatLit := &parser.FloatLit{
+			Text: parserIntLit.Text,
+			L:    parserIntLit.L,
+		}
+		return checkFloatLit(parserFloatLit, want)
+	case b.Kind == Int:
+		bits = 64 // TODO: set by a flag
+		signed = true
+	case b.Kind == Int8:
+		bits = 8
+		signed = true
+	case b.Kind == Int16:
+		bits = 16
+		signed = true
+	case b.Kind == Int32:
+		bits = 32
+		signed = true
+	case b.Kind == Int64:
+		bits = 64
+		signed = true
+	case b.Kind == Uint:
+		bits = 64 // TODO: set by a flag
+		signed = false
+	case b.Kind == Uint8:
+		bits = 8
+		signed = false
+	case b.Kind == Uint16:
+		bits = 16
+		signed = false
+	case b.Kind == Uint32:
+		bits = 32
+		signed = false
+	case b.Kind == Uint64:
+		bits = 64
+		signed = false
+	}
+	var min, max *big.Int
+	if signed {
+		bits--
+		min = big.NewInt(1)
+		min = min.Lsh(min, bits)
+		min = min.Neg(min)
+		max = big.NewInt(1)
+		max = max.Lsh(max, bits)
+		max = max.Sub(max, big.NewInt(1))
+	} else {
+		min = big.NewInt(0)
+		max = big.NewInt(1)
+		max = max.Lsh(max, bits)
+		max = max.Sub(max, big.NewInt(1))
+	}
+	switch {
+	case intLit.Val.Cmp(min) < 0:
+		return nil, []*fail{{
+			msg: fmt.Sprintf("%s underflows type %s", intLit.Text, want),
+			loc: intLit.L,
+		}}
+	case intLit.Val.Cmp(max) > 0:
+		return nil, []*fail{{
+			msg: fmt.Sprintf("%s overflows type %s", intLit.Text, want),
+			loc: intLit.L,
+		}}
+	default:
+		intLit.T = copyTypeWithLoc(want, intLit.L)
+		return intLit, nil
+	}
+}
+
+func checkFloatLit(parserFloatLit *parser.FloatLit, want Type) (Expr, []*fail) {
+	floatLit := &FloatLit{Text: parserFloatLit.Text, L: parserFloatLit.L}
+	if _, _, err := floatLit.Val.Parse(parserFloatLit.Text, 10); err != nil {
+		panic("malformed float")
+	}
+	var base Type
+	if want != nil {
+		base = want.baseType()
+	}
+	switch b, ok := base.(*BasicType); {
+	case want == nil:
+		fallthrough
+	case !ok:
+		fallthrough
+	default:
+		floatLit.T = &BasicType{Kind: Float64, L: parserFloatLit.L}
+		return floatLit, nil
+	case b.Kind == Float32 || b.Kind == Float64:
+		floatLit.T = copyTypeWithLoc(want, floatLit.L)
+		return floatLit, nil
+	case b.Kind == Int ||
+		b.Kind == Int8 ||
+		b.Kind == Int16 ||
+		b.Kind == Int32 ||
+		b.Kind == Int64 ||
+		b.Kind == Uint ||
+		b.Kind == Uint8 ||
+		b.Kind == Uint16 ||
+		b.Kind == Uint32 ||
+		b.Kind == Uint64:
+		var i big.Int
+		if _, acc := floatLit.Val.Int(&i); acc != big.Exact {
+			return nil, []*fail{{
+				msg: fmt.Sprintf("%s truncates %s", want, floatLit.Text),
+				loc: floatLit.L,
+			}}
+		}
+		parserIntLit := &parser.IntLit{
+			Text: i.String(),
+			L:    parserFloatLit.L,
+		}
+		return checkIntLit(parserIntLit, want)
+	}
 }

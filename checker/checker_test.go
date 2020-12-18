@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -94,4 +95,85 @@ func findVarDef(t *testing.T, name string, mod *Mod) *VarDef {
 	}
 	t.Fatalf("failed to find variable definition %s", name)
 	panic("impossible")
+}
+
+func TestErrors(t *testing.T) {
+	tests := []struct {
+		src  string
+		err  string
+		mods []testMod
+	}{
+		{src: "var x int8 := -128", err: ""},
+		{src: "var x int8 := -129", err: "underflow"},
+		{src: "var x int8 := 127", err: ""},
+		{src: "var x int8 := 128", err: "overflow"},
+		{src: "var x int16 := -32768", err: ""},
+		{src: "var x int16 := -327690", err: "underflow"},
+		{src: "var x int16 := 32767", err: ""},
+		{src: "var x int16 := 32768", err: "overflow"},
+		{src: "var x int32 := -2147483648", err: ""},
+		{src: "var x int32 := -2147483649", err: "underflow"},
+		{src: "var x int32 := 2147483647", err: ""},
+		{src: "var x int32 := 2147483648", err: "overflow"},
+		{src: "var x int64 := -9223372036854775808", err: ""},
+		{src: "var x int64 := -9223372036854775809", err: "underflow"},
+		{src: "var x int64 := 9223372036854775807", err: ""},
+		{src: "var x int64 := 9223372036854775808", err: "overflow"},
+		{src: "var x uint8 := 0", err: ""},
+		{src: "var x uint8 := -1", err: "underflow"},
+		{src: "var x uint8 := 255", err: ""},
+		{src: "var x uint8 := 256", err: "overflow"},
+		{src: "var x uint16 := 0", err: ""},
+		{src: "var x uint16 := -1", err: "underflow"},
+		{src: "var x uint16 := 65535", err: ""},
+		{src: "var x uint16 := 65536", err: "overflow"},
+		{src: "var x uint32 := 0", err: ""},
+		{src: "var x uint32 := -1", err: "underflow"},
+		{src: "var x uint32 := 4294967295", err: ""},
+		{src: "var x uint32 := 4294967296", err: "overflow"},
+		{src: "var x uint64 := 0", err: ""},
+		{src: "var x uint64 := -1", err: "underflow"},
+		{src: "var x uint64 := 18446744073709551615", err: ""},
+		{src: "var x uint64 := 18446744073709551616", err: "overflow"},
+		{src: "var x int := 1.00", err: ""},
+		{src: "var x int := 1.01", err: "truncates"},
+		{src: "var x float32 := 0.0", err: ""},
+		{src: "var x float32 := 3.1415926535", err: ""},
+		{src: "var x float32 := 123", err: ""},
+		{src: "var x float64 := 0.0", err: ""},
+		{src: "var x float64 := 3.1415926535", err: ""},
+		{src: "var x float64 := 123", err: ""},
+		{src: "type t int var x t := 1", err: ""},
+		{src: "type t int var x t := 1.00", err: ""},
+		{src: "type t uint8 var x t := 256", err: "overflow"},
+		{src: "type t float32 var x t := 3.14", err: ""},
+		{src: "type t float32 var x t := 123", err: ""},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.src, func(t *testing.T) {
+			_, errs := check("test", []string{test.src}, test.mods)
+			switch {
+			case test.err == "" && len(errs) == 0:
+				break
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
+func errStr(errs []error) string {
+	var s strings.Builder
+	for i, err := range errs {
+		if i > 0 {
+			s.WriteRune('\n')
+		}
+		s.WriteString(err.Error())
+	}
+	return s.String()
 }

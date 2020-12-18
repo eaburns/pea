@@ -92,6 +92,10 @@ func (f *File) findType(args []Type, name string, l loc.Loc) Type {
 	return f.Mod.findType(args, name, l)
 }
 
+func (v *VarDef) findType(args []Type, name string, l loc.Loc) Type {
+	return v.File.findType(args, name, l)
+}
+
 func (t *TypeDef) findType(args []Type, name string, l loc.Loc) Type {
 	if typ := findTypeVar(t.Parms, args, name, l); typ != nil {
 		return typ

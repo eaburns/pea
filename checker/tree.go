@@ -87,12 +87,16 @@ type Type interface {
 
 	// eq must not be called on a type before aliases have been resolved.
 	eq(Type) bool
+
+	baseType() Type
 }
 
 type RefType struct {
 	Type Type
 	L    loc.Loc
 }
+
+func (r *RefType) baseType() Type { return r }
 
 type NamedType struct {
 	Name string
@@ -102,15 +106,21 @@ type NamedType struct {
 	L    loc.Loc
 }
 
+func (n *NamedType) baseType() Type { return n.Inst.Type.baseType() }
+
 type ArrayType struct {
 	ElemType Type
 	L        loc.Loc
 }
 
+func (a *ArrayType) baseType() Type { return a }
+
 type StructType struct {
 	Fields []Field
 	L      loc.Loc
 }
+
+func (s *StructType) baseType() Type { return s }
 
 type Field struct {
 	Name string
@@ -122,6 +132,8 @@ type UnionType struct {
 	Cases []Case
 	L     loc.Loc
 }
+
+func (u *UnionType) baseType() Type { return u }
 
 type Case struct {
 	Name string
@@ -135,11 +147,15 @@ type FuncType struct {
 	L     loc.Loc
 }
 
+func (f *FuncType) baseType() Type { return f }
+
 type TypeVar struct {
 	Name string
 	Def  *TypeParm
 	L    loc.Loc
 }
+
+func (t *TypeVar) baseType() Type { return t }
 
 const (
 	Bool BasicTypeKind = iota + 1
@@ -164,6 +180,8 @@ type BasicType struct {
 	Kind BasicTypeKind
 	L    loc.Loc
 }
+
+func (b *BasicType) baseType() Type { return b }
 
 type FuncDef struct {
 	File      *File
