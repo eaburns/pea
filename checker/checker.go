@@ -792,7 +792,7 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 	case *parser.Convert:
 		// TODO
 	case *parser.SubExpr:
-		// TODO
+		expr, fails = checkExpr(x, parserExpr.Expr, want)
 	case *parser.ModSel:
 		// TODO
 	case *parser.CompLit:
