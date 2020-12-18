@@ -11540,39 +11540,39 @@ func _UnArgAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// Un/Idx/Sel/Call/Pri
+	// Pri/Un/Idx/Sel/Call
 	{
 		pos3 := pos
-		// Un
-		if !_accept(parser, _UnAccepts, &pos, &perr) {
+		// Pri
+		if !_accept(parser, _PriAccepts, &pos, &perr) {
 			goto fail4
 		}
 		goto ok0
 	fail4:
 		pos = pos3
-		// Idx
-		if !_accept(parser, _IdxAccepts, &pos, &perr) {
+		// Un
+		if !_accept(parser, _UnAccepts, &pos, &perr) {
 			goto fail5
 		}
 		goto ok0
 	fail5:
 		pos = pos3
-		// Sel
-		if !_accept(parser, _SelAccepts, &pos, &perr) {
+		// Idx
+		if !_accept(parser, _IdxAccepts, &pos, &perr) {
 			goto fail6
 		}
 		goto ok0
 	fail6:
 		pos = pos3
-		// Call
-		if !_accept(parser, _CallAccepts, &pos, &perr) {
+		// Sel
+		if !_accept(parser, _SelAccepts, &pos, &perr) {
 			goto fail7
 		}
 		goto ok0
 	fail7:
 		pos = pos3
-		// Pri
-		if !_accept(parser, _PriAccepts, &pos, &perr) {
+		// Call
+		if !_accept(parser, _CallAccepts, &pos, &perr) {
 			goto fail8
 		}
 		goto ok0
@@ -11596,39 +11596,39 @@ func _UnArgFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _UnArg}
-	// Un/Idx/Sel/Call/Pri
+	// Pri/Un/Idx/Sel/Call
 	{
 		pos3 := pos
-		// Un
-		if !_fail(parser, _UnFail, errPos, failure, &pos) {
+		// Pri
+		if !_fail(parser, _PriFail, errPos, failure, &pos) {
 			goto fail4
 		}
 		goto ok0
 	fail4:
 		pos = pos3
-		// Idx
-		if !_fail(parser, _IdxFail, errPos, failure, &pos) {
+		// Un
+		if !_fail(parser, _UnFail, errPos, failure, &pos) {
 			goto fail5
 		}
 		goto ok0
 	fail5:
 		pos = pos3
-		// Sel
-		if !_fail(parser, _SelFail, errPos, failure, &pos) {
+		// Idx
+		if !_fail(parser, _IdxFail, errPos, failure, &pos) {
 			goto fail6
 		}
 		goto ok0
 	fail6:
 		pos = pos3
-		// Call
-		if !_fail(parser, _CallFail, errPos, failure, &pos) {
+		// Sel
+		if !_fail(parser, _SelFail, errPos, failure, &pos) {
 			goto fail7
 		}
 		goto ok0
 	fail7:
 		pos = pos3
-		// Pri
-		if !_fail(parser, _PriFail, errPos, failure, &pos) {
+		// Call
+		if !_fail(parser, _CallFail, errPos, failure, &pos) {
 			goto fail8
 		}
 		goto ok0
@@ -11657,12 +11657,12 @@ func _UnArgAction(parser *_Parser, start int) (int, *Expr) {
 	}
 	var node Expr
 	pos := start
-	// Un/Idx/Sel/Call/Pri
+	// Pri/Un/Idx/Sel/Call
 	{
 		pos3 := pos
 		var node2 Expr
-		// Un
-		if p, n := _UnAction(parser, pos); n == nil {
+		// Pri
+		if p, n := _PriAction(parser, pos); n == nil {
 			goto fail4
 		} else {
 			node = *n
@@ -11672,8 +11672,8 @@ func _UnArgAction(parser *_Parser, start int) (int, *Expr) {
 	fail4:
 		node = node2
 		pos = pos3
-		// Idx
-		if p, n := _IdxAction(parser, pos); n == nil {
+		// Un
+		if p, n := _UnAction(parser, pos); n == nil {
 			goto fail5
 		} else {
 			node = *n
@@ -11683,8 +11683,8 @@ func _UnArgAction(parser *_Parser, start int) (int, *Expr) {
 	fail5:
 		node = node2
 		pos = pos3
-		// Sel
-		if p, n := _SelAction(parser, pos); n == nil {
+		// Idx
+		if p, n := _IdxAction(parser, pos); n == nil {
 			goto fail6
 		} else {
 			node = *n
@@ -11694,8 +11694,8 @@ func _UnArgAction(parser *_Parser, start int) (int, *Expr) {
 	fail6:
 		node = node2
 		pos = pos3
-		// Call
-		if p, n := _CallAction(parser, pos); n == nil {
+		// Sel
+		if p, n := _SelAction(parser, pos); n == nil {
 			goto fail7
 		} else {
 			node = *n
@@ -11705,8 +11705,8 @@ func _UnArgAction(parser *_Parser, start int) (int, *Expr) {
 	fail7:
 		node = node2
 		pos = pos3
-		// Pri
-		if p, n := _PriAction(parser, pos); n == nil {
+		// Call
+		if p, n := _CallAction(parser, pos); n == nil {
 			goto fail8
 		} else {
 			node = *n
@@ -17551,29 +17551,63 @@ func _DecLitAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ text:(D+)
+	// _ text:(("+"/"-")? D+)
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
 	}
-	// text:(D+)
+	// text:(("+"/"-")? D+)
 	{
 		pos1 := pos
-		// (D+)
+		// (("+"/"-")? D+)
+		// ("+"/"-")? D+
+		// ("+"/"-")?
+		{
+			pos4 := pos
+			// ("+"/"-")
+			// "+"/"-"
+			{
+				pos9 := pos
+				// "+"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "+" {
+					perr = _max(perr, pos)
+					goto fail10
+				}
+				pos++
+				goto ok6
+			fail10:
+				pos = pos9
+				// "-"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "-" {
+					perr = _max(perr, pos)
+					goto fail11
+				}
+				pos++
+				goto ok6
+			fail11:
+				pos = pos9
+				goto fail5
+			ok6:
+			}
+			goto ok12
+		fail5:
+			pos = pos4
+		ok12:
+		}
 		// D+
 		// D
 		if !_accept(parser, _DAccepts, &pos, &perr) {
 			goto fail
 		}
 		for {
-			pos3 := pos
+			pos14 := pos
 			// D
 			if !_accept(parser, _DAccepts, &pos, &perr) {
-				goto fail5
+				goto fail16
 			}
 			continue
-		fail5:
-			pos = pos3
+		fail16:
+			pos = pos14
 			break
 		}
 		labels[0] = parser.text[pos1:pos]
@@ -17596,29 +17630,73 @@ func _DecLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _DecLit}
 	// action
-	// _ text:(D+)
+	// _ text:(("+"/"-")? D+)
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
 	}
-	// text:(D+)
+	// text:(("+"/"-")? D+)
 	{
 		pos1 := pos
-		// (D+)
+		// (("+"/"-")? D+)
+		// ("+"/"-")? D+
+		// ("+"/"-")?
+		{
+			pos4 := pos
+			// ("+"/"-")
+			// "+"/"-"
+			{
+				pos9 := pos
+				// "+"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "+" {
+					if pos >= errPos {
+						failure.Kids = append(failure.Kids, &peg.Fail{
+							Pos:  int(pos),
+							Want: "\"+\"",
+						})
+					}
+					goto fail10
+				}
+				pos++
+				goto ok6
+			fail10:
+				pos = pos9
+				// "-"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "-" {
+					if pos >= errPos {
+						failure.Kids = append(failure.Kids, &peg.Fail{
+							Pos:  int(pos),
+							Want: "\"-\"",
+						})
+					}
+					goto fail11
+				}
+				pos++
+				goto ok6
+			fail11:
+				pos = pos9
+				goto fail5
+			ok6:
+			}
+			goto ok12
+		fail5:
+			pos = pos4
+		ok12:
+		}
 		// D+
 		// D
 		if !_fail(parser, _DFail, errPos, failure, &pos) {
 			goto fail
 		}
 		for {
-			pos3 := pos
+			pos14 := pos
 			// D
 			if !_fail(parser, _DFail, errPos, failure, &pos) {
-				goto fail5
+				goto fail16
 			}
 			continue
-		fail5:
-			pos = pos3
+		fail16:
+			pos = pos14
 			break
 		}
 		labels[0] = parser.text[pos1:pos]
@@ -17649,44 +17727,87 @@ func _DecLitAction(parser *_Parser, start int) (int, *Expr) {
 	// action
 	{
 		start0 := pos
-		// _ text:(D+)
+		// _ text:(("+"/"-")? D+)
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
 		} else {
 			pos = p
 		}
-		// text:(D+)
+		// text:(("+"/"-")? D+)
 		{
 			pos2 := pos
-			// (D+)
-			// D+
+			// (("+"/"-")? D+)
+			// ("+"/"-")? D+
 			{
-				var node5 string
-				// D
-				if p, n := _DAction(parser, pos); n == nil {
-					goto fail
-				} else {
-					node5 = *n
-					pos = p
+				var node3 string
+				// ("+"/"-")?
+				{
+					pos5 := pos
+					// ("+"/"-")
+					// "+"/"-"
+					{
+						pos10 := pos
+						var node9 string
+						// "+"
+						if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "+" {
+							goto fail11
+						}
+						node3 = parser.text[pos : pos+1]
+						pos++
+						goto ok7
+					fail11:
+						node3 = node9
+						pos = pos10
+						// "-"
+						if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "-" {
+							goto fail12
+						}
+						node3 = parser.text[pos : pos+1]
+						pos++
+						goto ok7
+					fail12:
+						node3 = node9
+						pos = pos10
+						goto fail6
+					ok7:
+					}
+					goto ok13
+				fail6:
+					node3 = ""
+					pos = pos5
+				ok13:
 				}
-				label0 += node5
-			}
-			for {
-				pos4 := pos
-				var node5 string
-				// D
-				if p, n := _DAction(parser, pos); n == nil {
-					goto fail6
-				} else {
-					node5 = *n
-					pos = p
+				label0, node3 = label0+node3, ""
+				// D+
+				{
+					var node16 string
+					// D
+					if p, n := _DAction(parser, pos); n == nil {
+						goto fail
+					} else {
+						node16 = *n
+						pos = p
+					}
+					node3 += node16
 				}
-				label0 += node5
-				continue
-			fail6:
-				pos = pos4
-				break
+				for {
+					pos15 := pos
+					var node16 string
+					// D
+					if p, n := _DAction(parser, pos); n == nil {
+						goto fail17
+					} else {
+						node16 = *n
+						pos = p
+					}
+					node3 += node16
+					continue
+				fail17:
+					pos = pos15
+					break
+				}
+				label0, node3 = label0+node3, ""
 			}
 			labels[0] = parser.text[pos2:pos]
 		}
@@ -17965,30 +18086,63 @@ func _FloatLitAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ text:(D+ "." D+ ([eE] [+\-]? D+)?)
+	// _ text:(("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?)
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
 	}
-	// text:(D+ "." D+ ([eE] [+\-]? D+)?)
+	// text:(("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?)
 	{
 		pos1 := pos
-		// (D+ "." D+ ([eE] [+\-]? D+)?)
-		// D+ "." D+ ([eE] [+\-]? D+)?
+		// (("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?)
+		// ("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?
+		// ("+"/"-")?
+		{
+			pos4 := pos
+			// ("+"/"-")
+			// "+"/"-"
+			{
+				pos9 := pos
+				// "+"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "+" {
+					perr = _max(perr, pos)
+					goto fail10
+				}
+				pos++
+				goto ok6
+			fail10:
+				pos = pos9
+				// "-"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "-" {
+					perr = _max(perr, pos)
+					goto fail11
+				}
+				pos++
+				goto ok6
+			fail11:
+				pos = pos9
+				goto fail5
+			ok6:
+			}
+			goto ok12
+		fail5:
+			pos = pos4
+		ok12:
+		}
 		// D+
 		// D
 		if !_accept(parser, _DAccepts, &pos, &perr) {
 			goto fail
 		}
 		for {
-			pos4 := pos
+			pos14 := pos
 			// D
 			if !_accept(parser, _DAccepts, &pos, &perr) {
-				goto fail6
+				goto fail16
 			}
 			continue
-		fail6:
-			pos = pos4
+		fail16:
+			pos = pos14
 			break
 		}
 		// "."
@@ -18003,63 +18157,63 @@ func _FloatLitAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 			goto fail
 		}
 		for {
-			pos8 := pos
+			pos18 := pos
 			// D
 			if !_accept(parser, _DAccepts, &pos, &perr) {
-				goto fail10
+				goto fail20
 			}
 			continue
-		fail10:
-			pos = pos8
+		fail20:
+			pos = pos18
 			break
 		}
 		// ([eE] [+\-]? D+)?
 		{
-			pos12 := pos
+			pos22 := pos
 			// ([eE] [+\-]? D+)
 			// [eE] [+\-]? D+
 			// [eE]
 			if r, w := _next(parser, pos); r != 'e' && r != 'E' {
 				perr = _max(perr, pos)
-				goto fail13
+				goto fail23
 			} else {
 				pos += w
 			}
 			// [+\-]?
 			{
-				pos16 := pos
+				pos26 := pos
 				// [+\-]
 				if r, w := _next(parser, pos); r != '+' && r != '-' {
 					perr = _max(perr, pos)
-					goto fail17
+					goto fail27
 				} else {
 					pos += w
 				}
-				goto ok18
-			fail17:
-				pos = pos16
-			ok18:
+				goto ok28
+			fail27:
+				pos = pos26
+			ok28:
 			}
 			// D+
 			// D
 			if !_accept(parser, _DAccepts, &pos, &perr) {
-				goto fail13
+				goto fail23
 			}
 			for {
-				pos20 := pos
+				pos30 := pos
 				// D
 				if !_accept(parser, _DAccepts, &pos, &perr) {
-					goto fail22
+					goto fail32
 				}
 				continue
-			fail22:
-				pos = pos20
+			fail32:
+				pos = pos30
 				break
 			}
-			goto ok23
-		fail13:
-			pos = pos12
-		ok23:
+			goto ok33
+		fail23:
+			pos = pos22
+		ok33:
 		}
 		labels[0] = parser.text[pos1:pos]
 	}
@@ -18081,30 +18235,73 @@ func _FloatLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _FloatLit}
 	// action
-	// _ text:(D+ "." D+ ([eE] [+\-]? D+)?)
+	// _ text:(("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?)
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
 	}
-	// text:(D+ "." D+ ([eE] [+\-]? D+)?)
+	// text:(("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?)
 	{
 		pos1 := pos
-		// (D+ "." D+ ([eE] [+\-]? D+)?)
-		// D+ "." D+ ([eE] [+\-]? D+)?
+		// (("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?)
+		// ("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?
+		// ("+"/"-")?
+		{
+			pos4 := pos
+			// ("+"/"-")
+			// "+"/"-"
+			{
+				pos9 := pos
+				// "+"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "+" {
+					if pos >= errPos {
+						failure.Kids = append(failure.Kids, &peg.Fail{
+							Pos:  int(pos),
+							Want: "\"+\"",
+						})
+					}
+					goto fail10
+				}
+				pos++
+				goto ok6
+			fail10:
+				pos = pos9
+				// "-"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "-" {
+					if pos >= errPos {
+						failure.Kids = append(failure.Kids, &peg.Fail{
+							Pos:  int(pos),
+							Want: "\"-\"",
+						})
+					}
+					goto fail11
+				}
+				pos++
+				goto ok6
+			fail11:
+				pos = pos9
+				goto fail5
+			ok6:
+			}
+			goto ok12
+		fail5:
+			pos = pos4
+		ok12:
+		}
 		// D+
 		// D
 		if !_fail(parser, _DFail, errPos, failure, &pos) {
 			goto fail
 		}
 		for {
-			pos4 := pos
+			pos14 := pos
 			// D
 			if !_fail(parser, _DFail, errPos, failure, &pos) {
-				goto fail6
+				goto fail16
 			}
 			continue
-		fail6:
-			pos = pos4
+		fail16:
+			pos = pos14
 			break
 		}
 		// "."
@@ -18124,19 +18321,19 @@ func _FloatLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 			goto fail
 		}
 		for {
-			pos8 := pos
+			pos18 := pos
 			// D
 			if !_fail(parser, _DFail, errPos, failure, &pos) {
-				goto fail10
+				goto fail20
 			}
 			continue
-		fail10:
-			pos = pos8
+		fail20:
+			pos = pos18
 			break
 		}
 		// ([eE] [+\-]? D+)?
 		{
-			pos12 := pos
+			pos22 := pos
 			// ([eE] [+\-]? D+)
 			// [eE] [+\-]? D+
 			// [eE]
@@ -18147,13 +18344,13 @@ func _FloatLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 						Want: "[eE]",
 					})
 				}
-				goto fail13
+				goto fail23
 			} else {
 				pos += w
 			}
 			// [+\-]?
 			{
-				pos16 := pos
+				pos26 := pos
 				// [+\-]
 				if r, w := _next(parser, pos); r != '+' && r != '-' {
 					if pos >= errPos {
@@ -18162,35 +18359,35 @@ func _FloatLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 							Want: "[+\\-]",
 						})
 					}
-					goto fail17
+					goto fail27
 				} else {
 					pos += w
 				}
-				goto ok18
-			fail17:
-				pos = pos16
-			ok18:
+				goto ok28
+			fail27:
+				pos = pos26
+			ok28:
 			}
 			// D+
 			// D
 			if !_fail(parser, _DFail, errPos, failure, &pos) {
-				goto fail13
+				goto fail23
 			}
 			for {
-				pos20 := pos
+				pos30 := pos
 				// D
 				if !_fail(parser, _DFail, errPos, failure, &pos) {
-					goto fail22
+					goto fail32
 				}
 				continue
-			fail22:
-				pos = pos20
+			fail32:
+				pos = pos30
 				break
 			}
-			goto ok23
-		fail13:
-			pos = pos12
-		ok23:
+			goto ok33
+		fail23:
+			pos = pos22
+		ok33:
 		}
 		labels[0] = parser.text[pos1:pos]
 	}
@@ -18220,46 +18417,84 @@ func _FloatLitAction(parser *_Parser, start int) (int, *Expr) {
 	// action
 	{
 		start0 := pos
-		// _ text:(D+ "." D+ ([eE] [+\-]? D+)?)
+		// _ text:(("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?)
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
 		} else {
 			pos = p
 		}
-		// text:(D+ "." D+ ([eE] [+\-]? D+)?)
+		// text:(("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?)
 		{
 			pos2 := pos
-			// (D+ "." D+ ([eE] [+\-]? D+)?)
-			// D+ "." D+ ([eE] [+\-]? D+)?
+			// (("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?)
+			// ("+"/"-")? D+ "." D+ ([eE] [+\-]? D+)?
 			{
 				var node3 string
+				// ("+"/"-")?
+				{
+					pos5 := pos
+					// ("+"/"-")
+					// "+"/"-"
+					{
+						pos10 := pos
+						var node9 string
+						// "+"
+						if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "+" {
+							goto fail11
+						}
+						node3 = parser.text[pos : pos+1]
+						pos++
+						goto ok7
+					fail11:
+						node3 = node9
+						pos = pos10
+						// "-"
+						if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "-" {
+							goto fail12
+						}
+						node3 = parser.text[pos : pos+1]
+						pos++
+						goto ok7
+					fail12:
+						node3 = node9
+						pos = pos10
+						goto fail6
+					ok7:
+					}
+					goto ok13
+				fail6:
+					node3 = ""
+					pos = pos5
+				ok13:
+				}
+				label0, node3 = label0+node3, ""
 				// D+
 				{
-					var node6 string
+					var node16 string
 					// D
 					if p, n := _DAction(parser, pos); n == nil {
 						goto fail
 					} else {
-						node6 = *n
+						node16 = *n
 						pos = p
 					}
-					node3 += node6
+					node3 += node16
 				}
 				for {
-					pos5 := pos
-					var node6 string
+					pos15 := pos
+					var node16 string
 					// D
 					if p, n := _DAction(parser, pos); n == nil {
-						goto fail7
+						goto fail17
 					} else {
-						node6 = *n
+						node16 = *n
 						pos = p
 					}
-					node3 += node6
+					node3 += node16
 					continue
-				fail7:
-					pos = pos5
+				fail17:
+					pos = pos15
 					break
 				}
 				label0, node3 = label0+node3, ""
@@ -18272,100 +18507,100 @@ func _FloatLitAction(parser *_Parser, start int) (int, *Expr) {
 				label0, node3 = label0+node3, ""
 				// D+
 				{
-					var node10 string
+					var node20 string
 					// D
 					if p, n := _DAction(parser, pos); n == nil {
 						goto fail
 					} else {
-						node10 = *n
+						node20 = *n
 						pos = p
 					}
-					node3 += node10
+					node3 += node20
 				}
 				for {
-					pos9 := pos
-					var node10 string
+					pos19 := pos
+					var node20 string
 					// D
 					if p, n := _DAction(parser, pos); n == nil {
-						goto fail11
+						goto fail21
 					} else {
-						node10 = *n
+						node20 = *n
 						pos = p
 					}
-					node3 += node10
+					node3 += node20
 					continue
-				fail11:
-					pos = pos9
+				fail21:
+					pos = pos19
 					break
 				}
 				label0, node3 = label0+node3, ""
 				// ([eE] [+\-]? D+)?
 				{
-					pos13 := pos
+					pos23 := pos
 					// ([eE] [+\-]? D+)
 					// [eE] [+\-]? D+
 					{
-						var node15 string
+						var node25 string
 						// [eE]
 						if r, w := _next(parser, pos); r != 'e' && r != 'E' {
-							goto fail14
+							goto fail24
 						} else {
-							node15 = parser.text[pos : pos+w]
+							node25 = parser.text[pos : pos+w]
 							pos += w
 						}
-						node3, node15 = node3+node15, ""
+						node3, node25 = node3+node25, ""
 						// [+\-]?
 						{
-							pos17 := pos
+							pos27 := pos
 							// [+\-]
 							if r, w := _next(parser, pos); r != '+' && r != '-' {
-								goto fail18
+								goto fail28
 							} else {
-								node15 = parser.text[pos : pos+w]
+								node25 = parser.text[pos : pos+w]
 								pos += w
 							}
-							goto ok19
-						fail18:
-							node15 = ""
-							pos = pos17
-						ok19:
+							goto ok29
+						fail28:
+							node25 = ""
+							pos = pos27
+						ok29:
 						}
-						node3, node15 = node3+node15, ""
+						node3, node25 = node3+node25, ""
 						// D+
 						{
-							var node22 string
+							var node32 string
 							// D
 							if p, n := _DAction(parser, pos); n == nil {
-								goto fail14
+								goto fail24
 							} else {
-								node22 = *n
+								node32 = *n
 								pos = p
 							}
-							node15 += node22
+							node25 += node32
 						}
 						for {
-							pos21 := pos
-							var node22 string
+							pos31 := pos
+							var node32 string
 							// D
 							if p, n := _DAction(parser, pos); n == nil {
-								goto fail23
+								goto fail33
 							} else {
-								node22 = *n
+								node32 = *n
 								pos = p
 							}
-							node15 += node22
+							node25 += node32
 							continue
-						fail23:
-							pos = pos21
+						fail33:
+							pos = pos31
 							break
 						}
-						node3, node15 = node3+node15, ""
+						node3, node25 = node3+node25, ""
 					}
-					goto ok24
-				fail14:
+					goto ok34
+				fail24:
 					node3 = ""
-					pos = pos13
-				ok24:
+					pos = pos23
+				ok34:
 				}
 				label0, node3 = label0+node3, ""
 			}

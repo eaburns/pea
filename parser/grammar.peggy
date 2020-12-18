@@ -291,7 +291,7 @@ Un <- name:Op arg:UnArg {
 	})
 }
 
-UnArg <- Un / Idx / Sel / Call / Pri
+UnArg <- Pri / Un / Idx / Sel / Call
 
 Op "operator" <- _ name:[\-+*/%~!?^<>=&|@$]+ {
 	return Id{Name: name, L: l(parser, start, end)}
@@ -427,7 +427,7 @@ RawStr <- _ [`] data:("\\`" / [^`])* [`] {
 
 NumLit "number" <- FloatLit / HexLit / DecLit
 
-DecLit <- _ text:(D+) {
+DecLit <- _ text:(("+" / "-")? D+) {
 	return Expr(&IntLit{Text: text, L: l(parser, start, end)})
 }
 
@@ -435,7 +435,7 @@ HexLit <- _ text:(("0x" / "0X") X+) {
 	return Expr(&IntLit{Text: text, L: l(parser, start, end)})
 }
 
-FloatLit <- _ text:(D+ "." D+ ([eE] [+\-]? D+)?) {
+FloatLit <- _ text:(("+" / "-")? D+ "." D+ ([eE] [+\-]? D+)?) {
 	return Expr(&FloatLit{Text: text, L: l(parser, start, end)})
 }
 
