@@ -39,6 +39,13 @@ func (f *fail) error(files loc.Files) error {
 	return errors.New(s.String())
 }
 
+func notFound(name string, l loc.Loc) *fail {
+	return &fail{
+		msg: fmt.Sprintf("%s: not found", name),
+		loc: l,
+	}
+}
+
 func redef(l loc.Loc, name string, prev loc.Loc) *fail {
 	return &fail{
 		msg:   name + " redefined",

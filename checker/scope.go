@@ -1,17 +1,8 @@
 package checker
 
 import (
-	"fmt"
-
 	"github.com/eaburns/pea/loc"
 )
-
-func notFound(name string, l loc.Loc) *fail {
-	return &fail{
-		msg: fmt.Sprintf("%s: not found", name),
-		loc: l,
-	}
-}
 
 type scope interface {
 	findMod(name string) *Import
