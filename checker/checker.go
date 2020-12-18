@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/eaburns/pea/loc"
@@ -798,10 +799,10 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 		// TODO
 	case *parser.BlkLit:
 		// TODO
-	case *parser.CharLit:
-		// TODO
 	case *parser.StrLit:
-		// TODO
+		expr, fails = checkStrLit(parserExpr, want)
+	case *parser.CharLit:
+		expr, fails = checkCharLit(parserExpr, want)
 	case *parser.IntLit:
 		expr, fails = checkIntLit(parserExpr, want)
 	case *parser.FloatLit:
@@ -812,6 +813,33 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
 	}
 	return expr, fails
+}
+
+func checkStrLit(parserStrLit *parser.StrLit, want Type) (Expr, []*fail) {
+	strLit := &StrLit{Text: parserStrLit.Data, L: parserStrLit.L}
+	var base Type
+	if want != nil {
+		base = want.baseType()
+	}
+	switch b, ok := base.(*BasicType); {
+	case want == nil:
+		fallthrough
+	case !ok:
+		fallthrough
+	default:
+		strLit.T = &BasicType{Kind: String, L: parserStrLit.L}
+	case b.Kind == String:
+		strLit.T = want
+	}
+	return strLit, nil
+}
+
+func checkCharLit(parserCharLit *parser.CharLit, want Type) (Expr, []*fail) {
+	parserIntLit := &parser.IntLit{
+		Text: strconv.FormatInt(int64(parserCharLit.Rune), 10),
+		L:    parserCharLit.L,
+	}
+	return checkIntLit(parserIntLit, want)
 }
 
 func checkIntLit(parserIntLit *parser.IntLit, want Type) (Expr, []*fail) {
