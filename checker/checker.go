@@ -797,7 +797,7 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 		// TODO
 	case *parser.CompLit:
 		// TODO
-	case *parser.BlkLit:
+	case *parser.BlockLit:
 		// TODO
 	case *parser.StrLit:
 		expr, fails = checkStrLit(parserExpr, want)

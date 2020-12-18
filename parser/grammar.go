@@ -15183,7 +15183,7 @@ func _BlkLitAction(parser *_Parser, start int) (int, *Expr) {
 			if es != nil {
 				exprs = *es
 			}
-			return Expr(&BlkLit{
+			return Expr(&BlockLit{
 				Parms: parms,
 				Exprs: exprs,
 				L:     l(parser, start, end),

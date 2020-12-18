@@ -161,13 +161,13 @@ type CompLit struct {
 
 func (s *CompLit) Loc() loc.Loc { return s.L }
 
-type BlkLit struct {
+type BlockLit struct {
 	Parms []FuncParm
 	Exprs []Expr
 	L     loc.Loc
 }
 
-func (b *BlkLit) Loc() loc.Loc { return b.L }
+func (b *BlockLit) Loc() loc.Loc { return b.L }
 
 type CharLit struct {
 	Rune rune

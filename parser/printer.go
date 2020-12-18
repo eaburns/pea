@@ -232,7 +232,7 @@ func (a *CompLit) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (b *BlkLit) print(pc *config) {
+func (b *BlockLit) print(pc *config) {
 	pc.p("BlockLit{")
 	pc.loc(b.L)
 	pc.field("Parms", b.Parms)

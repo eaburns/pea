@@ -376,7 +376,7 @@ CompLit <- _ "[" exprs:Exprs _ "]" {
 BlkLit <- _ "(" ps:BlkParms? _ ")" _ "{" es:Exprs? _ "}" {
 	var parms []FuncParm; if ps != nil { parms = *ps }
 	var exprs []Expr; if es != nil { exprs = *es }
-	return Expr(&BlkLit{
+	return Expr(&BlockLit{
 		Parms: parms,
 		Exprs: exprs,
 		L: l(parser, start, end),
