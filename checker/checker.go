@@ -286,18 +286,9 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*f
 		if parserType.Mod != nil {
 			modName := parserType.Mod.Name
 			modLoc := parserType.Mod.L
-			ds := x.find(parserType.Mod.Name)
-			switch {
-			case len(ds) > 1:
-				fails = append(fails, ambig(modName, modLoc))
-				return nil, fails
-			case len(ds) == 0:
+			imp := x.findMod(parserType.Mod.Name)
+			if imp == nil {
 				fails = append(fails, notFound(modName, modLoc))
-				return nil, fails
-			}
-			imp, ok := ds[0].(*Import)
-			if !ok {
-				fails = append(fails, notImport(modName, modLoc))
 				return nil, fails
 			}
 			x = imp

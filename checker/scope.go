@@ -13,73 +13,38 @@ func notFound(name string, l loc.Loc) *fail {
 	}
 }
 
-func ambig(name string, l loc.Loc) *fail {
-	return &fail{
-		msg: fmt.Sprintf("%s: ambiguous", name),
-		loc: l,
-	}
-}
-
-func notImport(name string, l loc.Loc) *fail {
-	return &fail{
-		msg: fmt.Sprintf("%s: is not a module name", name),
-		loc: l,
-	}
-}
-
 type scope interface {
-	find(key string) []Def
+	findMod(name string) *Import
 	findType(args []Type, name string, l loc.Loc) Type
 }
 
-func (m *Mod) find(key string) []Def {
-	return findInDefs(m.Defs, key)
-}
+func (*Mod) findMod(string) *Import    { return nil }
+func (*Import) findMod(string) *Import { return nil }
 
-func (i *Import) find(key string) []Def {
-	// TODO: only return exported definitions.
-	return findInDefs(i.Defs, key)
-}
-
-func (f *File) find(key string) []Def {
-	ds := f.Mod.find(key)
-	for _, i := range f.Imports {
-		if i.Exp {
-			ds = append(ds, i.find(key)...)
-		}
-		if i.key() == key {
-			ds = append(ds, i)
+func (f *File) findMod(name string) *Import {
+	for _, imp := range f.Imports {
+		if imp.Name == name {
+			return imp
 		}
 	}
-	return ds
+	return f.Mod.findMod(name)
 }
 
-func (t *TypeDef) find(key string) []Def {
-	return t.File.find(key)
+func (v *VarDef) findMod(name string) *Import {
+	return v.File.findMod(name)
 }
 
-func (f *FuncDef) find(key string) []Def {
-	// TODO: lookup parms and iface decls.
-	return f.File.find(key)
+func (t *TypeDef) findMod(name string) *Import {
+	return t.File.findMod(name)
 }
 
-func findInDefs(defs []Def, key string) []Def {
-	var matches []Def
-	for _, def := range defs {
-		if def.key() == key {
-			matches = append(matches, def)
-		}
-	}
-	return matches
+func (f *FuncDef) findMod(name string) *Import {
+	return f.File.findMod(name)
 }
 
-func (i *Import) key() string  { return i.Name }
-func (v *VarDef) key() string  { return v.Name }
-func (t *TypeDef) key() string { return fmt.Sprintf("%d %s", len(t.Parms), t.Name) }
-
-// TODO: FuncDef key should allow keywords specified in any order.
-func (f *FuncDef) key() string { return f.Name }
-func (t *TestDef) key() string { return "test " + t.Name }
+func (t *TestDef) findMod(name string) *Import {
+	return t.File.findMod(name)
+}
 
 func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 	if len(args) > 0 {
@@ -148,6 +113,10 @@ func (f *FuncDef) findType(args []Type, name string, l loc.Loc) Type {
 		return typ
 	}
 	return f.File.findType(args, name, l)
+}
+
+func (t *TestDef) findType(args []Type, name string, l loc.Loc) Type {
+	return t.File.findType(args, name, l)
 }
 
 func findTypeVar(parms []TypeParm, args []Type, name string, l loc.Loc) *TypeVar {

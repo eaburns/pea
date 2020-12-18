@@ -32,7 +32,6 @@ func (f *File) NewLines() []int { return f.nls }
 func (f *File) Len() int        { return f.len }
 
 type Def interface {
-	key() string
 }
 
 type Import struct {
