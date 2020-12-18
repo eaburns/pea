@@ -392,6 +392,7 @@ func (u *UnionLit) Type() Type   { return u.T }
 func (u *UnionLit) Loc() loc.Loc { return u.L }
 
 type BlockLit struct {
+	parent scope
 	Caps   []BlockCap
 	Parms  []FuncParm
 	Locals []FuncLocal

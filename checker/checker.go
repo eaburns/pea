@@ -765,7 +765,7 @@ func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []*fail)
 func checkVarDef(def *VarDef, parserDef *parser.VarDef) []*fail {
 	var fails []*fail
 	if parserDef.Expr != nil {
-		expr, fs := checkExpr(def, parserDef.Expr, def.Type)
+		_, expr, fs := checkExpr(def, parserDef.Expr, def.Type)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
 		}
@@ -783,7 +783,7 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []*fail {
 	return fails
 }
 
-func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
+func checkExpr(x scope, parserExpr parser.Expr, want Type) (scope, Expr, []*fail) {
 	var expr Expr
 	var fails []*fail
 	switch parserExpr := parserExpr.(type) {
@@ -792,13 +792,13 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 	case *parser.Convert:
 		// TODO
 	case *parser.SubExpr:
-		expr, fails = checkExpr(x, parserExpr.Expr, want)
+		x, expr, fails = checkExpr(x, parserExpr.Expr, want)
 	case *parser.ModSel:
 		// TODO
 	case *parser.CompLit:
 		// TODO
 	case *parser.BlockLit:
-		// TODO
+		expr, fails = checkBlockLit(x, parserExpr, want)
 	case *parser.StrLit:
 		expr, fails = checkStrLit(parserExpr, want)
 	case *parser.CharLit:
@@ -812,7 +812,73 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 	default:
 		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
 	}
-	return expr, fails
+	return x, expr, fails
+}
+
+// want is the type wanted for the last expression, or nil.
+func checkExprs(x scope, parserExprs []parser.Expr, want Type) (scope, []Expr, []*fail) {
+	var fails []*fail
+	var exprs []Expr
+	for i, parserExpr := range parserExprs {
+		var fs []*fail
+		var expr Expr
+		if i == len(parserExprs)-1 {
+			x, expr, fs = checkExpr(x, parserExpr, want)
+		} else {
+			x, expr, fs = checkExpr(x, parserExpr, nil)
+		}
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		if expr != nil {
+			exprs = append(exprs, expr)
+		}
+	}
+	return x, exprs, fails
+}
+
+func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, want Type) (Expr, []*fail) {
+	var fails []*fail
+	parms, fs := makeFuncParms(x, parserBlockLit.Parms)
+	if len(fs) > 0 {
+		fails = append(fails, fs...)
+	}
+	parmTypes := make([]Type, len(parms))
+	for i, parm := range parms {
+		parmTypes[i] = parm.Type
+	}
+
+	blockLit := &BlockLit{
+		parent: x,
+		Parms:  parms,
+		L:      parserBlockLit.L,
+	}
+
+	var retType Type
+	if want != nil {
+		if b, ok := want.baseType().(*FuncType); ok {
+			retType = b.Ret
+		}
+	}
+	_, blockLit.Exprs, fs = checkExprs(blockLit, parserBlockLit.Exprs, retType)
+	if len(fs) > 0 {
+		fails = append(fails, fs...)
+	}
+
+	if n := len(blockLit.Exprs); n == 0 {
+		retType = nil
+	} else {
+		retType = blockLit.Exprs[n-1].Type()
+	}
+	blockLit.T = &FuncType{
+		Parms: parmTypes,
+		Ret:   retType,
+		L:     parserBlockLit.L,
+	}
+	if want != nil && blockLit.T.eq(want.baseType()) {
+		blockLit.T = want
+	}
+	return blockLit, fails
 }
 
 func checkStrLit(parserStrLit *parser.StrLit, want Type) (Expr, []*fail) {

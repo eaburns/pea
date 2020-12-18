@@ -37,6 +37,10 @@ func (t *TestDef) findMod(name string) *Import {
 	return t.File.findMod(name)
 }
 
+func (b *BlockLit) findMod(name string) *Import {
+	return b.parent.findMod(name)
+}
+
 func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 	if len(args) > 0 {
 		return nil
@@ -112,6 +116,10 @@ func (f *FuncDef) findType(args []Type, name string, l loc.Loc) Type {
 
 func (t *TestDef) findType(args []Type, name string, l loc.Loc) Type {
 	return t.File.findType(args, name, l)
+}
+
+func (b *BlockLit) findType(args []Type, name string, l loc.Loc) Type {
+	return b.parent.findType(args, name, l)
 }
 
 func findTypeVar(parms []TypeParm, args []Type, name string, l loc.Loc) *TypeVar {
