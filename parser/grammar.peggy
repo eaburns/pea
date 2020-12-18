@@ -383,8 +383,7 @@ BlkLit <- _ "(" ps:BlkParms? _ ")" _ "{" es:Exprs? _ "}" {
 	})
 }
 
-BlkParm <- id:Id t:Type? {
-	var typ Type; if t != nil { typ = *t }
+BlkParm <- id:Id typ:Type {
 	return FuncParm{Name: id, Type: typ, L: l(parser, start, end)}
 }
 
