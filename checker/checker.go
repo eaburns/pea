@@ -798,7 +798,7 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (scope, Expr, []*fail
 	case *parser.StructLit:
 		// TODO
 	case *parser.UnionLit:
-		// TODO
+		x, expr, fails = checkUnionLit(x, parserExpr, want)
 	case *parser.BlockLit:
 		expr, fails = checkBlockLit(x, parserExpr, want)
 	case *parser.StrLit:
@@ -837,6 +837,61 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) (scope, []Expr, [
 		}
 	}
 	return x, exprs, fails
+}
+
+func checkUnionLit(x scope, parserUnionLit *parser.UnionLit, want Type) (scope, Expr, []*fail) {
+	var fails []*fail
+	unionLit := &UnionLit{L: parserUnionLit.L}
+
+	var wantUnionType *UnionType
+	var wantCase *CaseDef
+	if want != nil {
+		wantUnionType, _ := want.baseType().(*UnionType)
+		if wantUnionType != nil {
+			caseName := parserUnionLit.CaseVal.Name.Name
+			wantCase = findCase(caseName, wantUnionType)
+		}
+	}
+
+	if parserVal := parserUnionLit.CaseVal.Val; parserVal != nil {
+		var wantValType Type
+		if wantCase != nil {
+			wantValType = wantCase.Type
+		}
+		x, unionLit.Val, fails = checkExpr(x, parserVal, wantValType)
+	}
+
+	if wantCase != nil &&
+		(wantCase.Type == nil) == (unionLit.Val == nil) &&
+		(wantCase.Type == nil || wantCase.Type.eq(unionLit.Val.Type())) {
+		unionLit.Union = wantUnionType
+		unionLit.Case = wantCase
+		unionLit.T = want
+	} else {
+		unionLit.Union = &UnionType{
+			Cases: []CaseDef{{
+				Name: parserUnionLit.CaseVal.Name.Name,
+				L:    parserUnionLit.CaseVal.L,
+			}},
+			L: parserUnionLit.L,
+		}
+		unionLit.Case = &unionLit.Union.Cases[0]
+		if unionLit.Val != nil {
+			unionLit.Case.Type = unionLit.Val.Type()
+		}
+		unionLit.T = unionLit.Union
+	}
+
+	return x, unionLit, fails
+}
+
+func findCase(name string, u *UnionType) *CaseDef {
+	for i := range u.Cases {
+		if u.Cases[i].Name == name {
+			return &u.Cases[i]
+		}
+	}
+	return nil
 }
 
 func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, want Type) (Expr, []*fail) {
