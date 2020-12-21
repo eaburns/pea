@@ -166,8 +166,8 @@ func (s *StructType) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f Field) print(pc *config) {
-	pc.p("Field{")
+func (f FieldDef) print(pc *config) {
+	pc.p("FieldDef{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
 	pc.field("Type", f.Type)
@@ -181,8 +181,8 @@ func (u *UnionType) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (c Case) print(pc *config) {
-	pc.p("Case{")
+func (c CaseDef) print(pc *config) {
+	pc.p("CaseDef{")
 	pc.loc(c.L)
 	pc.field("Name", c.Name)
 	pc.field("Type", c.Type)

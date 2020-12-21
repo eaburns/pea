@@ -22,8 +22,8 @@ func TestEq(t *testing.T) {
 				"&int",
 				"int32",
 				"float32",
-				"[x: int, y: int]",
-				"[none | some: int]",
+				"[.x int, .y int]",
+				"[?none, ?some int]",
 				"(int){float32}",
 			},
 		},
@@ -35,8 +35,8 @@ func TestEq(t *testing.T) {
 				"&named_type",
 				"int32",
 				"float32",
-				"[x: int, y: int]",
-				"[none | some: int]",
+				"[.x int, .y int]",
+				"[?none, ?some int]",
 				"(int){float32}",
 			},
 		},
@@ -48,9 +48,9 @@ func TestEq(t *testing.T) {
 		},
 		{
 			Src: `
-				type named_struct [x: int]
+				type named_struct [.x int]
 				type named_struct_alias := named_struct
-				type bar [x: int]
+				type bar [.x int]
 			`,
 			Typ: "named_struct",
 			Same: []string{
@@ -59,7 +59,7 @@ func TestEq(t *testing.T) {
 			},
 			Diff: []string{
 				"bar",
-				"[x: int]",
+				"[.x int]",
 			},
 		},
 		{
@@ -71,8 +71,8 @@ func TestEq(t *testing.T) {
 				"float32 param_named_type",
 				"int32",
 				"float32",
-				"[x: int, y: int]",
-				"[none | some: int]",
+				"[.x int, .y int]",
+				"[?none, ?some int]",
 				"(int){float32}",
 			},
 		},
@@ -80,50 +80,50 @@ func TestEq(t *testing.T) {
 			Typ:  "[int]",
 			Same: []string{"[int]"},
 			Diff: []string{
-				"[|int]",
+				"[?int]",
 				"&[int]",
 				"[float32]",
-				"[y: int]",
+				"[.y int]",
 				"int32",
 			},
 		},
 		{
-			Typ:  "[x: int]",
-			Same: []string{"[x: int]"},
+			Typ:  "[.x int]",
+			Same: []string{"[.x int]"},
 			Diff: []string{
-				"&[x: int]",
-				"[x: int, y: int]",
-				"[y: int]",
+				"&[.x int]",
+				"[.x int, .y int]",
+				"[.y int]",
 				"int32",
 				"float32",
-				"[x: int, y: int]",
-				"[none | some: int]",
+				"[.x int, .y int]",
+				"[?none, ?some int]",
 				"(int){float32}",
 			},
 		},
 		{
-			Typ:  "[x: int, y: int]",
-			Same: []string{"[x: int, y: int]"},
-			Diff: []string{"[y: int, x: int]"},
+			Typ:  "[.x int, .y int]",
+			Same: []string{"[.x int, .y int]"},
+			Diff: []string{"[.y int, .x int]"},
 		},
 		{
-			Typ:  "[none | some: int]",
-			Same: []string{"[none | some: int]"},
+			Typ:  "[?none, ?some int]",
+			Same: []string{"[?none, ?some int]"},
 			Diff: []string{
-				"&[none | some: int]",
-				"[none: int | some]",
-				"[some: int | none]",
-				"[none: int, some: int]",
-				"[y: int]",
+				"&[?none, ?some int]",
+				"[?none int, ?some]",
+				"[?some int, ?none]",
+				"[.none int, .some int]",
+				"[.y int]",
 				"int32",
 				"float32",
-				"[x: int, y: int]",
+				"[.x int, .y int]",
 				"(int){float32}",
 			},
 		},
 		{
-			Typ:  "[a: int | b: int]",
-			Diff: []string{"[a: int, b: int]"},
+			Typ:  "[?a int, ?b int]",
+			Diff: []string{"[.a int, .b int]"},
 		},
 		{
 			Typ:  "(){}",
@@ -133,9 +133,9 @@ func TestEq(t *testing.T) {
 				"(int){}",
 				"(){int}",
 				"(int){int}",
-				"[y: int]",
+				"[.y int]",
 				"int32",
-				"[x: int, y: int]",
+				"[.x int, .y int]",
 			},
 		},
 		{
@@ -146,9 +146,9 @@ func TestEq(t *testing.T) {
 				"(){}",
 				"(){int}",
 				"(int){int}",
-				"[y: int]",
+				"[.y int]",
 				"int32",
-				"[x: int, y: int]",
+				"[.x int, .y int]",
 			},
 		},
 		{
@@ -159,9 +159,9 @@ func TestEq(t *testing.T) {
 				"(){}",
 				"(int){}",
 				"(int){int}",
-				"[y: int]",
+				"[.y int]",
 				"int32",
-				"[x: int, y: int]",
+				"[.x int, .y int]",
 			},
 		},
 		{
@@ -172,9 +172,9 @@ func TestEq(t *testing.T) {
 				"(){}",
 				"(int){}",
 				"(){int}",
-				"[y: int]",
+				"[.y int]",
 				"int32",
-				"[x: int, y: int]",
+				"[.x int, .y int]",
 			},
 		},
 		{
@@ -186,9 +186,9 @@ func TestEq(t *testing.T) {
 				"(float32){}",
 				"(float32, int){}",
 				"(){int}",
-				"[y: int]",
+				"[.y int]",
 				"int32",
-				"[x: int, y: int]",
+				"[.x int, .y int]",
 			},
 		},
 		{
@@ -207,35 +207,35 @@ func TestEq(t *testing.T) {
 			Src: `
 				type one := two
 				type two := three
-				type three := [x: int, y: int]
+				type three := [.x int, .y int]
 			`,
 			Typ: "one",
 			Same: []string{
 				"two",
 				"three",
-				"[x: int, y: int]",
+				"[.x int, .y int]",
 			},
 		},
 		{
 			Src: `
 				type (X, Y) reverse := (Y, X) forward
-				type (X, Y) forward := [x: X, y: Y]
+				type (X, Y) forward := [.x X, .y Y]
 			`,
 			Typ: "(string, int) reverse",
 			Same: []string{
 				"(string, int) reverse",
 				"(int, string) forward",
-				"[x: int, y: string]",
+				"[.x int, .y string]",
 			},
 			Diff: []string{
 				"(int, string) reverse",
 				"(string, int) forward",
-				"[x: string, y: int]",
+				"[.x string, .y int]",
 			},
 		},
 		{
 			Src: `
-				type (K, V) map [k: K, v: V]
+				type (K, V) map [.k K, .v V]
 				type V string_map := (string, V) map
 			`,
 			Typ: "int string_map",
@@ -244,48 +244,48 @@ func TestEq(t *testing.T) {
 				"int string_map",
 			},
 			Diff: []string{
-				"[k: string, v: int]",
+				"[.k string, .v int]",
 			},
 		},
 		{
 			Src: `
 				type foo := baz
-				type bar := [x: foo, y: [z: foo]]
+				type bar := [.x foo, .y [.z foo]]
 				type baz := int
 			`,
 			Typ: "bar",
 			Same: []string{
 				"bar",
-				"[x: foo, y: [z: foo]]",
-				"[x: baz, y: [z: baz]]",
-				"[x: int, y: [z: int]]",
+				"[.x foo, .y [.z foo]]",
+				"[.x baz, .y [.z baz]]",
+				"[.x int, .y [.z int]]",
 			},
 		},
 		{
 			Src: `
 				type T foo := T bar
-				type T baz := [x: T]
+				type T baz := [.x T]
 				type T bar := T baz
-				type V qux := [x: V foo]
+				type V qux := [.x V foo]
 			`,
 			Typ: "int qux",
 			Same: []string{
 				"int qux",
-				"[x: int foo]",
-				"[x: int bar]",
-				"[x: int baz]",
-				"[x: [x: int]]",
+				"[.x int foo]",
+				"[.x int bar]",
+				"[.x int baz]",
+				"[.x [.x int]]",
 			},
 		},
 		{
 			Src: `
-				type T foo := [x: T]
-				type T bar [x: T]
+				type T foo := [.x T]
+				type T bar [.x T]
 			`,
 			Typ: "int foo bar",
 			Same: []string{
 				"int foo bar",
-				"[x: int] bar",
+				"[.x int] bar",
 			},
 		},
 		{
@@ -319,12 +319,12 @@ func TestEq(t *testing.T) {
 			`,
 			otherMod: testMod{
 				path: "other",
-				src:  "type T other_type := [x: T]",
+				src:  "type T other_type := [.x T]",
 			},
 			Typ: "int cross_mod_alas",
 			Same: []string{
 				"int other#other_type",
-				"[x: int]",
+				"[.x int]",
 			},
 		},
 	}

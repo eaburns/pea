@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -89,19 +90,19 @@ func namedType(args []Type, names []*NamedType, l loc.Loc) Type {
 	return args[0]
 }
 
-type kw struct {
+type nameArg struct {
 	name Id
 	arg  Expr
 }
 
-func kwCall(l loc.Loc, kws []kw) *Call {
+func nary(l loc.Loc, nameArgs []nameArg) *Call {
 	var name Id
-	name.L[0] = kws[0].name.L[0]
-	name.L[1] = kws[len(kws)-1].name.L[1]
+	name.L[0] = nameArgs[0].name.L[0]
+	name.L[1] = nameArgs[len(nameArgs)-1].name.L[1]
 	var args []Expr
-	for _, kw := range kws {
-		name.Name += kw.name.Name
-		args = append(args, kw.arg)
+	for _, nameArg := range nameArgs {
+		name.Name += nameArg.name.Name
+		args = append(args, nameArg.arg)
 	}
 	return &Call{Fun: name, Args: args, L: l}
 }
@@ -139,6 +140,14 @@ func sel(expr Expr, ids []Id) Expr {
 		expr = &Call{Fun: id, Args: []Expr{expr}, L: loc.Loc{l0, id.L[1]}}
 	}
 	return expr
+}
+
+func catNames(ids []Id) string {
+	var s strings.Builder
+	for _, id := range ids {
+		s.WriteString(id.Name)
+	}
+	return s.String()
 }
 
 func interpRune(str string) rune {

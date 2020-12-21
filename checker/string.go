@@ -92,7 +92,7 @@ func (s *StructType) buildString(w *strings.Builder) *strings.Builder {
 			w.WriteString(", ")
 		}
 		w.WriteString(f.Name)
-		w.WriteString(": ")
+		w.WriteRune(' ')
 		f.Type.buildString(w)
 	}
 	w.WriteRune(']')
@@ -101,16 +101,13 @@ func (s *StructType) buildString(w *strings.Builder) *strings.Builder {
 
 func (u *UnionType) buildString(w *strings.Builder) *strings.Builder {
 	w.WriteRune('[')
-	if len(u.Cases) == 1 && u.Cases[0].Type == nil {
-		w.WriteString("|")
-	}
 	for i, c := range u.Cases {
 		if i > 0 {
-			w.WriteString(" | ")
+			w.WriteString(", ")
 		}
 		w.WriteString(c.Name)
 		if c.Type != nil {
-			w.WriteString(": ")
+			w.WriteRune(' ')
 			c.Type.buildString(w)
 		}
 	}

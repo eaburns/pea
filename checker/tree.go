@@ -116,26 +116,26 @@ type ArrayType struct {
 func (a *ArrayType) baseType() Type { return a }
 
 type StructType struct {
-	Fields []Field
+	Fields []FieldDef
 	L      loc.Loc
 }
 
 func (s *StructType) baseType() Type { return s }
 
-type Field struct {
+type FieldDef struct {
 	Name string
 	Type Type
 	L    loc.Loc
 }
 
 type UnionType struct {
-	Cases []Case
+	Cases []CaseDef
 	L     loc.Loc
 }
 
 func (u *UnionType) baseType() Type { return u }
 
-type Case struct {
+type CaseDef struct {
 	Name string
 	Type Type // nil for untyped
 	L    loc.Loc
@@ -259,7 +259,7 @@ type Callable interface {
 type Select struct {
 	Type   Type
 	Struct *StructType
-	Field  *Field
+	Field  *FieldDef
 }
 
 func (s *Select) Parms() []Type { return []Type{s.Type} }
@@ -268,7 +268,7 @@ func (s *Select) Ret() Type     { return s.Field.Type }
 type Switch struct {
 	Type  Type
 	Union *UnionType
-	Cases []*Case
+	Cases []*CaseDef
 	R     Type // inferred return type; nil if no return
 }
 
@@ -382,7 +382,7 @@ func (s *StructLit) Loc() loc.Loc { return s.L }
 
 type UnionLit struct {
 	Union *UnionType
-	Case  *Case
+	Case  *CaseDef
 	Val   Expr // nil for type-less case
 	T     Type
 	L     loc.Loc

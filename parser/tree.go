@@ -62,22 +62,22 @@ type ArrayType struct {
 }
 
 type StructType struct {
-	Fields []Field
+	Fields []FieldDef
 	L      loc.Loc
 }
 
-type Field struct {
+type FieldDef struct {
 	Name Id
 	Type Type
 	L    loc.Loc
 }
 
 type UnionType struct {
-	Cases []Case
+	Cases []CaseDef
 	L     loc.Loc
 }
 
-type Case struct {
+type CaseDef struct {
 	Name Id
 	Type Type // nil if an un-typed case
 	L    loc.Loc
@@ -154,12 +154,38 @@ type ModSel struct {
 
 func (m *ModSel) Loc() loc.Loc { return m.L }
 
-type CompLit struct {
+type ArrayLit struct {
 	Exprs []Expr
 	L     loc.Loc
 }
 
-func (s *CompLit) Loc() loc.Loc { return s.L }
+func (a *ArrayLit) Loc() loc.Loc { return a.L }
+
+type StructLit struct {
+	FieldVals []FieldVal
+	L         loc.Loc
+}
+
+func (s *StructLit) Loc() loc.Loc { return s.L }
+
+type FieldVal struct {
+	Name Id
+	Val  Expr
+	L    loc.Loc
+}
+
+type UnionLit struct {
+	CaseVal CaseVal
+	L       loc.Loc
+}
+
+func (u *UnionLit) Loc() loc.Loc { return u.L }
+
+type CaseVal struct {
+	Name Id
+	Val  Expr // nil if value-less case
+	L    loc.Loc
+}
 
 type BlockLit struct {
 	Parms []FuncParm

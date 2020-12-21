@@ -62,10 +62,7 @@ TypeVars <-
 		return []TypeVar(append([]TypeVar{t0}, ts...))
 	}
 
-Type <-
-	NamedType /
-	tvar:TypeVar { return Type(tvar) } /
-	TypeLit
+Type <- NamedType / tvar:TypeVar { return Type(tvar) } / TypeLit
 
 Types <- t0:Type ts:(_ "," t1:Type { return Type(t1) })* (_ ",")? {
 	return []Type(append([]Type{t0}, ts...))
@@ -80,11 +77,7 @@ NamedType <- (args:TypeArgs)? names:ModName+ {
 }
 
 ModName <- mod:(m:Id _ "#" { return Id(m) })? name:Id {
-	return &NamedType{
-		Mod: mod,
-		Name: name,
-		L: l(parser, start, end),
-	}
+	return &NamedType{Mod: mod, Name: name, L: l(parser, start, end)}
 }
 
 TypeArgs <-
@@ -103,47 +96,36 @@ ArrayType <- _ "[" elem:Type _ "]" {
 	return Type(&ArrayType{ElemType: elem, L: l(parser, start, end)})
 }
 
-StructType <- _ "[" fs:Fields? _ "]" {
-	var fields []Field; if fs != nil { fields = *fs }
+StructType <- _ "[" fs:FieldDefs? _ "]" {
+	var fields []FieldDef; if fs != nil { fields = *fs }
 	return Type(&StructType{Fields: fields, L: l(parser, start, end)})
 }
 
-Field <- name:Id _ ":" typ:Type {
-	return Field{
-		Name: name,
-		Type: typ,
-		L: l(parser, start, end),
-	}
+FieldDef <- name:FieldId typ:Type {
+	return FieldDef{Name: name, Type: typ, L: l(parser, start, end)}
 }
 
-Fields <- f0:Field fs:(_ "," f1:Field { return Field(f1) })* (_ ",")? {
-	return []Field(append([]Field{f0}, fs...))
+FieldDefs <- f0:FieldDef fs:(_ "," f1:FieldDef { return FieldDef(f1) })* (_ ",")? {
+	return []FieldDef(append([]FieldDef{f0}, fs...))
 }
 
-UnionType <- _ "[" cases:Cases _ "]" {
+UnionType <- _ "[" cases:CaseDefs _ "]" {
 	return Type(&UnionType{Cases: cases, L: l(parser, start, end)})
 }
 
-Case <- name:Id (_ ":" typ:Type)? {
-	return Case{
-		Name: name,
-		Type: typ,
-		L: l(parser, start, end),
-	}
+CaseDef <- name:CaseId t:Type? {
+	var typ Type; if t != nil { typ = *t }
+	return CaseDef{Name: name, Type: typ, L: l(parser, start, end)}
 }
 
-Cases <- (_ "|")? c0:Case cs:(_ "|" c1:Case { return Case(c1) })* {
-	return []Case(append([]Case{c0}, cs...))
+CaseDefs <- c0:CaseDef cs:(_ "," c1:CaseDef { return CaseDef(c1) })* (_ ",")? {
+	return []CaseDef(append([]CaseDef{c0}, cs...))
 }
 
 FuncType <- _ "(" ps:Types? _ ")" _ "{" r:Type? _ "}" {
 	var parms []Type; if ps != nil { parms = *ps }
 	var ret Type; if r != nil { ret = *r }
-	return Type(&FuncType{
-		Parms: parms,
-		Ret: ret,
-		L: l(parser, start, end),
-	})
+	return Type(&FuncType{Parms: parms, Ret: ret, L: l(parser, start, end)})
 }
 
 FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:FuncDecls)? (_ "{" es:Exprs? _ "}")? {
@@ -166,23 +148,13 @@ FuncParms <- p0:FuncParm ps:(_ "," p1:FuncParm { return FuncParm(p1) })* (_ ",")
 }
 
 FuncParm <- name:Id typ:Type (_ "=" init:Expr)? {
-	return FuncParm{
-		Name: name,
-		Type: typ,
-		Init: init,
-		L: l(parser, start, end),
-	}
+	return FuncParm{Name: name, Type: typ, Init: init, L: l(parser, start, end)}
 }
 
 FuncDecl <- name:FuncName _ "(" ps:Types? _ ")" r:Type? {
 	var parms []Type; if ps != nil { parms = *ps }
 	var ret Type; if r != nil { ret = *r }
-	return FuncDecl{
-		Name: name,
-		Parms: parms,
-		Ret: ret,
-		L: l(parser, start, end),
-	}
+	return FuncDecl{Name: name, Parms: parms, Ret: ret, L: l(parser, start, end)}
 }
 
 FuncDecls <- fd0:FuncDecl fds:(_ "," fd1:FuncDecl { return FuncDecl(fd1) })* (_ ",")? {
@@ -191,18 +163,14 @@ FuncDecls <- fd0:FuncDecl fds:(_ "," fd1:FuncDecl { return FuncDecl(fd1) })* (_ 
 
 TestDef <- _ "test" name:Id _ "{" es:Exprs? _ "}" {
 	var exprs []Expr; if es != nil { exprs = *es }
-	return Def(&TestDef{
-		Name: name,
-		Exprs: exprs,
-		L: l(parser, start, end),
-	})
+	return Def(&TestDef{Name: name, Exprs: exprs, L: l(parser, start, end)})
 }
+
+Expr <- Asgn / AsgnArg
 
 Exprs <- e0:Expr es:(_ "," e1:Expr { return Expr(e1) })* (_ ",")? {
 	return []Expr(append([]Expr{e0}, es...))
 }
-
-Expr <- Asgn / AsgnArg
 
 Asgn <- Bin<AsgnOp, AsgnArg>
 AsgnArg <- KwCall / KwArg
@@ -210,27 +178,18 @@ AsgnOp "assignment operator" <- _ name:":=" {
 	return Id{Name: name, L: l(parser, start, end)}
 }
 
-KwCall <- kws:Kw+ {
-	return Expr(kwCall(l(parser, start, end), kws))
-}
+KwCall <- Nary<Kwd, KwArg> 
+KwArg <- Switch / SwitchArg
 
-Kw <- name:Kwd arg:KwArg {
-	return kw{name: name, arg: arg}
-}
+Switch <- Nary<CaseId, SwitchArg>
+SwitchArg <- Bin5 / Bin5Arg
 
-Kwd "keyword" <- _ id:Id ":" {
-	return Id{Name: id.Name + ":", L: l(parser, start, end)}
+Nary<Name, Arg> <- nameArgs:NameArg<Name, Arg>+ {
+	return Expr(nary(l(parser, start, end), nameArgs))
 }
-
-Kwds "keywords" <- _ keywords:Kwd+ {
-	var name string
-	for _, k := range keywords {
-		name += k.Name
-	}
-	return Id{Name: name, L: l(parser, start, end)}
+NameArg<Name, Arg> <- name:Name arg:Arg {
+	return nameArg{name: name, arg: arg}
 }
-
-KwArg <- Bin5 / Bin5Arg
 
 Bin5 <- Bin<Bin5Op, Bin5Arg>
 Bin5Arg <- Bin4 / Bin4Arg
@@ -266,7 +225,6 @@ Bin1Op "operator" <- _ name:([*/%] O*) {
 Bin<O, A> <- arg0:A calls:BinTail<O, A>+ {
 	return Expr(bins(arg0, calls))
 }
-
 BinTail<O, A> <- name:O arg1:A {
 	return &Call{
 		Fun: name,
@@ -276,19 +234,11 @@ BinTail<O, A> <- name:O arg1:A {
 }
 
 Cvt <- typ:Type _ ":" expr:UnArg {
-	return Expr(&Convert{
-		Expr: expr,
-		Type: typ,
-		L: l(parser, start, end),
-	})
+	return Expr(&Convert{Expr: expr, Type: typ, L: l(parser, start, end)})
 }
 
 Un <- name:Op arg:UnArg {
-	return Expr(&Call{
-		Fun: name,
-		Args: []Expr{arg},
-		L: l(parser, start, end),
-	})
+	return Expr(&Call{Fun: name, Args: []Expr{arg}, L: l(parser, start, end)})
 }
 
 UnArg <- Pri / Un / Idx / Sel / Call
@@ -321,7 +271,7 @@ ArgList <- _ "(" as:Exprs? _ ")" {
 
 CallArg <- Sel / Pri
 
-Sel <- expr:Pri ids:(id:DotId { return Id(id) })+ {
+Sel <- expr:Pri ids:(id:FieldId { return Id(id) })+ {
 	return Expr(sel(expr, ids))
 }
 
@@ -329,7 +279,9 @@ Pri <-
 	BlkLit /
 	SubExpr /
 	ModSel /
-	CompLit /
+	ArrayLit /
+	StructLit /
+	UnionLit /
 	CharLit /
 	StrLit /
 	NumLit /
@@ -339,7 +291,7 @@ SubExpr <-
 	_ "(" expr:Expr _ ")" {
 		return Expr(&SubExpr{Expr: expr, L: l(parser, start, end)})
 	} /
-	_ "(" id:(DotId / IdxOp / Op / Kwds) _ ")" {
+	_ "(" id:(FieldId / IdxOp / Op / Kwds) _ ")" {
 		return Expr(&SubExpr{Expr: id, L: l(parser, start, end)})
 	}
 
@@ -359,28 +311,65 @@ ModSel <-
 		})
 	}
 
-FuncName <- DotId / IdxOp / Op / Kwds / Id
+FuncName <- FieldId / IdxOp / Op / Kwds / Cases / Id
 
 IdxOp "index operator" <- _ "[" _ "]" {
 	return Id{Name: "[]", L: l(parser, start, end)}
 }
 
-DotId <- _ "." id:Id {
+Cases "cases" <- _ cases:CaseId+ {
+	return Id{Name: catNames(cases), L: l(parser, start, end)}
+}
+
+Kwds "keywords" <- _ keywords:Kwd+ {
+	return Id{Name: catNames(keywords), L: l(parser, start, end)}
+}
+
+Kwd "keyword" <- _ id:Id ":" {
+	return Id{Name: id.Name + ":", L: l(parser, start, end)}
+}
+
+ArrayLit <-
+	_ "[" _ "]" {
+		return Expr(&ArrayLit{L: l(parser, start, end)})
+	} /
+	_ "[" exprs:Exprs _ "]" {
+		return Expr(&ArrayLit{Exprs: exprs, L: l(parser, start, end)})
+	}
+
+StructLit <-
+	_ "[" _ "." _ "]" {
+		return Expr(&StructLit{L: l(parser, start, end)})
+	} /
+	_ "[" fields:FieldVal+ _ "]" {
+		return Expr(&StructLit{FieldVals: fields, L: l(parser, start, end)})
+	}
+
+FieldVal <- _ name:FieldId val:Expr {
+	return FieldVal{Name: name, Val: val, L: l(parser, start, end)}
+}
+
+FieldId "field id" <- _ "." id:Id {
 	return Id{Name: "." + id.Name, L: l(parser, start, end)}
 }
 
-CompLit <- _ "[" exprs:Exprs _ "]" {
-	return Expr(&CompLit{Exprs: exprs, L: l(parser, start, end)})
+UnionLit <- _ "[" cas:CaseVal _ "]" {
+		return Expr(&UnionLit{CaseVal: cas, L: l(parser, start, end)})
+	}
+
+CaseVal <- _ name:CaseId v:Expr? {
+	var val Expr; if v != nil { val = *v }
+	return CaseVal{Name: name, Val: val, L: l(parser, start, end)}
+}
+
+CaseId "case id" <- _ "?" id:Id {
+	return Id{Name: "?" + id.Name, L: l(parser, start, end)}
 }
 
 BlkLit <- _ "(" ps:BlkParms? _ ")" _ "{" es:Exprs? _ "}" {
 	var parms []FuncParm; if ps != nil { parms = *ps }
 	var exprs []Expr; if es != nil { exprs = *es }
-	return Expr(&BlockLit{
-		Parms: parms,
-		Exprs: exprs,
-		L: l(parser, start, end),
-	})
+	return Expr(&BlockLit{Parms: parms, Exprs: exprs, L: l(parser, start, end)})
 }
 
 BlkParm <- id:Id typ:Type {
@@ -392,20 +381,13 @@ BlkParms <- p0:BlkParm ps:(_ "," p1:BlkParm { return FuncParm(p1) })* (_ ",")? {
 }
 
 CharLit "character" <- _ data:(['] !"\n" Esc / "\\'" / [^'] [']) {
-	return Expr(&CharLit{
-		Rune: interpRune(data),
-		L: l(parser, start, end),
-	})
+	return Expr(&CharLit{Rune: interpRune(data), L: l(parser, start, end)})
 }
 
 StrLit "string" <- InterpStr / RawStr
 
 InterpStr <- _ ["] data:(!"\n" (Esc / "\\\"" { return "\"" }/ [^"]))* ["] {
-	return Expr(&StrLit{
-		Raw: false,
-		Data: data,
-		L: l(parser, start, end),
-	})
+	return Expr(&StrLit{Raw: false, Data: data, L: l(parser, start, end)})
 }
 
 Esc <-
@@ -418,11 +400,7 @@ Esc <-
 	"\\X" x2:( X X X X X X X X ) { return string(interpHex(x0)) }
 
 RawStr <- _ [`] data:("\\`" / [^`])* [`] {
-	return Expr(&StrLit{
-		Raw: true,
-		Data: data,
-		L: l(parser, start, end),
-	})
+	return Expr(&StrLit{Raw: true, Data: data, L: l(parser, start, end)})
 }
 
 NumLit "number" <- FloatLit / HexLit / DecLit

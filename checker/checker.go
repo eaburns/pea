@@ -339,13 +339,13 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*f
 		elemType, fails = _makeType(x, parserType.ElemType, inst)
 		typ = &ArrayType{ElemType: elemType, L: parserType.L}
 	case *parser.StructType:
-		var fields []Field
+		var fields []FieldDef
 		for _, parserField := range parserType.Fields {
 			t, fs := _makeType(x, parserField.Type, inst)
 			if len(fs) > 0 {
 				fails = append(fails, fs...)
 			}
-			fields = append(fields, Field{
+			fields = append(fields, FieldDef{
 				Name: parserField.Name.Name,
 				Type: t,
 				L:    parserField.L,
@@ -353,13 +353,13 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*f
 		}
 		typ = &StructType{Fields: fields, L: parserType.L}
 	case *parser.UnionType:
-		var cases []Case
+		var cases []CaseDef
 		for _, parserCase := range parserType.Cases {
 			t, fs := _makeType(x, parserCase.Type, inst)
 			if len(fs) > 0 {
 				fails = append(fails, fs...)
 			}
-			cases = append(cases, Case{
+			cases = append(cases, CaseDef{
 				Name: parserCase.Name.Name,
 				Type: t,
 				L:    parserCase.L,
@@ -795,7 +795,11 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (scope, Expr, []*fail
 		x, expr, fails = checkExpr(x, parserExpr.Expr, want)
 	case *parser.ModSel:
 		// TODO
-	case *parser.CompLit:
+	case *parser.ArrayLit:
+		// TODO
+	case *parser.StructLit:
+		// TODO
+	case *parser.UnionLit:
 		// TODO
 	case *parser.BlockLit:
 		expr, fails = checkBlockLit(x, parserExpr, want)

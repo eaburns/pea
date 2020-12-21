@@ -125,8 +125,8 @@ func (s *StructType) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f Field) print(pc *config) {
-	pc.p("Field{")
+func (f FieldDef) print(pc *config) {
+	pc.p("FieldDef{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
 	pc.field("Type", f.Type)
@@ -140,8 +140,8 @@ func (u *UnionType) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (c Case) print(pc *config) {
-	pc.p("Case{")
+func (c CaseDef) print(pc *config) {
+	pc.p("CaseDef{")
 	pc.loc(c.L)
 	pc.field("Name", c.Name)
 	pc.field("Type", c.Type)
@@ -225,10 +225,39 @@ func (m *ModSel) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (a *CompLit) print(pc *config) {
-	pc.p("CompLit{")
+func (a *ArrayLit) print(pc *config) {
+	pc.p("ArrayLit{")
 	pc.loc(a.L)
 	pc.field("Exprs", a.Exprs)
+	pc.p("\n}")
+}
+
+func (s *StructLit) print(pc *config) {
+	pc.p("StructLit{")
+	pc.loc(s.L)
+	pc.field("FieldVals", s.FieldVals)
+	pc.p("\n}")
+}
+func (f FieldVal) print(pc *config) {
+	pc.p("FieldVal{")
+	pc.loc(f.L)
+	pc.field("Name", f.Name)
+	pc.field("Val", f.Val)
+	pc.p("\n}")
+}
+
+func (u *UnionLit) print(pc *config) {
+	pc.p("UnionLit{")
+	pc.loc(u.L)
+	pc.field("CaseVal", u.CaseVal)
+	pc.p("\n}")
+}
+
+func (c *CaseVal) print(pc *config) {
+	pc.p("CaseVal{")
+	pc.loc(c.L)
+	pc.field("Name", c.Name)
+	pc.field("Val", c.Val)
 	pc.p("\n}")
 }
 
