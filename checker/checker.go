@@ -96,11 +96,11 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			imports = append(imports, imp)
 		}
 		file := &File{
-			path:    parserFile.Path(),
-			nls:     parserFile.NewLines(),
-			len:     parserFile.Len(),
-			Mod:     mod,
-			Imports: imports,
+			FilePath: parserFile.Path(),
+			Nls:      parserFile.NewLines(),
+			Length:   parserFile.Len(),
+			Mod:      mod,
+			Imports:  imports,
 		}
 		mod.Files = append(mod.Files, file)
 		// Make TypeDefs, but not their Types yet.
@@ -851,10 +851,10 @@ func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, want Type) (Expr, [
 	}
 
 	blockLit := &BlockLit{
-		parent: x,
-		Parms:  parms,
-		L:      parserBlockLit.L,
+		Parms: parms,
+		L:     parserBlockLit.L,
 	}
+	x = &blockLitScope{parent: x, BlockLit: blockLit}
 
 	var retType Type
 	if want != nil {
@@ -862,7 +862,7 @@ func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, want Type) (Expr, [
 			retType = b.Ret
 		}
 	}
-	_, blockLit.Exprs, fs = checkExprs(blockLit, parserBlockLit.Exprs, retType)
+	_, blockLit.Exprs, fs = checkExprs(x, parserBlockLit.Exprs, retType)
 	if len(fs) > 0 {
 		fails = append(fails, fs...)
 	}

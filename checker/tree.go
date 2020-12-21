@@ -20,16 +20,16 @@ func (m *Mod) Name() string {
 }
 
 type File struct {
-	path    string
-	nls     []int
-	len     int
-	Mod     *Mod
-	Imports []*Import
+	FilePath string
+	Nls      []int
+	Length   int
+	Mod      *Mod
+	Imports  []*Import
 }
 
-func (f *File) Path() string    { return f.path }
-func (f *File) NewLines() []int { return f.nls }
-func (f *File) Len() int        { return f.len }
+func (f *File) Path() string    { return f.FilePath }
+func (f *File) NewLines() []int { return f.Nls }
+func (f *File) Len() int        { return f.Length }
 
 type Def interface {
 }
@@ -388,7 +388,6 @@ func (u *UnionLit) Type() Type   { return u.T }
 func (u *UnionLit) Loc() loc.Loc { return u.L }
 
 type BlockLit struct {
-	parent scope
 	Caps   []BlockCap
 	Parms  []FuncParm
 	Locals []FuncLocal

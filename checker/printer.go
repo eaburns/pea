@@ -68,7 +68,7 @@ func (m *Mod) print(pc *config) {
 
 func (f *File) print(pc *config) {
 	pc.p("File{")
-	pc.field("path", f.path)
+	pc.field("Path", f.FilePath)
 	pc.field("Imports", f.Imports)
 	pc.p("\n}")
 }

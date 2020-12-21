@@ -9,6 +9,11 @@ type scope interface {
 	findType(args []Type, name string, l loc.Loc) Type
 }
 
+type blockLitScope struct {
+	parent scope
+	*BlockLit
+}
+
 func (*Mod) findMod(string) *Import    { return nil }
 func (*Import) findMod(string) *Import { return nil }
 
@@ -37,7 +42,7 @@ func (t *TestDef) findMod(name string) *Import {
 	return t.File.findMod(name)
 }
 
-func (b *BlockLit) findMod(name string) *Import {
+func (b *blockLitScope) findMod(name string) *Import {
 	return b.parent.findMod(name)
 }
 
@@ -118,7 +123,7 @@ func (t *TestDef) findType(args []Type, name string, l loc.Loc) Type {
 	return t.File.findType(args, name, l)
 }
 
-func (b *BlockLit) findType(args []Type, name string, l loc.Loc) Type {
+func (b *blockLitScope) findType(args []Type, name string, l loc.Loc) Type {
 	return b.parent.findType(args, name, l)
 }
 
