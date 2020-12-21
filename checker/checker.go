@@ -282,9 +282,8 @@ func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm
 			seen[name] = parserTypeVar.L
 		}
 		typeParms = append(typeParms, TypeParm{
-			Name:     name,
-			L:        parserTypeVar.L,
-			location: files.Location(parserTypeVar.L),
+			Name: name,
+			L:    parserTypeVar.L,
 		})
 	}
 	return typeParms, fails
@@ -666,9 +665,8 @@ func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
 	var typeParms []TypeParm
 	for name, l := range typeVars {
 		typeParms = append(typeParms, TypeParm{
-			Name:     name,
-			L:        l,
-			location: files.Location(l),
+			Name: name,
+			L:    l,
 		})
 	}
 	sort.Slice(typeParms, func(i, j int) bool {

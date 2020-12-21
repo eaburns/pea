@@ -68,10 +68,6 @@ type TypeDef struct {
 type TypeParm struct {
 	Name string
 	L    loc.Loc
-	// Used for String(); we need to store it,
-	// since the String() method doesn't
-	// otherwise have access to loc.Files.
-	location loc.Location
 }
 
 type TypeInst struct {
