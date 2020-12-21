@@ -178,15 +178,18 @@ AsgnOp "assignment operator" <- _ name:":=" {
 	return Id{Name: name, L: l(parser, start, end)}
 }
 
-KwCall <- Nary<Kwd, KwArg> 
-KwArg <- Switch / SwitchArg
-
-Switch <- Nary<CaseId, SwitchArg>
-SwitchArg <- Bin5 / Bin5Arg
-
-Nary<Name, Arg> <- nameArgs:NameArg<Name, Arg>+ {
+KwCall <- nameArgs:NameArg<Kwd, KwArg>+ {
 	return Expr(nary(l(parser, start, end), nameArgs))
 }
+KwArg <- Switch / SwitchArg
+
+Switch <- arg0:SwitchArg nameArgs:NameArg<CaseId, SwitchArg>+ {
+	call := nary(l(parser, start, end), nameArgs)
+	call.Args = append([]Expr{arg0}, call.Args...)
+	return Expr(call)
+}
+SwitchArg <- Bin5 / Bin5Arg
+
 NameArg<Name, Arg> <- name:Name arg:Arg {
 	return nameArg{name: name, arg: arg}
 }
@@ -233,17 +236,21 @@ BinTail<O, A> <- name:O arg1:A {
 	}
 }
 
-Cvt <- typ:Type _ ":" expr:UnArg {
+# TODO: The required Space/Cmnt here fixes an ambiguity
+# between a keyword call and a convert.
+# We need a new syntax for convert, without such an issue.
+Cvt <- typ:Type (Space / Cmnt) ":" expr:UnArg {
 	return Expr(&Convert{Expr: expr, Type: typ, L: l(parser, start, end)})
 }
 
-Un <- name:Op arg:UnArg {
+# Signed numeric literals are a primary, not a Un.
+Un <- !NumLit name:Op arg:UnArg {
 	return Expr(&Call{Fun: name, Args: []Expr{arg}, L: l(parser, start, end)})
 }
 
-UnArg <- Pri / Un / Idx / Sel / Call
+UnArg <- Un / Idx / IdxArg
 
-Op "operator" <- _ name:[\-+*/%~!?^<>=&|@$]+ {
+Op "operator" <- _ name:O+ {
 	return Id{Name: name, L: l(parser, start, end)}
 }
 
@@ -259,7 +266,7 @@ Idxs <- _ "[" indices:Exprs _ "]" {
 	}
 }
 
-IdxArg <- Call / Sel / Pri
+IdxArg <- Call / CallArg
 
 Call <- fun:CallArg argss:ArgList+ {
 	return Expr(calls(fun, argss))
@@ -271,7 +278,7 @@ ArgList <- _ "(" as:Exprs? _ ")" {
 
 CallArg <- Sel / Pri
 
-Sel <- expr:Pri ids:(id:FieldId { return Id(id) })+ {
+Sel <- expr:Pri ids:(_ "." _ id:Id { id.Name = "." + id.Name; return Id(id) })+ {
 	return Expr(sel(expr, ids))
 }
 
@@ -341,9 +348,13 @@ StructLit <-
 	_ "[" _ "." _ "]" {
 		return Expr(&StructLit{L: l(parser, start, end)})
 	} /
-	_ "[" fields:FieldVal+ _ "]" {
+	_ "[" fields:FieldVals _ "]" {
 		return Expr(&StructLit{FieldVals: fields, L: l(parser, start, end)})
 	}
+
+FieldVals <- f0:FieldVal fs:(_ "," f1:FieldVal { return FieldVal(f1) })* (_ ",")? {
+	return []FieldVal(append([]FieldVal{f0}, fs...))
+}
 
 FieldVal <- _ name:FieldId val:Expr {
 	return FieldVal{Name: name, Val: val, L: l(parser, start, end)}
@@ -380,7 +391,7 @@ BlkParms <- p0:BlkParm ps:(_ "," p1:BlkParm { return FuncParm(p1) })* (_ ",")? {
 	return []FuncParm(append([]FuncParm{p0}, ps...))
 }
 
-CharLit "character" <- _ data:(['] !"\n" Esc / "\\'" / [^'] [']) {
+CharLit "character" <- _ data:(['] !"\n" (Esc / "\\'" / [^']) [']) {
 	return Expr(&CharLit{Rune: interpRune(data), L: l(parser, start, end)})
 }
 
@@ -395,9 +406,9 @@ Esc <-
 	"\\t" { return "\t" } /
 	"\\b" { return "\b"} /
 	"\\\\" { return "\\" } /
-	"\\" x0:( X X ) { return string(interpHex(x0)) } /
-	"\\x" x1:( X X X X ) { return string(interpHex(x0)) } /
-	"\\X" x2:( X X X X X X X X ) { return string(interpHex(x0)) }
+	"\\x" x0:(X X) { return string(interpHex(x0)) } /
+	"\\u" x1:(X X X X) { return string(interpHex(x1)) } /
+	"\\U" x2:(X X X X X X X X) { return string(interpHex(x2)) }
 
 RawStr <- _ [`] data:("\\`" / [^`])* [`] {
 	return Expr(&StrLit{Raw: true, Data: data, L: l(parser, start, end)})
@@ -429,7 +440,7 @@ Reserved <- "import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "
 D <- [0-9]
 X <- [a-fA-F0-9]
 L <- r:. &{isLetter(r)}
-O <- [*/%+\-^=!<>&|~?@$]
+O <- [*/%+\-^=!<>&|~@$]
 _ "" <- (Space / Cmnt)*
 Space <- r:. &{isSpace(r)}
 Cmnt <- "//" (!"\n" .)* / "/*" (!"*/" .)* "*/"

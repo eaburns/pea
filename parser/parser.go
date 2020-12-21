@@ -151,9 +151,10 @@ func catNames(ids []Id) string {
 }
 
 func interpRune(str string) rune {
+	str = str[1 : len(str)-1] // remove 's
 	r, _, tail, err := strconv.UnquoteChar(str, '\'')
 	if err != nil {
-		panic("impossible: " + err.Error())
+		panic("impossible [" + str + "]: " + err.Error())
 	}
 	if tail != "" {
 		panic("impossible tail: " + tail)
@@ -162,7 +163,7 @@ func interpRune(str string) rune {
 }
 
 func interpHex(x string) string {
-	r, err := strconv.Atoi(x)
+	r, err := strconv.ParseInt(x, 16, 32)
 	if err != nil {
 		panic("impossible: " + err.Error())
 	}
