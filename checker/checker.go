@@ -796,7 +796,7 @@ func checkExpr(x scope, parserExpr parser.Expr, sug Type) (scope, Expr, []*fail)
 	case *parser.ArrayLit:
 		// TODO
 	case *parser.StructLit:
-		// TODO
+		x, expr, fails = checkStructLit(x, parserExpr, sug)
 	case *parser.UnionLit:
 		x, expr, fails = checkUnionLit(x, parserExpr, sug)
 	case *parser.BlockLit:
@@ -837,6 +837,74 @@ func checkExprs(x scope, parserExprs []parser.Expr, sug Type) (scope, []Expr, []
 		}
 	}
 	return x, exprs, fails
+}
+
+func checkStructLit(x scope, parserStructLit *parser.StructLit, sug Type) (scope, Expr, []*fail) {
+	var fails []*fail
+	structLit := &StructLit{L: parserStructLit.L}
+
+	var sugFieldTypes []Type
+	sugStructType, _ := trim1Ref(literal(sug)).(*StructType)
+	if sugStructType != nil &&
+		len(sugStructType.Fields) == len(parserStructLit.FieldVals) {
+		for i := range sugStructType.Fields {
+			typeField := sugStructType.Fields[i]
+			litFieldName := parserStructLit.FieldVals[i].Name.Name
+			if typeField.Name != litFieldName {
+				sugFieldTypes = nil
+				break
+			}
+			sugFieldTypes = append(sugFieldTypes, typeField.Type)
+		}
+	}
+	for i, parserFieldVal := range parserStructLit.FieldVals {
+		var sugFieldType Type
+		if sugFieldTypes != nil {
+			sugFieldType = sugFieldTypes[i]
+		}
+		var fs []*fail
+		var expr Expr
+		x, expr, fs = checkExpr(x, parserFieldVal.Val, sugFieldType)
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		if expr != nil {
+			structLit.Fields = append(structLit.Fields, expr)
+		}
+	}
+
+	sugOK := false
+	if sugFieldTypes != nil && len(structLit.Fields) == len(sugFieldTypes) {
+		sugOK = true
+		for i, sugFieldType := range sugFieldTypes {
+			if !sugFieldType.eq(structLit.Fields[i].Type()) {
+				sugOK = false
+				break
+			}
+		}
+	}
+	if !sugOK {
+		structType := &StructType{L: parserStructLit.L}
+		for i, field := range structLit.Fields {
+			name := parserStructLit.FieldVals[i].Name.Name
+			structType.Fields = append(structType.Fields, FieldDef{
+				Name: name,
+				Type: field.Type(),
+				L:    parserStructLit.FieldVals[i].L,
+			})
+		}
+		structLit.Struct = structType
+		structLit.T = ref(structType)
+		return x, deref(structLit), fails
+	}
+
+	structLit.Struct = sugStructType
+	if !isRef(sug) {
+		structLit.T = ref(copyTypeWithLoc(sug, structLit.L))
+		return x, deref(structLit), fails
+	}
+	structLit.T = copyTypeWithLoc(sug, structLit.L)
+	return x, structLit, fails
 }
 
 func checkUnionLit(x scope, parserUnionLit *parser.UnionLit, sug Type) (scope, Expr, []*fail) {

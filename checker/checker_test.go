@@ -170,9 +170,9 @@ func TestErrors(t *testing.T) {
 func TestLiteralInference(t *testing.T) {
 	tests := []struct {
 		expr string
-		sug string
+		sug  string
 		want string
-		src string
+		src  string
 	}{
 		{expr: "1.0", want: "float64"},
 		{expr: "1.0", sug: "float64", want: "float64"},
@@ -334,6 +334,37 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[?none]", sug: "int opt", want: "int opt", src: "type T opt [?none, ?some T]"},
 		{expr: "[?none]", sug: "&int opt", want: "&int opt", src: "type T opt [?none, ?some T]"},
 		{expr: "[?none]", sug: "&&int opt", want: "[?none]", src: "type T opt [?none, ?some T]"},
+
+		{expr: `[.x "hello"]`, want: "[.x string]"},
+		{expr: "[.x 5]", want: "[.x int]"},
+		{expr: "[.x [.y 5]]", want: "[.x [.y int]]"},
+		{expr: "[.x 5]", sug: "[.x int32]", want: "[.x int32]"},
+		{expr: "[.x 5]", sug: "[.x string]", want: "[.x int]"},
+		{expr: "[.x 5]", sug: "&[.x int32]", want: "&[.x int32]"},
+		{expr: "[.x 5]", sug: "&&[.x int32]", want: "[.x int]"},
+		{expr: "[.x 5]", sug: "[.x &int]", want: "[.x &int]"},
+		{expr: "[.x 5, .y 1]", sug: "[.x int8, .y float32]", want: "[.x int8, .y float32]"},
+		{expr: "[.x 5, .z 1]", sug: "[.x int8, .y float32]", want: "[.x int, .z int]"},
+		{expr: "[.x 5, .y 1]", sug: "[.y int8, .x float32]", want: "[.x int, .y int]"},
+		{expr: "[.x 5]", sug: "[.x int8, .y float32]", want: "[.x int]"},
+		{expr: "[.x 5, .y 1]", sug: "[.x int8]", want: "[.x int, .y int]"},
+		{expr: "[.x 5, .y 1]", sug: "[.x int8, .y string]", want: "[.x int8, .y int]"},
+		{expr: "[.x 5]", sug: "t", want: "t", src: "type t [.x int]"},
+		{expr: "[.x 5]", sug: "t", want: "t", src: "type t [.x int32]"},
+		{expr: "[.x 5]", sug: "&t", want: "&t", src: "type t [.x int32]"},
+		{expr: "[.x 5]", sug: "&&t", want: "[.x int]", src: "type t [.x int32]"},
+		{expr: "[.x 5]", sug: "t", want: "[.x int]", src: "type t [.x int, .y int]"},
+		{expr: "[.x 5, .y 4]", sug: "t", want: "[.x int, .y int]", src: "type t [.x int]"},
+		{expr: "[.x 5, .y 4]", sug: "t", want: "[.x int, .y int]", src: "type t [.y int, .x int]"},
+		{expr: "[.x 5]", sug: "t", want: "t", src: "type t &[.x int32]"},
+		{expr: "[.x 5]", sug: "&t", want: "[.x int]", src: "type t &[.x int32]"},
+		{expr: "[.x 5]", sug: "int8 t", want: "int8 t", src: "type T t [.x T]"},
+		{expr: "[.x 5]", sug: "&int8 t", want: "&int8 t", src: "type T t [.x T]"},
+		{expr: "[.x 5]", sug: "&&int8 t", want: "[.x int]", src: "type T t [.x T]"},
+		{expr: "[.x 5]", sug: "int8 t", want: "int8 t", src: "type T t &[.x T]"},
+		{expr: "[.x 5]", sug: "&int8 t", want: "[.x int]", src: "type T t &[.x T]"},
+		{expr: `[.x 5, .y "x"]`, sug: "(int, string) pair", want: "(int, string) pair", src: "type (X, Y) pair [.x X, .y Y]"},
+		{expr: `[.x 5, .y "x"]`, sug: "(int8, string) pair", want: "(int8, string) pair", src: "type (X, Y) pair [.x X, .y Y]"},
 	}
 	for _, test := range tests {
 		test := test
