@@ -1055,7 +1055,7 @@ func checkIntLit(parserIntLit *parser.IntLit, sug Type) (Expr, []*fail) {
 			return deref(intLit), nil
 		}
 		intLit.T = copyTypeWithLoc(sug, intLit.L)
-		return deref(intLit), nil
+		return intLit, nil
 	}
 }
 

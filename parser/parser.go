@@ -67,6 +67,17 @@ func (p *Parser) ParseFile(path string) error {
 	return p.Parse(path, f)
 }
 
+func ParseExpr(str string) (Expr, error) {
+	_p := _NewParser(str)
+	_p.data = NewParser()
+	if pos, perr := _ExprAccepts(_p, 0); pos < 0 {
+		_, t := _ExprFail(_p, 0, perr)
+		return nil, parseError{loc: perr, text: _p.text, fail: t}
+	}
+	_, expr := _ExprAction(_p, 0)
+	return *expr, nil
+}
+
 type parseError struct {
 	path string
 	loc  int

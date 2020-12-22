@@ -167,6 +167,205 @@ func TestErrors(t *testing.T) {
 	}
 }
 
+func TestLiteralInference(t *testing.T) {
+	tests := []struct {
+		expr string
+		sug string
+		want string
+		src string
+	}{
+		{expr: "1.0", want: "float64"},
+		{expr: "1.0", sug: "float64", want: "float64"},
+		{expr: "1.0", sug: "float32", want: "float32"},
+		{expr: "1.0", sug: "int", want: "int"},
+		{expr: "1.0", sug: "int32", want: "int32"},
+		{expr: "1.0", sug: "&float64", want: "&float64"},
+		{expr: "1.0", sug: "&float32", want: "&float32"},
+		{expr: "1.0", sug: "&int", want: "&int"},
+		{expr: "1.0", sug: "t", want: "t", src: "type t float64"},
+		{expr: "1.0", sug: "&t", want: "&t", src: "type t float64"},
+		{expr: "1.0", sug: "t", want: "t", src: "type t &float64"},
+		{expr: "1.0", sug: "t", want: "t", src: "type t int"},
+		{expr: "1.0", sug: "&t", want: "&t", src: "type t int"},
+		{expr: "1.0", sug: "t", want: "t", src: "type t &int"},
+		{expr: "1.0", sug: "[int]", want: "float64"},
+		{expr: "1.0", sug: "string", want: "float64"},
+		{expr: "1.0", sug: "&&float32", want: "float64"},
+		{expr: "1.0", sug: "&t", want: "float64", src: "type t &float32"},
+		{expr: "1.0", sug: "t", want: "float64", src: "type t &&float32"},
+		{expr: "1.0", sug: "float64 t", want: "float64 t", src: "type T t T"},
+		{expr: "1.0", sug: "int32 t", want: "int32 t", src: "type T t T"},
+		{expr: "1.0", sug: "float32 t", want: "float32 t", src: "type T t T"},
+		{expr: "1.0", sug: "&float64 t", want: "&float64 t", src: "type T t T"},
+		{expr: "1.0", sug: "&&float64 t", want: "float64", src: "type T t T"},
+		{expr: "1.0", sug: "float64 t", want: "float64 t", src: "type T t &T"},
+		{expr: "1.0", sug: "&float64 t", want: "float64", src: "type T t &T"},
+		{expr: "1.0", sug: "string t", want: "float64", src: "type T t T"},
+		{expr: "1.0", sug: "int t", want: "float64", src: "type T t [T]"},
+
+		{expr: "1", want: "int"},
+		{expr: "1", sug: "int32", want: "int32"},
+		{expr: "1", sug: "uint32", want: "uint32"},
+		{expr: "1", sug: "float32", want: "float32"},
+		{expr: "1", sug: "&int", want: "&int"},
+		{expr: "1", sug: "&float32", want: "&float32"},
+		{expr: "1", sug: "t", want: "t", src: "type t int16"},
+		{expr: "1", sug: "&t", want: "&t", src: "type t int16"},
+		{expr: "1", sug: "t", want: "t", src: "type t &int16"},
+		{expr: "1", sug: "t", want: "t", src: "type t float32"},
+		{expr: "1", sug: "&t", want: "&t", src: "type t float32"},
+		{expr: "1", sug: "t", want: "t", src: "type t &float32"},
+		{expr: "1", sug: "&t", want: "int", src: "type t &int16"},
+		{expr: "1", sug: "&&int32", want: "int"},
+		{expr: "1", sug: "&&float32", want: "int"},
+		{expr: "1", sug: "string", want: "int"},
+		{expr: "1", sug: "[int]", want: "int"},
+		{expr: "1", sug: "int t", want: "int t", src: "type T t T"},
+		{expr: "1", sug: "int32 t", want: "int32 t", src: "type T t T"},
+		{expr: "1", sug: "float32 t", want: "float32 t", src: "type T t T"},
+		{expr: "1", sug: "&int32 t", want: "&int32 t", src: "type T t T"},
+		{expr: "1", sug: "&&int32 t", want: "int", src: "type T t T"},
+		{expr: "1", sug: "int32 t", want: "int32 t", src: "type T t &T"},
+		{expr: "1", sug: "&int32 t", want: "int", src: "type T t &T"},
+		{expr: "1", sug: "string t", want: "int", src: "type T t T"},
+		{expr: "1", sug: "int t", want: "int", src: "type T t [T]"},
+
+		{expr: "'a'", want: "int"}, // TODO: should be int32
+		{expr: "'a'", sug: "int32", want: "int32"},
+
+		{expr: `"abc"`, want: "string"},
+		{expr: `"abc"`, sug: "&string", want: "&string"},
+		{expr: `"abc"`, sug: "t", want: "t", src: "type t string"},
+		{expr: `"abc"`, sug: "&t", want: "&t", src: "type t string"},
+		{expr: `"abc"`, sug: "t", want: "t", src: "type t &string"},
+		{expr: `"abc"`, sug: "&t", want: "string", src: "type t &string"},
+		{expr: `"abc"`, sug: "int", want: "string"},
+		{expr: `"abc"`, sug: "string t", want: "string t", src: "type T t T"},
+		{expr: `"abc"`, sug: "&string t", want: "&string t", src: "type T t T"},
+		{expr: `"abc"`, sug: "&&string t", want: "string", src: "type T t T"},
+		{expr: `"abc"`, sug: "string t", want: "string t", src: "type T t &T"},
+		{expr: `"abc"`, sug: "&string t", want: "string", src: "type T t &T"},
+		{expr: `"abc"`, sug: "string t", want: "string", src: "type T t [T]"},
+
+		{expr: "(){}", want: "(){}"},
+		{expr: "(i int){}", want: "(int){}"},
+		{expr: "(){1}", want: "(){int}"},
+		{expr: "(i int){1}", want: "(int){int}"},
+		{expr: "(i int, s string){1}", want: "(int, string){int}"},
+		{expr: "(){}", sug: "(){}", want: "(){}"},
+		{expr: "(){}", sug: "&(){}", want: "&(){}"},
+		{expr: "(i int, s string){1}", sug: "(int, string){int}", want: "(int, string){int}"},
+		{expr: "(i int, s string){1}", sug: "&(int, string){int}", want: "&(int, string){int}"},
+		{expr: "(){1}", sug: "(){int32}", want: "(){int32}"},
+		{expr: "(){1}", sug: "(){float32}", want: "(){float32}"},
+		{expr: "(){1}", sug: "(){&int}", want: "(){&int}"},
+		{expr: "(){1}", sug: "(){&float32}", want: "(){&float32}"},
+		{expr: "(i int){1}", sug: "&(int){int}", want: "&(int){int}"},
+		{expr: "(i int){1}", sug: "&&(int){int}", want: "(int){int}"},
+		{expr: "(){1}", sug: "(){t}", want: "(){t}", src: "type t int"},
+		{expr: "(){1}", sug: "(){&t}", want: "(){&t}", src: "type t int"},
+		{expr: "(){1}", sug: "(){t}", want: "(){t}", src: "type t &int"},
+		{expr: "(){1}", sug: "(){t}", want: "(){int}", src: "type t [int]"},
+		{expr: "(){1}", sug: "t", want: "t", src: "type t (){int}"},
+		{expr: "(){1}", sug: "t", want: "t", src: "type t (){int32}"},
+		{expr: "(){1}", sug: "&t", want: "&t", src: "type t (){int}"},
+		{expr: "(){1}", sug: "t", want: "t", src: "type t &(){int}"},
+		{expr: "(){1}", sug: "&t", want: "(){int}", src: "type t &(){int}"},
+		{expr: "(){1}", sug: "string", want: "(){int}"},
+		{expr: "(){1}", sug: "int t", want: "int t", src: "type T t (){T}"},
+		{expr: "(){1}", sug: "int32 t", want: "int32 t", src: "type T t (){T}"},
+		{expr: "(){1}", sug: "float64 t", want: "float64 t", src: "type T t (){T}"},
+		{expr: "(){1}", sug: "&float64 t", want: "&float64 t", src: "type T t (){T}"},
+		{expr: "(){1}", sug: "&&float64 t", want: "(){int}", src: "type T t (){T}"},
+		{expr: "(){1}", sug: "float64 t", want: "float64 t", src: "type T t &(){T}"},
+		{expr: "(){1}", sug: "&float64 t", want: "(){int}", src: "type T t &(){T}"},
+		{expr: "(i int){}", sug: "int t", want: "int t", src: "type T t (T){}"},
+		{expr: "(i int){}", sug: "int32 t", want: "(int){}", src: "type T t (T){}"},
+		{expr: "(i int){}", sug: "&int t", want: "&int t", src: "type T t (T){}"},
+		{expr: "(i int){}", sug: "&&int t", want: "(int){}", src: "type T t (T){}"},
+		{expr: "(i int){}", sug: "int t", want: "int t", src: "type T t &(T){}"},
+		{expr: "(i int){}", sug: "&int t", want: "(int){}", src: "type T t &(T){}"},
+		{expr: "(i int){}", sug: "int t", want: "(int){}", src: "type T t (T){T}"},
+		{expr: "(){1}", sug: "int t", want: "(){int}", src: "type T t (T){T}"},
+		{expr: "(i int){}", sug: "int t", want: "(int){}", src: "type T t (T){T}"},
+		{expr: "(i int){1}", sug: "int t", want: "int t", src: "type T t (T){T}"},
+		{expr: "(s string){1}", sug: "int t", want: "(string){int}", src: "type T t (T){T}"},
+		{expr: "(i int, s string){1}", sug: "int t", want: "(int, string){int}", src: "type T t (T){T}"},
+		{expr: `(i int){"foo"}`, sug: "int t", want: "(int){string}", src: "type T t (T){T}"},
+
+		{expr: "[?none]", want: "[?none]"},
+		{expr: "[?none]", sug: "&&[?none]", want: "[?none]"},
+		{expr: "[?none]", sug: "&[?none]", want: "&[?none]"},
+		{expr: "[?none]", sug: "t", want: "t", src: "type t [?none, ?some int]"},
+		{expr: "[?none]", sug: "&t", want: "&t", src: "type t [?none, ?some int]"},
+		{expr: "[?none]", sug: "&&t", want: "[?none]", src: "type t [?none, ?some int]"},
+		{expr: "[?none]", sug: "t", want: "t", src: "type t &[?none, ?some int]"},
+		{expr: "[?none]", sug: "&t", want: "[?none]", src: "type t &[?none, ?some int]"},
+		{expr: "[?some 1]", want: "[?some int]"},
+		{expr: "[?some (i int){1.0}]", want: "[?some (int){float64}]"},
+		{expr: "[?a 1]", sug: "[?a int32]", want: "[?a int32]"},
+		{expr: "[?a 1]", sug: "&[?a int32]", want: "&[?a int32]"},
+		{expr: "[?a 1]", sug: "&&[?a int32]", want: "[?a int]"},
+		{expr: "[?a 1]", sug: "[?a int32, ?b, ?c int]", want: "[?a int32, ?b, ?c int]"},
+		{expr: "[?a 1]", sug: "[?b, ?a int32, ?c int]", want: "[?b, ?a int32, ?c int]"},
+		{expr: "[?a 1]", sug: "[?b, ?c int, ?a int32]", want: "[?b, ?c int, ?a int32]"},
+		{expr: "[?a 1]", sug: "&[?b, ?c int, ?a int32]", want: "&[?b, ?c int, ?a int32]"},
+		{expr: "[?a 1]", sug: "&&[?b, ?c int, ?a int32]", want: "[?a int]"},
+		{expr: "[?a 1]", sug: "[?b, ?c int]", want: "[?a int]"},
+		{expr: "[?a 1]", sug: "[?b, ?c int, ?a]", want: "[?a int]"},
+		{expr: "[?a 1]", sug: "[?b, ?c int, ?a string]", want: "[?a int]"},
+		{expr: "[?a 1]", sug: "t", want: "t", src: "type t [?a int]"},
+		{expr: "[?a 1]", sug: "t", want: "t", src: "type t [?a int, ?b]"},
+		{expr: "[?a 1]", sug: "t", want: "t", src: "type t [?a int, ?b, ?c int]"},
+		{expr: "[?a 1]", sug: "t", want: "t", src: "type t [?b, ?a int, ?c int]"},
+		{expr: "[?a 1]", sug: "t", want: "t", src: "type t [?a int32, ?b]"},
+		{expr: "[?a 1]", sug: "&t", want: "&t", src: "type t [?a int, ?b]"},
+		{expr: "[?a 1]", sug: "&&t", want: "[?a int]", src: "type t [?a int, ?b]"},
+		{expr: "[?a 1]", sug: "t", want: "t", src: "type t &[?a int, ?b]"},
+		{expr: "[?a 1]", sug: "&t", want: "[?a int]", src: "type t &[?a int, ?b]"},
+		{expr: "[?a 1]", sug: "t", want: "[?a int]", src: "type t [?c int, ?b]"},
+		{expr: "[?a 1]", sug: "t", want: "[?a int]", src: "type t [?a, ?b]"},
+		{expr: "[?some 1]", sug: "int opt", want: "int opt", src: "type T opt [?none, ?some T]"},
+		{expr: "[?some 1]", sug: "int32 opt", want: "int32 opt", src: "type T opt [?none, ?some T]"},
+		{expr: "[?some 1]", sug: "&int32 opt", want: "&int32 opt", src: "type T opt [?none, ?some T]"},
+		{expr: "[?some 1]", sug: "&&int32 opt", want: "[?some int]", src: "type T opt [?none, ?some T]"},
+		{expr: "[?some 1]", sug: "string opt", want: "[?some int]", src: "type T opt [?none, ?some T]"},
+		{expr: "[?some]", sug: "int opt", want: "[?some]", src: "type T opt [?none, ?some T]"},
+		{expr: "[?none]", sug: "int opt", want: "int opt", src: "type T opt [?none, ?some T]"},
+		{expr: "[?none]", sug: "&int opt", want: "&int opt", src: "type T opt [?none, ?some T]"},
+		{expr: "[?none]", sug: "&&int opt", want: "[?none]", src: "type T opt [?none, ?some T]"},
+	}
+	for _, test := range tests {
+		test := test
+		name := test.expr
+		if test.sug != "" {
+			name = test.sug + " : " + name
+		}
+		t.Run(name, func(t *testing.T) {
+			src := fmt.Sprintf("%s\ntype sug %s\ntype want %s\n",
+				test.src, test.sug, test.want)
+			t.Log(src)
+			mod, errs := check("test", []string{src}, nil)
+			if len(errs) > 0 {
+				t.Fatal("failed to parse and check:", errStr(errs))
+			}
+			parserExpr, err := parser.ParseExpr(test.expr)
+			if err != nil {
+				t.Fatalf("failed to parse [%s]: %s", test.expr, err)
+			}
+			sug := findTypeDef(t, "sug", mod).Type
+			_, expr, fails := checkExpr(mod.Files[0], parserExpr, sug)
+			if len(fails) > 0 {
+				t.Fatalf("failed to check [%s]: %s", test.expr, fails[0].msg)
+			}
+			want := findTypeDef(t, "want", mod).Type
+			if !expr.Type().eq(want) {
+				t.Errorf("got %s, want %s", expr.Type(), want)
+			}
+		})
+	}
+}
+
 func TestLiteralType(t *testing.T) {
 	tests := []struct {
 		src string
