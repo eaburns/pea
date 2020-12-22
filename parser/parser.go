@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -117,29 +118,38 @@ func bins(expr Expr, calls []*Call) Expr {
 	return expr
 }
 
-func calls(expr Expr, calls []*Call) Expr {
-	l0 := expr.Loc()[0]
-	for _, call := range calls {
-		call.Fun = expr
-		call.L[0] = l0
-		expr = call
-	}
-	return expr
+// sel, call, or idx
+type primary interface{}
+
+type sel struct {
+	name Id
+	l    loc.Loc
 }
 
-func args(as *[]Expr) []Expr {
-	if as == nil {
-		return nil
-	}
-	return *as
+type call struct {
+	args []Expr
+	l    loc.Loc
 }
 
-func sel(expr Expr, ids []Id) Expr {
-	l0 := expr.Loc()[0]
-	for _, id := range ids {
-		expr = &Call{Fun: id, Args: []Expr{expr}, L: loc.Loc{l0, id.L[1]}}
+type idx struct {
+	arg Expr
+	l   loc.Loc
+}
+
+func primaries(head Expr, tail []primary) Expr {
+	for _, primary := range tail {
+		switch p := primary.(type) {
+		case sel:
+			head = &Call{Fun: p.name, Args: []Expr{head}, L: p.l}
+		case call:
+			head = &Call{Fun: head, Args: p.args, L: p.l}
+		case idx:
+			head = &Call{Fun: Id{Name: "[]", L: p.l}, Args: []Expr{head, p.arg}, L: p.l}
+		default:
+			panic(fmt.Sprintf("bad primary type: %T", primary))
+		}
 	}
-	return expr
+	return head
 }
 
 func catNames(ids []Id) string {

@@ -248,50 +248,40 @@ Un <- !NumLit name:Op arg:UnArg {
 	return Expr(&Call{Fun: name, Args: []Expr{arg}, L: l(parser, start, end)})
 }
 
-UnArg <- Un / Idx / IdxArg
-
 Op "operator" <- _ name:O+ {
 	return Id{Name: name, L: l(parser, start, end)}
 }
 
-Idx <- expr:IdxArg indexes:Idxs+ {
-	return Expr(bins(expr, indexes))
+UnArg <- Un / Pri / PriArg
+
+Pri <- head:PriArg tail:(Sel / Call / Idx)+ {
+	return Expr(primaries(head, tail))
 }
 
-Idxs <- _ "[" indices:Exprs _ "]" {
-	return &Call{
-		Fun: Id{Name: "[]", L: l(parser, start, end)},
-		Args: append([]Expr{nil}, indices...),
-		L: l(parser, start, end),
-	}
+Sel <- _ "." _ name:Id {
+	name.Name = "." + name.Name
+	return primary(sel{name: name, l: l(parser, start, end)})
 }
 
-IdxArg <- Call / CallArg
-
-Call <- fun:CallArg argss:ArgList+ {
-	return Expr(calls(fun, argss))
+Call <- _ "(" es:Exprs? _ ")" {
+	var exprs []Expr; if es != nil { exprs = *es }
+	return primary(call{args: exprs, l: l(parser, start, end)})
 }
 
-ArgList <- _ "(" as:Exprs? _ ")" {
-	return &Call{Args: args(as), L: l(parser, start, end)}
+Idx <- _ "[" expr:Expr _ "]" {
+	return primary(idx{arg: expr, l: l(parser, start, end)})
 }
 
-CallArg <- Sel / Pri
-
-Sel <- expr:Pri ids:(_ "." _ id:Id { id.Name = "." + id.Name; return Id(id) })+ {
-	return Expr(sel(expr, ids))
-}
-
-Pri <-
+PriArg <- 
 	BlkLit /
-	SubExpr /
-	ModSel /
 	ArrayLit /
 	StructLit /
 	UnionLit /
 	CharLit /
 	StrLit /
 	NumLit /
+	SubExpr /
+	ModSel /
 	id:Id { return Expr(id) }
 
 SubExpr <-

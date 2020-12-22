@@ -308,6 +308,108 @@ func TestExpr(t *testing.T) {
 				},
 			},
 		},
+		{
+			`foo().bar`,
+			&Call{
+				Fun: Id{Name: ".bar"},
+				Args: []Expr{
+					&Call{Fun: Id{Name: "foo"}},
+				},
+			},
+		},
+		{
+			`foo()[bar]`,
+			&Call{
+				Fun: Id{Name: "[]"},
+				Args: []Expr{
+					&Call{Fun: Id{Name: "foo"}},
+					Id{Name: "bar"},
+				},
+			},
+		},
+		{
+			`foo()()`,
+			&Call{
+				Fun: &Call{Fun: Id{Name: "foo"}},
+			},
+		},
+		{
+			`foo[bar].baz`,
+			&Call{
+				Fun: Id{Name: ".baz"},
+				Args: []Expr{
+					&Call{
+						Fun: Id{Name: "[]"},
+						Args: []Expr{
+							Id{Name: "foo"},
+							Id{Name: "bar"},
+						},
+					},
+				},
+			},
+		},
+		{
+			`foo[bar]()`,
+			&Call{
+				Fun: &Call{
+					Fun: Id{Name: "[]"},
+					Args: []Expr{
+						Id{Name: "foo"},
+						Id{Name: "bar"},
+					},
+				},
+			},
+		},
+		{
+			`foo[bar][baz]`,
+			&Call{
+				Fun: Id{Name: "[]"},
+				Args: []Expr{
+					&Call{
+						Fun: Id{Name: "[]"},
+						Args: []Expr{
+							Id{Name: "foo"},
+							Id{Name: "bar"},
+						},
+					},
+					Id{Name: "baz"},
+				},
+			},
+		},
+		{
+			`foo.bar()`,
+			&Call{
+				Fun: &Call{
+					Fun:  Id{Name: ".bar"},
+					Args: []Expr{Id{Name: "foo"}},
+				},
+			},
+		},
+		{
+			`foo.bar[baz]`,
+			&Call{
+				Fun: Id{Name: "[]"},
+				Args: []Expr{
+					&Call{
+						Fun:  Id{Name: ".bar"},
+						Args: []Expr{Id{Name: "foo"}},
+					},
+					Id{Name: "baz"},
+				},
+			},
+		},
+		{
+			`foo.bar.baz`,
+			&Call{
+				Fun: Id{Name: ".baz"},
+				Args: []Expr{
+					&Call{
+						Fun:  Id{Name: ".bar"},
+						Args: []Expr{Id{Name: "foo"}},
+					},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		test := test
