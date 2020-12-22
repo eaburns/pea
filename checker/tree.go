@@ -81,10 +81,12 @@ type Type interface {
 	String() string
 	buildString(w *strings.Builder) *strings.Builder
 
+	Loc() loc.Loc
+
 	// eq must not be called on a type before aliases have been resolved.
 	eq(Type) bool
 
-	baseType() Type
+	literal() Type
 }
 
 type RefType struct {
@@ -92,7 +94,7 @@ type RefType struct {
 	L    loc.Loc
 }
 
-func (r *RefType) baseType() Type { return r }
+func (r *RefType) Loc() loc.Loc { return r.L }
 
 type NamedType struct {
 	Name string
@@ -102,21 +104,21 @@ type NamedType struct {
 	L    loc.Loc
 }
 
-func (n *NamedType) baseType() Type { return n.Inst.Type.baseType() }
+func (n *NamedType) Loc() loc.Loc { return n.L }
 
 type ArrayType struct {
 	ElemType Type
 	L        loc.Loc
 }
 
-func (a *ArrayType) baseType() Type { return a }
+func (a *ArrayType) Loc() loc.Loc { return a.L }
 
 type StructType struct {
 	Fields []FieldDef
 	L      loc.Loc
 }
 
-func (s *StructType) baseType() Type { return s }
+func (s *StructType) Loc() loc.Loc { return s.L }
 
 type FieldDef struct {
 	Name string
@@ -129,7 +131,7 @@ type UnionType struct {
 	L     loc.Loc
 }
 
-func (u *UnionType) baseType() Type { return u }
+func (u *UnionType) Loc() loc.Loc { return u.L }
 
 type CaseDef struct {
 	Name string
@@ -143,7 +145,7 @@ type FuncType struct {
 	L     loc.Loc
 }
 
-func (f *FuncType) baseType() Type { return f }
+func (f *FuncType) Loc() loc.Loc { return f.L }
 
 type TypeVar struct {
 	Name string
@@ -151,7 +153,7 @@ type TypeVar struct {
 	L    loc.Loc
 }
 
-func (t *TypeVar) baseType() Type { return t }
+func (t *TypeVar) Loc() loc.Loc { return t.L }
 
 const (
 	Bool BasicTypeKind = iota + 1
@@ -177,7 +179,7 @@ type BasicType struct {
 	L    loc.Loc
 }
 
-func (b *BasicType) baseType() Type { return b }
+func (b *BasicType) Loc() loc.Loc { return b.L }
 
 type FuncDef struct {
 	File      *File
@@ -323,15 +325,6 @@ type Builtin struct {
 
 func (b *Builtin) Parms() []Type { return b.Ps }
 func (b *Builtin) Ret() Type     { return b.R }
-
-type Ref struct {
-	Expr Expr
-	T    Type
-	L    loc.Loc
-}
-
-func (r *Ref) Type() Type   { return r.T }
-func (r *Ref) Loc() loc.Loc { return r.L }
 
 type Deref struct {
 	Expr Expr

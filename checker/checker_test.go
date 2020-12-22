@@ -167,6 +167,42 @@ func TestErrors(t *testing.T) {
 	}
 }
 
+func TestLiteralType(t *testing.T) {
+	tests := []struct {
+		src string
+		typ string
+		lit string
+	}{
+		{typ: "int", lit: "int"},
+		{typ: "[int]", lit: "[int]"},
+		{typ: "[.x int]", lit: "[.x int]"},
+		{typ: "[?x int]", lit: "[?x int]"},
+		{typ: "(int){int}", lit: "(int){int}"},
+		{typ: "&int", lit: "&int"},
+		{typ: "&&int", lit: "&&int"},
+		{src: "type t int", typ: "t", lit: "int"},
+		{src: "type t int", typ: "&t", lit: "&int"},
+		{src: "type t &int", typ: "t", lit: "&int"},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.typ, func(t *testing.T) {
+			src := fmt.Sprintf("%s\ntype got %s\ntype lit %s\n",
+				test.src, test.typ, test.lit)
+			t.Log(src)
+			mod, errs := check("test", []string{src}, nil)
+			if len(errs) > 0 {
+				t.Fatalf("failed to check: %s", errStr(errs))
+			}
+			got := literal(findTypeDef(t, "got", mod).Type)
+			lit := findTypeDef(t, "lit", mod).Type
+			if !got.eq(lit) {
+				t.Errorf("got literal %s, want %s", got, lit)
+			}
+		})
+	}
+}
+
 func errStr(errs []error) string {
 	var s strings.Builder
 	for i, err := range errs {

@@ -290,14 +290,6 @@ func (b *Builtin) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (r *Ref) print(pc *config) {
-	pc.p("Ref{")
-	pc.loc(r.L)
-	pc.field("Expr", r.Expr)
-	pc.field("Type", r.T)
-	pc.p("\n}")
-}
-
 func (d *Deref) print(pc *config) {
 	pc.p("Deref{")
 	pc.loc(d.L)
