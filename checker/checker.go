@@ -839,6 +839,18 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) (scope, []Expr, [
 	return x, exprs, fails
 }
 
+// checkStructLit checks a struct literal.
+// 	* If the expected type's literal type is a struct type
+// 	  or a reference to a struct type,
+// 	  and the expected struct type has the same fields,
+// 	  in the same order, as the literal,
+// 	  then the type of the literal is the expected type.
+// 	  The field values are checked with the expected type
+// 	  of their corresponding field types.
+// 	* Otherwise, the type of the literal is an unnamed struct type
+// 	  with fields for each of the literal fields.
+// 	  The type of each field is the type of the corresponding
+// 	  literal field value checked with no expected type.
 func checkStructLit(x scope, parserStructLit *parser.StructLit, want Type) (scope, Expr, []*fail) {
 	var fails []*fail
 	structLit := &StructLit{L: parserStructLit.L}
@@ -907,6 +919,20 @@ func checkStructLit(x scope, parserStructLit *parser.StructLit, want Type) (scop
 	return x, structLit, fails
 }
 
+// checkUnionLit checks a union literal.
+// 	* If the expected type's literal type is a union type
+// 	  or a reference to a union type,
+// 	  and the expected union type has a case
+// 	  with the same name as the literal case name,
+// 	  and whether the case has a value is the same
+// 	  as whether the literal has a value,
+// 	  then the type of the literal is the expected type.
+// 	  If the literal has a value, it is checked with
+// 	  the expected type of the corresponding case type.
+// 	* Otherwise, the literal's type is an unnamed union type
+// 	  with a single case of the name of the literal case.
+// 	  If the literal has a value, the type of the case
+// 	  is the type of the value checked with no expected type.
 func checkUnionLit(x scope, parserUnionLit *parser.UnionLit, want Type) (scope, Expr, []*fail) {
 	var fails []*fail
 	unionLit := &UnionLit{L: parserUnionLit.L}
@@ -963,6 +989,8 @@ func findCase(name string, u *UnionType) *CaseDef {
 	return nil
 }
 
+// checkBlockLit checks a block literal.
+// 	TODO: checkBlockLit is all messed up :-)
 func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, want Type) (Expr, []*fail) {
 	var fails []*fail
 	parms, fs := makeFuncParms(x, parserBlockLit.Parms)
@@ -1011,6 +1039,11 @@ func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, want Type) (Expr, [
 	return blockLit, fails
 }
 
+// checkStrLit checks a string literal.
+// 	* If the expected type's literal types is the built-in string type
+// 	  or a reference to the built-in string type,
+// 	  then the type of the literal is the expected type.
+// 	* Otherwise the type is string.
 func checkStrLit(parserStrLit *parser.StrLit, want Type) (Expr, []*fail) {
 	strLit := &StrLit{Text: parserStrLit.Data, L: parserStrLit.L}
 	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
@@ -1031,6 +1064,10 @@ func checkStrLit(parserStrLit *parser.StrLit, want Type) (Expr, []*fail) {
 	}
 }
 
+// checkCharLit checks a character literal.
+// 	* Characeter literals are checked just as int literals
+// 	  with the literal value being the unicode code point value
+// 	  of the character.
 func checkCharLit(parserCharLit *parser.CharLit, want Type) (Expr, []*fail) {
 	parserIntLit := &parser.IntLit{
 		Text: strconv.FormatInt(int64(parserCharLit.Rune), 10),
@@ -1039,6 +1076,15 @@ func checkCharLit(parserCharLit *parser.CharLit, want Type) (Expr, []*fail) {
 	return checkIntLit(parserIntLit, want)
 }
 
+// checkIntLit checks an integer literal.
+// 	* If the expected type's literal type is a built-in int type
+// 	  or a reference to a built-in int type,
+// 	  then the type of the literal is the expected type.
+// 	  It is an error if the value is not representable by the int type.
+// 	* If the expected type's literal type is a built-in float type,
+// 	  or a reference to a built-in float type,
+// 	  then the type of the literal is the expected type.
+// 	* Otherwise the type of the literal is int.
 func checkIntLit(parserIntLit *parser.IntLit, want Type) (Expr, []*fail) {
 	intLit := &IntLit{Text: parserIntLit.Text, L: parserIntLit.L}
 	if _, ok := intLit.Val.SetString(parserIntLit.Text, 0); !ok {
@@ -1127,6 +1173,16 @@ func checkIntLit(parserIntLit *parser.IntLit, want Type) (Expr, []*fail) {
 	}
 }
 
+// checkFloatLit checks a float literal.
+// 	* If the expected type's literal type is a built-in float type
+// 	  or a reference to a built-in float type,
+// 	  then the type of the expression is the expected type.
+// 	* If the expected type's literal type is a built-in int type
+// 	  or a reference to a built-in int type,
+// 	  then the type of the experssion is the expected type.
+// 	  It is an error if the literal value is not a whole integer value
+// 	  representable by the int typ.
+// 	* Otherwise, the type is float64.
 func checkFloatLit(parserFloatLit *parser.FloatLit, want Type) (Expr, []*fail) {
 	floatLit := &FloatLit{Text: parserFloatLit.Text, L: parserFloatLit.L}
 	if _, _, err := floatLit.Val.Parse(parserFloatLit.Text, 10); err != nil {
