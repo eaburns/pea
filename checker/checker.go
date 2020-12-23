@@ -796,9 +796,9 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (scope, Expr, []*fail
 	case *parser.ArrayLit:
 		// TODO
 	case *parser.StructLit:
-		x, expr, fails = checkStructLit(x, parserExpr, want)
+		expr, fails = checkStructLit(x, parserExpr, want)
 	case *parser.UnionLit:
-		x, expr, fails = checkUnionLit(x, parserExpr, want)
+		expr, fails = checkUnionLit(x, parserExpr, want)
 	case *parser.BlockLit:
 		expr, fails = checkBlockLit(x, parserExpr, want)
 	case *parser.StrLit:
@@ -840,144 +840,131 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) (scope, []Expr, [
 }
 
 // checkStructLit checks a struct literal.
-// 	* If the expected type's literal type is a struct type
-// 	  or a reference to a struct type,
-// 	  and the expected struct type has the same fields,
-// 	  in the same order, as the literal,
-// 	  then the type of the literal is the expected type.
-// 	  The field values are checked with the expected type
-// 	  of their corresponding field types.
-// 	* Otherwise, the type of the literal is an unnamed struct type
-// 	  with fields for each of the literal fields.
-// 	  The type of each field is the type of the corresponding
-// 	  literal field value checked with no expected type.
-func checkStructLit(x scope, parserStructLit *parser.StructLit, want Type) (scope, Expr, []*fail) {
+// 	* If the expected type is appropriate to the literal,
+// 	  then the literal's type is the expected type.
+// 	  The expected type of each literal field value
+// 	  is the type of the corresponding field,
+// 	  and it is an error if the value's type is not convertable
+// 	  to the field value.
+// 	* Otherwise, the literal's type is an unnamed struct type
+// 	  with a field corresponding to each of the literal's fields.
+// 	  The type of each field is the type of its corresponding value
+// 	  with no expected type.
+//
+// A type is apropriate to a struct literal if
+// 	* its literal type is a struct type or a reference to a struct type,
+// 	* it has the same number of fields as the literal,
+// 	* each of the fields, in order, has the same name as the corresponding literal field.
+func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []*fail) {
 	var fails []*fail
-	structLit := &StructLit{L: parserStructLit.L}
+	lit := &StructLit{L: parserLit.L}
 
-	var wantFieldTypes []Type
-	wantStructType, _ := trim1Ref(literal(want)).(*StructType)
-	if wantStructType != nil &&
-		len(wantStructType.Fields) == len(parserStructLit.FieldVals) {
-		for i := range wantStructType.Fields {
-			typeField := wantStructType.Fields[i]
-			litFieldName := parserStructLit.FieldVals[i].Name.Name
-			if typeField.Name != litFieldName {
-				wantFieldTypes = nil
-				break
+	if lit.Struct = appropriateStruct(want, parserLit); lit.Struct != nil {
+		for i, parserField := range parserLit.FieldVals {
+			_, expr, fs := checkExpr(x, parserField.Val, lit.Struct.Fields[i].Type)
+			if len(fs) > 0 {
+				fails = append(fails, fs...)
 			}
-			wantFieldTypes = append(wantFieldTypes, typeField.Type)
+			lit.Fields = append(lit.Fields, expr)
 		}
+		if !isRef(want) {
+			lit.T = ref(copyTypeWithLoc(want, lit.L))
+			return deref(lit), fails
+		}
+		lit.T = copyTypeWithLoc(want, lit.L)
+		return lit, fails
 	}
-	for i, parserFieldVal := range parserStructLit.FieldVals {
-		var wantFieldType Type
-		if wantFieldTypes != nil {
-			wantFieldType = wantFieldTypes[i]
-		}
-		var fs []*fail
-		var expr Expr
-		x, expr, fs = checkExpr(x, parserFieldVal.Val, wantFieldType)
+
+	lit.Struct = &StructType{L: lit.L}
+	for _, parserField := range parserLit.FieldVals {
+		_, expr, fs := checkExpr(x, parserField.Val, nil)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
 		}
-		if expr != nil {
-			structLit.Fields = append(structLit.Fields, expr)
-		}
+		lit.Fields = append(lit.Fields, expr)
+		lit.Struct.Fields = append(lit.Struct.Fields, FieldDef{
+			Name: parserField.Name.Name,
+			Type: expr.Type(),
+			L:    parserField.L,
+		})
 	}
+	lit.T = ref(lit.Struct)
+	return deref(lit), fails
+}
 
-	wantOK := false
-	if wantFieldTypes != nil && len(structLit.Fields) == len(wantFieldTypes) {
-		wantOK = true
-		for i, wantFieldType := range wantFieldTypes {
-			if !wantFieldType.eq(structLit.Fields[i].Type()) {
-				wantOK = false
-				break
-			}
+func appropriateStruct(typ Type, lit *parser.StructLit) *StructType {
+	s, ok := trim1Ref(literal(typ)).(*StructType)
+	if !ok || len(s.Fields) != len(lit.FieldVals) {
+		return nil
+	}
+	for i := range s.Fields {
+		if s.Fields[i].Name != lit.FieldVals[i].Name.Name {
+			return nil
 		}
 	}
-	if !wantOK {
-		structType := &StructType{L: parserStructLit.L}
-		for i, field := range structLit.Fields {
-			name := parserStructLit.FieldVals[i].Name.Name
-			structType.Fields = append(structType.Fields, FieldDef{
-				Name: name,
-				Type: field.Type(),
-				L:    parserStructLit.FieldVals[i].L,
-			})
-		}
-		structLit.Struct = structType
-		structLit.T = ref(structType)
-		return x, deref(structLit), fails
-	}
-
-	structLit.Struct = wantStructType
-	if !isRef(want) {
-		structLit.T = ref(copyTypeWithLoc(want, structLit.L))
-		return x, deref(structLit), fails
-	}
-	structLit.T = copyTypeWithLoc(want, structLit.L)
-	return x, structLit, fails
+	return s
 }
 
 // checkUnionLit checks a union literal.
-// 	* If the expected type's literal type is a union type
-// 	  or a reference to a union type,
-// 	  and the expected union type has a case
-// 	  with the same name as the literal case name,
-// 	  and whether the case has a value is the same
-// 	  as whether the literal has a value,
-// 	  then the type of the literal is the expected type.
-// 	  If the literal has a value, it is checked with
-// 	  the expected type of the corresponding case type.
+// 	* If the expected type is appropriate to the literal,
+// 	  then the literal's type is the expected type.
+// 	  If the literal has a value,
+// 	  it's expected type is the corresponding case type,
+// 	  and it is an error if the value is not convertable
+// 	  to the case type.
 // 	* Otherwise, the literal's type is an unnamed union type
 // 	  with a single case of the name of the literal case.
 // 	  If the literal has a value, the type of the case
-// 	  is the type of the value checked with no expected type.
-func checkUnionLit(x scope, parserUnionLit *parser.UnionLit, want Type) (scope, Expr, []*fail) {
+// 	  is the type of the value with no expected type.
+//
+// A type is apropriate to a union literal if
+// 	* its literal type is a union type or a reference to a union type,
+// 	* it has a case with the same name as the literal case,
+// 	* if the literal has a value, the corresponding case has a type,
+// 	* or if the literal has no value, the corresponding case has no type.
+func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []*fail) {
 	var fails []*fail
-	unionLit := &UnionLit{L: parserUnionLit.L}
-
-	var wantCase *CaseDef
-	wantUnionType, _ := trim1Ref(literal(want)).(*UnionType)
-	if wantUnionType != nil {
-		caseName := parserUnionLit.CaseVal.Name.Name
-		wantCase = findCase(caseName, wantUnionType)
-	}
-
-	if parserVal := parserUnionLit.CaseVal.Val; parserVal != nil {
-		var wantValType Type
-		if wantCase != nil {
-			wantValType = wantCase.Type
+	lit := &UnionLit{L: parserLit.L}
+	if lit.Union, lit.Case = appropriateUnion(want, parserLit); lit.Union != nil {
+		if parserLit.CaseVal.Val != nil {
+			_, lit.Val, fails = checkExpr(x, parserLit.CaseVal.Val, lit.Case.Type)
 		}
-		x, unionLit.Val, fails = checkExpr(x, parserVal, wantValType)
+		if !isRef(want) {
+			lit.T = ref(copyTypeWithLoc(want, lit.L))
+			return deref(lit), fails
+		}
+		lit.T = copyTypeWithLoc(want, lit.L)
+		return lit, fails
 	}
 
-	if wantCase == nil ||
-		(wantCase.Type == nil) != (unionLit.Val == nil) ||
-		wantCase.Type != nil && !wantCase.Type.eq(unionLit.Val.Type()) {
-		unionLit.Union = &UnionType{
-			Cases: []CaseDef{{
-				Name: parserUnionLit.CaseVal.Name.Name,
-				L:    parserUnionLit.CaseVal.L,
-			}},
-			L: parserUnionLit.L,
-		}
-		unionLit.Case = &unionLit.Union.Cases[0]
-		if unionLit.Val != nil {
-			unionLit.Case.Type = unionLit.Val.Type()
-		}
-		unionLit.T = ref(unionLit.Union)
-		return x, deref(unionLit), fails
+	lit.Union = &UnionType{
+		Cases: []CaseDef{{
+			Name: parserLit.CaseVal.Name.Name,
+			L:    parserLit.CaseVal.L,
+		}},
+		L: parserLit.L,
 	}
+	if parserLit.CaseVal.Val != nil {
+		_, lit.Val, fails = checkExpr(x, parserLit.CaseVal.Val, nil)
+	}
+	lit.Case = &lit.Union.Cases[0]
+	if lit.Val != nil {
+		lit.Case.Type = lit.Val.Type()
+	}
+	lit.T = ref(lit.Union)
+	return deref(lit), fails
+}
 
-	unionLit.Union = wantUnionType
-	unionLit.Case = wantCase
-	if !isRef(want) {
-		unionLit.T = ref(copyTypeWithLoc(want, unionLit.L))
-		return x, deref(unionLit), fails
+func appropriateUnion(typ Type, lit *parser.UnionLit) (*UnionType, *CaseDef) {
+	u, ok := trim1Ref(literal(typ)).(*UnionType)
+	if !ok {
+		return nil, nil
 	}
-	unionLit.T = copyTypeWithLoc(want, unionLit.L)
-	return x, unionLit, fails
+	c := findCase(lit.CaseVal.Name.Name, u)
+	if c == nil || (c.Type == nil) != (lit.CaseVal.Val == nil) {
+		return nil, nil
+	}
+	return u, c
 }
 
 func findCase(name string, u *UnionType) *CaseDef {
@@ -1044,23 +1031,23 @@ func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, want Type) (Expr, [
 // 	  or a reference to the built-in string type,
 // 	  then the type of the literal is the expected type.
 // 	* Otherwise the type is string.
-func checkStrLit(parserStrLit *parser.StrLit, want Type) (Expr, []*fail) {
-	strLit := &StrLit{Text: parserStrLit.Data, L: parserStrLit.L}
+func checkStrLit(parserLit *parser.StrLit, want Type) (Expr, []*fail) {
+	lit := &StrLit{Text: parserLit.Data, L: parserLit.L}
 	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
 	case want == nil:
 		fallthrough
 	case !ok:
 		fallthrough
 	default:
-		strLit.T = ref(&BasicType{Kind: String, L: parserStrLit.L})
-		return deref(strLit), nil
+		lit.T = ref(&BasicType{Kind: String, L: parserLit.L})
+		return deref(lit), nil
 	case b.Kind == String:
 		if !isRef(want) {
-			strLit.T = ref(copyTypeWithLoc(want, parserStrLit.L))
-			return deref(strLit), nil
+			lit.T = ref(copyTypeWithLoc(want, lit.L))
+			return deref(lit), nil
 		}
-		strLit.T = copyTypeWithLoc(want, parserStrLit.L)
-		return strLit, nil
+		lit.T = copyTypeWithLoc(want, lit.L)
+		return lit, nil
 	}
 }
 
@@ -1068,12 +1055,12 @@ func checkStrLit(parserStrLit *parser.StrLit, want Type) (Expr, []*fail) {
 // 	* Characeter literals are checked just as int literals
 // 	  with the literal value being the unicode code point value
 // 	  of the character.
-func checkCharLit(parserCharLit *parser.CharLit, want Type) (Expr, []*fail) {
-	parserIntLit := &parser.IntLit{
-		Text: strconv.FormatInt(int64(parserCharLit.Rune), 10),
-		L:    parserCharLit.L,
-	}
-	return checkIntLit(parserIntLit, want)
+// TODO: should default to int32, not int.
+func checkCharLit(parserLit *parser.CharLit, want Type) (Expr, []*fail) {
+	return checkIntLit(&parser.IntLit{
+		Text: strconv.FormatInt(int64(parserLit.Rune), 10),
+		L:    parserLit.L,
+	}, want)
 }
 
 // checkIntLit checks an integer literal.
@@ -1085,9 +1072,9 @@ func checkCharLit(parserCharLit *parser.CharLit, want Type) (Expr, []*fail) {
 // 	  or a reference to a built-in float type,
 // 	  then the type of the literal is the expected type.
 // 	* Otherwise the type of the literal is int.
-func checkIntLit(parserIntLit *parser.IntLit, want Type) (Expr, []*fail) {
-	intLit := &IntLit{Text: parserIntLit.Text, L: parserIntLit.L}
-	if _, ok := intLit.Val.SetString(parserIntLit.Text, 0); !ok {
+func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []*fail) {
+	lit := &IntLit{Text: parserLit.Text, L: parserLit.L}
+	if _, ok := lit.Val.SetString(parserLit.Text, 0); !ok {
 		panic("malformed int")
 	}
 	var bits uint
@@ -1098,14 +1085,13 @@ func checkIntLit(parserIntLit *parser.IntLit, want Type) (Expr, []*fail) {
 	case !ok:
 		fallthrough
 	default:
-		intLit.T = ref(&BasicType{Kind: Int, L: parserIntLit.L})
-		return deref(intLit), nil
+		lit.T = ref(&BasicType{Kind: Int, L: parserLit.L})
+		return deref(lit), nil
 	case b.Kind == Float32 || b.Kind == Float64:
-		parserFloatLit := &parser.FloatLit{
-			Text: parserIntLit.Text,
-			L:    parserIntLit.L,
-		}
-		return checkFloatLit(parserFloatLit, want)
+		return checkFloatLit(&parser.FloatLit{
+			Text: parserLit.Text,
+			L:    parserLit.L,
+		}, want)
 	case b.Kind == Int:
 		bits = 64 // TODO: set by a flag
 		signed = true
@@ -1153,23 +1139,23 @@ func checkIntLit(parserIntLit *parser.IntLit, want Type) (Expr, []*fail) {
 		max = max.Sub(max, big.NewInt(1))
 	}
 	switch {
-	case intLit.Val.Cmp(min) < 0:
+	case lit.Val.Cmp(min) < 0:
 		return nil, []*fail{{
-			msg: fmt.Sprintf("%s underflows type %s", intLit.Text, want),
-			loc: intLit.L,
+			msg: fmt.Sprintf("%s underflows type %s", lit.Text, want),
+			loc: lit.L,
 		}}
-	case intLit.Val.Cmp(max) > 0:
+	case lit.Val.Cmp(max) > 0:
 		return nil, []*fail{{
-			msg: fmt.Sprintf("%s overflows type %s", intLit.Text, want),
-			loc: intLit.L,
+			msg: fmt.Sprintf("%s overflows type %s", lit.Text, want),
+			loc: lit.L,
 		}}
 	default:
 		if !isRef(want) {
-			intLit.T = ref(copyTypeWithLoc(want, intLit.L))
-			return deref(intLit), nil
+			lit.T = ref(copyTypeWithLoc(want, lit.L))
+			return deref(lit), nil
 		}
-		intLit.T = copyTypeWithLoc(want, intLit.L)
-		return intLit, nil
+		lit.T = copyTypeWithLoc(want, lit.L)
+		return lit, nil
 	}
 }
 
@@ -1183,9 +1169,9 @@ func checkIntLit(parserIntLit *parser.IntLit, want Type) (Expr, []*fail) {
 // 	  It is an error if the literal value is not a whole integer value
 // 	  representable by the int typ.
 // 	* Otherwise, the type is float64.
-func checkFloatLit(parserFloatLit *parser.FloatLit, want Type) (Expr, []*fail) {
-	floatLit := &FloatLit{Text: parserFloatLit.Text, L: parserFloatLit.L}
-	if _, _, err := floatLit.Val.Parse(parserFloatLit.Text, 10); err != nil {
+func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []*fail) {
+	lit := &FloatLit{Text: parserLit.Text, L: parserLit.L}
+	if _, _, err := lit.Val.Parse(parserLit.Text, 10); err != nil {
 		panic("malformed float")
 	}
 	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
@@ -1194,8 +1180,8 @@ func checkFloatLit(parserFloatLit *parser.FloatLit, want Type) (Expr, []*fail) {
 	case !ok:
 		fallthrough
 	default:
-		floatLit.T = ref(&BasicType{Kind: Float64, L: parserFloatLit.L})
-		return deref(floatLit), nil
+		lit.T = ref(&BasicType{Kind: Float64, L: parserLit.L})
+		return deref(lit), nil
 	case b.Kind == Int ||
 		b.Kind == Int8 ||
 		b.Kind == Int16 ||
@@ -1207,24 +1193,23 @@ func checkFloatLit(parserFloatLit *parser.FloatLit, want Type) (Expr, []*fail) {
 		b.Kind == Uint32 ||
 		b.Kind == Uint64:
 		var i big.Int
-		if _, acc := floatLit.Val.Int(&i); acc != big.Exact {
+		if _, acc := lit.Val.Int(&i); acc != big.Exact {
 			return nil, []*fail{{
-				msg: fmt.Sprintf("%s truncates %s", want, floatLit.Text),
-				loc: floatLit.L,
+				msg: fmt.Sprintf("%s truncates %s", want, lit.Text),
+				loc: lit.L,
 			}}
 		}
-		parserIntLit := &parser.IntLit{
+		return checkIntLit(&parser.IntLit{
 			Text: i.String(),
-			L:    parserFloatLit.L,
-		}
-		return checkIntLit(parserIntLit, want)
+			L:    parserLit.L,
+		}, want)
 	case b.Kind == Float32 || b.Kind == Float64:
 		if !isRef(want) {
-			floatLit.T = ref(copyTypeWithLoc(want, floatLit.L))
-			return deref(floatLit), nil
+			lit.T = ref(copyTypeWithLoc(want, lit.L))
+			return deref(lit), nil
 		}
-		floatLit.T = copyTypeWithLoc(want, floatLit.L)
-		return floatLit, nil
+		lit.T = copyTypeWithLoc(want, lit.L)
+		return lit, nil
 	}
 }
 
