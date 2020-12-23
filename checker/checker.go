@@ -781,7 +781,7 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []*fail {
 	return fails
 }
 
-func checkExpr(x scope, parserExpr parser.Expr, sug Type) (scope, Expr, []*fail) {
+func checkExpr(x scope, parserExpr parser.Expr, want Type) (scope, Expr, []*fail) {
 	var expr Expr
 	var fails []*fail
 	switch parserExpr := parserExpr.(type) {
@@ -790,25 +790,25 @@ func checkExpr(x scope, parserExpr parser.Expr, sug Type) (scope, Expr, []*fail)
 	case *parser.Convert:
 		// TODO
 	case *parser.SubExpr:
-		x, expr, fails = checkExpr(x, parserExpr.Expr, sug)
+		x, expr, fails = checkExpr(x, parserExpr.Expr, want)
 	case *parser.ModSel:
 		// TODO
 	case *parser.ArrayLit:
 		// TODO
 	case *parser.StructLit:
-		x, expr, fails = checkStructLit(x, parserExpr, sug)
+		x, expr, fails = checkStructLit(x, parserExpr, want)
 	case *parser.UnionLit:
-		x, expr, fails = checkUnionLit(x, parserExpr, sug)
+		x, expr, fails = checkUnionLit(x, parserExpr, want)
 	case *parser.BlockLit:
-		expr, fails = checkBlockLit(x, parserExpr, sug)
+		expr, fails = checkBlockLit(x, parserExpr, want)
 	case *parser.StrLit:
-		expr, fails = checkStrLit(parserExpr, sug)
+		expr, fails = checkStrLit(parserExpr, want)
 	case *parser.CharLit:
-		expr, fails = checkCharLit(parserExpr, sug)
+		expr, fails = checkCharLit(parserExpr, want)
 	case *parser.IntLit:
-		expr, fails = checkIntLit(parserExpr, sug)
+		expr, fails = checkIntLit(parserExpr, want)
 	case *parser.FloatLit:
-		expr, fails = checkFloatLit(parserExpr, sug)
+		expr, fails = checkFloatLit(parserExpr, want)
 	case parser.Id:
 		// TODO
 	default:
@@ -817,15 +817,15 @@ func checkExpr(x scope, parserExpr parser.Expr, sug Type) (scope, Expr, []*fail)
 	return x, expr, fails
 }
 
-// sug is the type suggested for the last expression, or nil.
-func checkExprs(x scope, parserExprs []parser.Expr, sug Type) (scope, []Expr, []*fail) {
+// want is the type expected for the last expression, or nil.
+func checkExprs(x scope, parserExprs []parser.Expr, want Type) (scope, []Expr, []*fail) {
 	var fails []*fail
 	var exprs []Expr
 	for i, parserExpr := range parserExprs {
 		var fs []*fail
 		var expr Expr
 		if i == len(parserExprs)-1 {
-			x, expr, fs = checkExpr(x, parserExpr, sug)
+			x, expr, fs = checkExpr(x, parserExpr, want)
 		} else {
 			x, expr, fs = checkExpr(x, parserExpr, nil)
 		}
@@ -839,32 +839,32 @@ func checkExprs(x scope, parserExprs []parser.Expr, sug Type) (scope, []Expr, []
 	return x, exprs, fails
 }
 
-func checkStructLit(x scope, parserStructLit *parser.StructLit, sug Type) (scope, Expr, []*fail) {
+func checkStructLit(x scope, parserStructLit *parser.StructLit, want Type) (scope, Expr, []*fail) {
 	var fails []*fail
 	structLit := &StructLit{L: parserStructLit.L}
 
-	var sugFieldTypes []Type
-	sugStructType, _ := trim1Ref(literal(sug)).(*StructType)
-	if sugStructType != nil &&
-		len(sugStructType.Fields) == len(parserStructLit.FieldVals) {
-		for i := range sugStructType.Fields {
-			typeField := sugStructType.Fields[i]
+	var wantFieldTypes []Type
+	wantStructType, _ := trim1Ref(literal(want)).(*StructType)
+	if wantStructType != nil &&
+		len(wantStructType.Fields) == len(parserStructLit.FieldVals) {
+		for i := range wantStructType.Fields {
+			typeField := wantStructType.Fields[i]
 			litFieldName := parserStructLit.FieldVals[i].Name.Name
 			if typeField.Name != litFieldName {
-				sugFieldTypes = nil
+				wantFieldTypes = nil
 				break
 			}
-			sugFieldTypes = append(sugFieldTypes, typeField.Type)
+			wantFieldTypes = append(wantFieldTypes, typeField.Type)
 		}
 	}
 	for i, parserFieldVal := range parserStructLit.FieldVals {
-		var sugFieldType Type
-		if sugFieldTypes != nil {
-			sugFieldType = sugFieldTypes[i]
+		var wantFieldType Type
+		if wantFieldTypes != nil {
+			wantFieldType = wantFieldTypes[i]
 		}
 		var fs []*fail
 		var expr Expr
-		x, expr, fs = checkExpr(x, parserFieldVal.Val, sugFieldType)
+		x, expr, fs = checkExpr(x, parserFieldVal.Val, wantFieldType)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
 		}
@@ -873,17 +873,17 @@ func checkStructLit(x scope, parserStructLit *parser.StructLit, sug Type) (scope
 		}
 	}
 
-	sugOK := false
-	if sugFieldTypes != nil && len(structLit.Fields) == len(sugFieldTypes) {
-		sugOK = true
-		for i, sugFieldType := range sugFieldTypes {
-			if !sugFieldType.eq(structLit.Fields[i].Type()) {
-				sugOK = false
+	wantOK := false
+	if wantFieldTypes != nil && len(structLit.Fields) == len(wantFieldTypes) {
+		wantOK = true
+		for i, wantFieldType := range wantFieldTypes {
+			if !wantFieldType.eq(structLit.Fields[i].Type()) {
+				wantOK = false
 				break
 			}
 		}
 	}
-	if !sugOK {
+	if !wantOK {
 		structType := &StructType{L: parserStructLit.L}
 		for i, field := range structLit.Fields {
 			name := parserStructLit.FieldVals[i].Name.Name
@@ -898,37 +898,37 @@ func checkStructLit(x scope, parserStructLit *parser.StructLit, sug Type) (scope
 		return x, deref(structLit), fails
 	}
 
-	structLit.Struct = sugStructType
-	if !isRef(sug) {
-		structLit.T = ref(copyTypeWithLoc(sug, structLit.L))
+	structLit.Struct = wantStructType
+	if !isRef(want) {
+		structLit.T = ref(copyTypeWithLoc(want, structLit.L))
 		return x, deref(structLit), fails
 	}
-	structLit.T = copyTypeWithLoc(sug, structLit.L)
+	structLit.T = copyTypeWithLoc(want, structLit.L)
 	return x, structLit, fails
 }
 
-func checkUnionLit(x scope, parserUnionLit *parser.UnionLit, sug Type) (scope, Expr, []*fail) {
+func checkUnionLit(x scope, parserUnionLit *parser.UnionLit, want Type) (scope, Expr, []*fail) {
 	var fails []*fail
 	unionLit := &UnionLit{L: parserUnionLit.L}
 
-	var sugCase *CaseDef
-	sugUnionType, _ := trim1Ref(literal(sug)).(*UnionType)
-	if sugUnionType != nil {
+	var wantCase *CaseDef
+	wantUnionType, _ := trim1Ref(literal(want)).(*UnionType)
+	if wantUnionType != nil {
 		caseName := parserUnionLit.CaseVal.Name.Name
-		sugCase = findCase(caseName, sugUnionType)
+		wantCase = findCase(caseName, wantUnionType)
 	}
 
 	if parserVal := parserUnionLit.CaseVal.Val; parserVal != nil {
-		var sugValType Type
-		if sugCase != nil {
-			sugValType = sugCase.Type
+		var wantValType Type
+		if wantCase != nil {
+			wantValType = wantCase.Type
 		}
-		x, unionLit.Val, fails = checkExpr(x, parserVal, sugValType)
+		x, unionLit.Val, fails = checkExpr(x, parserVal, wantValType)
 	}
 
-	if sugCase == nil ||
-		(sugCase.Type == nil) != (unionLit.Val == nil) ||
-		sugCase.Type != nil && !sugCase.Type.eq(unionLit.Val.Type()) {
+	if wantCase == nil ||
+		(wantCase.Type == nil) != (unionLit.Val == nil) ||
+		wantCase.Type != nil && !wantCase.Type.eq(unionLit.Val.Type()) {
 		unionLit.Union = &UnionType{
 			Cases: []CaseDef{{
 				Name: parserUnionLit.CaseVal.Name.Name,
@@ -944,13 +944,13 @@ func checkUnionLit(x scope, parserUnionLit *parser.UnionLit, sug Type) (scope, E
 		return x, deref(unionLit), fails
 	}
 
-	unionLit.Union = sugUnionType
-	unionLit.Case = sugCase
-	if !isRef(sug) {
-		unionLit.T = ref(copyTypeWithLoc(sug, unionLit.L))
+	unionLit.Union = wantUnionType
+	unionLit.Case = wantCase
+	if !isRef(want) {
+		unionLit.T = ref(copyTypeWithLoc(want, unionLit.L))
 		return x, deref(unionLit), fails
 	}
-	unionLit.T = copyTypeWithLoc(sug, unionLit.L)
+	unionLit.T = copyTypeWithLoc(want, unionLit.L)
 	return x, unionLit, fails
 }
 
@@ -963,7 +963,7 @@ func findCase(name string, u *UnionType) *CaseDef {
 	return nil
 }
 
-func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, sug Type) (Expr, []*fail) {
+func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, want Type) (Expr, []*fail) {
 	var fails []*fail
 	parms, fs := makeFuncParms(x, parserBlockLit.Parms)
 	if len(fs) > 0 {
@@ -981,7 +981,7 @@ func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, sug Type) (Expr, []
 	x = &blockLitScope{parent: x, BlockLit: blockLit}
 
 	var retType Type
-	if b, ok := trim1Ref(literal(sug)).(*FuncType); ok {
+	if b, ok := trim1Ref(literal(want)).(*FuncType); ok {
 		retType = b.Ret
 	}
 	_, blockLit.Exprs, fs = checkExprs(x, parserBlockLit.Exprs, retType)
@@ -1000,21 +1000,21 @@ func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, sug Type) (Expr, []
 		L:     parserBlockLit.L,
 	}
 
-	if base := trim1Ref(literal(sug)); base == nil || !blockLit.T.eq(base) {
+	if base := trim1Ref(literal(want)); base == nil || !blockLit.T.eq(base) {
 		return blockLit, fails
 	}
-	if !isRef(sug) {
-		blockLit.T = ref(copyTypeWithLoc(sug, blockLit.L))
+	if !isRef(want) {
+		blockLit.T = ref(copyTypeWithLoc(want, blockLit.L))
 		return deref(blockLit), fails
 	}
-	blockLit.T = copyTypeWithLoc(sug, blockLit.L)
+	blockLit.T = copyTypeWithLoc(want, blockLit.L)
 	return blockLit, fails
 }
 
-func checkStrLit(parserStrLit *parser.StrLit, sug Type) (Expr, []*fail) {
+func checkStrLit(parserStrLit *parser.StrLit, want Type) (Expr, []*fail) {
 	strLit := &StrLit{Text: parserStrLit.Data, L: parserStrLit.L}
-	switch b, ok := trim1Ref(literal(sug)).(*BasicType); {
-	case sug == nil:
+	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
+	case want == nil:
 		fallthrough
 	case !ok:
 		fallthrough
@@ -1022,32 +1022,32 @@ func checkStrLit(parserStrLit *parser.StrLit, sug Type) (Expr, []*fail) {
 		strLit.T = ref(&BasicType{Kind: String, L: parserStrLit.L})
 		return deref(strLit), nil
 	case b.Kind == String:
-		if !isRef(sug) {
-			strLit.T = ref(copyTypeWithLoc(sug, parserStrLit.L))
+		if !isRef(want) {
+			strLit.T = ref(copyTypeWithLoc(want, parserStrLit.L))
 			return deref(strLit), nil
 		}
-		strLit.T = copyTypeWithLoc(sug, parserStrLit.L)
+		strLit.T = copyTypeWithLoc(want, parserStrLit.L)
 		return strLit, nil
 	}
 }
 
-func checkCharLit(parserCharLit *parser.CharLit, sug Type) (Expr, []*fail) {
+func checkCharLit(parserCharLit *parser.CharLit, want Type) (Expr, []*fail) {
 	parserIntLit := &parser.IntLit{
 		Text: strconv.FormatInt(int64(parserCharLit.Rune), 10),
 		L:    parserCharLit.L,
 	}
-	return checkIntLit(parserIntLit, sug)
+	return checkIntLit(parserIntLit, want)
 }
 
-func checkIntLit(parserIntLit *parser.IntLit, sug Type) (Expr, []*fail) {
+func checkIntLit(parserIntLit *parser.IntLit, want Type) (Expr, []*fail) {
 	intLit := &IntLit{Text: parserIntLit.Text, L: parserIntLit.L}
 	if _, ok := intLit.Val.SetString(parserIntLit.Text, 0); !ok {
 		panic("malformed int")
 	}
 	var bits uint
 	var signed bool
-	switch b, ok := trim1Ref(literal(sug)).(*BasicType); {
-	case sug == nil:
+	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
+	case want == nil:
 		fallthrough
 	case !ok:
 		fallthrough
@@ -1059,7 +1059,7 @@ func checkIntLit(parserIntLit *parser.IntLit, sug Type) (Expr, []*fail) {
 			Text: parserIntLit.Text,
 			L:    parserIntLit.L,
 		}
-		return checkFloatLit(parserFloatLit, sug)
+		return checkFloatLit(parserFloatLit, want)
 	case b.Kind == Int:
 		bits = 64 // TODO: set by a flag
 		signed = true
@@ -1109,31 +1109,31 @@ func checkIntLit(parserIntLit *parser.IntLit, sug Type) (Expr, []*fail) {
 	switch {
 	case intLit.Val.Cmp(min) < 0:
 		return nil, []*fail{{
-			msg: fmt.Sprintf("%s underflows type %s", intLit.Text, sug),
+			msg: fmt.Sprintf("%s underflows type %s", intLit.Text, want),
 			loc: intLit.L,
 		}}
 	case intLit.Val.Cmp(max) > 0:
 		return nil, []*fail{{
-			msg: fmt.Sprintf("%s overflows type %s", intLit.Text, sug),
+			msg: fmt.Sprintf("%s overflows type %s", intLit.Text, want),
 			loc: intLit.L,
 		}}
 	default:
-		if !isRef(sug) {
-			intLit.T = ref(copyTypeWithLoc(sug, intLit.L))
+		if !isRef(want) {
+			intLit.T = ref(copyTypeWithLoc(want, intLit.L))
 			return deref(intLit), nil
 		}
-		intLit.T = copyTypeWithLoc(sug, intLit.L)
+		intLit.T = copyTypeWithLoc(want, intLit.L)
 		return intLit, nil
 	}
 }
 
-func checkFloatLit(parserFloatLit *parser.FloatLit, sug Type) (Expr, []*fail) {
+func checkFloatLit(parserFloatLit *parser.FloatLit, want Type) (Expr, []*fail) {
 	floatLit := &FloatLit{Text: parserFloatLit.Text, L: parserFloatLit.L}
 	if _, _, err := floatLit.Val.Parse(parserFloatLit.Text, 10); err != nil {
 		panic("malformed float")
 	}
-	switch b, ok := trim1Ref(literal(sug)).(*BasicType); {
-	case sug == nil:
+	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
+	case want == nil:
 		fallthrough
 	case !ok:
 		fallthrough
@@ -1153,7 +1153,7 @@ func checkFloatLit(parserFloatLit *parser.FloatLit, sug Type) (Expr, []*fail) {
 		var i big.Int
 		if _, acc := floatLit.Val.Int(&i); acc != big.Exact {
 			return nil, []*fail{{
-				msg: fmt.Sprintf("%s truncates %s", sug, floatLit.Text),
+				msg: fmt.Sprintf("%s truncates %s", want, floatLit.Text),
 				loc: floatLit.L,
 			}}
 		}
@@ -1161,13 +1161,13 @@ func checkFloatLit(parserFloatLit *parser.FloatLit, sug Type) (Expr, []*fail) {
 			Text: i.String(),
 			L:    parserFloatLit.L,
 		}
-		return checkIntLit(parserIntLit, sug)
+		return checkIntLit(parserIntLit, want)
 	case b.Kind == Float32 || b.Kind == Float64:
-		if !isRef(sug) {
-			floatLit.T = ref(copyTypeWithLoc(sug, floatLit.L))
+		if !isRef(want) {
+			floatLit.T = ref(copyTypeWithLoc(want, floatLit.L))
 			return deref(floatLit), nil
 		}
-		floatLit.T = copyTypeWithLoc(sug, floatLit.L)
+		floatLit.T = copyTypeWithLoc(want, floatLit.L)
 		return floatLit, nil
 	}
 }
