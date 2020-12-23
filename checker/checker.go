@@ -725,9 +725,12 @@ func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]FuncParm, []*fail)
 		} else {
 			seen[name] = parserParm.L
 		}
-		t, fs := makeType(x, parserParm.Type)
-		if len(fs) > 0 {
-			fails = append(fails, fs...)
+		var t Type
+		var fs []*fail
+		if parserParm.Type != nil {
+			if t, fs = makeType(x, parserParm.Type); len(fs) > 0 {
+				fails = append(fails, fs...)
+			}
 		}
 		parms = append(parms, FuncParm{
 			Name: name,
@@ -844,7 +847,7 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) (scope, []Expr, [
 // 	  then the literal's type is the expected type.
 // 	  The expected type of each literal field value
 // 	  is the type of the corresponding field,
-// 	  and it is an error if the value's type is not convertable
+// 	  and it is an error if the value's type is not convertible
 // 	  to the field value.
 // 	* Otherwise, the literal's type is an unnamed struct type
 // 	  with a field corresponding to each of the literal's fields.
@@ -910,7 +913,7 @@ func appropriateStruct(typ Type, lit *parser.StructLit) *StructType {
 // 	  then the literal's type is the expected type.
 // 	  If the literal has a value,
 // 	  it's expected type is the corresponding case type,
-// 	  and it is an error if the value is not convertable
+// 	  and it is an error if the value is not convertible
 // 	  to the case type.
 // 	* Otherwise, the literal's type is an unnamed union type
 // 	  with a single case of the name of the literal case.
@@ -977,53 +980,100 @@ func findCase(name string, u *UnionType) *CaseDef {
 }
 
 // checkBlockLit checks a block literal.
-// 	TODO: checkBlockLit is all messed up :-)
-func checkBlockLit(x scope, parserBlockLit *parser.BlockLit, want Type) (Expr, []*fail) {
+// 	* If the expected type is appropriate to the literal,
+// 	  then the literal's type is the expected type.
+// 	  If the type has a return type,
+// 	  it is an error if there are no expressions in the block.
+// 	  The expected type of the last expression is the return type,
+// 	  and it is an error if the type of the last expression
+// 	  is not convertible to the return type.
+// 	* Otherwise, the literal's type is an unnamed function type
+// 	  with parameters corresponding to the explicity type
+// 	  of each of the literal's parameters.
+// 	  It is an error if any of the parameter's type is elided.
+// 	  If there are no expressions in the block, the type has no return type.
+// 	  Otherwise the return type is the type of the last expression
+// 	  in the block with no expected type.
+//
+// A type is apropriate to a block literal if
+// 	* its literal type is a function type or a reference to a function type,
+// 	* it has the same number of parameters as the literal, and
+// 	* all explicit parameter types of the literal
+// 	  equal the corresponding parameter type of the function type.
+func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fail) {
 	var fails []*fail
-	parms, fs := makeFuncParms(x, parserBlockLit.Parms)
+	lit := &BlockLit{L: parserLit.L}
+	lit.Parms, fails = makeFuncParms(x, parserLit.Parms)
+	x = &blockLitScope{parent: x, BlockLit: lit}
+
+	if f := appropriateBlock(want, lit.Parms); f != nil {
+		if f.Ret != nil && len(parserLit.Exprs) == 0 {
+			fails = append(fails, &fail{
+				msg: fmt.Sprintf("want return type %s: no experssions", f.Ret),
+				loc: lit.L,
+			})
+		}
+		for i := range lit.Parms {
+			if lit.Parms[i].Type != nil {
+				continue
+			}
+			lit.Parms[i].Type = copyTypeWithLoc(f.Parms[i], lit.Parms[i].L)
+		}
+		var fs []*fail
+		_, lit.Exprs, fs = checkExprs(x, parserLit.Exprs, f.Ret)
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		if !isRef(want) {
+			lit.T = ref(copyTypeWithLoc(want, lit.L))
+			return deref(lit), fails
+		}
+		lit.T = copyTypeWithLoc(want, lit.L)
+		return lit, fails
+	}
+
+	// Remove parameters with elided types and report an error.
+	var n int
+	parmTypes := make([]Type, 0, len(lit.Parms))
+	for _, p := range lit.Parms {
+		if p.Type == nil {
+			fails = append(fails, &fail{
+				msg: fmt.Sprintf("cannot infer type of parameter %s", p.Name),
+				loc: p.L,
+			})
+			continue
+		}
+		parmTypes = append(parmTypes, p.Type)
+		lit.Parms[n] = p
+		n++
+	}
+	lit.Parms = lit.Parms[:n]
+
+	var fs []*fail
+	_, lit.Exprs, fs = checkExprs(x, parserLit.Exprs, nil)
 	if len(fs) > 0 {
 		fails = append(fails, fs...)
 	}
-	parmTypes := make([]Type, len(parms))
-	for i, parm := range parms {
-		parmTypes[i] = parm.Type
-	}
-
-	blockLit := &BlockLit{
-		Parms: parms,
-		L:     parserBlockLit.L,
-	}
-	x = &blockLitScope{parent: x, BlockLit: blockLit}
 
 	var retType Type
-	if b, ok := trim1Ref(literal(want)).(*FuncType); ok {
-		retType = b.Ret
+	if len(lit.Exprs) > 0 {
+		retType = lit.Exprs[len(lit.Exprs)-1].Type()
 	}
-	_, blockLit.Exprs, fs = checkExprs(x, parserBlockLit.Exprs, retType)
-	if len(fs) > 0 {
-		fails = append(fails, fs...)
-	}
+	lit.T = ref(&FuncType{Parms: parmTypes, Ret: retType, L: lit.L})
+	return deref(lit), fails
+}
 
-	if n := len(blockLit.Exprs); n == 0 {
-		retType = nil
-	} else {
-		retType = blockLit.Exprs[n-1].Type()
+func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
+	f, ok := trim1Ref(literal(typ)).(*FuncType)
+	if !ok || len(f.Parms) != len(litParms) {
+		return nil
 	}
-	blockLit.T = &FuncType{
-		Parms: parmTypes,
-		Ret:   retType,
-		L:     parserBlockLit.L,
+	for i := range f.Parms {
+		if t := litParms[i].Type; t != nil && !f.Parms[i].eq(t) {
+			return nil
+		}
 	}
-
-	if base := trim1Ref(literal(want)); base == nil || !blockLit.T.eq(base) {
-		return blockLit, fails
-	}
-	if !isRef(want) {
-		blockLit.T = ref(copyTypeWithLoc(want, blockLit.L))
-		return deref(blockLit), fails
-	}
-	blockLit.T = copyTypeWithLoc(want, blockLit.L)
-	return blockLit, fails
+	return f
 }
 
 // checkStrLit checks a string literal.

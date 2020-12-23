@@ -16542,7 +16542,7 @@ func _BlkParmAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// id:Id typ:Type
+	// id:Id t:Type?
 	// id:Id
 	{
 		pos1 := pos
@@ -16552,12 +16552,20 @@ func _BlkParmAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[0] = parser.text[pos1:pos]
 	}
-	// typ:Type
+	// t:Type?
 	{
 		pos2 := pos
-		// Type
-		if !_accept(parser, _TypeAccepts, &pos, &perr) {
-			goto fail
+		// Type?
+		{
+			pos4 := pos
+			// Type
+			if !_accept(parser, _TypeAccepts, &pos, &perr) {
+				goto fail5
+			}
+			goto ok6
+		fail5:
+			pos = pos4
+		ok6:
 		}
 		labels[1] = parser.text[pos2:pos]
 	}
@@ -16579,7 +16587,7 @@ func _BlkParmFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _BlkParm}
 	// action
-	// id:Id typ:Type
+	// id:Id t:Type?
 	// id:Id
 	{
 		pos1 := pos
@@ -16589,12 +16597,20 @@ func _BlkParmFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		}
 		labels[0] = parser.text[pos1:pos]
 	}
-	// typ:Type
+	// t:Type?
 	{
 		pos2 := pos
-		// Type
-		if !_fail(parser, _TypeFail, errPos, failure, &pos) {
-			goto fail
+		// Type?
+		{
+			pos4 := pos
+			// Type
+			if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+				goto fail5
+			}
+			goto ok6
+		fail5:
+			pos = pos4
+		ok6:
 		}
 		labels[1] = parser.text[pos2:pos]
 	}
@@ -16609,7 +16625,7 @@ func _BlkParmAction(parser *_Parser, start int) (int, *FuncParm) {
 	var labels [2]string
 	use(labels)
 	var label0 Id
-	var label1 Type
+	var label1 *Type
 	dp := parser.deltaPos[start][_BlkParm]
 	if dp < 0 {
 		return -1, nil
@@ -16625,7 +16641,7 @@ func _BlkParmAction(parser *_Parser, start int) (int, *FuncParm) {
 	// action
 	{
 		start0 := pos
-		// id:Id typ:Type
+		// id:Id t:Type?
 		// id:Id
 		{
 			pos2 := pos
@@ -16638,20 +16654,34 @@ func _BlkParmAction(parser *_Parser, start int) (int, *FuncParm) {
 			}
 			labels[0] = parser.text[pos2:pos]
 		}
-		// typ:Type
+		// t:Type?
 		{
 			pos3 := pos
-			// Type
-			if p, n := _TypeAction(parser, pos); n == nil {
-				goto fail
-			} else {
-				label1 = *n
-				pos = p
+			// Type?
+			{
+				pos5 := pos
+				label1 = new(Type)
+				// Type
+				if p, n := _TypeAction(parser, pos); n == nil {
+					goto fail6
+				} else {
+					*label1 = *n
+					pos = p
+				}
+				goto ok7
+			fail6:
+				label1 = nil
+				pos = pos5
+			ok7:
 			}
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, id Id, typ Type) FuncParm {
+			start, end int, id Id, t *Type) FuncParm {
+			var typ Type
+			if t != nil {
+				typ = *t
+			}
 			return FuncParm{Name: id, Type: typ, L: l(parser, start, end)}
 		}(
 			start0, pos, label0, label1)

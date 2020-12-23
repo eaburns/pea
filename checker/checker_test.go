@@ -167,6 +167,7 @@ func TestErrors(t *testing.T) {
 	}
 }
 
+// TODO: a bunch of these will become errors once we implement type checking of expressions.
 func TestLiteralInference(t *testing.T) {
 	tests := []struct {
 		expr  string
@@ -265,7 +266,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "(){1}", infer: "(){t}", want: "(){t}", src: "type t int"},
 		{expr: "(){1}", infer: "(){&t}", want: "(){&t}", src: "type t int"},
 		{expr: "(){1}", infer: "(){t}", want: "(){t}", src: "type t &int"},
-		{expr: "(){1}", infer: "(){t}", want: "(){int}", src: "type t [int]"},
+		{expr: "(){1}", infer: "(){t}", want: "(){t}", src: "type t [int]"},
 		{expr: "(){1}", infer: "t", want: "t", src: "type t (){int}"},
 		{expr: "(){1}", infer: "t", want: "t", src: "type t (){int32}"},
 		{expr: "(){1}", infer: "&t", want: "&t", src: "type t (){int}"},
@@ -285,13 +286,11 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "(i int){}", infer: "&&int t", want: "(int){}", src: "type T t (T){}"},
 		{expr: "(i int){}", infer: "int t", want: "int t", src: "type T t &(T){}"},
 		{expr: "(i int){}", infer: "&int t", want: "(int){}", src: "type T t &(T){}"},
-		{expr: "(i int){}", infer: "int t", want: "(int){}", src: "type T t (T){T}"},
 		{expr: "(){1}", infer: "int t", want: "(){int}", src: "type T t (T){T}"},
-		{expr: "(i int){}", infer: "int t", want: "(int){}", src: "type T t (T){T}"},
 		{expr: "(i int){1}", infer: "int t", want: "int t", src: "type T t (T){T}"},
 		{expr: "(s string){1}", infer: "int t", want: "(string){int}", src: "type T t (T){T}"},
 		{expr: "(i int, s string){1}", infer: "int t", want: "(int, string){int}", src: "type T t (T){T}"},
-		{expr: `(i int){"foo"}`, infer: "int t", want: "(int){string}", src: "type T t (T){T}"},
+		{expr: `(i int){"foo"}`, infer: "int t", want: "int t", src: "type T t (T){T}"},
 
 		{expr: "[?none]", want: "[?none]"},
 		{expr: "[?none]", infer: "&&[?none]", want: "[?none]"},
