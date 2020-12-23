@@ -797,7 +797,7 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (scope, Expr, []*fail
 	case *parser.ModSel:
 		// TODO
 	case *parser.ArrayLit:
-		// TODO
+		expr, fails = checkArrayLit(x, parserExpr, want)
 	case *parser.StructLit:
 		expr, fails = checkStructLit(x, parserExpr, want)
 	case *parser.UnionLit:
@@ -840,6 +840,63 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) (scope, []Expr, [
 		}
 	}
 	return x, exprs, fails
+}
+
+// checkStructLit checks a struct literal.
+// 	* If the expected type is appropriate to the literal,
+// 	  then the literal's type is the expected type.
+// 	  The expected type of each element is the element type,
+// 	  and it is an error if the value's type is not convertible
+// 	  to the element type.
+// 	* Otherwise, the literal's type is an unnamed array type.
+// 	  It is an error if the literal has not element expressions.
+// 	  The array element type is the type of the element at index 0
+// 	  with no expected type.
+// 	  The expected type of elements at indices greater than 0
+// 	  is the array element type.
+//
+// A type is apropriate to an array literal if
+// 	* its literal type is an array type or a reference to an array type.
+func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []*fail) {
+	var fails []*fail
+	lit := &ArrayLit{L: parserLit.L}
+	if lit.Array, _ = trim1Ref(literal(want)).(*ArrayType); lit.Array != nil {
+		for _, parserExpr := range parserLit.Exprs {
+			_, expr, fs := checkExpr(x, parserExpr, lit.Array.ElemType)
+			if len(fs) > 0 {
+				fails = append(fails, fs...)
+			}
+			lit.Elems = append(lit.Elems, expr)
+		}
+		if !isRef(want) {
+			lit.T = ref(copyTypeWithLoc(want, lit.L))
+			return deref(lit), fails
+		}
+		lit.T = copyTypeWithLoc(want, lit.L)
+		return lit, fails
+	}
+
+	var elemType Type
+	for _, parserExpr := range parserLit.Exprs {
+		_, expr, fs := checkExpr(x, parserExpr, elemType)
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		lit.Elems = append(lit.Elems, expr)
+		if elemType == nil {
+			elemType = expr.Type()
+		}
+	}
+	if elemType == nil {
+		fails = append(fails, &fail{
+			msg: "unable to infer array type",
+			loc: lit.L,
+		})
+		return lit, fails
+	}
+	lit.Array = &ArrayType{ElemType: elemType, L: lit.L}
+	lit.T = ref(lit.Array)
+	return deref(lit), fails
 }
 
 // checkStructLit checks a struct literal.

@@ -364,6 +364,22 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[.x 5]", infer: "&int8 t", want: "[.x int]", src: "type T t &[.x T]"},
 		{expr: `[.x 5, .y "x"]`, infer: "(int, string) pair", want: "(int, string) pair", src: "type (X, Y) pair [.x X, .y Y]"},
 		{expr: `[.x 5, .y "x"]`, infer: "(int8, string) pair", want: "(int8, string) pair", src: "type (X, Y) pair [.x X, .y Y]"},
+
+		{expr: "[5]", want: "[int]"},
+		{expr: `["hello"]`, want: "[string]"},
+		{expr: "[[[5]]]", want: "[[[int]]]"},
+		{expr: "[[[.x 4]]]", want: "[[[.x int]]]"},
+		{expr: "[5]", infer: "[int8]", want: "[int8]"},
+		{expr: "[5]", infer: "int8", want: "[int]"},
+		{expr: "[]", infer: "[float32]", want: "[float32]"},
+		{expr: "[5]", infer: "[int]", want: "[int]"},
+		{expr: "[5]", infer: "&[int]", want: "&[int]"},
+		{expr: "[5]", infer: "&&[int]", want: "[int]"},
+		{expr: "[5]", infer: "t", want: "t", src: "type t [int]"},
+		{expr: "[5]", infer: "&t", want: "&t", src: "type t [int]"},
+		{expr: "[5]", infer: "t", want: "t", src: "type t &[int]"},
+		{expr: "[5]", infer: "&t", want: "[int]", src: "type t &[int]"},
+		{expr: "[5]", infer: "int t", want: "int t", src: "type T t [T]"},
 	}
 	for _, test := range tests {
 		test := test
