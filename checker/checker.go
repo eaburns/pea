@@ -766,7 +766,7 @@ func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []*fail)
 func checkVarDef(def *VarDef, parserDef *parser.VarDef) []*fail {
 	var fails []*fail
 	if parserDef.Expr != nil {
-		_, expr, fs := checkExpr(def, parserDef.Expr, def.Type)
+		expr, fs := checkExpr(def, parserDef.Expr, def.Type)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
 		}
@@ -784,7 +784,7 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []*fail {
 	return fails
 }
 
-func checkExpr(x scope, parserExpr parser.Expr, want Type) (scope, Expr, []*fail) {
+func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 	var expr Expr
 	var fails []*fail
 	switch parserExpr := parserExpr.(type) {
@@ -793,9 +793,7 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (scope, Expr, []*fail
 	case *parser.Convert:
 		// TODO
 	case *parser.SubExpr:
-		x, expr, fails = checkExpr(x, parserExpr.Expr, want)
-	case *parser.ModSel:
-		// TODO
+		expr, fails = checkExpr(x, parserExpr.Expr, want)
 	case *parser.ArrayLit:
 		expr, fails = checkArrayLit(x, parserExpr, want)
 	case *parser.StructLit:
@@ -812,25 +810,27 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (scope, Expr, []*fail
 		expr, fails = checkIntLit(parserExpr, want)
 	case *parser.FloatLit:
 		expr, fails = checkFloatLit(parserExpr, want)
+	case *parser.ModSel:
+		// TODO
 	case parser.Id:
 		// TODO
 	default:
 		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
 	}
-	return x, expr, fails
+	return expr, fails
 }
 
 // want is the type expected for the last expression, or nil.
-func checkExprs(x scope, parserExprs []parser.Expr, want Type) (scope, []Expr, []*fail) {
+func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []*fail) {
 	var fails []*fail
 	var exprs []Expr
 	for i, parserExpr := range parserExprs {
 		var fs []*fail
 		var expr Expr
 		if i == len(parserExprs)-1 {
-			x, expr, fs = checkExpr(x, parserExpr, want)
+			expr, fs = checkExpr(x, parserExpr, want)
 		} else {
-			x, expr, fs = checkExpr(x, parserExpr, nil)
+			expr, fs = checkExpr(x, parserExpr, nil)
 		}
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
@@ -839,7 +839,7 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) (scope, []Expr, [
 			exprs = append(exprs, expr)
 		}
 	}
-	return x, exprs, fails
+	return exprs, fails
 }
 
 // checkStructLit checks a struct literal.
@@ -862,7 +862,7 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []*fai
 	lit := &ArrayLit{L: parserLit.L}
 	if lit.Array, _ = trim1Ref(literal(want)).(*ArrayType); lit.Array != nil {
 		for _, parserExpr := range parserLit.Exprs {
-			_, expr, fs := checkExpr(x, parserExpr, lit.Array.ElemType)
+			expr, fs := checkExpr(x, parserExpr, lit.Array.ElemType)
 			if len(fs) > 0 {
 				fails = append(fails, fs...)
 			}
@@ -878,7 +878,7 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []*fai
 
 	var elemType Type
 	for _, parserExpr := range parserLit.Exprs {
-		_, expr, fs := checkExpr(x, parserExpr, elemType)
+		expr, fs := checkExpr(x, parserExpr, elemType)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
 		}
@@ -921,7 +921,7 @@ func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []*f
 
 	if lit.Struct = appropriateStruct(want, parserLit); lit.Struct != nil {
 		for i, parserField := range parserLit.FieldVals {
-			_, expr, fs := checkExpr(x, parserField.Val, lit.Struct.Fields[i].Type)
+			expr, fs := checkExpr(x, parserField.Val, lit.Struct.Fields[i].Type)
 			if len(fs) > 0 {
 				fails = append(fails, fs...)
 			}
@@ -937,7 +937,7 @@ func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []*f
 
 	lit.Struct = &StructType{L: lit.L}
 	for _, parserField := range parserLit.FieldVals {
-		_, expr, fs := checkExpr(x, parserField.Val, nil)
+		expr, fs := checkExpr(x, parserField.Val, nil)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
 		}
@@ -987,7 +987,7 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []*fai
 	lit := &UnionLit{L: parserLit.L}
 	if lit.Union, lit.Case = appropriateUnion(want, parserLit); lit.Union != nil {
 		if parserLit.CaseVal.Val != nil {
-			_, lit.Val, fails = checkExpr(x, parserLit.CaseVal.Val, lit.Case.Type)
+			lit.Val, fails = checkExpr(x, parserLit.CaseVal.Val, lit.Case.Type)
 		}
 		if !isRef(want) {
 			lit.T = ref(copyTypeWithLoc(want, lit.L))
@@ -1005,7 +1005,7 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []*fai
 		L: parserLit.L,
 	}
 	if parserLit.CaseVal.Val != nil {
-		_, lit.Val, fails = checkExpr(x, parserLit.CaseVal.Val, nil)
+		lit.Val, fails = checkExpr(x, parserLit.CaseVal.Val, nil)
 	}
 	lit.Case = &lit.Union.Cases[0]
 	if lit.Val != nil {
@@ -1077,7 +1077,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fai
 			lit.Parms[i].Type = copyTypeWithLoc(f.Parms[i], lit.Parms[i].L)
 		}
 		var fs []*fail
-		_, lit.Exprs, fs = checkExprs(x, parserLit.Exprs, f.Ret)
+		lit.Exprs, fs = checkExprs(x, parserLit.Exprs, f.Ret)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
 		}
@@ -1107,7 +1107,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fai
 	lit.Parms = lit.Parms[:n]
 
 	var fs []*fail
-	_, lit.Exprs, fs = checkExprs(x, parserLit.Exprs, nil)
+	lit.Exprs, fs = checkExprs(x, parserLit.Exprs, nil)
 	if len(fs) > 0 {
 		fails = append(fails, fs...)
 	}
