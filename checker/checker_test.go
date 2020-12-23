@@ -400,10 +400,10 @@ func TestLiteralInference(t *testing.T) {
 				t.Fatalf("failed to parse [%s]: %s", test.expr, err)
 			}
 			infer := findTypeDef(t, "infer", mod).Type
-			expr, fails := checkExpr(mod.Files[0], parserExpr, infer)
-			if len(fails) > 0 {
-				t.Fatalf("failed to check [%s]: %s", test.expr, fails[0].msg)
-			}
+			// Ignore the error. Many of the test cases are type mismatches.
+			// That's fine. Here we are testing the resulting literal type,
+			// not correct reporting of type mismatch.
+			expr, _ := checkExpr(mod.Files[0], parserExpr, infer)
 			want := findTypeDef(t, "want", mod).Type
 			if !expr.Type().eq(want) {
 				t.Errorf("got %s, want %s", expr.Type(), want)

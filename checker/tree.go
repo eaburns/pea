@@ -326,6 +326,14 @@ type Builtin struct {
 func (b *Builtin) Parms() []Type { return b.Ps }
 func (b *Builtin) Ret() Type     { return b.R }
 
+type Noop struct {
+	Expr Expr
+	T    Type
+}
+
+func (n *Noop) Type() Type   { return n.T }
+func (n *Noop) Loc() loc.Loc { return n.Expr.Loc() }
+
 type Deref struct {
 	Expr Expr
 	T    Type

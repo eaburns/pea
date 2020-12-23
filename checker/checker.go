@@ -791,7 +791,7 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 	case *parser.Call:
 		// TODO
 	case *parser.Convert:
-		// TODO
+		expr, fails = checkConvert(x, parserExpr)
 	case *parser.SubExpr:
 		expr, fails = checkExpr(x, parserExpr.Expr, want)
 	case *parser.ArrayLit:
@@ -817,7 +817,116 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 	default:
 		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
 	}
+	if expr == nil {
+		panic(fmt.Sprintf("nil: %T", parserExpr))
+	}
+	if want != nil {
+		var fs []*fail
+		expr, fs = convert(expr, want)
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+	}
 	return expr, fails
+}
+
+func convert(expr Expr, typ Type) (Expr, []*fail) {
+	var fails []*fail
+	dst, dstRefDepth := valueType(typ)
+	src, srcRefDepth := valueType(expr.Type())
+
+	var nameUnnamedConvert bool
+	var nNamed int
+	if isNamed(dst) {
+		nNamed++
+	}
+	if isNamed(src) {
+		nNamed++
+	}
+	switch {
+	case dst.eq(src):
+		break
+	case nNamed < 2 && baseType(dst).eq(baseType(src)):
+		nameUnnamedConvert = true
+		break
+	default:
+		goto mismatch
+	}
+
+	// If we made it here, the base types are converted.
+	// We just need to fix up the references (if possible).
+
+	if dstRefDepth > srcRefDepth {
+		// Consider whether the expression is "addressable".
+		if dstRefDepth > srcRefDepth+1 {
+			goto mismatch
+		}
+		fmt.Println("referencing")
+		deref, ok := expr.(*Deref)
+		if !ok {
+			fails = append(fails, &fail{
+				msg: "expression cannot be referenced",
+				loc: expr.Loc(),
+			})
+			return expr, fails
+		}
+		expr = deref.Expr
+	} else {
+		// Automatic dereference.
+		for i := 0; i < srcRefDepth-dstRefDepth; i++ {
+			expr = deref(expr)
+		}
+	}
+
+	if nameUnnamedConvert {
+		// Converting equal named/unnamed types.
+		// We've fixed the references.
+		// Now we need to do a no-op change of the type.
+		expr = &Noop{Expr: expr, T: typ}
+	}
+
+	return expr, fails
+
+mismatch:
+	fails = append(fails, &fail{
+		msg: fmt.Sprintf("type mismatch: got %s, want %s", expr.Type(), typ),
+		loc: expr.Loc(),
+	})
+	return expr, fails
+}
+
+func isNamed(typ Type) bool {
+	_, ok := typ.(*NamedType)
+	return ok
+}
+
+// baseType returns the type leading named types substituted for their type.
+func baseType(typ Type) Type {
+	seen := make(map[*TypeDef]bool)
+	for {
+		n, ok := typ.(*NamedType)
+		if !ok || n.Inst == nil || n.Inst.Type == nil {
+			return typ
+		}
+		if seen[n.Def] {
+			panic("cycle")
+		}
+		seen[n.Def] = true
+		typ = n.Inst.Type
+	}
+}
+
+// valueType is the type with all leading references removed.
+func valueType(typ Type) (Type, int) {
+	var n int
+	for {
+		if ref, ok := typ.(*RefType); !ok {
+			return typ, n
+		} else {
+			n++
+			typ = ref.Type
+		}
+	}
 }
 
 // want is the type expected for the last expression, or nil.
@@ -840,6 +949,23 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []*fail)
 		}
 	}
 	return exprs, fails
+}
+
+// checkConvert checks a type conversion.
+// 	* The expected type of the subexpression is the conversion type,
+// 	  and it is an error if the subexpression type is not convertible
+// 	  to the conversion type.
+func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []*fail) {
+	var fails []*fail
+	typ, fs := makeType(x, parserConvert.Type)
+	if len(fs) > 0 {
+		fails = append(fails, fs...)
+	}
+	expr, fs := checkExpr(x, parserConvert.Expr, typ)
+	if len(fs) > 0 {
+		fails = append(fails, fs...)
+	}
+	return expr, fails
 }
 
 // checkStructLit checks a struct literal.
@@ -1192,13 +1318,8 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []*fail) {
 	case !ok:
 		fallthrough
 	default:
-		lit.T = ref(&BasicType{Kind: Int, L: parserLit.L})
-		return deref(lit), nil
-	case b.Kind == Float32 || b.Kind == Float64:
-		return checkFloatLit(&parser.FloatLit{
-			Text: parserLit.Text,
-			L:    parserLit.L,
-		}, want)
+		want = &BasicType{Kind: Int, L: parserLit.L}
+		fallthrough
 	case b.Kind == Int:
 		bits = 64 // TODO: set by a flag
 		signed = true
@@ -1229,6 +1350,8 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []*fail) {
 	case b.Kind == Uint64:
 		bits = 64
 		signed = false
+	case b.Kind == Float32 || b.Kind == Float64:
+		return checkFloatLit(&parser.FloatLit{Text: parserLit.Text, L: lit.L}, want)
 	}
 	var min, max *big.Int
 	if signed {
@@ -1245,25 +1368,25 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []*fail) {
 		max = max.Lsh(max, bits)
 		max = max.Sub(max, big.NewInt(1))
 	}
+	var fails []*fail
 	switch {
 	case lit.Val.Cmp(min) < 0:
-		return nil, []*fail{{
+		fails = append(fails, &fail{
 			msg: fmt.Sprintf("%s underflows type %s", lit.Text, want),
 			loc: lit.L,
-		}}
+		})
 	case lit.Val.Cmp(max) > 0:
-		return nil, []*fail{{
+		fails = append(fails, &fail{
 			msg: fmt.Sprintf("%s overflows type %s", lit.Text, want),
 			loc: lit.L,
-		}}
-	default:
-		if !isRef(want) {
-			lit.T = ref(copyTypeWithLoc(want, lit.L))
-			return deref(lit), nil
-		}
-		lit.T = copyTypeWithLoc(want, lit.L)
-		return lit, nil
+		})
 	}
+	if !isRef(want) {
+		lit.T = ref(copyTypeWithLoc(want, lit.L))
+		return deref(lit), fails
+	}
+	lit.T = copyTypeWithLoc(want, lit.L)
+	return lit, fails
 }
 
 // checkFloatLit checks a float literal.
@@ -1300,16 +1423,18 @@ func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []*fail) {
 		b.Kind == Uint32 ||
 		b.Kind == Uint64:
 		var i big.Int
+		var fails []*fail
 		if _, acc := lit.Val.Int(&i); acc != big.Exact {
-			return nil, []*fail{{
+			fails = append(fails, &fail{
 				msg: fmt.Sprintf("%s truncates %s", want, lit.Text),
 				loc: lit.L,
-			}}
+			})
 		}
-		return checkIntLit(&parser.IntLit{
-			Text: i.String(),
-			L:    parserLit.L,
-		}, want)
+		intLit, fs := checkIntLit(&parser.IntLit{Text: i.String(), L: parserLit.L}, want)
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		return intLit, fails
 	case b.Kind == Float32 || b.Kind == Float64:
 		if !isRef(want) {
 			lit.T = ref(copyTypeWithLoc(want, lit.L))
