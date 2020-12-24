@@ -864,7 +864,6 @@ func convert(expr Expr, typ Type) (Expr, []*fail) {
 		if dstRefDepth > srcRefDepth+1 {
 			goto mismatch
 		}
-		fmt.Println("referencing")
 		deref, ok := expr.(*Deref)
 		if !ok {
 			fails = append(fails, &fail{
