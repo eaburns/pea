@@ -813,14 +813,11 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 	case *parser.ModSel:
 		// TODO
 	case parser.Id:
-		// TODO
+		expr, fails = checkId(x, parserExpr, want)
 	default:
 		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
 	}
-	if expr == nil {
-		panic(fmt.Sprintf("nil: %T", parserExpr))
-	}
-	if want != nil {
+	if expr != nil && want != nil {
 		var fs []*fail
 		expr, fs = convert(expr, want)
 		if len(fs) > 0 {
@@ -986,12 +983,97 @@ func eq(a, b Type) bool {
 	}
 }
 
+func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
+	var ids []id
+	for _, id := range x.find(parserId.Name) {
+		if t := id.Type(); t == nil || !isGround(t) || (want != nil && !eq(want, t)) {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	switch {
+	case len(ids) == 0:
+		return nil, []*fail{notFound(parserId.Name, parserId.L)}
+	case len(ids) > 1 && want == nil:
+		return nil, []*fail{{
+			msg: fmt.Sprintf("%s is ambiguous", parserId.Name),
+			loc: parserId.L,
+		}}
+	case len(ids) > 1:
+		return nil, []*fail{{
+			msg: fmt.Sprintf("%s is ambiguous for type %s", parserId.Name, want),
+			loc: parserId.L,
+		}}
+	}
+	switch id := ids[0].(type) {
+	case *VarDef:
+		return &Var{Def: id, T: id.T, L: parserId.L}, nil
+	case *FuncParm:
+		// TODO: handle capture
+		return &Parm{Def: id, T: id.T, L: parserId.L}, nil
+	case *FuncLocal:
+		// TODO: handle capture
+		return &Local{Def: id, T: id.T, L: parserId.L}, nil
+	case *BlockCap:
+		// TODO: handle capture
+		return &Cap{Def: id, T: id.T, L: parserId.L}, nil
+	case Callable:
+		panic("unimplemented")
+	default:
+		panic(fmt.Sprintf("impossible id type: %T", id))
+	}
+}
+
+func isGround(typ Type) bool {
+	switch typ := typ.(type) {
+	case *DefType:
+		for _, a := range typ.Args {
+			if !isGround(a) {
+				return false
+			}
+		}
+		return true
+	case *RefType:
+		return isGround(typ.Type)
+	case *ArrayType:
+		return isGround(typ.ElemType)
+	case *StructType:
+		for i := range typ.Fields {
+			if !isGround(typ.Fields[i].Type) {
+				return false
+			}
+		}
+		return true
+	case *UnionType:
+		for i := range typ.Cases {
+			if !isGround(typ.Cases[i].Type) {
+				return false
+			}
+		}
+		return true
+	case *FuncType:
+		for i := range typ.Parms {
+			if !isGround(typ.Parms[i]) {
+				return false
+			}
+		}
+		return isGround(typ.Ret)
+	case *BasicType:
+		return true
+	case *TypeVar:
+		return false
+	default:
+		panic(fmt.Sprintf("impossible type type: %T", typ))
+	}
+}
+
 // checkConvert checks a type conversion.
 // 	* The expected type of the subexpression is the conversion type,
 // 	  and it is an error if the subexpression type is not convertible
 // 	  to the conversion type.
+var fails []*fail
+
 func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []*fail) {
-	var fails []*fail
 	typ, fs := makeType(x, parserConvert.Type)
 	if len(fs) > 0 {
 		fails = append(fails, fs...)

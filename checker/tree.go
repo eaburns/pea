@@ -340,18 +340,40 @@ func (d *Deref) Type() Type   { return d.T }
 func (d *Deref) Loc() loc.Loc { return d.L }
 
 type Var struct {
-	// Global, Local, Parm, and Cap are mutually exclusive;
-	// exactly one of them is non-nil.
-	Global *VarDef
-	Local  *FuncLocal
-	Parm   *FuncParm
-	Cap    *BlockCap
-	T      Type
-	L      loc.Loc
+	Def *VarDef
+	T   Type
+	L   loc.Loc
 }
 
 func (v *Var) Type() Type   { return v.T }
 func (v *Var) Loc() loc.Loc { return v.L }
+
+type Local struct {
+	Def *FuncLocal
+	T   Type
+	L   loc.Loc
+}
+
+func (l *Local) Type() Type   { return l.T }
+func (l *Local) Loc() loc.Loc { return l.L }
+
+type Parm struct {
+	Def *FuncParm
+	T   Type
+	L   loc.Loc
+}
+
+func (p *Parm) Type() Type   { return p.T }
+func (p *Parm) Loc() loc.Loc { return p.L }
+
+type Cap struct {
+	Def *BlockCap
+	T   Type
+	L   loc.Loc
+}
+
+func (c *Cap) Type() Type   { return c.T }
+func (c *Cap) Loc() loc.Loc { return c.L }
 
 type ArrayLit struct {
 	Array *ArrayType

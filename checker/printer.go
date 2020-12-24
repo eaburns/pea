@@ -301,11 +301,52 @@ func (d *Deref) print(pc *config) {
 func (v *Var) print(pc *config) {
 	pc.p("Var{")
 	pc.loc(v.L)
-	pc.field("Global", v.Global)
-	pc.field("Local", v.Local)
-	pc.field("Parm", v.Parm)
-	pc.field("Cap", v.Cap)
+	pc.n++
+	if v.Def != nil {
+		pc.p("\nDef(%s)", v.Def.Name)
+		pc.loc(v.Def.L)
+	}
+	pc.n--
 	pc.field("Type", v.T)
+	pc.p("\n}")
+}
+
+func (l *Local) print(pc *config) {
+	pc.p("Local{")
+	pc.loc(l.L)
+	pc.n++
+	if l.Def != nil {
+		pc.p("\nDef(%s)", l.Def.Name)
+		pc.loc(l.Def.L)
+	}
+	pc.n--
+	pc.field("Type", l.T)
+	pc.p("\n}")
+}
+
+func (p *Parm) print(pc *config) {
+	pc.p("Parm{")
+	pc.loc(p.L)
+	pc.n++
+	if p.Def != nil {
+		pc.p("\nDef(%s)", p.Def.Name)
+		pc.loc(p.Def.L)
+	}
+	pc.n--
+	pc.field("Type", p.T)
+	pc.p("\n}")
+}
+
+func (c *Cap) print(pc *config) {
+	pc.p("Cap{")
+	pc.loc(c.L)
+	pc.n++
+	if c.Def != nil {
+		pc.p("\nDef(%s)", c.Def.Name)
+		pc.loc(c.Def.L)
+	}
+	pc.n--
+	pc.field("Type", c.T)
 	pc.p("\n}")
 }
 

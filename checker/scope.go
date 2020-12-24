@@ -5,8 +5,13 @@ import (
 )
 
 type scope interface {
+	find(name string) []id
 	findMod(name string) *Import
 	findType(args []Type, name string, l loc.Loc) Type
+}
+
+type id interface {
+	Type() Type
 }
 
 type blockLitScope struct {
@@ -148,4 +153,65 @@ func findTypeInDefs(defs []Def, args []Type, name string, l loc.Loc) Type {
 		return &DefType{Name: name, Args: args, Def: d, L: l}
 	}
 	return nil
+}
+
+func (m *Mod) find(name string) []id { return findInDefs(m.Defs, name) }
+
+func (i *Import) find(name string) []id { return findInDefs(i.Defs, name) }
+
+func (f *File) find(name string) []id { return f.Mod.find(name) }
+
+func (v *VarDef) find(name string) []id { return v.File.find(name) }
+
+func (t *TypeDef) find(name string) []id { panic("impossible") }
+
+func (f *FuncDef) find(name string) []id {
+	for i := range f.Locals {
+		if f.Locals[i].Name == name {
+			return []id{&f.Locals[i]}
+		}
+	}
+	for i := range f.Parms {
+		if f.Parms[i].Name == name {
+			return []id{&f.Parms[i]}
+		}
+	}
+	return f.File.find(name)
+}
+
+func (t *TestDef) find(name string) []id {
+	// TODO: tests need locals
+	return t.File.find(name)
+}
+
+func (b *blockLitScope) find(name string) []id {
+	for i := range b.Locals {
+		if b.Locals[i].Name == name {
+			return []id{&b.Locals[i]}
+		}
+	}
+	for i := range b.Parms {
+		if b.Parms[i].Name == name {
+			return []id{&b.Parms[i]}
+		}
+	}
+	for i := range b.Caps {
+		if b.Caps[i].Name == name {
+			return []id{&b.Caps[i]}
+		}
+	}
+	return b.parent.find(name)
+}
+
+func findInDefs(defs []Def, name string) []id {
+	var ids []id
+	for _, def := range defs {
+		switch def := def.(type) {
+		case *VarDef:
+			ids = append(ids, def)
+		case *FuncDef:
+			ids = append(ids, def)
+		}
+	}
+	return ids
 }
