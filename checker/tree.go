@@ -85,8 +85,6 @@ type Type interface {
 
 	// eq must not be called on a type before aliases have been resolved.
 	eq(Type) bool
-
-	literal() Type
 }
 
 type RefType struct {

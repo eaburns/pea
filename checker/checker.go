@@ -1444,26 +1444,18 @@ func literal(typ Type) Type {
 	if typ == nil {
 		return nil
 	}
-	return typ.literal()
-}
-
-func (r *RefType) literal() Type {
-	if r.Type == nil {
-		return nil
+	switch typ := typ.(type) {
+	case *RefType:
+		if typ.Type == nil {
+			return nil
+		}
+		return &RefType{Type: literal(typ.Type), L: typ.L}
+	case *NamedType:
+		if typ.Inst == nil || typ.Inst.Type == nil {
+			return nil
+		}
+		return literal(typ.Inst.Type)
+	default:
+		return typ
 	}
-	return &RefType{Type: r.Type.literal(), L: r.Loc()}
 }
-
-func (n *NamedType) literal() Type {
-	if n.Inst == nil || n.Inst.Type == nil {
-		return nil
-	}
-	return n.Inst.Type.literal()
-}
-
-func (a *ArrayType) literal() Type  { return a }
-func (s *StructType) literal() Type { return s }
-func (u *UnionType) literal() Type  { return u }
-func (f *FuncType) literal() Type   { return f }
-func (b *BasicType) literal() Type  { return b }
-func (t *TypeVar) literal() Type    { return t }
