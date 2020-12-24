@@ -834,28 +834,9 @@ func convert(expr Expr, typ Type) (Expr, []*fail) {
 	var fails []*fail
 	dst, dstRefDepth := valueType(typ)
 	src, srcRefDepth := valueType(expr.Type())
-
-	var nameUnnamedConvert bool
-	var nNamed int
-	if isNamed(dst) {
-		nNamed++
-	}
-	if isNamed(src) {
-		nNamed++
-	}
-	switch {
-	case dst.eq(src):
-		break
-	case nNamed < 2 && baseType(dst).eq(baseType(src)):
-		nameUnnamedConvert = true
-		break
-	default:
+	if !dst.eq(src) {
 		goto mismatch
 	}
-
-	// If we made it here, the base types are converted.
-	// We just need to fix up the references (if possible).
-
 	if dstRefDepth > srcRefDepth {
 		// Consider whether the expression is "addressable".
 		if dstRefDepth > srcRefDepth+1 {
@@ -877,14 +858,6 @@ func convert(expr Expr, typ Type) (Expr, []*fail) {
 			expr = deref(expr)
 		}
 	}
-
-	if nameUnnamedConvert {
-		// Converting equal named/unnamed types.
-		// We've fixed the references.
-		// Now we need to do a no-op change of the type.
-		expr = &Noop{Expr: expr, T: typ}
-	}
-
 	return expr, fails
 
 mismatch:
@@ -893,27 +866,6 @@ mismatch:
 		loc: expr.Loc(),
 	})
 	return expr, fails
-}
-
-func isNamed(typ Type) bool {
-	_, ok := typ.(*NamedType)
-	return ok
-}
-
-// baseType returns the type leading named types substituted for their type.
-func baseType(typ Type) Type {
-	seen := make(map[*TypeDef]bool)
-	for {
-		n, ok := typ.(*NamedType)
-		if !ok || n.Inst == nil || n.Inst.Type == nil {
-			return typ
-		}
-		if seen[n.Def] {
-			panic("cycle")
-		}
-		seen[n.Def] = true
-		typ = n.Inst.Type
-	}
 }
 
 // valueType is the type with all leading references removed.
