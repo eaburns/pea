@@ -192,7 +192,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 					File:  file,
 					Mod:   modPath,
 					Name:  name,
-					Type:  t,
+					T:     t,
 					Const: parserDef.Const,
 					Exp:   parserDef.Exp,
 					L:     parserDef.L,
@@ -213,13 +213,17 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				if funDef.Parms, fs = makeFuncParms(funDef, parserDef.Parms); len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
-
+				var parmTypes []Type
+				for i := range funDef.Parms {
+					parmTypes = append(parmTypes, funDef.Parms[i].T)
+				}
 				if funDef.Ret, fs = makeType(funDef, parserDef.Ret); len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
 				if funDef.Iface, fs = makeFuncDecls(funDef, parserDef.Iface); len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
+				funDef.T = &FuncType{Parms: parmTypes, Ret: funDef.Ret, L: funDef.L}
 				mod.Defs = append(mod.Defs, funDef)
 				defs[parserDef] = funDef
 			case *parser.TestDef:
@@ -732,11 +736,7 @@ func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]FuncParm, []*fail)
 				fails = append(fails, fs...)
 			}
 		}
-		parms = append(parms, FuncParm{
-			Name: name,
-			Type: t,
-			L:    parserParm.L,
-		})
+		parms = append(parms, FuncParm{Name: name, T: t, L: parserParm.L})
 	}
 	return parms, fails
 }
@@ -766,16 +766,16 @@ func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []*fail)
 func checkVarDef(def *VarDef, parserDef *parser.VarDef) []*fail {
 	var fails []*fail
 	if parserDef.Expr != nil {
-		expr, fs := checkExpr(def, parserDef.Expr, def.Type)
+		expr, fs := checkExpr(def, parserDef.Expr, def.T)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
 		}
 		def.Expr = expr
 	}
-	if def.Type == nil && def.Expr != nil {
-		def.Type = def.Expr.Type()
+	if def.T == nil && def.Expr != nil {
+		def.T = def.Expr.Type()
 	}
-	if def.Type == nil && def.Expr == nil {
+	if def.T == nil && def.Expr == nil {
 		fails = append(fails, &fail{
 			msg: "cannot infer variable type",
 			loc: def.L,
@@ -1232,10 +1232,10 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fai
 			})
 		}
 		for i := range lit.Parms {
-			if lit.Parms[i].Type != nil {
+			if lit.Parms[i].T != nil {
 				continue
 			}
-			lit.Parms[i].Type = copyTypeWithLoc(f.Parms[i], lit.Parms[i].L)
+			lit.Parms[i].T = copyTypeWithLoc(f.Parms[i], lit.Parms[i].L)
 		}
 		var fs []*fail
 		lit.Exprs, fs = checkExprs(x, parserLit.Exprs, f.Ret)
@@ -1254,14 +1254,14 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fai
 	var n int
 	parmTypes := make([]Type, 0, len(lit.Parms))
 	for _, p := range lit.Parms {
-		if p.Type == nil {
+		if p.T == nil {
 			fails = append(fails, &fail{
 				msg: fmt.Sprintf("cannot infer type of parameter %s", p.Name),
 				loc: p.L,
 			})
 			continue
 		}
-		parmTypes = append(parmTypes, p.Type)
+		parmTypes = append(parmTypes, p.T)
 		lit.Parms[n] = p
 		n++
 	}
@@ -1287,7 +1287,7 @@ func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
 		return nil
 	}
 	for i := range f.Parms {
-		if t := litParms[i].Type; t != nil && !eq(f.Parms[i], t) {
+		if t := litParms[i].T; t != nil && !eq(f.Parms[i], t) {
 			return nil
 		}
 	}

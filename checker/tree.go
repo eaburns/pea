@@ -46,12 +46,14 @@ type VarDef struct {
 	File  *File
 	Mod   string
 	Name  string
-	Type  Type
+	T     Type
 	Expr  Expr
 	Const bool
 	Exp   bool
 	L     loc.Loc
 }
+
+func (v *VarDef) Type() Type { return v.T }
 
 type TypeDef struct {
 	File  *File
@@ -188,21 +190,28 @@ type FuncDef struct {
 	Exprs     []Expr // nil if unspecified, non-nil, len()==0 if empty
 	Exp       bool
 	Insts     []*FuncInst
+	T         Type
 	L         loc.Loc
 }
 
+func (f *FuncDef) Type() Type { return f.T }
+
 type FuncParm struct {
 	Name string
-	Type Type
+	T    Type
 	Init Expr
 	L    loc.Loc
 }
 
+func (f *FuncParm) Type() Type { return f.T }
+
 type FuncLocal struct {
 	Name string
-	Type Type
+	T    Type
 	L    loc.Loc
 }
+
+func (f *FuncLocal) Type() Type { return f.T }
 
 type FuncDecl struct {
 	Name  string
@@ -398,6 +407,8 @@ type BlockCap struct {
 	Local *FuncLocal
 	Cap   *BlockCap
 }
+
+func (b *BlockCap) Type() Type { return b.T }
 
 type StrLit struct {
 	Text string

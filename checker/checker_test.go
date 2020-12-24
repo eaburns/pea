@@ -796,15 +796,15 @@ func TestEq(t *testing.T) {
 				t.Log(src.String())
 				t.Fatalf("failed to parse and check: %s", errs[0])
 			}
-			typ := findVarDef(t, "x", mod).Type
+			typ := findVarDef(t, "x", mod).T
 			for i := range test.Same {
-				s := findVarDef(t, fmt.Sprintf("s%d", i), mod).Type
+				s := findVarDef(t, fmt.Sprintf("s%d", i), mod).T
 				if !eq(typ, s) {
 					t.Errorf("%s != %s", typ, s)
 				}
 			}
 			for i := range test.Diff {
-				d := findVarDef(t, fmt.Sprintf("d%d", i), mod).Type
+				d := findVarDef(t, fmt.Sprintf("d%d", i), mod).T
 				if eq(typ, d) {
 					t.Errorf("%s = %s", typ, d)
 				}

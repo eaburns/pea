@@ -88,7 +88,7 @@ func (v *VarDef) print(pc *config) {
 	pc.field("Mod", v.Mod)
 	pc.field("Name", v.Name)
 	pc.field("Const", v.Const)
-	pc.field("Type", v.Type)
+	pc.field("Type", v.T)
 	pc.field("Expr", v.Expr)
 	pc.field("Exp", v.Exp)
 	pc.p("\n}")
