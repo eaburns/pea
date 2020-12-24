@@ -507,7 +507,7 @@ func findInst(def *TypeDef, args []Type) *TypeInst {
 next:
 	for _, inst := range def.Insts {
 		for i, a := range inst.Args {
-			if !args[i].eq(a) {
+			if !eq(args[i], a) {
 				continue next
 			}
 		}
@@ -834,7 +834,7 @@ func convert(expr Expr, typ Type) (Expr, []*fail) {
 	var fails []*fail
 	dst, dstRefDepth := valueType(typ)
 	src, srcRefDepth := valueType(expr.Type())
-	if !dst.eq(src) {
+	if !eq(dst, src) {
 		goto mismatch
 	}
 	if dstRefDepth > srcRefDepth {
@@ -878,6 +878,90 @@ func valueType(typ Type) (Type, int) {
 			n++
 			typ = ref.Type
 		}
+	}
+}
+
+func eq(a, b Type) bool {
+	if a == nil || b == nil {
+		// nil indicates an error; just be equal to anything.
+		return true
+	}
+	switch a := a.(type) {
+	case *DefType:
+		if a.Def.Alias {
+			panic("impossible")
+		}
+		b, ok := b.(*DefType)
+		if !ok {
+			return false
+		}
+		if b.Def.Alias {
+			panic("impossible")
+		}
+		if len(a.Args) != len(b.Args) || a.Def != b.Def {
+			return false
+		}
+		for i, aArg := range a.Args {
+			bArg := b.Args[i]
+			if !eq(aArg, bArg) {
+				return false
+			}
+		}
+		return true
+	case *RefType:
+		b, ok := b.(*RefType)
+		return ok && eq(a.Type, b.Type)
+	case *ArrayType:
+		b, ok := b.(*ArrayType)
+		return ok && eq(a.ElemType, b.ElemType)
+	case *StructType:
+		b, ok := b.(*StructType)
+		if !ok || len(a.Fields) != len(b.Fields) {
+			return false
+		}
+		for i := range a.Fields {
+			aField := &a.Fields[i]
+			bField := &b.Fields[i]
+			if aField.Name != bField.Name || !eq(aField.Type, bField.Type) {
+				return false
+			}
+		}
+		return true
+	case *UnionType:
+		b, ok := b.(*UnionType)
+		if !ok || len(a.Cases) != len(b.Cases) {
+			return false
+		}
+		for i := range a.Cases {
+			aCase := &a.Cases[i]
+			bCase := &b.Cases[i]
+			if aCase.Name != bCase.Name ||
+				(aCase.Type == nil) != (bCase.Type == nil) ||
+				(aCase.Type != nil && !eq(aCase.Type, bCase.Type)) {
+				return false
+			}
+		}
+		return true
+	case *FuncType:
+		b, ok := b.(*FuncType)
+		if !ok || len(a.Parms) != len(b.Parms) || (a.Ret == nil) != (b.Ret == nil) {
+			return false
+		}
+		for i, aParm := range a.Parms {
+			bParm := b.Parms[i]
+			if !eq(aParm, bParm) {
+				return false
+			}
+		}
+		return a.Ret == nil || eq(a.Ret, b.Ret)
+	case *BasicType:
+		b, ok := b.(*BasicType)
+		return ok && a.Kind == b.Kind
+	case *TypeVar:
+		b, ok := b.(*TypeVar)
+		return ok && a.Def == b.Def
+	default:
+		panic(fmt.Sprintf("impossible Type type: %T", a))
 	}
 }
 
@@ -1204,7 +1288,7 @@ func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
 		return nil
 	}
 	for i := range f.Parms {
-		if t := litParms[i].Type; t != nil && !f.Parms[i].eq(t) {
+		if t := litParms[i].Type; t != nil && !eq(f.Parms[i], t) {
 			return nil
 		}
 	}
