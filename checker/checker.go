@@ -830,6 +830,28 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 	return expr, fails
 }
 
+// want is the type expected for the last expression, or nil.
+func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []*fail) {
+	var fails []*fail
+	var exprs []Expr
+	for i, parserExpr := range parserExprs {
+		var fs []*fail
+		var expr Expr
+		if i == len(parserExprs)-1 {
+			expr, fs = checkExpr(x, parserExpr, want)
+		} else {
+			expr, fs = checkExpr(x, parserExpr, nil)
+		}
+		if len(fs) > 0 {
+			fails = append(fails, fs...)
+		}
+		if expr != nil {
+			exprs = append(exprs, expr)
+		}
+	}
+	return exprs, fails
+}
+
 func convert(expr Expr, typ Type) (Expr, []*fail) {
 	var fails []*fail
 	dst, dstRefDepth := valueType(typ)
@@ -963,28 +985,6 @@ func eq(a, b Type) bool {
 	default:
 		panic(fmt.Sprintf("impossible Type type: %T", a))
 	}
-}
-
-// want is the type expected for the last expression, or nil.
-func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []*fail) {
-	var fails []*fail
-	var exprs []Expr
-	for i, parserExpr := range parserExprs {
-		var fs []*fail
-		var expr Expr
-		if i == len(parserExprs)-1 {
-			expr, fs = checkExpr(x, parserExpr, want)
-		} else {
-			expr, fs = checkExpr(x, parserExpr, nil)
-		}
-		if len(fs) > 0 {
-			fails = append(fails, fs...)
-		}
-		if expr != nil {
-			exprs = append(exprs, expr)
-		}
-	}
-	return exprs, fails
 }
 
 // checkConvert checks a type conversion.
