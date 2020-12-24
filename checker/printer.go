@@ -290,14 +290,6 @@ func (b *Builtin) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (n *Noop) print(pc *config) {
-	pc.p("Noop{")
-	pc.loc(n.Loc())
-	pc.field("Expr", n.Expr)
-	pc.field("Type", n.T)
-	pc.p("\n}")
-}
-
 func (d *Deref) print(pc *config) {
 	pc.p("Deref{")
 	pc.loc(d.L)
