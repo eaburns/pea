@@ -221,13 +221,13 @@ type FuncDecl struct {
 }
 
 type FuncInst struct {
-	Ps  []Type
-	R   Type
+	T   *FuncType
 	Def *FuncDef
 }
 
-func (f *FuncInst) Parms() []Type { return f.Ps }
-func (f *FuncInst) Ret() Type     { return f.R }
+func (f *FuncInst) Parms() []Type { return f.T.Parms }
+func (f *FuncInst) Ret() Type     { return f.T.Ret }
+func (f *FuncInst) Type() Type    { return f.T }
 
 type TestDef struct {
 	File  *File
@@ -255,33 +255,32 @@ func (c *Call) Loc() loc.Loc { return c.L }
 type Callable interface {
 	Parms() []Type
 	Ret() Type // returns nil if no return
-	String() string
+	Type() Type
 }
 
 type Select struct {
-	Type   Type
 	Struct *StructType
 	Field  *FieldDef
 }
 
-func (s *Select) Parms() []Type { return []Type{s.Type} }
+func (s *Select) Parms() []Type { return []Type{s.Struct} }
 func (s *Select) Ret() Type     { return s.Field.Type }
 
 type Switch struct {
-	Type  Type
 	Union *UnionType
 	Cases []*CaseDef
 	R     Type // inferred return type; nil if no return
 }
 
 func (s *Switch) Parms() []Type {
-	var parms []Type
-	for _, cas := range s.Cases {
+	parms := make([]Type, len(s.Cases)+1)
+	parms[0] = s.Union
+	for i, cas := range s.Cases {
 		parm := &FuncType{Parms: nil, Ret: s.R, L: cas.L}
 		if cas.Type != nil {
 			parm.Parms = []Type{cas.Type}
 		}
-		parms = append(parms, parm)
+		parms[i+1] = parm
 	}
 	return parms
 }

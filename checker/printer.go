@@ -235,7 +235,7 @@ func (f FuncParm) print(pc *config) {
 	pc.p("FuncParm{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
-	pc.field("Type", f.Type)
+	pc.field("Type", f.T)
 	pc.field("Init", f.Init)
 	pc.p("\n}")
 }
@@ -246,6 +246,17 @@ func (f FuncDecl) print(pc *config) {
 	pc.field("Name", f.Name)
 	pc.field("Parms", f.Parms)
 	pc.field("Ret", f.Ret)
+	pc.p("\n}")
+}
+
+func (f *FuncInst) print(pc *config) {
+	pc.p("FuncInst{")
+	if f.Def != nil {
+		pc.n++
+		pc.p("\nDef: %s", fmt.Sprintf("{ Name: %s }", f.Def.Name))
+		pc.n--
+	}
+	pc.field("Type", f.T)
 	pc.p("\n}")
 }
 
@@ -263,20 +274,20 @@ func (c *Call) print(pc *config) {
 	pc.loc(c.L)
 	pc.field("Fun", c.Fun)
 	pc.field("Args", c.Args)
-	pc.field("Type", c.Type)
+	pc.field("Type", c.T)
 	pc.p("\n}")
 }
 
 func (s *Select) print(pc *config) {
 	pc.p("Select{")
-	pc.field("Type", s.Type)
+	pc.field("Struct", s.Struct)
 	pc.field("Field", s.Field)
 	pc.p("\n}")
 }
 
 func (s *Switch) print(pc *config) {
 	pc.p("Switch{")
-	pc.field("Type", s.Type)
+	pc.field("Union", s.Union)
 	pc.field("Cases", s.Cases)
 	pc.field("Ret", s.Ret)
 	pc.p("\n}")
@@ -451,7 +462,7 @@ func (pc *config) field(name string, val interface{}) {
 		pc.p("(%v)", l)
 		return
 	}
-	pc.p("%v", val)
+	pc.p("%#v", val)
 }
 
 func (pc *config) slice(s interface{}) {

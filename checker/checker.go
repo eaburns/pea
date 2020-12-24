@@ -986,6 +986,7 @@ func eq(a, b Type) bool {
 func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 	var ids []id
 	for _, id := range x.find(parserId.Name) {
+		// TODO: handle grounding for functions.
 		if t := id.Type(); t == nil || !isGround(t) || (want != nil && !eq(want, t)) {
 			continue
 		}
@@ -1017,11 +1018,41 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 	case *BlockCap:
 		// TODO: handle capture
 		return &Cap{Def: id, T: id.T, L: parserId.L}, nil
+	case *FuncDef:
+		inst := instFunc(id, id.Type().(*FuncType))
+		return wrapCallInBlock(inst, parserId.L), nil
 	case Callable:
-		panic("unimplemented")
+		return wrapCallInBlock(id, parserId.L), nil
 	default:
 		panic(fmt.Sprintf("impossible id type: %T", id))
 	}
+}
+
+func instFunc(def *FuncDef, typ *FuncType) *FuncInst {
+	for _, inst := range def.Insts {
+		if eq(inst.T, typ) {
+			return inst
+		}
+	}
+	inst := &FuncInst{T: typ, Def: def}
+	def.Insts = append(def.Insts, inst)
+	return inst
+}
+
+func wrapCallInBlock(fun Callable, l loc.Loc) *BlockLit {
+	typ := fun.Type().(*FuncType)
+	blk := &BlockLit{Ret: typ.Ret, T: typ, L: l}
+	call := &Call{Fun: fun, T: typ.Ret, L: l}
+	call.Args = make([]Expr, len(typ.Parms))
+	blk.Exprs = []Expr{call}
+	blk.Parms = make([]FuncParm, len(typ.Parms))
+	for i := range typ.Parms {
+		blk.Parms[i].Name = fmt.Sprintf("x%d", i)
+		blk.Parms[i].T = typ.Parms[i]
+		blk.Parms[i].L = l
+		call.Args[i] = &Parm{Def: &blk.Parms[i], T: typ.Parms[i], L: l}
+	}
+	return blk
 }
 
 func isGround(typ Type) bool {
