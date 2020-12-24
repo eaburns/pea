@@ -145,12 +145,7 @@ func findTypeInDefs(defs []Def, args []Type, name string, l loc.Loc) Type {
 		if !ok || d.Name != name || len(d.Parms) != len(args) {
 			continue
 		}
-		return &NamedType{
-			Name: name,
-			Args: args,
-			Def:  d,
-			L:    l,
-		}
+		return &DefType{Name: name, Args: args, Def: d, L: l}
 	}
 	return nil
 }

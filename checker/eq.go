@@ -5,23 +5,23 @@ func (r *RefType) eq(other Type) bool {
 	return ok && r.Type.eq(o.Type)
 }
 
-func (n *NamedType) eq(other Type) bool {
-	if n.Def.Alias {
+func (d *DefType) eq(other Type) bool {
+	if d.Def.Alias {
 		panic("impossible")
 	}
-	o, ok := other.(*NamedType)
+	o, ok := other.(*DefType)
 	if !ok {
 		return false
 	}
 	if o.Def.Alias {
 		panic("impossible")
 	}
-	if len(o.Args) != len(n.Args) || o.Def != n.Def {
+	if len(o.Args) != len(d.Args) || o.Def != d.Def {
 		return false
 	}
-	for i, nArg := range n.Args {
+	for i, dArg := range d.Args {
 		oArg := o.Args[i]
-		if !nArg.eq(oArg) {
+		if !dArg.eq(oArg) {
 			return false
 		}
 	}

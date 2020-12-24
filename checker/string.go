@@ -8,8 +8,8 @@ func (r *RefType) String() string {
 	return r.buildString(new(strings.Builder)).String()
 }
 
-func (n *NamedType) String() string {
-	return n.buildString(new(strings.Builder)).String()
+func (d *DefType) String() string {
+	return d.buildString(new(strings.Builder)).String()
 }
 
 func (a *ArrayType) String() string {
@@ -42,38 +42,38 @@ func (r *RefType) buildString(w *strings.Builder) *strings.Builder {
 	return w
 }
 
-func (n *NamedType) buildString(w *strings.Builder) *strings.Builder {
-	if needParens(n) {
+func (d *DefType) buildString(w *strings.Builder) *strings.Builder {
+	if needParens(d) {
 		w.WriteRune('(')
 	}
-	for i, a := range n.Args {
+	for i, a := range d.Args {
 		if i > 0 {
 			w.WriteString(", ")
 		}
 		a.buildString(w)
 	}
 	switch {
-	case needParens(n):
+	case needParens(d):
 		w.WriteString(") ")
-	case len(n.Args) == 1:
+	case len(d.Args) == 1:
 		w.WriteRune(' ')
 	}
-	if n.Def != nil && n.Def.File.Mod.Imported {
-		w.WriteString(n.Def.File.Mod.Name())
+	if d.Def != nil && d.Def.File.Mod.Imported {
+		w.WriteString(d.Def.File.Mod.Name())
 		w.WriteRune('#')
 	}
-	w.WriteString(n.Name)
+	w.WriteString(d.Name)
 	return w
 }
 
-func needParens(n *NamedType) bool {
+func needParens(d *DefType) bool {
 	switch {
-	case len(n.Args) == 0:
+	case len(d.Args) == 0:
 		return false
-	case len(n.Args) > 1:
+	case len(d.Args) > 1:
 		return true
 	default:
-		_, ok := n.Args[0].(*RefType)
+		_, ok := d.Args[0].(*RefType)
 		return ok
 	}
 }

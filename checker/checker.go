@@ -330,8 +330,8 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*f
 				loc: parserType.L,
 			})
 		}
-		if nt, ok := typ.(*NamedType); ok && inst {
-			typ = instType(nt)
+		if dt, ok := typ.(*DefType); ok && inst {
+			typ = instType(dt)
 		}
 	case *parser.ArrayType:
 		var elemType Type
@@ -419,8 +419,8 @@ func checkAliasCycle(root *TypeDef) *fail {
 			return false
 		}
 		seen[typeDef] = true
-		namedType, ok := typeDef.Type.(*NamedType)
-		if !ok || !namedType.Def.Alias || check(namedType.Def) {
+		defType, ok := typeDef.Type.(*DefType)
+		if !ok || !defType.Def.Alias || check(defType.Def) {
 			path = path[:len(path)-1]
 			return true
 		}
@@ -437,7 +437,7 @@ func checkAliasCycle(root *TypeDef) *fail {
 		for _, def := range path {
 			notes = append(notes, note{
 				msg: def.Type.String(),
-				loc: def.Type.(*NamedType).L,
+				loc: def.Type.(*DefType).L,
 			})
 		}
 		// Break the alias so that checking can continue reporting more errors.
@@ -458,7 +458,7 @@ func instType(typ Type) Type {
 		break
 	case *RefType:
 		typ.Type = instType(typ.Type)
-	case *NamedType:
+	case *DefType:
 		if typ.Def == nil {
 			return typ
 		}
@@ -491,14 +491,14 @@ func instType(typ Type) Type {
 }
 
 func resolveAlias(typ Type) Type {
-	namedType, ok := typ.(*NamedType)
-	if !ok || !namedType.Def.Alias {
+	defType, ok := typ.(*DefType)
+	if !ok || !defType.Def.Alias {
 		return typ
 	}
-	aliased := copyTypeWithLoc(namedType.Def.Type, namedType.L)
+	aliased := copyTypeWithLoc(defType.Def.Type, defType.L)
 	sub := make(map[*TypeParm]Type)
-	for i, arg := range namedType.Args {
-		sub[&namedType.Def.Parms[i]] = arg
+	for i, arg := range defType.Args {
+		sub[&defType.Def.Parms[i]] = arg
 	}
 	return resolveAlias(subType(sub, aliased))
 }
@@ -543,7 +543,7 @@ func subType(sub map[*TypeParm]Type, typ Type) Type {
 		copy := *typ
 		copy.Type = subType(sub, typ.Type)
 		return &copy
-	case *NamedType:
+	case *DefType:
 		copy := *typ
 		copy.Args = nil
 		for _, arg := range typ.Args {
@@ -603,7 +603,7 @@ func copyTypeWithLoc(typ Type, l loc.Loc) Type {
 			Type: copyTypeWithLoc(typ.Type, l),
 			L:    l,
 		}
-	case *NamedType:
+	case *DefType:
 		copy := *typ
 		for i := range copy.Args {
 			copy.Args[i] = copyTypeWithLoc(copy.Args[i], l)
@@ -1402,7 +1402,7 @@ func deref(expr Expr) Expr {
 	switch ref := expr.Type().(type) {
 	case *RefType:
 		t = ref.Type
-	case *NamedType:
+	case *DefType:
 		if ref.Inst == nil || ref.Inst.Type == nil {
 			return expr
 		}
@@ -1423,7 +1423,7 @@ func isRef(typ Type) bool {
 		return false
 	case *RefType:
 		return true
-	case *NamedType:
+	case *DefType:
 		return typ.Inst != nil && isRef(typ.Inst.Type)
 	default:
 		return false
@@ -1450,7 +1450,7 @@ func literal(typ Type) Type {
 			return nil
 		}
 		return &RefType{Type: literal(typ.Type), L: typ.L}
-	case *NamedType:
+	case *DefType:
 		if typ.Inst == nil || typ.Inst.Type == nil {
 			return nil
 		}

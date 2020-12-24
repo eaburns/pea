@@ -128,26 +128,26 @@ func (r *RefType) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (n *NamedType) print(pc *config) {
-	if len(n.Args) == 0 && n.Def == nil {
-		pc.p("NamedType(%s)", n.Name)
-		pc.loc(n.L)
+func (d *DefType) print(pc *config) {
+	if len(d.Args) == 0 && d.Def == nil {
+		pc.p("DefType(%s)", d.Name)
+		pc.loc(d.L)
 		return
 	}
-	pc.p("NamedType{")
-	pc.loc(n.L)
-	pc.field("Name", n.Name)
-	pc.field("Args", n.Args)
-	if n.Def != nil {
-		pc.field("Def", fmt.Sprintf("{ Mod: %s, Name: %s }", n.Def.Mod, n.Def.Name))
-		pc.loc(n.Def.L)
+	pc.p("DefType{")
+	pc.loc(d.L)
+	pc.field("Name", d.Name)
+	pc.field("Args", d.Args)
+	if d.Def != nil {
+		pc.field("Def", fmt.Sprintf("{ Mod: %s, Name: %s }", d.Def.Mod, d.Def.Name))
+		pc.loc(d.Def.L)
 	}
 	if pc.printTypeInsts {
 		pc.printTypeInsts = false
-		pc.field("Inst", n.Inst)
+		pc.field("Inst", d.Inst)
 		pc.printTypeInsts = true
 	} else {
-		pc.field("Inst", fmt.Sprintf("<%p>", n.Inst))
+		pc.field("Inst", fmt.Sprintf("<%p>", d.Inst))
 	}
 	pc.p("\n}")
 }

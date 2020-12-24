@@ -94,7 +94,7 @@ type RefType struct {
 
 func (r *RefType) Loc() loc.Loc { return r.L }
 
-type NamedType struct {
+type DefType struct {
 	Name string
 	Args []Type
 	Def  *TypeDef
@@ -102,7 +102,7 @@ type NamedType struct {
 	L    loc.Loc
 }
 
-func (n *NamedType) Loc() loc.Loc { return n.L }
+func (d *DefType) Loc() loc.Loc { return d.L }
 
 type ArrayType struct {
 	ElemType Type
