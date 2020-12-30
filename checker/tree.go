@@ -178,6 +178,14 @@ type BasicType struct {
 
 func (b *BasicType) Loc() loc.Loc { return b.L }
 
+type TestDef struct {
+	File  *File
+	Mod   string
+	Name  string
+	Exprs []Expr
+	L     loc.Loc
+}
+
 type FuncDef struct {
 	File      *File
 	Mod       string
@@ -220,43 +228,20 @@ type FuncDecl struct {
 	L     loc.Loc
 }
 
+type Func interface {
+	Parms() []Type
+	Ret() Type
+}
+
 type FuncInst struct {
 	T   *FuncType
 	Def *FuncDef
 }
 
+func (f *FuncInst) Loc() loc.Loc  { return f.Def.L }
+func (f *FuncInst) Type() Type    { return f.T }
 func (f *FuncInst) Parms() []Type { return f.T.Parms }
 func (f *FuncInst) Ret() Type     { return f.T.Ret }
-func (f *FuncInst) Type() Type    { return f.T }
-
-type TestDef struct {
-	File  *File
-	Mod   string
-	Name  string
-	Exprs []Expr
-	L     loc.Loc
-}
-
-type Expr interface {
-	Type() Type
-	Loc() loc.Loc
-}
-
-type Call struct {
-	Fun  Callable
-	Args []Expr
-	T    Type
-	L    loc.Loc
-}
-
-func (c *Call) Type() Type   { return c.T }
-func (c *Call) Loc() loc.Loc { return c.L }
-
-type Callable interface {
-	Parms() []Type
-	Ret() Type // returns nil if no return
-	Type() Type
-}
 
 type Select struct {
 	Struct *StructType
@@ -264,28 +249,17 @@ type Select struct {
 }
 
 func (s *Select) Parms() []Type { return []Type{s.Struct} }
-func (s *Select) Ret() Type     { return s.Field.Type }
+func (s *Select) Ret() Type     { return &RefType{Type: s.Field.Type, L: s.Field.L} }
 
 type Switch struct {
 	Union *UnionType
 	Cases []*CaseDef
+	Ps    []Type
 	R     Type // inferred return type; nil if no return
 }
 
-func (s *Switch) Parms() []Type {
-	parms := make([]Type, len(s.Cases)+1)
-	parms[0] = s.Union
-	for i, cas := range s.Cases {
-		parm := &FuncType{Parms: nil, Ret: s.R, L: cas.L}
-		if cas.Type != nil {
-			parm.Parms = []Type{cas.Type}
-		}
-		parms[i+1] = parm
-	}
-	return parms
-}
-
-func (s *Switch) Ret() Type { return s.R }
+func (s *Switch) Parms() []Type { return s.Ps }
+func (s *Switch) Ret() Type     { return s.R }
 
 type Op int
 
@@ -328,6 +302,31 @@ type Builtin struct {
 
 func (b *Builtin) Parms() []Type { return b.Ps }
 func (b *Builtin) Ret() Type     { return b.R }
+
+type ExprFunc struct {
+	Expr
+	FuncType *FuncType
+}
+
+func (e *ExprFunc) Parms() []Type { return e.FuncType.Parms }
+func (e *ExprFunc) Ret() Type     { return e.FuncType.Ret }
+
+type Expr interface {
+	Type() Type
+	Loc() loc.Loc
+}
+
+type Call struct {
+	// Fun is *FuncInst, Select, Switch, *Builtin,
+	// or an Expr with Type *FuncType
+	Fun  Func
+	Args []Expr
+	T    Type
+	L    loc.Loc
+}
+
+func (c *Call) Type() Type   { return c.T }
+func (c *Call) Loc() loc.Loc { return c.L }
 
 type Deref struct {
 	Expr Expr

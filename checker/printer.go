@@ -254,6 +254,7 @@ func (f *FuncInst) print(pc *config) {
 	if f.Def != nil {
 		pc.n++
 		pc.p("\nDef: %s", fmt.Sprintf("{ Name: %s }", f.Def.Name))
+		pc.loc(f.Def.L)
 		pc.n--
 	}
 	pc.field("Type", f.T)
@@ -289,7 +290,7 @@ func (s *Switch) print(pc *config) {
 	pc.p("Switch{")
 	pc.field("Union", s.Union)
 	pc.field("Cases", s.Cases)
-	pc.field("Ret", s.Ret)
+	pc.field("Ret", s.R)
 	pc.p("\n}")
 }
 

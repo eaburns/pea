@@ -208,9 +208,13 @@ func findInDefs(defs []Def, name string) []id {
 	for _, def := range defs {
 		switch def := def.(type) {
 		case *VarDef:
-			ids = append(ids, def)
+			if def.Name == name {
+				ids = append(ids, def)
+			}
 		case *FuncDef:
-			ids = append(ids, def)
+			if def.Name == name {
+				ids = append(ids, def)
+			}
 		}
 	}
 	return ids

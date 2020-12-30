@@ -98,7 +98,7 @@ func findVarDef(t *testing.T, name string, mod *Mod) *VarDef {
 	panic("impossible")
 }
 
-func TestErrors(t *testing.T) {
+func TestNumLiteralErrors(t *testing.T) {
 	tests := []struct {
 		src  string
 		err  string
@@ -168,7 +168,6 @@ func TestErrors(t *testing.T) {
 	}
 }
 
-// TODO: a bunch of these will become errors once we implement type checking of expressions.
 func TestLiteralInference(t *testing.T) {
 	tests := []struct {
 		expr  string
