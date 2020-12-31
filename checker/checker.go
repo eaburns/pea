@@ -247,8 +247,8 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 		}
 	}
 	for _, parserFile := range files {
-		var fs []*fail
 		for _, parserDef := range parserFile.Defs {
+			var fs []*fail
 			switch def := defs[parserDef].(type) {
 			case *TypeDef:
 				break // nothing to do really.
@@ -259,9 +259,9 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			case *TestDef:
 				// TODO
 			}
-		}
-		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			if len(fs) > 0 {
+				fails = append(fails, fs...)
+			}
 		}
 	}
 	if len(fails) > 0 {
