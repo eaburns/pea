@@ -12388,7 +12388,7 @@ func _IdxAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ "[" expr:Expr _ "]"
+	// _ "[" exprs:Exprs _ "]"
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
@@ -12399,11 +12399,11 @@ func _IdxAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto fail
 	}
 	pos++
-	// expr:Expr
+	// exprs:Exprs
 	{
 		pos1 := pos
-		// Expr
-		if !_accept(parser, _ExprAccepts, &pos, &perr) {
+		// Exprs
+		if !_accept(parser, _ExprsAccepts, &pos, &perr) {
 			goto fail
 		}
 		labels[0] = parser.text[pos1:pos]
@@ -12436,7 +12436,7 @@ func _IdxFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _Idx}
 	// action
-	// _ "[" expr:Expr _ "]"
+	// _ "[" exprs:Exprs _ "]"
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
@@ -12452,11 +12452,11 @@ func _IdxFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto fail
 	}
 	pos++
-	// expr:Expr
+	// exprs:Exprs
 	{
 		pos1 := pos
-		// Expr
-		if !_fail(parser, _ExprFail, errPos, failure, &pos) {
+		// Exprs
+		if !_fail(parser, _ExprsFail, errPos, failure, &pos) {
 			goto fail
 		}
 		labels[0] = parser.text[pos1:pos]
@@ -12486,7 +12486,7 @@ fail:
 func _IdxAction(parser *_Parser, start int) (int, *primary) {
 	var labels [1]string
 	use(labels)
-	var label0 Expr
+	var label0 []Expr
 	dp := parser.deltaPos[start][_Idx]
 	if dp < 0 {
 		return -1, nil
@@ -12502,7 +12502,7 @@ func _IdxAction(parser *_Parser, start int) (int, *primary) {
 	// action
 	{
 		start0 := pos
-		// _ "[" expr:Expr _ "]"
+		// _ "[" exprs:Exprs _ "]"
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
@@ -12514,11 +12514,11 @@ func _IdxAction(parser *_Parser, start int) (int, *primary) {
 			goto fail
 		}
 		pos++
-		// expr:Expr
+		// exprs:Exprs
 		{
 			pos2 := pos
-			// Expr
-			if p, n := _ExprAction(parser, pos); n == nil {
+			// Exprs
+			if p, n := _ExprsAction(parser, pos); n == nil {
 				goto fail
 			} else {
 				label0 = *n
@@ -12538,8 +12538,8 @@ func _IdxAction(parser *_Parser, start int) (int, *primary) {
 		}
 		pos++
 		node = func(
-			start, end int, expr Expr) primary {
-			return primary(idx{arg: expr, l: l(parser, start, end)})
+			start, end int, exprs []Expr) primary {
+			return primary(idx{args: exprs, l: l(parser, start, end)})
 		}(
 			start0, pos, label0)
 	}

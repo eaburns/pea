@@ -143,8 +143,8 @@ type call struct {
 }
 
 type idx struct {
-	arg Expr
-	l   loc.Loc
+	args []Expr
+	l    loc.Loc
 }
 
 func primaries(head Expr, tail []primary) Expr {
@@ -155,7 +155,7 @@ func primaries(head Expr, tail []primary) Expr {
 		case call:
 			head = &Call{Fun: head, Args: p.args, L: p.l}
 		case idx:
-			head = &Call{Fun: Id{Name: "[]", L: p.l}, Args: []Expr{head, p.arg}, L: p.l}
+			head = &Call{Fun: Id{Name: "[]", L: p.l}, Args: append([]Expr{head}, p.args...), L: p.l}
 		default:
 			panic(fmt.Sprintf("bad primary type: %T", primary))
 		}

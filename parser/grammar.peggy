@@ -268,8 +268,8 @@ Call <- _ "(" es:Exprs? _ ")" {
 	return primary(call{args: exprs, l: l(parser, start, end)})
 }
 
-Idx <- _ "[" expr:Expr _ "]" {
-	return primary(idx{arg: expr, l: l(parser, start, end)})
+Idx <- _ "[" exprs:Exprs _ "]" {
+	return primary(idx{args: exprs, l: l(parser, start, end)})
 }
 
 PriArg <- 
