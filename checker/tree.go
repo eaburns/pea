@@ -229,8 +229,11 @@ type FuncDecl struct {
 }
 
 type Func interface {
+	String() string
 	Parms() []Type
 	Ret() Type
+
+	buildString(*strings.Builder) *strings.Builder
 }
 
 type FuncInst struct {
@@ -312,8 +315,11 @@ func (e *ExprFunc) Parms() []Type { return e.FuncType.Parms }
 func (e *ExprFunc) Ret() Type     { return e.FuncType.Ret }
 
 type Expr interface {
+	String() string
 	Type() Type
 	Loc() loc.Loc
+
+	buildString(*strings.Builder) *strings.Builder
 }
 
 type Call struct {

@@ -36,6 +36,74 @@ func (b *BasicType) String() string {
 	return b.buildString(new(strings.Builder)).String()
 }
 
+func (f *FuncInst) String() string {
+	return f.buildString(new(strings.Builder)).String()
+}
+
+func (e *Select) String() string {
+	return e.buildString(new(strings.Builder)).String()
+}
+
+func (w *Switch) String() string {
+	return w.buildString(new(strings.Builder)).String()
+}
+
+func (b *Builtin) String() string {
+	return b.buildString(new(strings.Builder)).String()
+}
+
+func (c *Call) String() string {
+	return c.buildString(new(strings.Builder)).String()
+}
+
+func (d *Deref) String() string {
+	return d.buildString(new(strings.Builder)).String()
+}
+
+func (v *Var) String() string {
+	return v.buildString(new(strings.Builder)).String()
+}
+
+func (l *Local) String() string {
+	return l.buildString(new(strings.Builder)).String()
+}
+
+func (p *Parm) String() string {
+	return p.buildString(new(strings.Builder)).String()
+}
+
+func (c *Cap) String() string {
+	return c.buildString(new(strings.Builder)).String()
+}
+
+func (a *ArrayLit) String() string {
+	return a.buildString(new(strings.Builder)).String()
+}
+
+func (t *StructLit) String() string {
+	return t.buildString(new(strings.Builder)).String()
+}
+
+func (u *UnionLit) String() string {
+	return u.buildString(new(strings.Builder)).String()
+}
+
+func (b *BlockLit) String() string {
+	return b.buildString(new(strings.Builder)).String()
+}
+
+func (t *StrLit) String() string {
+	return t.buildString(new(strings.Builder)).String()
+}
+
+func (i *IntLit) String() string {
+	return i.buildString(new(strings.Builder)).String()
+}
+
+func (f *FloatLit) String() string {
+	return f.buildString(new(strings.Builder)).String()
+}
+
 func (r *RefType) buildString(w *strings.Builder) *strings.Builder {
 	w.WriteRune('&')
 	r.Type.buildString(w)
@@ -115,7 +183,7 @@ func (u *UnionType) buildString(w *strings.Builder) *strings.Builder {
 	return w
 }
 
-func (f *FuncType) buildString(w *strings.Builder) *strings.Builder {
+func (f FuncType) buildString(w *strings.Builder) *strings.Builder {
 	w.WriteRune('(')
 	for i, p := range f.Parms {
 		if i > 0 {
@@ -174,6 +242,53 @@ func (k BasicTypeKind) String() string {
 func (b *BasicType) buildString(w *strings.Builder) *strings.Builder {
 	w.WriteString(b.Kind.String())
 	return w
+}
+
+func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(f.Def.Name)
+	s.WriteRune('(')
+	for i, p := range f.Parms() {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		p.buildString(s)
+	}
+	s.WriteRune(')')
+	if f.Ret() != nil {
+		f.Ret().buildString(s)
+	}
+	return s
+}
+
+func (e *Select) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(e.Field.Name)
+	s.WriteRune('(')
+	e.Struct.buildString(s)
+	s.WriteRune(')')
+	e.Field.Type.buildString(s)
+	return s
+}
+
+func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
+	for _, c := range w.Cases {
+		s.WriteString(c.Name)
+	}
+	s.WriteRune('(')
+	for i, c := range w.Cases {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		if c.Type == nil {
+			FuncType{Ret: w.R}.buildString(s)
+		} else {
+			FuncType{Parms: []Type{c.Type}, Ret: w.R}.buildString(s)
+		}
+	}
+	s.WriteRune(')')
+	if w.R != nil {
+		w.R.buildString(s)
+	}
+	return s
 }
 
 func (o Op) String() string {
@@ -235,4 +350,189 @@ func (o Op) String() string {
 	default:
 		panic("impossible")
 	}
+}
+
+func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
+	switch b.Op {
+	case Assign:
+		s.WriteString(":=")
+	case NewArray:
+		s.WriteString("new()")
+	case BitNot:
+		s.WriteRune('^')
+	case BitXor:
+		s.WriteRune('^')
+	case BitAnd:
+		s.WriteRune('&')
+	case BitOr:
+		s.WriteRune('|')
+	case LeftShift:
+		s.WriteString("<<")
+	case RightShift:
+		s.WriteString(">>")
+	case Negate:
+		s.WriteRune('-')
+	case Minus:
+		s.WriteRune('-')
+	case Plus:
+		s.WriteRune('+')
+	case Times:
+		s.WriteRune('*')
+	case Divide:
+		s.WriteRune('/')
+	case Modulus:
+		s.WriteRune('%')
+	case Eq:
+		s.WriteRune('=')
+	case Neq:
+		s.WriteString("!=")
+	case Less:
+		s.WriteRune('<')
+	case LessEq:
+		s.WriteString("<=")
+	case Greater:
+		s.WriteRune('>')
+	case GreaterEq:
+		s.WriteString(">=")
+	case NumConvert:
+		b.R.buildString(s)
+	case StrConvert:
+		s.WriteString("string")
+	case Index:
+		s.WriteString("[]")
+	case Slice:
+		s.WriteString("[]")
+	case Length:
+		s.WriteString(".length")
+	case Panic:
+		s.WriteString("panic")
+	case Print:
+		s.WriteString("print")
+	default:
+		panic("impossible")
+	}
+	s.WriteRune('(')
+	for i, p := range b.Ps {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		p.buildString(s)
+	}
+	s.WriteRune(')')
+	if b.R != nil {
+		b.R.buildString(s)
+	}
+	return s
+}
+
+func (c *Call) buildString(s *strings.Builder) *strings.Builder {
+	c.Fun.buildString(s)
+	s.WriteRune('(')
+	for i, a := range c.Args {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		a.buildString(s)
+	}
+	s.WriteRune(')')
+	return s
+}
+
+func (d *Deref) buildString(s *strings.Builder) *strings.Builder {
+	return d.Expr.buildString(s)
+}
+
+func (v *Var) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(v.Def.Name)
+	return s
+}
+
+func (l *Local) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(l.Def.Name)
+	return s
+}
+
+func (p *Parm) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(p.Def.Name)
+	return s
+}
+
+func (c Cap) buildString(s *strings.Builder) *strings.Builder {
+	switch {
+	case c.Def.Parm != nil:
+		s.WriteString(c.Def.Parm.Name)
+	case c.Def.Local != nil:
+		s.WriteString(c.Def.Local.Name)
+	case c.Def.Cap != nil:
+		Cap{Def: c.Def.Cap}.buildString(s)
+	}
+	return s
+}
+
+func (a *ArrayLit) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteRune('[')
+	for i, e := range a.Elems {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		e.buildString(s)
+	}
+	s.WriteRune(']')
+	return s
+
+}
+
+func (t *StructLit) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteRune('[')
+	for i, f := range t.Fields {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		s.WriteString(t.Struct.Fields[i].Name)
+		s.WriteRune(' ')
+		f.buildString(s)
+	}
+	s.WriteRune(']')
+	return s
+}
+
+func (u *UnionLit) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteRune('[')
+	s.WriteString(u.Case.Name)
+	if u.Val != nil {
+		s.WriteRune(' ')
+		u.Val.buildString(s)
+	}
+	s.WriteRune(']')
+	return s
+}
+
+func (b *BlockLit) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteRune('(')
+	for i, p := range b.Parms {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		s.WriteString(p.Name)
+		if p.T != nil {
+			p.T.buildString(s)
+		}
+	}
+	s.WriteString("){…}")
+	return s
+}
+
+func (t *StrLit) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(t.Text)
+	return s
+}
+
+func (i *IntLit) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(i.Text)
+	return s
+}
+
+func (f *FloatLit) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(f.Text)
+	return s
 }

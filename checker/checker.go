@@ -1037,7 +1037,7 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 			var notes []note
 			for _, f := range funcs {
 				notes = append(notes, note{
-					msg: fmt.Sprintf("%s parameter %d is type %s", funcName(f), i, t),
+					msg: fmt.Sprintf("%s parameter %d is type %s", f, i, t),
 					loc: f.Parms()[i].Loc(),
 				})
 			}
@@ -1146,7 +1146,6 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		name := funcName(f)
 		var l loc.Loc
 		if locer, ok := f.(interface{ Loc() loc.Loc }); ok {
 			l = locer.Loc()
@@ -1156,14 +1155,14 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 		}
 		if f.Ret() == nil {
 			notes = append(notes, note{
-				msg: fmt.Sprintf("%s: no return, but want %s", name, want),
+				msg: fmt.Sprintf("%s: no return, but want %s", f, want),
 				loc: l,
 			})
 			continue
 		}
 		if !canConvert(f.Ret(), want) {
 			notes = append(notes, note{
-				msg: fmt.Sprintf("%s: cannot convert returned %s to %s", name, f.Ret(), want),
+				msg: fmt.Sprintf("%s: cannot convert returned %s to %s", f, f.Ret(), want),
 				loc: l,
 			})
 			continue
@@ -1202,9 +1201,8 @@ func filterByGroundedArg(funcs []Func, i int, want Type) ([]Func, []note) {
 			n++
 			continue
 		}
-		name := funcName(f)
 		notes = append(notes, note{
-			msg: fmt.Sprintf("%s: cannot convert arg %d (%s) to %s", name, i, want, parm),
+			msg: fmt.Sprintf("%s: cannot convert arg %d (%s) to %s", f, i, want, parm),
 			loc: parm.Loc(),
 		})
 	}
@@ -1225,7 +1223,7 @@ func filterUngroundReturns(funcs []Func) ([]Func, []note) {
 			l = locer.Loc()
 		}
 		notes = append(notes, note{
-			msg: fmt.Sprintf("%s: cannot infer return type", funcName(f)),
+			msg: fmt.Sprintf("%s: cannot infer return type", f),
 			loc: l,
 		})
 	}
@@ -1241,12 +1239,12 @@ func ambiguousCall(name string, funcs []Func, l loc.Loc) *fail {
 		}
 		if l != (loc.Loc{}) {
 			notes = append(notes, note{
-				msg: fmt.Sprintf("%s", funcName(f)),
+				msg: fmt.Sprintf("%s", f),
 				loc: l,
 			})
 		} else {
 			notes = append(notes, note{
-				msg: fmt.Sprintf("built-in %s", funcName(f)),
+				msg: fmt.Sprintf("built-in %s", f),
 			})
 		}
 	}
@@ -1254,28 +1252,6 @@ func ambiguousCall(name string, funcs []Func, l loc.Loc) *fail {
 		msg:   fmt.Sprintf("%s: ambiguous call", name),
 		loc:   l,
 		notes: notes,
-	}
-}
-
-// TODO: replace this with Func.String()
-func funcName(f Func) string {
-	switch f := f.(type) {
-	case *FuncInst:
-		return f.Def.Name
-	case *Select:
-		return "built-in " + f.Field.Name
-	case *Switch:
-		name := "built-in "
-		for _, cas := range f.Cases {
-			name += cas.Name
-		}
-		return name
-	case *Builtin:
-		return "built-in " + f.Op.String()
-	case *ExprFunc:
-		return "expression"
-	default:
-		panic(fmt.Sprintf("impossible Func type: %T", f))
 	}
 }
 
