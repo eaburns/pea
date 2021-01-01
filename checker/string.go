@@ -353,6 +353,59 @@ func (o Op) String() string {
 }
 
 func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(b.name(false))
+	s.WriteRune('(')
+	for i, p := range b.Ps {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		p.buildString(s)
+	}
+	s.WriteRune(')')
+	if b.R != nil {
+		b.R.buildString(s)
+	}
+	return s
+}
+
+func (c *Call) buildString(s *strings.Builder) *strings.Builder {
+	if namer, ok := c.Fun.(interface{ Name() string }); ok {
+		s.WriteString(namer.Name())
+	} else {
+		c.Fun.buildString(s)
+	}
+	s.WriteRune('(')
+	for i, a := range c.Args {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		a.buildString(s)
+	}
+	s.WriteRune(')')
+	return s
+}
+
+func (f *FuncInst) Name() string { return f.Def.Name }
+
+func (e *Select) Name() string { return "(" + e.Field.Name + ")" }
+
+func (w *Switch) Name() string {
+	var s strings.Builder
+	s.WriteRune('(')
+	for _, c := range w.Cases {
+		s.WriteString(c.Name)
+	}
+	s.WriteRune(')')
+	return s.String()
+}
+
+func (b *Builtin) Name() string { return b.name(true) }
+
+func (b *Builtin) name(paren bool) string {
+	var s strings.Builder
+	if paren {
+		s.WriteRune('(')
+	}
 	switch b.Op {
 	case Assign:
 		s.WriteString(":=")
@@ -395,47 +448,26 @@ func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
 	case GreaterEq:
 		s.WriteString(">=")
 	case NumConvert:
-		b.R.buildString(s)
+		return b.R.String()
 	case StrConvert:
-		s.WriteString("string")
+		return "string"
 	case Index:
 		s.WriteString("[]")
 	case Slice:
 		s.WriteString("[]")
 	case Length:
-		s.WriteString(".length")
+		return ".length"
 	case Panic:
-		s.WriteString("panic")
+		return "panic"
 	case Print:
-		s.WriteString("print")
+		return "print"
 	default:
 		panic("impossible")
 	}
-	s.WriteRune('(')
-	for i, p := range b.Ps {
-		if i > 0 {
-			s.WriteString(", ")
-		}
-		p.buildString(s)
+	if paren {
+		s.WriteRune(')')
 	}
-	s.WriteRune(')')
-	if b.R != nil {
-		b.R.buildString(s)
-	}
-	return s
-}
-
-func (c *Call) buildString(s *strings.Builder) *strings.Builder {
-	c.Fun.buildString(s)
-	s.WriteRune('(')
-	for i, a := range c.Args {
-		if i > 0 {
-			s.WriteString(", ")
-		}
-		a.buildString(s)
-	}
-	s.WriteRune(')')
-	return s
+	return s.String()
 }
 
 func (d *Deref) buildString(s *strings.Builder) *strings.Builder {
