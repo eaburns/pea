@@ -1007,6 +1007,10 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 		})
 		return &Call{Args: args, L: parserCall.L}, fails
 	}
+	funcs, ns := filterByArity(funcs, len(parserCall.Args))
+	if len(ns) > 0 {
+		notes = append(notes, ns...)
+	}
 	if want != nil {
 		var ns []note
 		funcs, ns = filterByReturn(funcs, want)
@@ -1125,6 +1129,30 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 		}
 	}
 	return funcs, notes
+}
+
+func filterByArity(funcs []Func, arity int) ([]Func, []note) {
+	var notes []note
+	var n int
+	for _, f := range funcs {
+		if len(f.Parms()) == arity {
+			funcs[n] = f
+			n++
+		}
+		var l loc.Loc
+		var builtIn string
+		if locer, ok := f.(interface{ Loc() loc.Loc }); ok {
+			l = locer.Loc()
+		} else {
+			builtIn = "built-in"
+		}
+		notes = append(notes, note{
+			msg: fmt.Sprintf("%s%s: expects %d arguments, got %d",
+				builtIn, f, len(f.Parms()), arity),
+			loc: l,
+		})
+	}
+	return funcs[:n], notes
 }
 
 func checkArgsFallback(x scope, parserArgs []parser.Expr) ([]Expr, []*fail) {
