@@ -98,6 +98,179 @@ func findVarDef(t *testing.T, name string, mod *Mod) *VarDef {
 	panic("impossible")
 }
 
+func TestOverloadResolution(t *testing.T) {
+	tests := []struct {
+		src  string
+		call string
+		ret  string // or ""
+		want string
+		err  string
+	}{
+		{
+			src:  "var x int",
+			ret:  "int",
+			call: "x()",
+			err:  "not callable",
+		},
+		{
+			call: "x()",
+			err:  "not found",
+		},
+		{
+			src:  "func x(i int)",
+			call: "x()",
+			err:  "not found",
+		},
+		{
+			src:  "func x() int",
+			call: "x()",
+			ret:  "string",
+			err:  "not found",
+		},
+		{
+			src:  "func x(i int)",
+			call: "x(\"hello\")",
+			err:  "type mismatch: got string, want int",
+		},
+		{
+			src:  "func x()",
+			call: "x()",
+			want: "x()",
+		},
+		{
+			// infer return type
+			src:  "func x() int",
+			call: "x()",
+			want: "x()int",
+		},
+		{
+			src: "func x()	func x(_ int)",
+			call: "x()",
+			want: "x()",
+		},
+		{
+			src: "func x()	func x(_ int)",
+			call: "x(1)",
+			want: "x(int)",
+		},
+		{
+			src:  "var x (){}",
+			call: "x()",
+			want: "x",
+		},
+		{
+			src: "var x (int){}	func x()",
+			call: "x()",
+			want: "x()",
+		},
+		{
+			src: "var x (int){}	func x()",
+			call: "x(1)",
+			want: "x",
+		},
+		{
+			src: "func x()	func x()",
+			call: "x()",
+			err:  "ambiguous",
+		},
+		{
+			src: "var x(){}	func x()",
+			call: "x()",
+			err:  "ambiguous",
+		},
+		{
+			src: "func x(u int, s string)		func x(i int, j int)",
+			call: "x(1, 2)",
+			want: "x(int, int)",
+		},
+		{
+			src: "func x(u int, s string)		func x(i int, j int)",
+			call: "x(1, \"hello\")",
+			want: "x(int, string)",
+		},
+		{
+			src: "func x(u int8, s string)		func x(i int8, j int)",
+			call: "x(1, 2)",
+			want: "x(int8, int)",
+		},
+		{
+			src: "func x(u int8, s string)		func x(i int8, j int)",
+			call: "x(1, \"hello\")",
+			want: "x(int8, string)",
+		},
+		{
+			src: "func x(u int, s string)		func x(i &int, j int)",
+			call: "x(&int : 1, 2)",
+			want: "x(&int, int)",
+		},
+		{
+			src: "func x(u int, s string)		func x(i &int, j int)",
+			call: "x(&int : 1, \"hello\")",
+			want: "x(int, string)",
+		},
+		{
+			src: "func x()int		func x()string",
+			ret:  "int",
+			call: "x()",
+			want: "x()int",
+		},
+		{
+			src: "func x()int		func x()string",
+			ret:  "string",
+			call: "x()",
+			want: "x()string",
+		},
+		{
+			src:  "func x()&int",
+			ret:  "int",
+			call: "x()",
+			want: "x()&int",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		name := test.call
+		if test.ret != "" {
+			name = test.ret + " : " + name
+		}
+		t.Run(name, func(t *testing.T) {
+			src := fmt.Sprintf("%s\nvar zz %s :=%s\n", test.src, test.ret, test.call)
+			t.Log(src)
+			mod, errs := check("test", []string{src}, nil)
+			switch {
+			case test.err == "" && len(errs) == 0:
+				expr := findVarDef(t, "zz", mod).Expr
+				call := findCall(expr)
+				if call == nil {
+					t.Fatalf("no call: %s", expr)
+				}
+				got := call.Fun.String()
+				if got != test.want {
+					t.Errorf("got %s, want %s", got, test.want)
+				}
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
+func findCall(e Expr) *Call {
+	switch e := e.(type) {
+	case *Call:
+		return e
+	case *Deref:
+		return findCall(e.Expr)
+	default:
+		fmt.Printf("%T unimplemented", e)
+		return nil
+	}
+}
+
 func TestNumLiteralErrors(t *testing.T) {
 	tests := []struct {
 		src  string
