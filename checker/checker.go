@@ -853,8 +853,8 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []*fail)
 }
 
 func convert(expr Expr, typ Type) (Expr, *fail) {
-	dst, dstRefDepth := valueType(typ)
-	src, srcRefDepth := valueType(expr.Type())
+	dst, dstRefDepth := valueType(literal(typ))
+	src, srcRefDepth := valueType(literal(expr.Type()))
 	if !eq(dst, src) {
 		goto mismatch
 	}
@@ -1029,7 +1029,7 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 				args = append(args, arg)
 			}
 			var ns []note
-			funcs, ns = filterByGroundedArg(funcs, i, arg.Type())
+			funcs, ns = filterByGroundedArg(funcs, i, arg)
 			notes = append(notes, ns...)
 			continue
 		}
@@ -1081,7 +1081,16 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 			panic("impossible") // we made sure it's convertible above
 		}
 	}
-	return &Call{Fun: fun, Args: args, T: fun.Ret(), L: parserCall.L}, fails
+	return &Deref{
+		Expr: &Call{
+			Fun:  fun,
+			Args: args,
+			T:    &RefType{Type: fun.Ret(), L: parserCall.L},
+			L:    parserCall.L,
+		},
+		T: fun.Ret(),
+		L: parserCall.L,
+	}, fails
 }
 
 func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
@@ -1138,17 +1147,15 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 		if len(f.Parms()) == arity {
 			funcs[n] = f
 			n++
+			continue
 		}
 		var l loc.Loc
-		var builtIn string
 		if locer, ok := f.(interface{ Loc() loc.Loc }); ok {
 			l = locer.Loc()
-		} else {
-			builtIn = "built-in"
 		}
 		notes = append(notes, note{
-			msg: fmt.Sprintf("%s%s: expects %d arguments, got %d",
-				builtIn, f, len(f.Parms()), arity),
+			msg: fmt.Sprintf("%s: expects %d arguments, got %d",
+				f, len(f.Parms()), arity),
 			loc: l,
 		})
 	}
@@ -1179,7 +1186,13 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 			l = locer.Loc()
 		}
 		if !isGround(f.Ret()) {
-			panic("unimplemented")
+			ok, note := f.unifyRet(want)
+			if note != nil {
+				notes = append(notes, *note)
+			}
+			if !ok {
+				continue
+			}
 		}
 		if f.Ret() == nil {
 			notes = append(notes, note{
@@ -1188,7 +1201,7 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 			})
 			continue
 		}
-		if !canConvert(f.Ret(), want) {
+		if !canConvertReturn(f.Ret(), want) {
 			notes = append(notes, note{
 				msg: fmt.Sprintf("%s: cannot convert returned %s to %s", f, f.Ret(), want),
 				loc: l,
@@ -1199,6 +1212,27 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 		n++
 	}
 	return funcs[:n], notes
+}
+
+func (f *FuncInst) unifyRet(typ Type) (bool, *note) {
+	panic("unimplemented")
+}
+
+func (s *Select) unifyRet(typ Type) (bool, *note) {
+	s.R = typ
+	return true, nil
+}
+
+func (s *Switch) unifyRet(typ Type) (bool, *note) {
+	panic("unimplemented")
+}
+
+func (b *Builtin) unifyRet(typ Type) (bool, *note) {
+	panic("unimplemented")
+}
+
+func (*ExprFunc) unifyRet(typ Type) (bool, *note) {
+	panic("impossible") // ExprFunc can't have an ungrounded return.
 }
 
 func commonGroundParmType(funcs []Func, i int) Type {
@@ -1216,25 +1250,87 @@ func commonGroundParmType(funcs []Func, i int) Type {
 	return t
 }
 
-func filterByGroundedArg(funcs []Func, i int, want Type) ([]Func, []note) {
+func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		parm := f.Parms()[i]
-		if !isGround(parm) {
-			panic("unimplemented")
+		if !isGround(f.Parms()[i]) {
+			ok, note := f.unifyParm(i, arg.Type())
+			if note != nil {
+				notes = append(notes, *note)
+			}
+			if !ok {
+				continue
+			}
 		}
-		if canConvert(want, parm) {
+		parm := f.Parms()[i]
+		if _, fail := convert(arg, parm); fail == nil {
 			funcs[n] = f
 			n++
 			continue
 		}
 		notes = append(notes, note{
-			msg: fmt.Sprintf("%s: cannot convert arg %d (%s) to %s", f, i, want, parm),
+			msg: fmt.Sprintf("%s: cannot convert argument %d, %s (%s), to %s",
+				f, i, arg, arg.Type(), parm),
 			loc: parm.Loc(),
 		})
 	}
 	return funcs[:n], notes
+}
+
+func (f *FuncInst) unifyParm(i int, typ Type) (bool, *note) {
+	panic("unimplemented")
+}
+
+func (s *Select) unifyParm(i int, typ Type) (bool, *note) {
+	if i > 0 {
+		panic("impossible")
+	}
+	v, _ := valueType(literal(typ))
+	structType, ok := v.(*StructType)
+	if !ok {
+		return false, &note{
+			msg: fmt.Sprintf("%s: %s is not a struct type", s, typ),
+			loc: typ.Loc(),
+		}
+	}
+	var f *FieldDef
+	for i = range structType.Fields {
+		if structType.Fields[i].Name == s.Field.Name {
+			f = &structType.Fields[i]
+			break
+		}
+	}
+	if f == nil {
+		return false, &note{
+			msg: fmt.Sprintf("%s: %s has no field %s", s, typ, s.Field.Name),
+			loc: typ.Loc(),
+		}
+	}
+	if isGround(s.Ret()) && !canConvertReturn(f.Type, s.Field.Type) {
+		return false, &note{
+			msg: fmt.Sprintf("%s: cannot convert %s field %s (%s) to %s",
+				s, typ, f.Name, f.Type, s.Field.Type),
+			loc: typ.Loc(),
+		}
+	}
+	s.Struct = structType
+	s.Field = f
+	s.P = &RefType{Type: structType, L: structType.L}
+	s.R = &RefType{Type: f.Type, L: f.Type.Loc()}
+	return true, nil
+}
+
+func (s *Switch) unifyParm(i int, typ Type) (bool, *note) {
+	panic("unimplemented")
+}
+
+func (b *Builtin) unifyParm(i int, typ Type) (bool, *note) {
+	panic("unimplemented")
+}
+
+func (*ExprFunc) unifyParm(i int, typ Type) (bool, *note) {
+	panic("impossible") // ExprFunc can't have an ungrounded parms.
 }
 
 func filterUngroundReturns(funcs []Func) ([]Func, []note) {
@@ -1283,12 +1379,14 @@ func ambiguousCall(name string, funcs []Func, l loc.Loc) *fail {
 	}
 }
 
-func canConvert(src, dst Type) bool {
-	// To test whether a type is convertable,
-	// we create a dummy expression
+func canConvertReturn(src, dst Type) bool {
+	// To test whether a return type is convertable,
+	// we create a dummy Deref
 	// and try to convert it to the desired type.
 	// If there is no error, then we've got it.
-	_, fail := convert(&Var{T: src, L: src.Loc()}, dst)
+	// We use Deref, because the result of a call
+	// is always a Deref node.
+	_, fail := convert(&Deref{T: src, L: src.Loc()}, dst)
 	return fail == nil
 }
 
@@ -1332,7 +1430,16 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) 
 			args = append(args, arg)
 		}
 	}
-	return &Call{Fun: fun, Args: args, T: fun.Ret(), L: parserCall.L}, fails
+	return &Deref{
+		Expr: &Call{
+			Fun:  fun,
+			Args: args,
+			T:    &RefType{Type: fun.Ret(), L: parserCall.L},
+			L:    parserCall.L,
+		},
+		T: fun.Ret(),
+		L: parserCall.L,
+	}, fails
 }
 
 func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
@@ -1397,9 +1504,9 @@ func instFunc(def *FuncDef, typ *FuncType) *FuncInst {
 func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 	typ := &FuncType{Parms: fun.Parms(), Ret: fun.Ret(), L: l}
 	blk := &BlockLit{Ret: typ.Ret, T: typ, L: l}
-	call := &Call{Fun: fun, T: typ.Ret, L: l}
+	call := &Call{Fun: fun, T: &RefType{Type: typ.Ret, L: l}, L: l}
 	call.Args = make([]Expr, len(typ.Parms))
-	blk.Exprs = []Expr{call}
+	blk.Exprs = []Expr{&Deref{Expr: call, T: typ.Ret, L: l}}
 	blk.Parms = make([]FuncParm, len(typ.Parms))
 	for i := range typ.Parms {
 		blk.Parms[i].Name = fmt.Sprintf("x%d", i)

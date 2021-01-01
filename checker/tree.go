@@ -233,6 +233,8 @@ type Func interface {
 	Parms() []Type
 	Ret() Type
 
+	unifyRet(Type) (bool, *note)
+	unifyParm(int, Type) (bool, *note)
 	buildString(*strings.Builder) *strings.Builder
 }
 
@@ -247,12 +249,19 @@ func (f *FuncInst) Parms() []Type { return f.T.Parms }
 func (f *FuncInst) Ret() Type     { return f.T.Ret }
 
 type Select struct {
+	// Struct is the struct type and the type of the 0th parameter.
+	// During overload resolution, Struct is nil until parm 0 is unified.
 	Struct *StructType
 	Field  *FieldDef
+	P      Type
+	R      Type
 }
 
-func (s *Select) Parms() []Type { return []Type{s.Struct} }
-func (s *Select) Ret() Type     { return &RefType{Type: s.Field.Type, L: s.Field.L} }
+func (s *Select) Parms() []Type { return []Type{s.P} }
+
+func (s *Select) Ret() Type { return s.R }
+
+func (s *Select) Type() Type { return &FuncType{Parms: []Type{s.P}, Ret: s.R} }
 
 type Switch struct {
 	Union *UnionType

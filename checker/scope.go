@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"strings"
+
 	"github.com/eaburns/pea/loc"
 )
 
@@ -155,7 +157,23 @@ func findTypeInDefs(defs []Def, args []Type, name string, l loc.Loc) Type {
 	return nil
 }
 
-func (m *Mod) find(name string) []id { return findInDefs(m.Defs, name) }
+func uniqueTypeVar() *TypeVar {
+	return &TypeVar{Name: "_", Def: &TypeParm{Name: "_"}}
+}
+
+func (m *Mod) find(name string) []id {
+	ids := findInDefs(m.Defs, name)
+	if strings.HasPrefix(name, ".") {
+		// Add a template select type to be filled in with concrete types
+		// or rejected when its 0th parameter is unified.
+		ids = append(ids, &Select{
+			Field: &FieldDef{Name: name},
+			P:     uniqueTypeVar(),
+			R:     uniqueTypeVar(),
+		})
+	}
+	return ids
+}
 
 func (i *Import) find(name string) []id { return findInDefs(i.Defs, name) }
 

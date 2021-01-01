@@ -261,11 +261,14 @@ func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (e *Select) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString("built-in ")
 	s.WriteString(e.Field.Name)
-	s.WriteRune('(')
-	e.Struct.buildString(s)
-	s.WriteRune(')')
-	e.Field.Type.buildString(s)
+	if e.Struct != nil {
+		s.WriteRune('(')
+		e.P.buildString(s)
+		s.WriteRune(')')
+		e.R.buildString(s)
+	}
 	return s
 }
 

@@ -100,6 +100,7 @@ func findVarDef(t *testing.T, name string, mod *Mod) *VarDef {
 
 func TestOverloadResolution(t *testing.T) {
 	tests := []struct {
+		name string
 		src  string
 		call string
 		ret  string // or ""
@@ -107,133 +108,211 @@ func TestOverloadResolution(t *testing.T) {
 		err  string
 	}{
 		{
+			name: "not callable",
 			src:  "var x int",
 			ret:  "int",
 			call: "x()",
 			err:  "not callable",
 		},
 		{
+			name: "no functions found",
 			call: "x()",
 			err:  "not found",
 		},
 		{
+			name: "arity mismatch",
 			src:  "func x(i int)",
 			call: "x()",
 			err:  "not found",
 		},
 		{
+			name: "expected return type mismatch",
 			src:  "func x() int",
 			call: "x()",
 			ret:  "string",
 			err:  "not found",
 		},
 		{
+			name: "argument type mismatch",
 			src:  "func x(i int)",
 			call: "x(\"hello\")",
 			err:  "type mismatch: got string, want int",
 		},
 		{
+			name: "0-ary no return function found",
 			src:  "func x()",
 			call: "x()",
 			want: "x()",
 		},
 		{
-			// infer return type
+			name: "infer return type",
 			src:  "func x() int",
 			call: "x()",
 			want: "x()int",
 		},
 		{
+			name: "pick function with correct arity: 0",
 			src: "func x()	func x(_ int)",
 			call: "x()",
 			want: "x()",
 		},
 		{
+			name: "pick function with correct arity: 1",
 			src: "func x()	func x(_ int)",
 			call: "x(1)",
 			want: "x(int)",
 		},
 		{
+			name: "call a 0-ary function variable",
 			src:  "var x (){}",
 			call: "x()",
 			want: "x",
 		},
 		{
+			name: "call a 1-ary function variable",
 			src: "var x (int){}	func x()",
 			call: "x()",
 			want: "x()",
 		},
 		{
+			name: "choose matching func variable over mismatching func",
 			src: "var x (int){}	func x()",
 			call: "x(1)",
 			want: "x",
 		},
 		{
+			name: "ambiguous call: same exact signatures",
 			src: "func x()	func x()",
 			call: "x()",
 			err:  "ambiguous",
 		},
 		{
+			name: "ambiguous call: variable and function",
 			src: "var x(){}	func x()",
 			call: "x()",
 			err:  "ambiguous",
 		},
 		{
+			name: "arg 1 matches; pick based on arg 2",
 			src: "func x(u int, s string)		func x(i int, j int)",
 			call: "x(1, 2)",
 			want: "x(int, int)",
 		},
 		{
+			name: "arg 1 matches; pick based on arg 2—again",
 			src: "func x(u int, s string)		func x(i int, j int)",
 			call: "x(1, \"hello\")",
 			want: "x(int, string)",
 		},
 		{
 			src: "func x(u int8, s string)		func x(i int8, j int)",
+			name: "arg 1 common type matches, pick based on arg 2",
 			call: "x(1, 2)",
 			want: "x(int8, int)",
 		},
 		{
+			name: "arg 1 common type matches, pick based on arg 2—again",
 			src: "func x(u int8, s string)		func x(i int8, j int)",
 			call: "x(1, \"hello\")",
 			want: "x(int8, string)",
 		},
 		{
+			name: "arg 1 converts, pick based on arg 2?",
 			src: "func x(u int, s string)		func x(i &int, j int)",
 			call: "x(&int : 1, 2)",
 			want: "x(&int, int)",
 		},
 		{
+			name: "reference convert matching arg",
 			src: "func x(u int, s string)		func x(i &int, j int)",
 			call: "x(&int : 1, \"hello\")",
 			want: "x(int, string)",
 		},
 		{
+			name: "pick based on matching return type",
 			src: "func x()int		func x()string",
 			ret:  "int",
 			call: "x()",
 			want: "x()int",
 		},
 		{
+			name: "pick based on matching return type—again",
 			src: "func x()int		func x()string",
 			ret:  "string",
 			call: "x()",
 			want: "x()string",
 		},
 		{
+			name: "return type converts",
 			src:  "func x()&int",
 			ret:  "int",
 			call: "x()",
 			want: "x()&int",
 		},
+		{
+			name: "built-in selector",
+			src:  "type point [.x float64, .y float64]",
+			call: "(point : [.x 4, .y 4]).x",
+			want: "built-in .x(&[.x float64, .y float64])&float64",
+		},
+		{
+			name: "built-in selector, other field",
+			src:  "type point [.x float64, .y float64]",
+			call: "(point : [.x 4, .y 4]).y",
+			want: "built-in .y(&[.x float64, .y float64])&float64",
+		},
+		{
+			name: "built-in selector, not a struct",
+			src:  "type point int",
+			call: "(point : 1).z",
+			err:  "point is not a struct type",
+		},
+		{
+			name: "built-in selector, no field",
+			src:  "type point [.x float64, .y float64]",
+			call: "(point : [.x 4, .y 4]).z",
+			err:  "point has no field .z",
+		},
+		{
+			name: "built-in selector, wrong return type",
+			src:  "type point [.x float64, .y float64]",
+			call: "(point : [.x 4, .y 4]).y",
+			ret:  "string",
+			err:  "type mismatch: got &float64, want string",
+		},
+		{
+			name: "built-in selector mismatches, but func def matches",
+			src: `
+				type point [.x float64, .y float64]
+				func .z(_ point)float64
+			`,
+			call: "(point : [.x 4, .y 4]).z",
+			want: ".z(point)float64",
+		},
+		{
+			name: "built-in selector matches, and func def mismatches",
+			src: `
+				type point [.x float64, .y float64]
+				func .x(_ point)string
+			`,
+			call: "(point : [.x 4, .y 4]).x",
+			ret:  "float64",
+			want: "built-in .x(&[.x float64, .y float64])&float64",
+		},
+		{
+			name: "built-in selector and func def ambiguity",
+			src: `
+				type point [.x float64, .y float64]
+				func .x(_ point)float64
+			`,
+			call: "(point : [.x 4, .y 4]).x",
+			ret:  "float64",
+			err:  "ambiguous",
+		},
 	}
 	for _, test := range tests {
 		test := test
-		name := test.call
-		if test.ret != "" {
-			name = test.ret + " : " + name
-		}
-		t.Run(name, func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			src := fmt.Sprintf("%s\nvar zz %s :=%s\n", test.src, test.ret, test.call)
 			t.Log(src)
 			mod, errs := check("test", []string{src}, nil)
