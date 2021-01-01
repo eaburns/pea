@@ -260,7 +260,8 @@ Pri <- head:PriArg tail:(Sel / Call / Idx)+ {
 
 Sel <- _ "." _ name:Id {
 	name.Name = "." + name.Name
-	return primary(sel{name: name, l: l(parser, start, end)})
+	name.L = l(parser, start, end)
+	return primary(sel{name: name, l: name.L})
 }
 
 Call <- _ "(" es:Exprs? _ ")" {

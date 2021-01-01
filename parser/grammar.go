@@ -12171,7 +12171,8 @@ func _SelAction(parser *_Parser, start int) (int, *primary) {
 		node = func(
 			start, end int, name Id) primary {
 			name.Name = "." + name.Name
-			return primary(sel{name: name, l: l(parser, start, end)})
+			name.L = l(parser, start, end)
+			return primary(sel{name: name, l: name.L})
 		}(
 			start0, pos, label0)
 	}
