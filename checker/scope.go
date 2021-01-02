@@ -157,11 +157,10 @@ func findTypeInDefs(defs []Def, args []Type, name string, l loc.Loc) Type {
 	return nil
 }
 
-func uniqueTypeVar() *TypeVar {
-	return &TypeVar{Name: "_", Def: &TypeParm{Name: "_"}}
-}
-
 func (m *Mod) find(name string) []id {
+	if name == "_" {
+		return nil
+	}
 	ids := findInDefs(m.Defs, name)
 	if strings.HasPrefix(name, ".") {
 		// Add a template select type to be filled in with concrete types
@@ -175,6 +174,10 @@ func (m *Mod) find(name string) []id {
 	return ids
 }
 
+func uniqueTypeVar() *TypeVar {
+	return &TypeVar{Name: "_", Def: &TypeParm{Name: "_"}}
+}
+
 func (i *Import) find(name string) []id { return findInDefs(i.Defs, name) }
 
 func (f *File) find(name string) []id { return f.Mod.find(name) }
@@ -184,6 +187,9 @@ func (v *VarDef) find(name string) []id { return v.File.find(name) }
 func (t *TypeDef) find(name string) []id { panic("impossible") }
 
 func (f *FuncDef) find(name string) []id {
+	if name == "_" {
+		return nil
+	}
 	for i := range f.Locals {
 		if f.Locals[i].Name == name {
 			return []id{&f.Locals[i]}
@@ -203,6 +209,9 @@ func (t *TestDef) find(name string) []id {
 }
 
 func (b *blockLitScope) find(name string) []id {
+	if name == "_" {
+		return nil
+	}
 	for i := range b.Locals {
 		if b.Locals[i].Name == name {
 			return []id{&b.Locals[i]}
@@ -222,6 +231,9 @@ func (b *blockLitScope) find(name string) []id {
 }
 
 func findInDefs(defs []Def, name string) []id {
+	if name == "_" {
+		return nil
+	}
 	var ids []id
 	for _, def := range defs {
 		switch def := def.(type) {

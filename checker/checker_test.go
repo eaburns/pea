@@ -98,6 +98,51 @@ func findVarDef(t *testing.T, name string, mod *Mod) *VarDef {
 	panic("impossible")
 }
 
+func TestRedef(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		err  string
+	}{
+		{
+			name: "var redef",
+			src: "var a := 1		var a := 1",
+			err: "redefined",
+		},
+		{
+			name: "var _ not redef",
+			src: "var _ := 1		var _ := 1",
+			err: "",
+		},
+		{
+			name: "func parm redef",
+			src:  "func f(a int, a float64)",
+			err:  "redefined",
+		},
+		{
+			name: "func parm _ not redef",
+			src:  "func f(_ int, _ float64)",
+			err:  "",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Log(test.src)
+			switch _, errs := check("test", []string{test.src}, nil); {
+			case test.err == "" && len(errs) == 0:
+				break
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
 func TestOverloadResolution(t *testing.T) {
 	tests := []struct {
 		name string
@@ -326,7 +371,7 @@ func TestOverloadResolution(t *testing.T) {
 				func f(_ [.x float64, .y float64])
 			`,
 			call: "f(point : [.x 1, .y 1])",
-			want:  "f([.x float64, .y float64])",
+			want: "f([.x float64, .y float64])",
 		},
 		{
 			name: "convert literal to defined type",
@@ -335,7 +380,7 @@ func TestOverloadResolution(t *testing.T) {
 				func f(_ point)
 			`,
 			call: "f([.x float64, .y float64] : [.x 1, .y 1])",
-			want:  "f(point)",
+			want: "f(point)",
 		},
 		{
 			name: "\"convert\" type alias to its type",
@@ -345,7 +390,7 @@ func TestOverloadResolution(t *testing.T) {
 				func f(_ point)
 			`,
 			call: "f(point_alias : [.x 1, .y 1])",
-			want:  "f(point)",
+			want: "f(point)",
 		},
 		{
 			name: "\"convert\" type to an alias",
@@ -355,7 +400,7 @@ func TestOverloadResolution(t *testing.T) {
 				func f(_ point_alias)
 			`,
 			call: "f(point : [.x 1, .y 1])",
-			want:  "f(point)",
+			want: "f(point)",
 		},
 	}
 	for _, test := range tests {

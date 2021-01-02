@@ -81,11 +81,13 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			if parserImport.Name != nil {
 				name = parserImport.Name.Name
 			}
-			if prev, ok := idNames[name]; ok {
-				fails = append(fails, redef(parserImport.L, name, prev))
-				continue
+			if name != "_" {
+				if prev, ok := idNames[name]; ok {
+					fails = append(fails, redef(parserImport.L, name, prev))
+					continue
+				}
+				idNames[name] = parserImport.L
 			}
-			idNames[name] = parserImport.L
 			imp := &Import{
 				Name: name,
 				Path: parserImport.Path,
@@ -179,11 +181,13 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				typeDef.Type = instType(typeDef.Type)
 			case *parser.VarDef:
 				name := parserDef.Name.Name
-				if prev, ok := idNames[name]; ok {
-					fails = append(fails, redef(parserDef.L, name, prev))
-					continue
+				if name != "_" {
+					if prev, ok := idNames[name]; ok {
+						fails = append(fails, redef(parserDef.L, name, prev))
+						continue
+					}
+					idNames[name] = parserDef.L
 				}
-				idNames[name] = parserDef.L
 				t, fs := makeType(file, parserDef.Type)
 				if len(fs) > 0 {
 					fails = append(fails, fs...)
@@ -724,7 +728,7 @@ func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]FuncParm, []*fail)
 	var parms []FuncParm
 	for _, parserParm := range parserParms {
 		name := parserParm.Name.Name
-		if prev, ok := seen[name]; ok {
+		if prev, ok := seen[name]; name != "_" && ok {
 			fails = append(fails, redef(parserParm.L, name, prev))
 		} else {
 			seen[name] = parserParm.L
