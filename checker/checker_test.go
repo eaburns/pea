@@ -309,6 +309,54 @@ func TestOverloadResolution(t *testing.T) {
 			ret:  "float64",
 			err:  "ambiguous",
 		},
+		{
+			name: "no convert between non-literal types",
+			src: `
+				type point_a [.x float64, .y float64]
+				type point_b [.x float64, .y float64]
+				func f(_ point_b)
+			`,
+			call: "f(point_a : [.x 1, .y 1])",
+			err:  "type mismatch: got point_a, want point_b",
+		},
+		{
+			name: "convert defined to literal type",
+			src: `
+				type point [.x float64, .y float64]
+				func f(_ [.x float64, .y float64])
+			`,
+			call: "f(point : [.x 1, .y 1])",
+			want:  "f([.x float64, .y float64])",
+		},
+		{
+			name: "convert literal to defined type",
+			src: `
+				type point [.x float64, .y float64]
+				func f(_ point)
+			`,
+			call: "f([.x float64, .y float64] : [.x 1, .y 1])",
+			want:  "f(point)",
+		},
+		{
+			name: "\"convert\" type alias to its type",
+			src: `
+				type point [.x float64, .y float64]
+				type point_alias := point
+				func f(_ point)
+			`,
+			call: "f(point_alias : [.x 1, .y 1])",
+			want:  "f(point)",
+		},
+		{
+			name: "\"convert\" type to an alias",
+			src: `
+				type point [.x float64, .y float64]
+				type point_alias := point
+				func f(_ point_alias)
+			`,
+			call: "f(point : [.x 1, .y 1])",
+			want:  "f(point)",
+		},
 	}
 	for _, test := range tests {
 		test := test

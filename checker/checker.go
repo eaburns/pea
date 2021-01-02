@@ -853,9 +853,16 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []*fail)
 }
 
 func convert(expr Expr, typ Type) (Expr, *fail) {
-	dst, dstRefDepth := valueType(literal(typ))
-	src, srcRefDepth := valueType(literal(expr.Type()))
-	if !eq(dst, src) {
+	dstType := typ
+	srcType := expr.Type()
+	// If one is a literal type, compare their literal types, not type names.
+	if eq(srcType, literal(srcType)) || eq(dstType, literal(dstType)) {
+		dstType = literal(dstType)
+		srcType = literal(srcType)
+	}
+	dstValueType, dstRefDepth := valueType(dstType)
+	srcValueType, srcRefDepth := valueType(srcType)
+	if !eq(dstValueType, srcValueType) {
 		goto mismatch
 	}
 	if dstRefDepth > srcRefDepth {
