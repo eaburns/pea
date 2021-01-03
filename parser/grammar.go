@@ -20624,110 +20624,153 @@ func _ReservedAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test") !("_"/L/D)
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test")
 	// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test"
 	{
-		pos3 := pos
+		pos4 := pos
 		// "import"
 		if len(parser.text[pos:]) < 6 || parser.text[pos:pos+6] != "import" {
-			perr = _max(perr, pos)
-			goto fail4
-		}
-		pos += 6
-		goto ok0
-	fail4:
-		pos = pos3
-		// "Import"
-		if len(parser.text[pos:]) < 6 || parser.text[pos:pos+6] != "Import" {
 			perr = _max(perr, pos)
 			goto fail5
 		}
 		pos += 6
-		goto ok0
+		goto ok1
 	fail5:
-		pos = pos3
-		// "const"
-		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "const" {
+		pos = pos4
+		// "Import"
+		if len(parser.text[pos:]) < 6 || parser.text[pos:pos+6] != "Import" {
 			perr = _max(perr, pos)
 			goto fail6
 		}
-		pos += 5
-		goto ok0
+		pos += 6
+		goto ok1
 	fail6:
-		pos = pos3
-		// "Const"
-		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Const" {
+		pos = pos4
+		// "const"
+		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "const" {
 			perr = _max(perr, pos)
 			goto fail7
 		}
 		pos += 5
-		goto ok0
+		goto ok1
 	fail7:
-		pos = pos3
-		// "var"
-		if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "var" {
+		pos = pos4
+		// "Const"
+		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Const" {
 			perr = _max(perr, pos)
 			goto fail8
 		}
-		pos += 3
-		goto ok0
+		pos += 5
+		goto ok1
 	fail8:
-		pos = pos3
-		// "Var"
-		if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "Var" {
+		pos = pos4
+		// "var"
+		if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "var" {
 			perr = _max(perr, pos)
 			goto fail9
 		}
 		pos += 3
-		goto ok0
+		goto ok1
 	fail9:
-		pos = pos3
-		// "type"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "type" {
+		pos = pos4
+		// "Var"
+		if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "Var" {
 			perr = _max(perr, pos)
 			goto fail10
 		}
-		pos += 4
-		goto ok0
+		pos += 3
+		goto ok1
 	fail10:
-		pos = pos3
-		// "Type"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Type" {
+		pos = pos4
+		// "type"
+		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "type" {
 			perr = _max(perr, pos)
 			goto fail11
 		}
 		pos += 4
-		goto ok0
+		goto ok1
 	fail11:
-		pos = pos3
-		// "func"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
+		pos = pos4
+		// "Type"
+		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Type" {
 			perr = _max(perr, pos)
 			goto fail12
 		}
 		pos += 4
-		goto ok0
+		goto ok1
 	fail12:
-		pos = pos3
-		// "Func"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
+		pos = pos4
+		// "func"
+		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
 			perr = _max(perr, pos)
 			goto fail13
 		}
 		pos += 4
-		goto ok0
+		goto ok1
 	fail13:
-		pos = pos3
-		// "test"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
+		pos = pos4
+		// "Func"
+		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
 			perr = _max(perr, pos)
 			goto fail14
 		}
 		pos += 4
-		goto ok0
+		goto ok1
 	fail14:
-		pos = pos3
+		pos = pos4
+		// "test"
+		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
+			perr = _max(perr, pos)
+			goto fail15
+		}
+		pos += 4
+		goto ok1
+	fail15:
+		pos = pos4
 		goto fail
-	ok0:
+	ok1:
+	}
+	// !("_"/L/D)
+	{
+		pos17 := pos
+		perr19 := perr
+		// ("_"/L/D)
+		// "_"/L/D
+		{
+			pos23 := pos
+			// "_"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
+				perr = _max(perr, pos)
+				goto fail24
+			}
+			pos++
+			goto ok20
+		fail24:
+			pos = pos23
+			// L
+			if !_accept(parser, _LAccepts, &pos, &perr) {
+				goto fail25
+			}
+			goto ok20
+		fail25:
+			pos = pos23
+			// D
+			if !_accept(parser, _DAccepts, &pos, &perr) {
+				goto fail26
+			}
+			goto ok20
+		fail26:
+			pos = pos23
+			goto ok16
+		ok20:
+		}
+		pos = pos17
+		perr = _max(perr19, pos)
+		goto fail
+	ok16:
+		pos = pos17
+		perr = perr19
 	}
 	return _memoize(parser, _Reserved, start, pos, perr)
 fail:
@@ -20744,9 +20787,11 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _Reserved}
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test") !("_"/L/D)
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test")
 	// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test"
 	{
-		pos3 := pos
+		pos4 := pos
 		// "import"
 		if len(parser.text[pos:]) < 6 || parser.text[pos:pos+6] != "import" {
 			if pos >= errPos {
@@ -20755,12 +20800,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"import\"",
 				})
 			}
-			goto fail4
+			goto fail5
 		}
 		pos += 6
-		goto ok0
-	fail4:
-		pos = pos3
+		goto ok1
+	fail5:
+		pos = pos4
 		// "Import"
 		if len(parser.text[pos:]) < 6 || parser.text[pos:pos+6] != "Import" {
 			if pos >= errPos {
@@ -20769,12 +20814,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"Import\"",
 				})
 			}
-			goto fail5
+			goto fail6
 		}
 		pos += 6
-		goto ok0
-	fail5:
-		pos = pos3
+		goto ok1
+	fail6:
+		pos = pos4
 		// "const"
 		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "const" {
 			if pos >= errPos {
@@ -20783,12 +20828,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"const\"",
 				})
 			}
-			goto fail6
+			goto fail7
 		}
 		pos += 5
-		goto ok0
-	fail6:
-		pos = pos3
+		goto ok1
+	fail7:
+		pos = pos4
 		// "Const"
 		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Const" {
 			if pos >= errPos {
@@ -20797,12 +20842,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"Const\"",
 				})
 			}
-			goto fail7
+			goto fail8
 		}
 		pos += 5
-		goto ok0
-	fail7:
-		pos = pos3
+		goto ok1
+	fail8:
+		pos = pos4
 		// "var"
 		if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "var" {
 			if pos >= errPos {
@@ -20811,12 +20856,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"var\"",
 				})
 			}
-			goto fail8
+			goto fail9
 		}
 		pos += 3
-		goto ok0
-	fail8:
-		pos = pos3
+		goto ok1
+	fail9:
+		pos = pos4
 		// "Var"
 		if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "Var" {
 			if pos >= errPos {
@@ -20825,12 +20870,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"Var\"",
 				})
 			}
-			goto fail9
+			goto fail10
 		}
 		pos += 3
-		goto ok0
-	fail9:
-		pos = pos3
+		goto ok1
+	fail10:
+		pos = pos4
 		// "type"
 		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "type" {
 			if pos >= errPos {
@@ -20839,12 +20884,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"type\"",
 				})
 			}
-			goto fail10
+			goto fail11
 		}
 		pos += 4
-		goto ok0
-	fail10:
-		pos = pos3
+		goto ok1
+	fail11:
+		pos = pos4
 		// "Type"
 		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Type" {
 			if pos >= errPos {
@@ -20853,12 +20898,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"Type\"",
 				})
 			}
-			goto fail11
+			goto fail12
 		}
 		pos += 4
-		goto ok0
-	fail11:
-		pos = pos3
+		goto ok1
+	fail12:
+		pos = pos4
 		// "func"
 		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
 			if pos >= errPos {
@@ -20867,12 +20912,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"func\"",
 				})
 			}
-			goto fail12
+			goto fail13
 		}
 		pos += 4
-		goto ok0
-	fail12:
-		pos = pos3
+		goto ok1
+	fail13:
+		pos = pos4
 		// "Func"
 		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
 			if pos >= errPos {
@@ -20881,12 +20926,12 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"Func\"",
 				})
 			}
-			goto fail13
+			goto fail14
 		}
 		pos += 4
-		goto ok0
-	fail13:
-		pos = pos3
+		goto ok1
+	fail14:
+		pos = pos4
 		// "test"
 		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
 			if pos >= errPos {
@@ -20895,14 +20940,66 @@ func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"test\"",
 				})
 			}
-			goto fail14
+			goto fail15
 		}
 		pos += 4
-		goto ok0
-	fail14:
-		pos = pos3
+		goto ok1
+	fail15:
+		pos = pos4
 		goto fail
-	ok0:
+	ok1:
+	}
+	// !("_"/L/D)
+	{
+		pos17 := pos
+		nkids18 := len(failure.Kids)
+		// ("_"/L/D)
+		// "_"/L/D
+		{
+			pos23 := pos
+			// "_"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "\"_\"",
+					})
+				}
+				goto fail24
+			}
+			pos++
+			goto ok20
+		fail24:
+			pos = pos23
+			// L
+			if !_fail(parser, _LFail, errPos, failure, &pos) {
+				goto fail25
+			}
+			goto ok20
+		fail25:
+			pos = pos23
+			// D
+			if !_fail(parser, _DFail, errPos, failure, &pos) {
+				goto fail26
+			}
+			goto ok20
+		fail26:
+			pos = pos23
+			goto ok16
+		ok20:
+		}
+		pos = pos17
+		failure.Kids = failure.Kids[:nkids18]
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "!(\"_\"/L/D)",
+			})
+		}
+		goto fail
+	ok16:
+		pos = pos17
+		failure.Kids = failure.Kids[:nkids18]
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -20924,122 +21021,171 @@ func _ReservedAction(parser *_Parser, start int) (int, *string) {
 	}
 	var node string
 	pos := start
-	// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test"
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test") !("_"/L/D)
 	{
-		pos3 := pos
-		var node2 string
-		// "import"
-		if len(parser.text[pos:]) < 6 || parser.text[pos:pos+6] != "import" {
-			goto fail4
+		var node0 string
+		// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test")
+		// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test"
+		{
+			pos4 := pos
+			var node3 string
+			// "import"
+			if len(parser.text[pos:]) < 6 || parser.text[pos:pos+6] != "import" {
+				goto fail5
+			}
+			node0 = parser.text[pos : pos+6]
+			pos += 6
+			goto ok1
+		fail5:
+			node0 = node3
+			pos = pos4
+			// "Import"
+			if len(parser.text[pos:]) < 6 || parser.text[pos:pos+6] != "Import" {
+				goto fail6
+			}
+			node0 = parser.text[pos : pos+6]
+			pos += 6
+			goto ok1
+		fail6:
+			node0 = node3
+			pos = pos4
+			// "const"
+			if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "const" {
+				goto fail7
+			}
+			node0 = parser.text[pos : pos+5]
+			pos += 5
+			goto ok1
+		fail7:
+			node0 = node3
+			pos = pos4
+			// "Const"
+			if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Const" {
+				goto fail8
+			}
+			node0 = parser.text[pos : pos+5]
+			pos += 5
+			goto ok1
+		fail8:
+			node0 = node3
+			pos = pos4
+			// "var"
+			if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "var" {
+				goto fail9
+			}
+			node0 = parser.text[pos : pos+3]
+			pos += 3
+			goto ok1
+		fail9:
+			node0 = node3
+			pos = pos4
+			// "Var"
+			if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "Var" {
+				goto fail10
+			}
+			node0 = parser.text[pos : pos+3]
+			pos += 3
+			goto ok1
+		fail10:
+			node0 = node3
+			pos = pos4
+			// "type"
+			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "type" {
+				goto fail11
+			}
+			node0 = parser.text[pos : pos+4]
+			pos += 4
+			goto ok1
+		fail11:
+			node0 = node3
+			pos = pos4
+			// "Type"
+			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Type" {
+				goto fail12
+			}
+			node0 = parser.text[pos : pos+4]
+			pos += 4
+			goto ok1
+		fail12:
+			node0 = node3
+			pos = pos4
+			// "func"
+			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
+				goto fail13
+			}
+			node0 = parser.text[pos : pos+4]
+			pos += 4
+			goto ok1
+		fail13:
+			node0 = node3
+			pos = pos4
+			// "Func"
+			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
+				goto fail14
+			}
+			node0 = parser.text[pos : pos+4]
+			pos += 4
+			goto ok1
+		fail14:
+			node0 = node3
+			pos = pos4
+			// "test"
+			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
+				goto fail15
+			}
+			node0 = parser.text[pos : pos+4]
+			pos += 4
+			goto ok1
+		fail15:
+			node0 = node3
+			pos = pos4
+			goto fail
+		ok1:
 		}
-		node = parser.text[pos : pos+6]
-		pos += 6
-		goto ok0
-	fail4:
-		node = node2
-		pos = pos3
-		// "Import"
-		if len(parser.text[pos:]) < 6 || parser.text[pos:pos+6] != "Import" {
-			goto fail5
+		node, node0 = node+node0, ""
+		// !("_"/L/D)
+		{
+			pos17 := pos
+			// ("_"/L/D)
+			// "_"/L/D
+			{
+				pos23 := pos
+				// "_"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
+					goto fail24
+				}
+				pos++
+				goto ok20
+			fail24:
+				pos = pos23
+				// L
+				if p, n := _LAction(parser, pos); n == nil {
+					goto fail25
+				} else {
+					pos = p
+				}
+				goto ok20
+			fail25:
+				pos = pos23
+				// D
+				if p, n := _DAction(parser, pos); n == nil {
+					goto fail26
+				} else {
+					pos = p
+				}
+				goto ok20
+			fail26:
+				pos = pos23
+				goto ok16
+			ok20:
+			}
+			pos = pos17
+			goto fail
+		ok16:
+			pos = pos17
+			node0 = ""
 		}
-		node = parser.text[pos : pos+6]
-		pos += 6
-		goto ok0
-	fail5:
-		node = node2
-		pos = pos3
-		// "const"
-		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "const" {
-			goto fail6
-		}
-		node = parser.text[pos : pos+5]
-		pos += 5
-		goto ok0
-	fail6:
-		node = node2
-		pos = pos3
-		// "Const"
-		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Const" {
-			goto fail7
-		}
-		node = parser.text[pos : pos+5]
-		pos += 5
-		goto ok0
-	fail7:
-		node = node2
-		pos = pos3
-		// "var"
-		if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "var" {
-			goto fail8
-		}
-		node = parser.text[pos : pos+3]
-		pos += 3
-		goto ok0
-	fail8:
-		node = node2
-		pos = pos3
-		// "Var"
-		if len(parser.text[pos:]) < 3 || parser.text[pos:pos+3] != "Var" {
-			goto fail9
-		}
-		node = parser.text[pos : pos+3]
-		pos += 3
-		goto ok0
-	fail9:
-		node = node2
-		pos = pos3
-		// "type"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "type" {
-			goto fail10
-		}
-		node = parser.text[pos : pos+4]
-		pos += 4
-		goto ok0
-	fail10:
-		node = node2
-		pos = pos3
-		// "Type"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Type" {
-			goto fail11
-		}
-		node = parser.text[pos : pos+4]
-		pos += 4
-		goto ok0
-	fail11:
-		node = node2
-		pos = pos3
-		// "func"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
-			goto fail12
-		}
-		node = parser.text[pos : pos+4]
-		pos += 4
-		goto ok0
-	fail12:
-		node = node2
-		pos = pos3
-		// "Func"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
-			goto fail13
-		}
-		node = parser.text[pos : pos+4]
-		pos += 4
-		goto ok0
-	fail13:
-		node = node2
-		pos = pos3
-		// "test"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
-			goto fail14
-		}
-		node = parser.text[pos : pos+4]
-		pos += 4
-		goto ok0
-	fail14:
-		node = node2
-		pos = pos3
-		goto fail
-	ok0:
+		node, node0 = node+node0, ""
 	}
 	parser.act[key] = node
 	return pos, &node

@@ -428,7 +428,7 @@ TypeVar "type variable" <- _ name:[A-Z] !L !D {
 	return TypeVar{Name: name, L: l(parser, start, end)}
 }
 
-Reserved <- "import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "Type" / "func" / "Func" / "test"
+Reserved <- ("import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "Type" / "func" / "Func" / "test") !("_" / L / D)
 D <- [0-9]
 X <- [a-fA-F0-9]
 L <- r:. &{isLetter(r)}

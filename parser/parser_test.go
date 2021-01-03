@@ -17,6 +17,7 @@ func TestExpr(t *testing.T) {
 		{"a123", Id{Name: "a123"}},
 		{"_a123", Id{Name: "_a123"}},
 		{"α", Id{Name: "α"}},
+		{"test_foo", Id{Name: "test_foo"}}, // reserved word prefix
 
 		{"0.0", &FloatLit{Text: "0.0"}},
 		{"1.0", &FloatLit{Text: "1.0"}},
