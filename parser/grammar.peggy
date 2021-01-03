@@ -147,8 +147,8 @@ FuncParms <- p0:FuncParm ps:(_ "," p1:FuncParm { return FuncParm(p1) })* (_ ",")
 	return []FuncParm(append([]FuncParm{p0}, ps...))
 }
 
-FuncParm <- name:Id typ:Type (_ "=" init:Expr)? {
-	return FuncParm{Name: name, Type: typ, Init: init, L: l(parser, start, end)}
+FuncParm <- name:Id typ:Type {
+	return FuncParm{Name: name, Type: typ, L: l(parser, start, end)}
 }
 
 FuncDecl <- name:FuncName _ "(" ps:Types? _ ")" r:Type? {

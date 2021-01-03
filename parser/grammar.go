@@ -6920,14 +6920,14 @@ fail:
 }
 
 func _FuncParmAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [3]string
+	var labels [2]string
 	use(labels)
 	if dp, de, ok := _memo(parser, _FuncParm, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
 	// action
-	// name:Id typ:Type (_ "=" init:Expr)?
+	// name:Id typ:Type
 	// name:Id
 	{
 		pos1 := pos
@@ -6946,42 +6946,13 @@ func _FuncParmAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[1] = parser.text[pos2:pos]
 	}
-	// (_ "=" init:Expr)?
-	{
-		pos4 := pos
-		// (_ "=" init:Expr)
-		// _ "=" init:Expr
-		// _
-		if !_accept(parser, __Accepts, &pos, &perr) {
-			goto fail5
-		}
-		// "="
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "=" {
-			perr = _max(perr, pos)
-			goto fail5
-		}
-		pos++
-		// init:Expr
-		{
-			pos7 := pos
-			// Expr
-			if !_accept(parser, _ExprAccepts, &pos, &perr) {
-				goto fail5
-			}
-			labels[2] = parser.text[pos7:pos]
-		}
-		goto ok8
-	fail5:
-		pos = pos4
-	ok8:
-	}
 	return _memoize(parser, _FuncParm, start, pos, perr)
 fail:
 	return _memoize(parser, _FuncParm, start, -1, perr)
 }
 
 func _FuncParmFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [3]string
+	var labels [2]string
 	use(labels)
 	pos, failure := _failMemo(parser, _FuncParm, start, errPos)
 	if failure != nil {
@@ -6993,7 +6964,7 @@ func _FuncParmFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _FuncParm}
 	// action
-	// name:Id typ:Type (_ "=" init:Expr)?
+	// name:Id typ:Type
 	// name:Id
 	{
 		pos1 := pos
@@ -7012,40 +6983,6 @@ func _FuncParmFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		}
 		labels[1] = parser.text[pos2:pos]
 	}
-	// (_ "=" init:Expr)?
-	{
-		pos4 := pos
-		// (_ "=" init:Expr)
-		// _ "=" init:Expr
-		// _
-		if !_fail(parser, __Fail, errPos, failure, &pos) {
-			goto fail5
-		}
-		// "="
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "=" {
-			if pos >= errPos {
-				failure.Kids = append(failure.Kids, &peg.Fail{
-					Pos:  int(pos),
-					Want: "\"=\"",
-				})
-			}
-			goto fail5
-		}
-		pos++
-		// init:Expr
-		{
-			pos7 := pos
-			// Expr
-			if !_fail(parser, _ExprFail, errPos, failure, &pos) {
-				goto fail5
-			}
-			labels[2] = parser.text[pos7:pos]
-		}
-		goto ok8
-	fail5:
-		pos = pos4
-	ok8:
-	}
 	parser.fail[key] = failure
 	return pos, failure
 fail:
@@ -7054,11 +6991,10 @@ fail:
 }
 
 func _FuncParmAction(parser *_Parser, start int) (int, *FuncParm) {
-	var labels [3]string
+	var labels [2]string
 	use(labels)
 	var label0 Id
 	var label1 Type
-	var label2 Expr
 	dp := parser.deltaPos[start][_FuncParm]
 	if dp < 0 {
 		return -1, nil
@@ -7074,7 +7010,7 @@ func _FuncParmAction(parser *_Parser, start int) (int, *FuncParm) {
 	// action
 	{
 		start0 := pos
-		// name:Id typ:Type (_ "=" init:Expr)?
+		// name:Id typ:Type
 		// name:Id
 		{
 			pos2 := pos
@@ -7099,44 +7035,11 @@ func _FuncParmAction(parser *_Parser, start int) (int, *FuncParm) {
 			}
 			labels[1] = parser.text[pos3:pos]
 		}
-		// (_ "=" init:Expr)?
-		{
-			pos5 := pos
-			// (_ "=" init:Expr)
-			// _ "=" init:Expr
-			// _
-			if p, n := __Action(parser, pos); n == nil {
-				goto fail6
-			} else {
-				pos = p
-			}
-			// "="
-			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "=" {
-				goto fail6
-			}
-			pos++
-			// init:Expr
-			{
-				pos8 := pos
-				// Expr
-				if p, n := _ExprAction(parser, pos); n == nil {
-					goto fail6
-				} else {
-					label2 = *n
-					pos = p
-				}
-				labels[2] = parser.text[pos8:pos]
-			}
-			goto ok9
-		fail6:
-			pos = pos5
-		ok9:
-		}
 		node = func(
-			start, end int, init Expr, name Id, typ Type) FuncParm {
-			return FuncParm{Name: name, Type: typ, Init: init, L: l(parser, start, end)}
+			start, end int, name Id, typ Type) FuncParm {
+			return FuncParm{Name: name, Type: typ, L: l(parser, start, end)}
 		}(
-			start0, pos, label2, label0, label1)
+			start0, pos, label0, label1)
 	}
 	parser.act[key] = node
 	return pos, &node

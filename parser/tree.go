@@ -102,7 +102,6 @@ type FuncDef struct {
 type FuncParm struct {
 	Name Id
 	Type Type
-	Init Expr
 	L    loc.Loc
 }
 
