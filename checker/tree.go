@@ -207,7 +207,6 @@ func (f *FuncDef) Type() Type { return f.T }
 type FuncParm struct {
 	Name string
 	T    Type
-	Init Expr
 	L    loc.Loc
 }
 

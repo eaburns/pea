@@ -236,7 +236,6 @@ func (f FuncParm) print(pc *config) {
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
 	pc.field("Type", f.T)
-	pc.field("Init", f.Init)
 	pc.p("\n}")
 }
 
