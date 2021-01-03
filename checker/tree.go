@@ -332,9 +332,7 @@ type Expr interface {
 }
 
 type Call struct {
-	// Fun is *FuncInst, Select, Switch, *Builtin,
-	// or an Expr with Type *FuncType
-	Fun  Func
+	Func Func
 	Args []Expr
 	T    Type
 	L    loc.Loc

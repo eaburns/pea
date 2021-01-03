@@ -372,10 +372,10 @@ func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (c *Call) buildString(s *strings.Builder) *strings.Builder {
-	if namer, ok := c.Fun.(interface{ Name() string }); ok {
+	if namer, ok := c.Func.(interface{ Name() string }); ok {
 		s.WriteString(namer.Name())
 	} else {
-		c.Fun.buildString(s)
+		c.Func.buildString(s)
 	}
 	s.WriteRune('(')
 	for i, a := range c.Args {

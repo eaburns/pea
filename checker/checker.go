@@ -1094,7 +1094,7 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 	}
 	return &Deref{
 		Expr: &Call{
-			Fun:  fun,
+			Func: fun,
 			Args: args,
 			T:    &RefType{Type: fun.Ret(), L: parserCall.L},
 			L:    parserCall.L,
@@ -1443,7 +1443,7 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) 
 	}
 	return &Deref{
 		Expr: &Call{
-			Fun:  fun,
+			Func: fun,
 			Args: args,
 			T:    &RefType{Type: fun.Ret(), L: parserCall.L},
 			L:    parserCall.L,
@@ -1515,7 +1515,7 @@ func instFunc(def *FuncDef, typ *FuncType) *FuncInst {
 func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 	typ := &FuncType{Parms: fun.Parms(), Ret: fun.Ret(), L: l}
 	blk := &BlockLit{Ret: typ.Ret, T: typ, L: l}
-	call := &Call{Fun: fun, T: &RefType{Type: typ.Ret, L: l}, L: l}
+	call := &Call{Func: fun, T: &RefType{Type: typ.Ret, L: l}, L: l}
 	call.Args = make([]Expr, len(typ.Parms))
 	blk.Exprs = []Expr{&Deref{Expr: call, T: typ.Ret, L: l}}
 	blk.Parms = make([]FuncParm, len(typ.Parms))

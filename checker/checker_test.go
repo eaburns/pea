@@ -416,7 +416,7 @@ func TestOverloadResolution(t *testing.T) {
 				if call == nil {
 					t.Fatalf("no call: %s", expr)
 				}
-				got := call.Fun.String()
+				got := call.Func.String()
 				if got != test.want {
 					t.Errorf("got %s, want %s", got, test.want)
 				}

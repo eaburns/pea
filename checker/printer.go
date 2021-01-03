@@ -273,7 +273,7 @@ func (t *TestDef) print(pc *config) {
 func (c *Call) print(pc *config) {
 	pc.p("Call{")
 	pc.loc(c.L)
-	pc.field("Fun", c.Fun)
+	pc.field("Func", c.Func)
 	pc.field("Args", c.Args)
 	pc.field("Type", c.T)
 	pc.p("\n}")
