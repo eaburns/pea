@@ -2,6 +2,7 @@ package checker
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/eaburns/pea/loc"
 )
@@ -171,7 +172,41 @@ func (m *Mod) find(name string) []id {
 			R:     uniqueTypeVar(),
 		})
 	}
+	if strings.HasPrefix(name, "?") {
+		// Add two template switches to be filled with concrete types
+		// or rejected when their return or 0th parameter is unified.
+		caseNames := splitCaseNames(name)
+		n := len(caseNames)
+		switches := [2]Switch{
+			{Ps: make([]Type, n+1), Cases: make([]*CaseDef, n)},
+			{Ps: make([]Type, n+1), R: uniqueTypeVar(), Cases: make([]*CaseDef, n)},
+		}
+		for i := 0; i < 2; i++ {
+			for j, caseName := range caseNames {
+				switches[i].Ps[j] = uniqueTypeVar()
+				switches[i].Cases[j] = &CaseDef{Name: caseName}
+			}
+			switches[i].Ps[n] = uniqueTypeVar()
+		}
+		ids = append(ids, &switches[0], &switches[1])
+	}
 	return ids
+}
+
+func splitCaseNames(str string) []string {
+	var i int
+	var names []string
+	for i < len(str) {
+		r, w := utf8.DecodeRuneInString(str[i:])
+		if r == '?' && i > 0 {
+			names = append(names, str[:i])
+			str = str[i:]
+			i = w
+			continue
+		}
+		i += w
+	}
+	return append(names, str)
 }
 
 func uniqueTypeVar() *TypeVar {

@@ -1035,6 +1035,10 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 			arg, fs := checkExpr(x, parserArg, nil)
 			if len(fs) > 0 {
 				fails = append(fails, fs...)
+				as, fs := checkArgsFallback(x, parserCall.Args[i+1:])
+				args = append(args, as...)
+				fails = append(fails, fs...)
+				return &Call{Args: args, L: parserCall.L}, fails
 			}
 			if arg != nil {
 				args = append(args, arg)
@@ -1047,6 +1051,10 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 		arg, fs := _checkExpr(x, parserArg, t)
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
+			as, fs := checkArgsFallback(x, parserCall.Args[i+1:])
+			args = append(args, as...)
+			fails = append(fails, fs...)
+			return &Call{Args: args, L: parserCall.L}, fails
 		}
 		if arg, fail := convert(arg, t); fail != nil {
 			var notes []note
@@ -1086,11 +1094,7 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 
 	fun := funcs[0]
 	for i, arg := range args {
-		var fail *fail
-		args[i], fail = convert(arg, fun.Parms()[i])
-		if fail != nil {
-			panic("impossible") // we made sure it's convertible above
-		}
+		args[i], _ = convert(arg, fun.Parms()[i])
 	}
 	return &Deref{
 		Expr: &Call{
@@ -1235,7 +1239,10 @@ func (s *Select) unifyRet(typ Type) (bool, *note) {
 }
 
 func (s *Switch) unifyRet(typ Type) (bool, *note) {
-	panic("unimplemented")
+	if s.R != nil {
+		s.R = typ
+	}
+	return true, nil
 }
 
 func (b *Builtin) unifyRet(typ Type) (bool, *note) {
@@ -1295,7 +1302,7 @@ func (f *FuncInst) unifyParm(i int, typ Type) (bool, *note) {
 
 func (s *Select) unifyParm(i int, typ Type) (bool, *note) {
 	if i > 0 {
-		panic("impossible")
+		panic("impossible") // can't have more than 1 argument
 	}
 	v, _ := valueType(literal(typ))
 	structType, ok := v.(*StructType)
@@ -1333,7 +1340,66 @@ func (s *Select) unifyParm(i int, typ Type) (bool, *note) {
 }
 
 func (s *Switch) unifyParm(i int, typ Type) (bool, *note) {
-	panic("unimplemented")
+	if i > 0 {
+		r, ok := s.R.(*TypeVar)
+		if !ok || r.Name != "_" {
+			return true, nil
+		}
+		f, ok := typ.(*FuncType)
+		if !ok {
+			return false, &note{
+				msg: fmt.Sprintf("%s: argument %d (%s) is not a function type", s, i, typ),
+			}
+		}
+		if f.Ret == nil {
+			return false, nil
+		}
+		s.R = f.Ret
+		for j := 1; j < len(s.Ps); j++ {
+			s.Ps[j].(*FuncType).Ret = s.R
+		}
+		return true, nil
+	}
+	var ok bool
+	v, _ := valueType(literal(typ))
+	if s.Union, ok = v.(*UnionType); !ok {
+		return false, &note{
+			msg: fmt.Sprintf("%s: %s is not a union type", s, typ),
+			loc: typ.Loc(),
+		}
+	}
+	s.Ps[0] = &RefType{Type: s.Union, L: s.Union.L}
+	seen := make(map[*CaseDef]bool)
+	for i := range s.Cases {
+		c := findCase(s.Cases[i].Name, s.Union)
+		if c == nil {
+			return false, &note{
+				msg: fmt.Sprintf("%s: %s has no case %s", s, typ, s.Cases[i].Name),
+				loc: typ.Loc(),
+			}
+		}
+		if seen[c] {
+			// Switch functions only exist for non-duplicated cases.
+			return false, nil
+		}
+		seen[c] = true
+		f := &FuncType{Ret: s.R, L: c.L}
+		if c.Type != nil {
+			f.Parms = []Type{c.Type}
+		}
+		s.Cases[i] = c
+		s.Ps[i+1] = f
+	}
+	if s.R != nil {
+		for i := range s.Union.Cases {
+			if !seen[&s.Union.Cases[i]] {
+				// The switch function with a non-nil return
+				// is only available if all cases are covered.
+				return false, nil
+			}
+		}
+	}
+	return true, nil
 }
 
 func (b *Builtin) unifyParm(i int, typ Type) (bool, *note) {

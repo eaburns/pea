@@ -355,6 +355,84 @@ func TestOverloadResolution(t *testing.T) {
 			err:  "ambiguous",
 		},
 		{
+			name: "built-in switch not-typed cases",
+			src: `
+				type a_or_b [?a, ?b]
+				func make() a_or_b
+			`,
+			call: "make() ?a {} ?b {}",
+			want: "built-in ?a?b(&[?a, ?b], (){}, (){})",			
+		},
+		{
+			name: "built-in switch typed cases",
+			src: `
+				type a_or_b [?a string, ?b int]
+				func make() a_or_b
+			`,
+			call: "make() ?a (_ string) {1} ?b (_ int) {1}",
+			want: "built-in ?a?b(&[?a string, ?b int], (string){int}, (int){int})int",
+		},
+		{
+			name: "built-in switch mixed typed and non-typed cases",
+			src: `
+				type a_or_b [?a, ?b int]
+				func make() a_or_b
+			`,
+			call: "make() ?a () {1} ?b (_ int) {1}",
+			want: "built-in ?a?b(&[?a, ?b int], (){int}, (int){int})int",
+		},
+		{
+			name: "built-in switch cases re-ordered",
+			src: `
+				type a_or_b [?a, ?b int]
+				func make() a_or_b
+			`,
+			call: "make() ?b (_ int) {1} ?a () {1} ",
+			want: "built-in ?b?a(&[?a, ?b int], (int){int}, (){int})int",
+		},
+		{
+			name: "built-in switch not all cases, case not typed",
+			src: `
+				type a_or_b [?a, ?b int]
+				func make() a_or_b
+			`,
+			call: "make() ?a () {1} ",
+			want: "built-in ?a(&[?a, ?b int], (){})",
+		},
+		{
+			name: "built-in switch not all cases, case typed",
+			src: `
+				type a_or_b [?a, ?b int]
+				func make() a_or_b
+			`,
+			call: "make() ?b (_ int) {1} ",
+			want: "built-in ?b(&[?a, ?b int], (int){})",
+		},
+		{
+			name: "built-in switch not a union type",
+			call: "1 ?b (_ int) {1} ",
+			err: "not a union",
+		},
+		{
+			name: "built-in switch case name mismatch",
+			src: `
+				type a_or_b [?a, ?b int]
+				func make() a_or_b
+			`,
+			call: "make() ?c (_ int) {1} ",
+			err: "no case \\?c",
+		},
+		{
+			name: "built-in switch return type inferred",
+			src: `
+				type a_or_b [?a, ?b]
+				func make() a_or_b
+			`,
+			call: "make() ?a () {1} ?b () {2}",
+			ret: "uint8",
+			want: "built-in ?a?b(&[?a, ?b], (){uint8}, (){uint8})uint8",
+		},
+		{
 			name: "no convert between non-literal types",
 			src: `
 				type point_a [.x float64, .y float64]

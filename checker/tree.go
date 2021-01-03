@@ -271,6 +271,7 @@ type Switch struct {
 
 func (s *Switch) Parms() []Type { return s.Ps }
 func (s *Switch) Ret() Type     { return s.R }
+func (s *Switch) Type() Type    { return &FuncType{Parms: s.Ps, Ret: s.R} }
 
 type Op int
 

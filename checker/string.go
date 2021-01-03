@@ -263,29 +263,30 @@ func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {
 func (e *Select) buildString(s *strings.Builder) *strings.Builder {
 	s.WriteString("built-in ")
 	s.WriteString(e.Field.Name)
-	if e.Struct != nil {
-		s.WriteRune('(')
-		e.P.buildString(s)
-		s.WriteRune(')')
-		e.R.buildString(s)
+	if e.Struct == nil {
+		return s
 	}
+	s.WriteRune('(')
+	e.P.buildString(s)
+	s.WriteRune(')')
+	e.R.buildString(s)
 	return s
 }
 
 func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString("built-in ")
 	for _, c := range w.Cases {
 		s.WriteString(c.Name)
 	}
+	if w.Union == nil {
+		return s
+	}
 	s.WriteRune('(')
-	for i, c := range w.Cases {
+	for i, p := range w.Ps {
 		if i > 0 {
 			s.WriteString(", ")
 		}
-		if c.Type == nil {
-			FuncType{Ret: w.R}.buildString(s)
-		} else {
-			FuncType{Parms: []Type{c.Type}, Ret: w.R}.buildString(s)
-		}
+		p.buildString(s)
 	}
 	s.WriteRune(')')
 	if w.R != nil {
