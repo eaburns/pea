@@ -368,7 +368,7 @@ CaseId "case id" <- _ "?" id:Id {
 	return Id{Name: "?" + id.Name, L: l(parser, start, end)}
 }
 
-BlkLit <- _ "(" ps:BlkParms? _ ")" _ "{" es:Exprs? _ "}" {
+BlkLit <- (_ "(" ps:BlkParms? _ ")")? _ "{" es:Exprs? _ "}" {
 	var parms []FuncParm; if ps != nil { parms = *ps }
 	var exprs []Expr; if es != nil { exprs = *es }
 	return Expr(&BlockLit{Parms: parms, Exprs: exprs, L: l(parser, start, end)})

@@ -16114,44 +16114,54 @@ func _BlkLitAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ "(" ps:BlkParms? _ ")" _ "{" es:Exprs? _ "}"
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
-	// "("
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
-		perr = _max(perr, pos)
-		goto fail
-	}
-	pos++
-	// ps:BlkParms?
+	// (_ "(" ps:BlkParms? _ ")")? _ "{" es:Exprs? _ "}"
+	// (_ "(" ps:BlkParms? _ ")")?
 	{
-		pos1 := pos
-		// BlkParms?
-		{
-			pos3 := pos
-			// BlkParms
-			if !_accept(parser, _BlkParmsAccepts, &pos, &perr) {
-				goto fail4
-			}
-			goto ok5
-		fail4:
-			pos = pos3
-		ok5:
+		pos2 := pos
+		// (_ "(" ps:BlkParms? _ ")")
+		// _ "(" ps:BlkParms? _ ")"
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail3
 		}
-		labels[0] = parser.text[pos1:pos]
+		// "("
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
+			perr = _max(perr, pos)
+			goto fail3
+		}
+		pos++
+		// ps:BlkParms?
+		{
+			pos5 := pos
+			// BlkParms?
+			{
+				pos7 := pos
+				// BlkParms
+				if !_accept(parser, _BlkParmsAccepts, &pos, &perr) {
+					goto fail8
+				}
+				goto ok9
+			fail8:
+				pos = pos7
+			ok9:
+			}
+			labels[0] = parser.text[pos5:pos]
+		}
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail3
+		}
+		// ")"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
+			perr = _max(perr, pos)
+			goto fail3
+		}
+		pos++
+		goto ok10
+	fail3:
+		pos = pos2
+	ok10:
 	}
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
-	// ")"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
-		perr = _max(perr, pos)
-		goto fail
-	}
-	pos++
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
@@ -16164,20 +16174,20 @@ func _BlkLitAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	pos++
 	// es:Exprs?
 	{
-		pos6 := pos
+		pos11 := pos
 		// Exprs?
 		{
-			pos8 := pos
+			pos13 := pos
 			// Exprs
 			if !_accept(parser, _ExprsAccepts, &pos, &perr) {
-				goto fail9
+				goto fail14
 			}
-			goto ok10
-		fail9:
-			pos = pos8
-		ok10:
+			goto ok15
+		fail14:
+			pos = pos13
+		ok15:
 		}
-		labels[1] = parser.text[pos6:pos]
+		labels[1] = parser.text[pos11:pos]
 	}
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
@@ -16207,54 +16217,64 @@ func _BlkLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _BlkLit}
 	// action
-	// _ "(" ps:BlkParms? _ ")" _ "{" es:Exprs? _ "}"
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
-	// "("
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "\"(\"",
-			})
-		}
-		goto fail
-	}
-	pos++
-	// ps:BlkParms?
+	// (_ "(" ps:BlkParms? _ ")")? _ "{" es:Exprs? _ "}"
+	// (_ "(" ps:BlkParms? _ ")")?
 	{
-		pos1 := pos
-		// BlkParms?
-		{
-			pos3 := pos
-			// BlkParms
-			if !_fail(parser, _BlkParmsFail, errPos, failure, &pos) {
-				goto fail4
+		pos2 := pos
+		// (_ "(" ps:BlkParms? _ ")")
+		// _ "(" ps:BlkParms? _ ")"
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail3
+		}
+		// "("
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"(\"",
+				})
 			}
-			goto ok5
-		fail4:
-			pos = pos3
-		ok5:
+			goto fail3
 		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
-	// ")"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "\")\"",
-			})
+		pos++
+		// ps:BlkParms?
+		{
+			pos5 := pos
+			// BlkParms?
+			{
+				pos7 := pos
+				// BlkParms
+				if !_fail(parser, _BlkParmsFail, errPos, failure, &pos) {
+					goto fail8
+				}
+				goto ok9
+			fail8:
+				pos = pos7
+			ok9:
+			}
+			labels[0] = parser.text[pos5:pos]
 		}
-		goto fail
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail3
+		}
+		// ")"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\")\"",
+				})
+			}
+			goto fail3
+		}
+		pos++
+		goto ok10
+	fail3:
+		pos = pos2
+	ok10:
 	}
-	pos++
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
@@ -16272,20 +16292,20 @@ func _BlkLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	pos++
 	// es:Exprs?
 	{
-		pos6 := pos
+		pos11 := pos
 		// Exprs?
 		{
-			pos8 := pos
+			pos13 := pos
 			// Exprs
 			if !_fail(parser, _ExprsFail, errPos, failure, &pos) {
-				goto fail9
+				goto fail14
 			}
-			goto ok10
-		fail9:
-			pos = pos8
-		ok10:
+			goto ok15
+		fail14:
+			pos = pos13
+		ok15:
 		}
-		labels[1] = parser.text[pos6:pos]
+		labels[1] = parser.text[pos11:pos]
 	}
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
@@ -16329,51 +16349,61 @@ func _BlkLitAction(parser *_Parser, start int) (int, *Expr) {
 	// action
 	{
 		start0 := pos
-		// _ "(" ps:BlkParms? _ ")" _ "{" es:Exprs? _ "}"
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
-		// "("
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
-			goto fail
-		}
-		pos++
-		// ps:BlkParms?
+		// (_ "(" ps:BlkParms? _ ")")? _ "{" es:Exprs? _ "}"
+		// (_ "(" ps:BlkParms? _ ")")?
 		{
-			pos2 := pos
-			// BlkParms?
-			{
-				pos4 := pos
-				label0 = new([]FuncParm)
-				// BlkParms
-				if p, n := _BlkParmsAction(parser, pos); n == nil {
-					goto fail5
-				} else {
-					*label0 = *n
-					pos = p
-				}
-				goto ok6
-			fail5:
-				label0 = nil
-				pos = pos4
-			ok6:
+			pos3 := pos
+			// (_ "(" ps:BlkParms? _ ")")
+			// _ "(" ps:BlkParms? _ ")"
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail4
+			} else {
+				pos = p
 			}
-			labels[0] = parser.text[pos2:pos]
+			// "("
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
+				goto fail4
+			}
+			pos++
+			// ps:BlkParms?
+			{
+				pos6 := pos
+				// BlkParms?
+				{
+					pos8 := pos
+					label0 = new([]FuncParm)
+					// BlkParms
+					if p, n := _BlkParmsAction(parser, pos); n == nil {
+						goto fail9
+					} else {
+						*label0 = *n
+						pos = p
+					}
+					goto ok10
+				fail9:
+					label0 = nil
+					pos = pos8
+				ok10:
+				}
+				labels[0] = parser.text[pos6:pos]
+			}
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail4
+			} else {
+				pos = p
+			}
+			// ")"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
+				goto fail4
+			}
+			pos++
+			goto ok11
+		fail4:
+			pos = pos3
+		ok11:
 		}
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
-		// ")"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
-			goto fail
-		}
-		pos++
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
@@ -16387,25 +16417,25 @@ func _BlkLitAction(parser *_Parser, start int) (int, *Expr) {
 		pos++
 		// es:Exprs?
 		{
-			pos7 := pos
+			pos12 := pos
 			// Exprs?
 			{
-				pos9 := pos
+				pos14 := pos
 				label1 = new([]Expr)
 				// Exprs
 				if p, n := _ExprsAction(parser, pos); n == nil {
-					goto fail10
+					goto fail15
 				} else {
 					*label1 = *n
 					pos = p
 				}
-				goto ok11
-			fail10:
+				goto ok16
+			fail15:
 				label1 = nil
-				pos = pos9
-			ok11:
+				pos = pos14
+			ok16:
 			}
-			labels[1] = parser.text[pos7:pos]
+			labels[1] = parser.text[pos12:pos]
 		}
 		// _
 		if p, n := __Action(parser, pos); n == nil {

@@ -288,6 +288,16 @@ func TestExpr(t *testing.T) {
 				},
 			},
 		},
+		{
+			`x() ?foo y`,
+			&Call{
+				Fun: Id{Name: "?foo"},
+				Args: []Expr{
+					&Call{Fun: Id{Name: "x"}},
+					Id{Name: "y"},
+				},
+			},
+		},
 
 		{
 			`foo: x`,
