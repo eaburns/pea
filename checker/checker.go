@@ -1131,16 +1131,13 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 		var expr Expr
 		switch id := id.(type) {
 		case *VarDef:
-			expr = deref(&Var{Def: id, T: ref(id.T), L: l})
+			expr = idToExpr(id, l)
 		case *FuncParm:
-			// TODO: handle capture
-			expr = deref(&Parm{Def: id, T: ref(id.T), L: l})
+			expr = idToExpr(id, l)
 		case *FuncLocal:
-			// TODO: handle capture
-			expr = deref(&Local{Def: id, T: ref(id.T), L: l})
+			expr = idToExpr(id, l)
 		case *BlockCap:
-			// TODO: handle capture
-			expr = deref(&Cap{Def: id, T: ref(id.T), L: l})
+			expr = idToExpr(id, l)
 		case *FuncDef:
 			fun = instFunc(id, id.Type().(*FuncType))
 			if len(id.Iface) > 0 {
@@ -1625,48 +1622,70 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) 
 }
 
 func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
-	var ids []id
+	var exprs []Expr
+	var notes []note
 	for _, id := range x.find(parserId.Name) {
 		// TODO: handle grounding for functions and function ifaces.
 		if fun, ok := id.(*FuncDef); ok && len(fun.Iface) > 0 {
 			continue
 		}
-		if t := id.Type(); t == nil || !isGround(t) || (want != nil && !eq(want, t)) {
+		if t := id.Type(); t == nil || !isGround(t) {
 			continue
 		}
-		ids = append(ids, id)
+
+		expr := idToExpr(id, parserId.L)
+		if want == nil {
+			exprs = append(exprs, expr)
+			continue
+		}
+		expr, fail := convert(expr, want)
+		if fail != nil {
+			notes = append(notes, note{
+				msg: fmt.Sprintf("cannot convert %s (%s) to type %s",
+					expr, expr.Type(), want),
+				loc: expr.Loc(),
+			})
+			continue
+		}
+		exprs = append(exprs, expr)
 	}
 	switch {
-	case len(ids) == 0:
-		return nil, []*fail{notFound(parserId.Name, parserId.L)}
-	case len(ids) > 1 && want == nil:
+	case len(exprs) == 0:
+		f := notFound(parserId.Name, parserId.L)
+		f.notes = notes
+		return nil, []*fail{f}
+	case len(exprs) > 1 && want == nil:
 		return nil, []*fail{{
 			msg: fmt.Sprintf("%s is ambiguous", parserId.Name),
 			loc: parserId.L,
 		}}
-	case len(ids) > 1:
+	case len(exprs) > 1:
 		return nil, []*fail{{
 			msg: fmt.Sprintf("%s is ambiguous for type %s", parserId.Name, want),
 			loc: parserId.L,
 		}}
+	default:
+		return exprs[0], nil
 	}
-	switch id := ids[0].(type) {
+}
+
+func idToExpr(id id, l loc.Loc) Expr {
+	switch id := id.(type) {
 	case *VarDef:
-		return deref(&Var{Def: id, T: ref(id.T), L: parserId.L}), nil
+		return deref(&Var{Def: id, T: ref(id.T), L: l})
 	case *FuncParm:
 		// TODO: handle capture
-		return deref(&Parm{Def: id, T: ref(id.T), L: parserId.L}), nil
+		return deref(&Parm{Def: id, T: ref(id.T), L: l})
 	case *FuncLocal:
 		// TODO: handle capture
-		return deref(&Local{Def: id, T: ref(id.T), L: parserId.L}), nil
+		return deref(&Local{Def: id, T: ref(id.T), L: l})
 	case *BlockCap:
 		// TODO: handle capture
-		return deref(&Cap{Def: id, T: ref(id.T), L: parserId.L}), nil
+		return deref(&Cap{Def: id, T: ref(id.T), L: l})
 	case *FuncDef:
-		inst := instFunc(id, id.Type().(*FuncType))
-		return wrapCallInBlock(inst, parserId.L), nil
+		return wrapCallInBlock(instFunc(id, id.Type().(*FuncType)), l)
 	case Func:
-		return wrapCallInBlock(id, parserId.L), nil
+		return wrapCallInBlock(id, l)
 	default:
 		panic(fmt.Sprintf("impossible id type: %T", id))
 	}

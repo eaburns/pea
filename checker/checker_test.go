@@ -493,17 +493,12 @@ func TestOverloadResolution(t *testing.T) {
 			call: "a := 6",
 			want: "built-in :=(&int, int)int",
 		},
-		/*
-			// TODO: allow id lookup to succeed if the type is not eq(), but converts.
-			// In this example, a is int, but we want &int, which converts just fine.
-			// We should allow this.
-			{
-				name: "built-in assign, ref lhs",
-				src: "var a int := 1",
-				call: "(&int : a) := 6",
-				want: "built-in :=(&int, int)int",
-			},
-		*/
+		{
+			name: "built-in assign, ref lhs",
+			src:  "var a int := 1",
+			call: "(&int : a) := 6",
+			want: "built-in :=(&int, int)int",
+		},
 		{
 			name: "built-in assign, expected, lhs mismatch",
 			src:  "var a string := \"\"",
