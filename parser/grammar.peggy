@@ -242,7 +242,7 @@ BinTail<O, A> <- name:O arg1:A {
 # TODO: The required Space/Cmnt here fixes an ambiguity
 # between a keyword call and a convert.
 # We need a new syntax for convert, without such an issue.
-Cvt <- typ:Type (Space / Cmnt) ":" expr:UnArg {
+Cvt <- typ:Type (Space / Cmnt) ":" (Space / Cmnt) expr:UnArg {
 	return Expr(&Convert{Expr: expr, Type: typ, L: l(parser, start, end)})
 }
 

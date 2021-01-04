@@ -11043,7 +11043,7 @@ func _CvtAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// typ:Type (Space/Cmnt) ":" expr:UnArg
+	// typ:Type (Space/Cmnt) ":" (Space/Cmnt) expr:UnArg
 	// typ:Type
 	{
 		pos1 := pos
@@ -11080,14 +11080,35 @@ func _CvtAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto fail
 	}
 	pos++
+	// (Space/Cmnt)
+	// Space/Cmnt
+	{
+		pos11 := pos
+		// Space
+		if !_accept(parser, _SpaceAccepts, &pos, &perr) {
+			goto fail12
+		}
+		goto ok8
+	fail12:
+		pos = pos11
+		// Cmnt
+		if !_accept(parser, _CmntAccepts, &pos, &perr) {
+			goto fail13
+		}
+		goto ok8
+	fail13:
+		pos = pos11
+		goto fail
+	ok8:
+	}
 	// expr:UnArg
 	{
-		pos8 := pos
+		pos14 := pos
 		// UnArg
 		if !_accept(parser, _UnArgAccepts, &pos, &perr) {
 			goto fail
 		}
-		labels[1] = parser.text[pos8:pos]
+		labels[1] = parser.text[pos14:pos]
 	}
 	return _memoize(parser, _Cvt, start, pos, perr)
 fail:
@@ -11107,7 +11128,7 @@ func _CvtFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _Cvt}
 	// action
-	// typ:Type (Space/Cmnt) ":" expr:UnArg
+	// typ:Type (Space/Cmnt) ":" (Space/Cmnt) expr:UnArg
 	// typ:Type
 	{
 		pos1 := pos
@@ -11149,14 +11170,35 @@ func _CvtFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto fail
 	}
 	pos++
+	// (Space/Cmnt)
+	// Space/Cmnt
+	{
+		pos11 := pos
+		// Space
+		if !_fail(parser, _SpaceFail, errPos, failure, &pos) {
+			goto fail12
+		}
+		goto ok8
+	fail12:
+		pos = pos11
+		// Cmnt
+		if !_fail(parser, _CmntFail, errPos, failure, &pos) {
+			goto fail13
+		}
+		goto ok8
+	fail13:
+		pos = pos11
+		goto fail
+	ok8:
+	}
 	// expr:UnArg
 	{
-		pos8 := pos
+		pos14 := pos
 		// UnArg
 		if !_fail(parser, _UnArgFail, errPos, failure, &pos) {
 			goto fail
 		}
-		labels[1] = parser.text[pos8:pos]
+		labels[1] = parser.text[pos14:pos]
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -11185,7 +11227,7 @@ func _CvtAction(parser *_Parser, start int) (int, *Expr) {
 	// action
 	{
 		start0 := pos
-		// typ:Type (Space/Cmnt) ":" expr:UnArg
+		// typ:Type (Space/Cmnt) ":" (Space/Cmnt) expr:UnArg
 		// typ:Type
 		{
 			pos2 := pos
@@ -11228,9 +11270,34 @@ func _CvtAction(parser *_Parser, start int) (int, *Expr) {
 			goto fail
 		}
 		pos++
+		// (Space/Cmnt)
+		// Space/Cmnt
+		{
+			pos12 := pos
+			// Space
+			if p, n := _SpaceAction(parser, pos); n == nil {
+				goto fail13
+			} else {
+				pos = p
+			}
+			goto ok9
+		fail13:
+			pos = pos12
+			// Cmnt
+			if p, n := _CmntAction(parser, pos); n == nil {
+				goto fail14
+			} else {
+				pos = p
+			}
+			goto ok9
+		fail14:
+			pos = pos12
+			goto fail
+		ok9:
+		}
 		// expr:UnArg
 		{
-			pos9 := pos
+			pos15 := pos
 			// UnArg
 			if p, n := _UnArgAction(parser, pos); n == nil {
 				goto fail
@@ -11238,7 +11305,7 @@ func _CvtAction(parser *_Parser, start int) (int, *Expr) {
 				label1 = *n
 				pos = p
 			}
-			labels[1] = parser.text[pos9:pos]
+			labels[1] = parser.text[pos15:pos]
 		}
 		node = func(
 			start, end int, expr Expr, typ Type) Expr {
