@@ -1105,7 +1105,11 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 
 	fun := funcs[0]
 	for i, arg := range args {
-		args[i], _ = convert(arg, fun.Parms()[i])
+		var fail *fail
+		args[i], fail = convert(arg, fun.Parms()[i])
+		if fail != nil {
+			fails = append(fails, fail)
+		}
 	}
 	return &Deref{
 		Expr: &Call{
@@ -1127,16 +1131,16 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 		var expr Expr
 		switch id := id.(type) {
 		case *VarDef:
-			expr = &Var{Def: id, T: id.T, L: l}
+			expr = deref(&Var{Def: id, T: ref(id.T), L: l})
 		case *FuncParm:
 			// TODO: handle capture
-			expr = &Parm{Def: id, T: id.T, L: l}
+			expr = deref(&Parm{Def: id, T: ref(id.T), L: l})
 		case *FuncLocal:
 			// TODO: handle capture
-			expr = &Local{Def: id, T: id.T, L: l}
+			expr = deref(&Local{Def: id, T: ref(id.T), L: l})
 		case *BlockCap:
 			// TODO: handle capture
-			expr = &Cap{Def: id, T: id.T, L: l}
+			expr = deref(&Cap{Def: id, T: ref(id.T), L: l})
 		case *FuncDef:
 			fun = instFunc(id, id.Type().(*FuncType))
 			if len(id.Iface) > 0 {
@@ -1250,6 +1254,49 @@ func (s *Switch) unifyRet(typ Type) (bool, *note) {
 }
 
 func (b *Builtin) unifyRet(typ Type) (bool, *note) {
+	switch b.Op {
+	case Assign:
+		b.R = typ
+		return true, nil
+	case NewArray:
+		v, _ := valueType(literal(typ))
+		t, ok := v.(*ArrayType)
+		if !ok {
+			return false, &note{
+				msg: fmt.Sprintf("%s: return type %s is not an array type", b, typ),
+			}
+		}
+		b.Ps[1] = t.ElemType
+		b.R = t
+		return true, nil
+	case BitNot:
+	case BitXor:
+	case BitAnd:
+	case BitOr:
+	case LeftShift:
+	case RightShift:
+	case Negate:
+	case Minus:
+	case Plus:
+	case Times:
+	case Divide:
+	case Modulus:
+	case Eq:
+	case Neq:
+	case Less:
+	case LessEq:
+	case Greater:
+	case GreaterEq:
+	case NumConvert:
+	case StrConvert:
+	case Index:
+	case Slice:
+	case Length:
+	case Panic:
+	case Print:
+	default:
+		panic("impossible op type")
+	}
 	panic("unimplemented")
 }
 
@@ -1408,6 +1455,59 @@ func (s *Switch) unifyParm(i int, typ Type) (bool, *note) {
 }
 
 func (b *Builtin) unifyParm(i int, typ Type) (bool, *note) {
+	switch b.Op {
+	case Assign:
+		if i == 0 {
+			b.Ps[0] = typ
+			return true, nil
+		}
+		if r, ok := typ.(*RefType); ok {
+			b.Ps[0] = typ
+			b.Ps[1] = r.Type
+			b.R = r.Type
+		} else {
+			b.Ps[0] = &RefType{Type: typ, L: typ.Loc()}
+			b.Ps[1] = typ
+			b.R = typ
+		}
+		return true, nil
+	case NewArray:
+		if i == 0 {
+			return true, nil
+		}
+		if t, ok := b.Ps[1].(*TypeVar); ok && t.Name == "_" {
+			b.Ps[1] = typ
+			b.R = &ArrayType{ElemType: typ}
+		}
+		return true, nil
+	case BitNot:
+	case BitXor:
+	case BitAnd:
+	case BitOr:
+	case LeftShift:
+	case RightShift:
+	case Negate:
+	case Minus:
+	case Plus:
+	case Times:
+	case Divide:
+	case Modulus:
+	case Eq:
+	case Neq:
+	case Less:
+	case LessEq:
+	case Greater:
+	case GreaterEq:
+	case NumConvert:
+	case StrConvert:
+	case Index:
+	case Slice:
+	case Length:
+	case Panic:
+	case Print:
+	default:
+		panic("impossible op type")
+	}
 	panic("unimplemented")
 }
 
@@ -1552,16 +1652,16 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 	}
 	switch id := ids[0].(type) {
 	case *VarDef:
-		return &Var{Def: id, T: id.T, L: parserId.L}, nil
+		return deref(&Var{Def: id, T: ref(id.T), L: parserId.L}), nil
 	case *FuncParm:
 		// TODO: handle capture
-		return &Parm{Def: id, T: id.T, L: parserId.L}, nil
+		return deref(&Parm{Def: id, T: ref(id.T), L: parserId.L}), nil
 	case *FuncLocal:
 		// TODO: handle capture
-		return &Local{Def: id, T: id.T, L: parserId.L}, nil
+		return deref(&Local{Def: id, T: ref(id.T), L: parserId.L}), nil
 	case *BlockCap:
 		// TODO: handle capture
-		return &Cap{Def: id, T: id.T, L: parserId.L}, nil
+		return deref(&Cap{Def: id, T: ref(id.T), L: parserId.L}), nil
 	case *FuncDef:
 		inst := instFunc(id, id.Type().(*FuncType))
 		return wrapCallInBlock(inst, parserId.L), nil

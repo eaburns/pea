@@ -480,6 +480,81 @@ func TestOverloadResolution(t *testing.T) {
 			call: "f(point : [.x 1, .y 1])",
 			want: "f(point)",
 		},
+		{
+			name: "built-in assign, expected",
+			src:  "var a int := 1",
+			call: "a := 6",
+			ret:  "int",
+			want: "built-in :=(&int, int)int",
+		},
+		{
+			name: "built-in assign, no expected",
+			src:  "var a int := 1",
+			call: "a := 6",
+			want: "built-in :=(&int, int)int",
+		},
+		/*
+			// TODO: allow id lookup to succeed if the type is not eq(), but converts.
+			// In this example, a is int, but we want &int, which converts just fine.
+			// We should allow this.
+			{
+				name: "built-in assign, ref lhs",
+				src: "var a int := 1",
+				call: "(&int : a) := 6",
+				want: "built-in :=(&int, int)int",
+			},
+		*/
+		{
+			name: "built-in assign, expected, lhs mismatch",
+			src:  "var a string := \"\"",
+			call: "a := 6",
+			ret:  "int",
+			err:  "got string, want &int",
+		},
+		{
+			name: "built-in assign, expected, rhs mismatch",
+			src:  "var a int := 1",
+			call: "a := \"\"",
+			ret:  "int",
+			err:  "got string, want int",
+		},
+		{
+			name: "built-in assign, lhs/rhs mismatch",
+			src:  "var a int := 1",
+			call: "a := \"\"",
+			err:  "got int, want &string",
+		},
+		{
+			name: "built-in new array, no expected type",
+			call: "new(5, 0)",
+			want: "built-in new(int, int)[int]",
+		},
+		{
+			name: "built-in new array, expected type",
+			call: "new(5, 0)",
+			ret:  "[int8]",
+			want: "built-in new(int, int8)[int8]",
+		},
+		{
+			name: "built-in new array, expected defed type",
+			src:  "type byte_array_ref &[int8]",
+			call: "new(5, 0)",
+			ret:  "byte_array_ref",
+			want: "built-in new(int, int8)[int8]",
+		},
+		{
+			name: "built-in new array, expected non-array type",
+			call: "new(5, 0)",
+			ret:  "string",
+			err:  "string is not an array type",
+		},
+		{
+			name: "built-in new array, expected non-array def type",
+			src:  "type test_type [.x int]",
+			call: "new(5, 0)",
+			ret:  "test_type",
+			err:  "test_type is not an array type",
+		},
 	}
 	for _, test := range tests {
 		test := test

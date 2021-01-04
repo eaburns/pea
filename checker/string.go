@@ -360,6 +360,7 @@ func (o Op) String() string {
 }
 
 func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString("built-in ")
 	s.WriteString(b.name(false))
 	s.WriteRune('(')
 	for i, p := range b.Ps {
@@ -417,7 +418,7 @@ func (b *Builtin) name(paren bool) string {
 	case Assign:
 		s.WriteString(":=")
 	case NewArray:
-		s.WriteString("new()")
+		s.WriteString("new")
 	case BitNot:
 		s.WriteRune('^')
 	case BitXor:

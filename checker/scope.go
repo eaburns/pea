@@ -189,8 +189,78 @@ func (m *Mod) find(name string) []id {
 		sw.Ps[n] = uniqueTypeVar()
 		ids = append(ids, &sw)
 	}
+	for _, binfo := range builtins {
+		if binfo.name != name {
+			continue
+		}
+		b := &Builtin{Op: binfo.op}
+		for _, p := range binfo.parms {
+			if p == nil {
+				p = uniqueTypeVar()
+			}
+			b.Ps = append(b.Ps, p)
+		}
+		b.R = binfo.ret
+		if b.R == nil {
+			b.R = uniqueTypeVar()
+		}
+		ids = append(ids, b)
+	}
 	return ids
 }
+
+type builtin struct {
+	name  string
+	op    Op
+	parms []Type // nil is _
+	ret   Type   // nil is _
+}
+
+var builtins = []builtin{
+	{name: ":=", op: Assign, parms: []Type{nil, nil}, ret: nil},
+	{name: "new", op: NewArray, parms: []Type{intType(), nil}, ret: nil},
+	{name: "^", op: BitNot, parms: []Type{nil}, ret: nil},
+	{name: "^", op: BitXor, parms: []Type{nil, nil}, ret: nil},
+	{name: "&", op: BitAnd, parms: []Type{nil, nil}, ret: nil},
+	{name: "|", op: BitOr, parms: []Type{nil, nil}, ret: nil},
+	{name: "<<", op: LeftShift, parms: []Type{nil, intType()}, ret: nil},
+	{name: ">>", op: RightShift, parms: []Type{nil, intType()}, ret: nil},
+	{name: "-", op: Negate, parms: []Type{nil}, ret: nil},
+	{name: "-", op: Minus, parms: []Type{nil, nil}, ret: nil},
+	{name: "+", op: Plus, parms: []Type{nil, nil}, ret: nil},
+	{name: "*", op: Times, parms: []Type{nil, nil}, ret: nil},
+	{name: "/", op: Divide, parms: []Type{nil, nil}, ret: nil},
+	{name: "%", op: Modulus, parms: []Type{nil, nil}, ret: nil},
+	{name: "=", op: Eq, parms: []Type{nil, nil}, ret: boolType()},
+	{name: "!=", op: Neq, parms: []Type{nil, nil}, ret: boolType()},
+	{name: "<", op: Less, parms: []Type{nil, nil}, ret: boolType()},
+	{name: "<=", op: LessEq, parms: []Type{nil, nil}, ret: boolType()},
+	{name: ">", op: Greater, parms: []Type{nil, nil}, ret: boolType()},
+	{name: ">=", op: GreaterEq, parms: []Type{nil, nil}, ret: boolType()},
+	{name: "int", op: NumConvert, parms: []Type{nil}},
+	{name: "int8", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "int16", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "int32", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "int64", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "uint", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "uint8", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "uint16", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "uint32", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "uint64", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "float32", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "float64", op: NumConvert, parms: []Type{nil}, ret: nil},
+	{name: "string", op: StrConvert, parms: []Type{byteArray()}, ret: stringType()},
+	{name: "[]", op: Index, parms: []Type{nil, intType()}},
+	{name: "[]", op: Slice, parms: []Type{nil, intType(), intType()}},
+	{name: ".length", op: Length, parms: []Type{nil}, ret: intType()},
+	{name: "panic", op: Panic, parms: []Type{stringType()}, ret: &StructType{}},
+	{name: "print", op: Print, parms: []Type{stringType()}, ret: &StructType{}},
+}
+
+func boolType() Type   { return &BasicType{Kind: Bool} }
+func intType() Type    { return &BasicType{Kind: Int} }
+func stringType() Type { return &BasicType{Kind: String} }
+func byteArray() Type  { return &ArrayType{ElemType: &BasicType{Kind: Uint8}} }
 
 func splitCaseNames(str string) []string {
 	var i int

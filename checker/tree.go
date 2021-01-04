@@ -307,11 +307,12 @@ const (
 type Builtin struct {
 	Op Op
 	Ps []Type
-	R  Type // nil if no return
+	R  Type
 }
 
 func (b *Builtin) Parms() []Type { return b.Ps }
 func (b *Builtin) Ret() Type     { return b.R }
+func (b *Builtin) Type() Type    { return &FuncType{Parms: b.Ps, Ret: b.R} }
 
 type ExprFunc struct {
 	Expr
