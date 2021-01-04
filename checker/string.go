@@ -4,6 +4,22 @@ import (
 	"strings"
 )
 
+func (v *VarDef) String() string    { return v.Name }
+func (f *FuncDef) String() string   { return f.Name }
+func (f *FuncParm) String() string  { return f.Name }
+func (f *FuncLocal) String() string { return f.Name }
+
+func (b *BlockCap) String() string {
+	switch {
+	case b.Parm != nil:
+		return b.Parm.String()
+	case b.Local != nil:
+		return b.Local.String()
+	default:
+		return b.Cap.String()
+	}
+}
+
 func (r *RefType) String() string {
 	return r.buildString(new(strings.Builder)).String()
 }

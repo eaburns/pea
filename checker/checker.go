@@ -1623,7 +1623,8 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) 
 
 func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 	var exprs []Expr
-	var notes []note
+	var notFoundNotes []note
+	var ambigNotes []note
 	for _, id := range x.find(parserId.Name) {
 		// TODO: handle grounding for functions and function ifaces.
 		if fun, ok := id.(*FuncDef); ok && len(fun.Iface) > 0 {
@@ -1634,36 +1635,39 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 		}
 
 		expr := idToExpr(id, parserId.L)
-		if want == nil {
-			exprs = append(exprs, expr)
-			continue
+		if want != nil {
+			var fail *fail
+			if expr, fail = convert(expr, want); fail != nil {
+				notFoundNotes = append(notFoundNotes, note{
+					msg: fmt.Sprintf("cannot convert %s (%s) to type %s",
+						expr, expr.Type(), want),
+					loc: expr.Loc(),
+				})
+				continue
+			}
 		}
-		expr, fail := convert(expr, want)
-		if fail != nil {
-			notes = append(notes, note{
-				msg: fmt.Sprintf("cannot convert %s (%s) to type %s",
-					expr, expr.Type(), want),
-				loc: expr.Loc(),
-			})
-			continue
+		var l loc.Loc
+		if locer, ok := id.(interface{ Loc() loc.Loc }); ok {
+			l = locer.Loc()
 		}
+		ambigNotes = append(ambigNotes, note{msg: id.String(), loc: l})
 		exprs = append(exprs, expr)
 	}
 	switch {
 	case len(exprs) == 0:
 		f := notFound(parserId.Name, parserId.L)
-		f.notes = notes
+		f.notes = notFoundNotes
 		return nil, []*fail{f}
-	case len(exprs) > 1 && want == nil:
-		return nil, []*fail{{
-			msg: fmt.Sprintf("%s is ambiguous", parserId.Name),
-			loc: parserId.L,
-		}}
 	case len(exprs) > 1:
-		return nil, []*fail{{
-			msg: fmt.Sprintf("%s is ambiguous for type %s", parserId.Name, want),
-			loc: parserId.L,
-		}}
+		f := &fail{
+			msg:   fmt.Sprintf("%s is ambiguous", parserId.Name),
+			loc:   parserId.L,
+			notes: ambigNotes,
+		}
+		if want != nil {
+			f.msg = fmt.Sprintf("%s is ambiguous for type %s", parserId.Name, want)
+		}
+		return nil, []*fail{f}
 	default:
 		return exprs[0], nil
 	}

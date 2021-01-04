@@ -14,6 +14,7 @@ type scope interface {
 }
 
 type id interface {
+	String() string
 	Type() Type
 }
 

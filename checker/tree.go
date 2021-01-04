@@ -53,7 +53,8 @@ type VarDef struct {
 	L     loc.Loc
 }
 
-func (v *VarDef) Type() Type { return v.T }
+func (v *VarDef) Type() Type   { return v.T }
+func (v *VarDef) Loc() loc.Loc { return v.L }
 
 type TypeDef struct {
 	File  *File
@@ -202,7 +203,8 @@ type FuncDef struct {
 	L         loc.Loc
 }
 
-func (f *FuncDef) Type() Type { return f.T }
+func (f *FuncDef) Type() Type   { return f.T }
+func (f *FuncDef) Loc() loc.Loc { return f.L }
 
 type FuncParm struct {
 	Name string
@@ -210,7 +212,8 @@ type FuncParm struct {
 	L    loc.Loc
 }
 
-func (f *FuncParm) Type() Type { return f.T }
+func (f *FuncParm) Type() Type   { return f.T }
+func (f *FuncParm) Loc() loc.Loc { return f.L }
 
 type FuncLocal struct {
 	Name string
@@ -218,7 +221,8 @@ type FuncLocal struct {
 	L    loc.Loc
 }
 
-func (f *FuncLocal) Type() Type { return f.T }
+func (f *FuncLocal) Type() Type   { return f.T }
+func (f *FuncLocal) Loc() loc.Loc { return f.L }
 
 type FuncDecl struct {
 	Name  string
@@ -440,7 +444,8 @@ type BlockCap struct {
 	Cap   *BlockCap
 }
 
-func (b *BlockCap) Type() Type { return b.T }
+func (b *BlockCap) Type() Type   { return b.T }
+func (b *BlockCap) Loc() loc.Loc { return b.L }
 
 type StrLit struct {
 	Text string
