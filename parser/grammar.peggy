@@ -96,10 +96,13 @@ ArrayType <- _ "[" elem:Type _ "]" {
 	return Type(&ArrayType{ElemType: elem, L: l(parser, start, end)})
 }
 
-StructType <- _ "[" fs:FieldDefs? _ "]" {
-	var fields []FieldDef; if fs != nil { fields = *fs }
-	return Type(&StructType{Fields: fields, L: l(parser, start, end)})
-}
+StructType <-
+	_ "[" _ "." _ "]" {
+		return Type(&StructType{L: l(parser, start, end)})
+	} /
+	_ "[" fields:FieldDefs _ "]" {
+		return Type(&StructType{Fields: fields, L: l(parser, start, end)})
+	}
 
 FieldDef <- name:FieldId typ:Type {
 	return FieldDef{Name: name, Type: typ, L: l(parser, start, end)}

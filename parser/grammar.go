@@ -4396,45 +4396,81 @@ func _StructTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// action
-	// _ "[" fs:FieldDefs? _ "]"
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
-	// "["
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
-		perr = _max(perr, pos)
-		goto fail
-	}
-	pos++
-	// fs:FieldDefs?
+	// _ "[" _ "." _ "]" {…}/_ "[" fields:FieldDefs _ "]" {…}
 	{
-		pos1 := pos
-		// FieldDefs?
+		pos3 := pos
+		// action
+		// _ "[" _ "." _ "]"
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail4
+		}
+		// "["
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
+			perr = _max(perr, pos)
+			goto fail4
+		}
+		pos++
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail4
+		}
+		// "."
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "." {
+			perr = _max(perr, pos)
+			goto fail4
+		}
+		pos++
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail4
+		}
+		// "]"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
+			perr = _max(perr, pos)
+			goto fail4
+		}
+		pos++
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// _ "[" fields:FieldDefs _ "]"
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail6
+		}
+		// "["
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
+			perr = _max(perr, pos)
+			goto fail6
+		}
+		pos++
+		// fields:FieldDefs
 		{
-			pos3 := pos
+			pos8 := pos
 			// FieldDefs
 			if !_accept(parser, _FieldDefsAccepts, &pos, &perr) {
-				goto fail4
+				goto fail6
 			}
-			goto ok5
-		fail4:
-			pos = pos3
-		ok5:
+			labels[0] = parser.text[pos8:pos]
 		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail6
+		}
+		// "]"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
+			perr = _max(perr, pos)
+			goto fail6
+		}
+		pos++
+		goto ok0
+	fail6:
+		pos = pos3
 		goto fail
+	ok0:
 	}
-	// "]"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
-		perr = _max(perr, pos)
-		goto fail
-	}
-	pos++
 	return _memoize(parser, _StructType, start, pos, perr)
 fail:
 	return _memoize(parser, _StructType, start, -1, perr)
@@ -4452,55 +4488,106 @@ func _StructTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _StructType}
-	// action
-	// _ "[" fs:FieldDefs? _ "]"
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
-	// "["
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "\"[\"",
-			})
-		}
-		goto fail
-	}
-	pos++
-	// fs:FieldDefs?
+	// _ "[" _ "." _ "]" {…}/_ "[" fields:FieldDefs _ "]" {…}
 	{
-		pos1 := pos
-		// FieldDefs?
+		pos3 := pos
+		// action
+		// _ "[" _ "." _ "]"
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail4
+		}
+		// "["
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"[\"",
+				})
+			}
+			goto fail4
+		}
+		pos++
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail4
+		}
+		// "."
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "." {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\".\"",
+				})
+			}
+			goto fail4
+		}
+		pos++
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail4
+		}
+		// "]"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"]\"",
+				})
+			}
+			goto fail4
+		}
+		pos++
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// _ "[" fields:FieldDefs _ "]"
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail6
+		}
+		// "["
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"[\"",
+				})
+			}
+			goto fail6
+		}
+		pos++
+		// fields:FieldDefs
 		{
-			pos3 := pos
+			pos8 := pos
 			// FieldDefs
 			if !_fail(parser, _FieldDefsFail, errPos, failure, &pos) {
-				goto fail4
+				goto fail6
 			}
-			goto ok5
-		fail4:
-			pos = pos3
-		ok5:
+			labels[0] = parser.text[pos8:pos]
 		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
-	// "]"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "\"]\"",
-			})
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail6
 		}
+		// "]"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"]\"",
+				})
+			}
+			goto fail6
+		}
+		pos++
+		goto ok0
+	fail6:
+		pos = pos3
 		goto fail
+	ok0:
 	}
-	pos++
 	parser.fail[key] = failure
 	return pos, failure
 fail:
@@ -4511,7 +4598,7 @@ fail:
 func _StructTypeAction(parser *_Parser, start int) (int, *Type) {
 	var labels [1]string
 	use(labels)
-	var label0 *[]FieldDef
+	var label0 []FieldDef
 	dp := parser.deltaPos[start][_StructType]
 	if dp < 0 {
 		return -1, nil
@@ -4524,63 +4611,107 @@ func _StructTypeAction(parser *_Parser, start int) (int, *Type) {
 	}
 	var node Type
 	pos := start
-	// action
+	// _ "[" _ "." _ "]" {…}/_ "[" fields:FieldDefs _ "]" {…}
 	{
-		start0 := pos
-		// _ "[" fs:FieldDefs? _ "]"
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
-		// "["
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
-			goto fail
-		}
-		pos++
-		// fs:FieldDefs?
+		pos3 := pos
+		var node2 Type
+		// action
 		{
-			pos2 := pos
-			// FieldDefs?
+			start5 := pos
+			// _ "[" _ "." _ "]"
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail4
+			} else {
+				pos = p
+			}
+			// "["
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
+				goto fail4
+			}
+			pos++
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail4
+			} else {
+				pos = p
+			}
+			// "."
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "." {
+				goto fail4
+			}
+			pos++
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail4
+			} else {
+				pos = p
+			}
+			// "]"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
+				goto fail4
+			}
+			pos++
+			node = func(
+				start, end int) Type {
+				return Type(&StructType{L: l(parser, start, end)})
+			}(
+				start5, pos)
+		}
+		goto ok0
+	fail4:
+		node = node2
+		pos = pos3
+		// action
+		{
+			start8 := pos
+			// _ "[" fields:FieldDefs _ "]"
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail7
+			} else {
+				pos = p
+			}
+			// "["
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "[" {
+				goto fail7
+			}
+			pos++
+			// fields:FieldDefs
 			{
-				pos4 := pos
-				label0 = new([]FieldDef)
+				pos10 := pos
 				// FieldDefs
 				if p, n := _FieldDefsAction(parser, pos); n == nil {
-					goto fail5
+					goto fail7
 				} else {
-					*label0 = *n
+					label0 = *n
 					pos = p
 				}
-				goto ok6
-			fail5:
-				label0 = nil
-				pos = pos4
-			ok6:
+				labels[0] = parser.text[pos10:pos]
 			}
-			labels[0] = parser.text[pos2:pos]
-		}
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
-		// "]"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
-			goto fail
-		}
-		pos++
-		node = func(
-			start, end int, fs *[]FieldDef) Type {
-			var fields []FieldDef
-			if fs != nil {
-				fields = *fs
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail7
+			} else {
+				pos = p
 			}
-			return Type(&StructType{Fields: fields, L: l(parser, start, end)})
-		}(
-			start0, pos, label0)
+			// "]"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "]" {
+				goto fail7
+			}
+			pos++
+			node = func(
+				start, end int, fields []FieldDef) Type {
+				return Type(&StructType{Fields: fields, L: l(parser, start, end)})
+			}(
+				start8, pos, label0)
+		}
+		goto ok0
+	fail7:
+		node = node2
+		pos = pos3
+		goto fail
+	ok0:
 	}
 	parser.act[key] = node
 	return pos, &node
