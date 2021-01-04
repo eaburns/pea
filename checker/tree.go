@@ -138,7 +138,7 @@ type CaseDef struct {
 
 type FuncType struct {
 	Parms []Type
-	Ret   Type // nil if no return
+	Ret   Type
 	L     loc.Loc
 }
 
@@ -193,7 +193,7 @@ type FuncDef struct {
 	TypeParms []TypeParm
 	Parms     []FuncParm
 	Locals    []FuncLocal
-	Ret       Type // nil if no return
+	Ret       Type
 	Iface     []FuncDecl
 	Exprs     []Expr // nil if unspecified, non-nil, len()==0 if empty
 	Exp       bool
@@ -257,10 +257,8 @@ type Select struct {
 }
 
 func (s *Select) Parms() []Type { return []Type{s.P} }
-
-func (s *Select) Ret() Type { return s.R }
-
-func (s *Select) Type() Type { return &FuncType{Parms: []Type{s.P}, Ret: s.R} }
+func (s *Select) Ret() Type     { return s.R }
+func (s *Select) Type() Type    { return &FuncType{Parms: []Type{s.P}, Ret: s.R} }
 
 type Switch struct {
 	Union *UnionType

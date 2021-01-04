@@ -361,7 +361,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() ?a {} ?b {}",
-			want: "built-in ?a?b(&[?a, ?b], (){}, (){})",			
+			want: "built-in ?a?b(&[?a, ?b], (){}, (){})",
 		},
 		{
 			name: "built-in switch typed cases",
@@ -411,7 +411,7 @@ func TestOverloadResolution(t *testing.T) {
 		{
 			name: "built-in switch not a union type",
 			call: "1 ?b (_ int) {1} ",
-			err: "not a union",
+			err:  "not a union",
 		},
 		{
 			name: "built-in switch case name mismatch",
@@ -420,7 +420,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() ?c (_ int) {1} ",
-			err: "no case \\?c",
+			err:  "no case \\?c",
 		},
 		{
 			name: "built-in switch return type inferred",
@@ -429,7 +429,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() ?a () {1} ?b () {2}",
-			ret: "uint8",
+			ret:  "uint8",
 			want: "built-in ?a?b(&[?a, ?b], (){uint8}, (){uint8})uint8",
 		},
 		{
@@ -518,6 +518,27 @@ func findCall(e Expr) *Call {
 	default:
 		fmt.Printf("%T unimplemented", e)
 		return nil
+	}
+}
+
+// Tests various switch return type inferences that should compile without error.
+func TestSwitchReturnTypes(t *testing.T) {
+	const src = `
+		type a_or_b [?a, ?b]
+		var _ := {
+			m() ?a {1} ?b {1},
+			m() ?a {"hello"} ?b {1},
+			m() ?a {1},
+			m() ?b {1},
+		}
+		var _ int := m() ?a {1} ?b {1}
+		var _ [.] := m() ?a {1} ?b {1}
+		var _ [.] := m() ?a {1}
+		var _ [.] := m() ?a {} ?b {}
+		func m() a_or_b
+	`
+	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
+		t.Errorf("%v\n", errs)
 	}
 }
 
@@ -826,7 +847,7 @@ func TestLiteralInference(t *testing.T) {
 			// Ignore the error. Many of the test cases are type mismatches.
 			// That's fine. Here we are testing the resulting literal type,
 			// not correct reporting of type mismatch.
-			expr, _ := checkExpr(mod.Files[0], parserExpr, infer)
+			expr, _ := checkAndConvertExpr(mod.Files[0], parserExpr, infer)
 			want := findTypeDef(t, "want", mod).Type
 			if !eq(expr.Type(), want) {
 				t.Errorf("got %s, want %s", expr.Type(), want)

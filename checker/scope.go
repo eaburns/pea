@@ -177,18 +177,17 @@ func (m *Mod) find(name string) []id {
 		// or rejected when their return or 0th parameter is unified.
 		caseNames := splitCaseNames(name)
 		n := len(caseNames)
-		switches := [2]Switch{
-			{Ps: make([]Type, n+1), Cases: make([]*CaseDef, n)},
-			{Ps: make([]Type, n+1), R: uniqueTypeVar(), Cases: make([]*CaseDef, n)},
+		sw := Switch{
+			Cases: make([]*CaseDef, n),
+			Ps:    make([]Type, n+1),
+			R:     uniqueTypeVar(),
 		}
-		for i := 0; i < 2; i++ {
-			for j, caseName := range caseNames {
-				switches[i].Ps[j] = uniqueTypeVar()
-				switches[i].Cases[j] = &CaseDef{Name: caseName}
-			}
-			switches[i].Ps[n] = uniqueTypeVar()
+		for i, caseName := range caseNames {
+			sw.Ps[i] = uniqueTypeVar()
+			sw.Cases[i] = &CaseDef{Name: caseName}
 		}
-		ids = append(ids, &switches[0], &switches[1])
+		sw.Ps[n] = uniqueTypeVar()
+		ids = append(ids, &sw)
 	}
 	return ids
 }

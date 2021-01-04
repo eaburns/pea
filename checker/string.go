@@ -163,6 +163,9 @@ func (s *StructType) buildString(w *strings.Builder) *strings.Builder {
 		w.WriteRune(' ')
 		f.Type.buildString(w)
 	}
+	if len(s.Fields) == 0 {
+		w.WriteRune('.')
+	}
 	w.WriteRune(']')
 	return w
 }
@@ -192,7 +195,7 @@ func (f FuncType) buildString(w *strings.Builder) *strings.Builder {
 		p.buildString(w)
 	}
 	w.WriteString("){")
-	if f.Ret != nil {
+	if t, ok := f.Ret.(*StructType); f.Ret != nil && (!ok || len(t.Fields) > 0) {
 		f.Ret.buildString(w)
 	}
 	w.WriteRune('}')
@@ -254,7 +257,7 @@ func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {
 		p.buildString(s)
 	}
 	s.WriteRune(')')
-	if f.Ret() != nil {
+	if t, ok := f.Ret().(*StructType); f.Ret() != nil && (!ok || len(t.Fields) > 0) {
 		f.Ret().buildString(s)
 	}
 	return s
@@ -289,7 +292,7 @@ func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
 		p.buildString(s)
 	}
 	s.WriteRune(')')
-	if w.R != nil {
+	if t, ok := w.R.(*StructType); w.R != nil && (!ok || len(t.Fields) > 0) {
 		w.R.buildString(s)
 	}
 	return s

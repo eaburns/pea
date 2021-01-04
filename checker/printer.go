@@ -160,6 +160,11 @@ func (a *ArrayType) print(pc *config) {
 }
 
 func (s *StructType) print(pc *config) {
+	if len(s.Fields) == 0 {
+		pc.p("StructType{}")
+		pc.loc(s.L)
+		return
+	}
 	pc.p("StructType{")
 	pc.loc(s.L)
 	pc.field("Fields", s.Fields)
