@@ -127,6 +127,11 @@ func (s *Switch) unifyParm(i int, typ Type) (bool, *note) {
 
 func (b *Builtin) unifyRet(typ Type) (bool, *note) {
 	switch b.Op {
+	case Assign:
+		b.Ps[0] = &RefType{Type: typ}
+		b.Ps[1] = typ
+		b.R = typ
+		return true, nil
 	case NewArray:
 		t, note := arrayType(b, typ)
 		if note != nil {
@@ -155,7 +160,7 @@ func (b *Builtin) unifyRet(typ Type) (bool, *note) {
 			b.R = t
 		}
 		return true, nil
-	case Assign, Eq, Neq, Less, LessEq, Greater, GreaterEq, NumConvert, StrConvert, Length, Panic, Print:
+	case Eq, Neq, Less, LessEq, Greater, GreaterEq, NumConvert, StrConvert, Length, Panic, Print:
 		return true, nil
 	default:
 		panic("impossible op type")
@@ -175,9 +180,11 @@ func (b *Builtin) unifyParm(i int, typ Type) (bool, *note) {
 		if r, ok := typ.(*RefType); ok {
 			b.Ps[0] = typ
 			b.Ps[1] = r.Type
+			b.R = r.Type
 		} else {
 			b.Ps[0] = &RefType{Type: typ, L: typ.Loc()}
 			b.Ps[1] = typ
+			b.R = typ
 		}
 		return true, nil
 	case NewArray:

@@ -484,13 +484,27 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in assign",
 			src:  "var a int := 1",
 			call: "a := 6",
-			want: "built-in :=(&int, int)",
+			want: "built-in :=(&int, int)int",
 		},
 		{
 			name: "built-in assign, ref lhs",
 			src:  "var a int := 1",
 			call: "(&int : a) := 6",
-			want: "built-in :=(&int, int)",
+			want: "built-in :=(&int, int)int",
+		},
+		{
+			name: "built-in assign, expected, lhs mismatch",
+			src:  "var a string := \"\"",
+			call: "a := 6",
+			ret:  "int",
+			err:  "cannot convert a \\(string\\) to type &int",
+		},
+		{
+			name: "built-in assign, expected, rhs mismatch",
+			src:  "var a int := 1",
+			call: "a := \"\"",
+			ret:  "int",
+			err:  "got string, want int",
 		},
 		{
 			name: "built-in assign, lhs/rhs mismatch",
@@ -878,7 +892,7 @@ func TestSwitchReturnTypes(t *testing.T) {
 		type a_or_b [?a, ?b]
 		var _ := {
 			m() ?a {1} ?b {1},
-			m() ?a {"hello"} ?b {1},
+			//m() ?a {"hello"} ?b {1},
 			m() ?a {1},
 			m() ?b {1},
 		}

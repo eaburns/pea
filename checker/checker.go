@@ -850,7 +850,7 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []*fail)
 		if i == len(parserExprs)-1 && !isEmptyStruct(want) {
 			expr, fs = checkAndConvertExpr(x, parserExpr, want)
 		} else {
-			expr, fs = checkExpr(x, parserExpr, &StructType{})
+			expr, fs = checkExpr(x, parserExpr, nil)
 		}
 		if len(fs) > 0 {
 			fails = append(fails, fs...)
