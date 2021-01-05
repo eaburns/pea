@@ -386,7 +386,7 @@ func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
 		p.buildString(s)
 	}
 	s.WriteRune(')')
-	if b.R != nil {
+	if t, ok := b.R.(*StructType); b.R != nil && (!ok || len(t.Fields) > 0) {
 		b.R.buildString(s)
 	}
 	return s

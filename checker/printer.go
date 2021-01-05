@@ -306,6 +306,12 @@ func (b *Builtin) print(pc *config) {
 	pc.p("\n}")
 }
 
+func (e *ExprFunc) print(pc *config) {
+	pc.p("ExprFunc{")
+	pc.field("Expr", e.Expr)
+	pc.p("\n}")
+}
+
 func (d *Deref) print(pc *config) {
 	pc.p("Deref{")
 	pc.loc(d.L)
@@ -467,7 +473,7 @@ func (pc *config) field(name string, val interface{}) {
 		pc.p("(%v)", l)
 		return
 	}
-	pc.p("%#v", val)
+	pc.p("%v", val)
 }
 
 func (pc *config) slice(s interface{}) {
