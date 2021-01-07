@@ -217,10 +217,6 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				if funDef.Parms, fs = makeFuncParms(funDef, parserDef.Parms); len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
-				var parmTypes []Type
-				for i := range funDef.Parms {
-					parmTypes = append(parmTypes, funDef.Parms[i].T)
-				}
 				if funDef.Ret, fs = makeType(funDef, parserDef.Ret); len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
@@ -230,7 +226,6 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				if funDef.Iface, fs = makeFuncDecls(funDef, parserDef.Iface); len(fs) > 0 {
 					fails = append(fails, fs...)
 				}
-				funDef.T = &FuncType{Parms: parmTypes, Ret: funDef.Ret, L: funDef.L}
 				mod.Defs = append(mod.Defs, funDef)
 				defs[parserDef] = funDef
 			case *parser.TestDef:
@@ -1135,11 +1130,6 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 			expr = idToExpr(id, l)
 		case *BlockCap:
 			expr = idToExpr(id, l)
-		case *FuncDef:
-			fun = instFunc(id, id.Type().(*FuncType))
-			if len(id.Iface) > 0 {
-				panic("unimplemented")
-			}
 		case Func:
 			fun = id
 		default:
@@ -1385,7 +1375,7 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 	var ambigNotes []note
 	for _, id := range x.find(parserId.Name) {
 		// TODO: handle grounding for functions and function ifaces.
-		if fun, ok := id.(*FuncDef); !isGround(id) || ok && len(fun.Iface) > 0 {
+		if !isGround(id) {
 			continue
 		}
 		expr := idToExpr(id, parserId.L)
@@ -1429,8 +1419,6 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 
 func isGround(id id) bool {
 	switch id := id.(type) {
-	case *FuncDef:
-		return len(id.TypeParms) == 0
 	case Func:
 		for i := 0; i < id.arity(); i++ {
 			if id.groundParm(i) == nil {
@@ -1456,24 +1444,11 @@ func idToExpr(id id, l loc.Loc) Expr {
 	case *BlockCap:
 		// TODO: handle capture
 		return deref(&Cap{Def: id, T: ref(id.T), L: l})
-	case *FuncDef:
-		return wrapCallInBlock(instFunc(id, id.Type().(*FuncType)), l)
 	case Func:
 		return wrapCallInBlock(id, l)
 	default:
 		panic(fmt.Sprintf("impossible id type: %T", id))
 	}
-}
-
-func instFunc(def *FuncDef, typ *FuncType) *FuncInst {
-	for _, inst := range def.Insts {
-		if eq(inst.T, typ) {
-			return inst
-		}
-	}
-	inst := &FuncInst{T: typ, Def: def}
-	def.Insts = append(def.Insts, inst)
-	return inst
 }
 
 func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {

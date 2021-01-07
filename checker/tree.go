@@ -87,13 +87,6 @@ type Type interface {
 	Loc() loc.Loc
 }
 
-type RefType struct {
-	Type Type
-	L    loc.Loc
-}
-
-func (r *RefType) Loc() loc.Loc { return r.L }
-
 type DefType struct {
 	Name string
 	Args []Type
@@ -103,6 +96,13 @@ type DefType struct {
 }
 
 func (d *DefType) Loc() loc.Loc { return d.L }
+
+type RefType struct {
+	Type Type
+	L    loc.Loc
+}
+
+func (r *RefType) Loc() loc.Loc { return r.L }
 
 type ArrayType struct {
 	ElemType Type
@@ -199,11 +199,9 @@ type FuncDef struct {
 	Exprs     []Expr // nil if unspecified, non-nil, len()==0 if empty
 	Exp       bool
 	Insts     []*FuncInst
-	T         Type
 	L         loc.Loc
 }
 
-func (f *FuncDef) Type() Type   { return f.T }
 func (f *FuncDef) Loc() loc.Loc { return f.L }
 
 type FuncParm struct {
@@ -243,8 +241,10 @@ type Func interface {
 }
 
 type FuncInst struct {
-	T   *FuncType
-	Def *FuncDef
+	TypeArgs  []Type
+	IfaceArgs []Func
+	Def       *FuncDef
+	T         *FuncType
 }
 
 func (f *FuncInst) Loc() loc.Loc  { return f.Def.L }

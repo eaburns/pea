@@ -332,10 +332,46 @@ func findInDefs(defs []Def, name string) []id {
 				ids = append(ids, def)
 			}
 		case *FuncDef:
-			if def.Name == name {
-				ids = append(ids, def)
+			if def.Name != name {
+				continue
 			}
+			var typeArgs []Type
+			for i := range def.TypeParms {
+				typeArgs = append(typeArgs, &TypeVar{
+					Name: def.TypeParms[i].Name,
+					Def:  &def.TypeParms[i],
+					L:    def.TypeParms[i].L,
+				})
+			}
+			if len(def.Iface) > 0 {
+				panic("unimplemented")
+			}
+			ids = append(ids, newFuncInst(def, typeArgs, nil, def.L))
 		}
 	}
 	return ids
+}
+
+func newFuncInst(def *FuncDef, typeArgs []Type, ifaceArgs []Func, l loc.Loc) *FuncInst {
+	if len(ifaceArgs) > 0 {
+		panic("unimplemented")
+	}
+
+	sub := make(map[*TypeParm]Type)
+	for i := range def.TypeParms {
+		sub[&def.TypeParms[i]] = typeArgs[i]
+	}
+	var parms []Type
+	for _, p := range def.Parms {
+		parms = append(parms, subType(sub, p.T))
+	}
+	ret := subType(sub, def.Ret)
+	typ := &FuncType{Parms: parms, Ret: ret, L: l}
+	inst := &FuncInst{
+		TypeArgs:  typeArgs,
+		IfaceArgs: ifaceArgs,
+		T:         typ,
+		Def:       def,
+	}
+	return inst
 }

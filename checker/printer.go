@@ -261,6 +261,8 @@ func (f *FuncInst) print(pc *config) {
 		pc.loc(f.Def.L)
 		pc.n--
 	}
+	pc.field("TypeArgs", f.TypeArgs)
+	pc.field("IfaceArgs", f.IfaceArgs)
 	pc.field("Type", f.T)
 	pc.p("\n}")
 }
