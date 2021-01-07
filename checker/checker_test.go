@@ -323,7 +323,7 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "type point [.x float64, .y float64]",
 			call: "(point : [.x 4, .y 4]).y",
 			ret:  "string",
-			err:  "type mismatch: got &float64, want string",
+			err:  "cannot convert point field \\.y \\(float64\\) to string",
 		},
 		{
 			name: "built-in selector mismatches, but func def matches",
@@ -407,6 +407,16 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "make() ?b (_ int) {1} ",
 			want: "built-in ?b(&[?a, ?b int], (int){})",
+		},
+		{
+			name: "built-in switch not all cases, does not convert return",
+			src: `
+				type a_or_b [?a, ?b int]
+				func make() a_or_b
+			`,
+			call: "make() ?a () {1} ",
+			ret:  "int",
+			err:  "cannot convert returned \\[\\.\\] to int",
 		},
 		{
 			name: "built-in switch not a union type",

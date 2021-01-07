@@ -169,8 +169,6 @@ func (m *Mod) find(name string) []id {
 		// or rejected when its 0th parameter is unified.
 		ids = append(ids, &Select{
 			Field: &FieldDef{Name: name},
-			P:     uniqueTypeVar(),
-			R:     uniqueTypeVar(),
 		})
 	}
 	if strings.HasPrefix(name, "?") {
@@ -181,13 +179,10 @@ func (m *Mod) find(name string) []id {
 		sw := Switch{
 			Cases: make([]*CaseDef, n),
 			Ps:    make([]Type, n+1),
-			R:     uniqueTypeVar(),
 		}
 		for i, caseName := range caseNames {
-			sw.Ps[i] = uniqueTypeVar()
 			sw.Cases[i] = &CaseDef{Name: caseName}
 		}
-		sw.Ps[n] = uniqueTypeVar()
 		ids = append(ids, &sw)
 	}
 	for _, binfo := range builtins {
@@ -196,15 +191,9 @@ func (m *Mod) find(name string) []id {
 		}
 		b := &Builtin{Op: binfo.op}
 		for _, p := range binfo.parms {
-			if p == nil {
-				p = uniqueTypeVar()
-			}
 			b.Ps = append(b.Ps, p)
 		}
 		b.R = binfo.ret
-		if b.R == nil {
-			b.R = uniqueTypeVar()
-		}
 		ids = append(ids, b)
 	}
 	return ids
@@ -277,10 +266,6 @@ func splitCaseNames(str string) []string {
 		i += w
 	}
 	return append(names, str)
-}
-
-func uniqueTypeVar() *TypeVar {
-	return &TypeVar{Name: "_", Def: &TypeParm{Name: "_"}}
 }
 
 func (i *Import) find(name string) []id { return findInDefs(i.Defs, name) }

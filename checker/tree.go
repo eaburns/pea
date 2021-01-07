@@ -233,11 +233,12 @@ type FuncDecl struct {
 
 type Func interface {
 	String() string
-	Parms() []Type
-	Ret() Type
 
-	unifyRet(Type) (bool, *note)
-	unifyParm(int, Type) (bool, *note)
+	arity() int
+	groundRet() Type // nil if not grounded
+	unifyRet(Type) *note
+	groundParm(int) Type // nil if not grounded
+	unifyParm(int, Type) *note
 	buildString(*strings.Builder) *strings.Builder
 }
 

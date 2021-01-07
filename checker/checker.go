@@ -1072,7 +1072,7 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 			for _, f := range funcs {
 				notes = append(notes, note{
 					msg: fmt.Sprintf("%s parameter %d is type %s", f, i, t),
-					loc: f.Parms()[i].Loc(),
+					loc: f.groundParm(i).Loc(),
 				})
 			}
 			fail.notes = notes
@@ -1104,17 +1104,18 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 	}
 
 	fun := funcs[0]
+	ret := fun.groundRet()
 	for i, arg := range args {
-		args[i], _ = convert(arg, fun.Parms()[i])
+		args[i], _ = convert(arg, fun.groundParm(i))
 	}
 	return &Deref{
 		Expr: &Call{
 			Func: fun,
 			Args: args,
-			T:    &RefType{Type: fun.Ret(), L: parserCall.L},
+			T:    &RefType{Type: ret, L: parserCall.L},
 			L:    parserCall.L,
 		},
-		T: fun.Ret(),
+		T: ret,
 		L: parserCall.L,
 	}, fails
 }
@@ -1167,7 +1168,7 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 	var notes []note
 	var n int
 	for _, f := range funcs {
-		if len(f.Parms()) == arity {
+		if f.arity() == arity {
 			funcs[n] = f
 			n++
 			continue
@@ -1177,8 +1178,7 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 			l = locer.Loc()
 		}
 		notes = append(notes, note{
-			msg: fmt.Sprintf("%s: expects %d arguments, got %d",
-				f, len(f.Parms()), arity),
+			msg: fmt.Sprintf("%s: expects %d arguments, got %d", f, f.arity(), arity),
 			loc: l,
 		})
 	}
@@ -1208,18 +1208,17 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 		if locer, ok := f.(interface{ Loc() loc.Loc }); ok {
 			l = locer.Loc()
 		}
-		if !isGround(f.Ret()) {
-			ok, note := f.unifyRet(want)
-			if note != nil {
-				notes = append(notes, *note)
-			}
-			if !ok {
-				continue
-			}
+		if note := f.unifyRet(want); note != nil {
+			notes = append(notes, *note)
+			continue
 		}
-		if !canConvertReturn(f.Ret(), want) {
+		retType := f.groundRet()
+		if retType == nil {
+			continue
+		}
+		if !canConvertReturn(retType, want) {
 			notes = append(notes, note{
-				msg: fmt.Sprintf("%s: cannot convert returned %s to %s", f, f.Ret(), want),
+				msg: fmt.Sprintf("%s: cannot convert returned %s to %s", f, retType, want),
 				loc: l,
 			})
 			continue
@@ -1233,12 +1232,12 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 func commonGroundParmType(funcs []Func, i int) Type {
 	var t Type
 	for _, f := range funcs {
-		switch parmType := f.Parms()[i]; {
-		case !isGround(parmType):
+		switch {
+		case f.groundParm(i) == nil:
 			return nil
 		case t == nil:
-			t = parmType
-		case !eq(t, parmType):
+			t = f.groundParm(i)
+		case !eq(t, f.groundParm(i)):
 			return nil
 		}
 	}
@@ -1249,25 +1248,23 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		if !isGround(f.Parms()[i]) {
-			ok, note := f.unifyParm(i, arg.Type())
-			if note != nil {
-				notes = append(notes, *note)
-			}
-			if !ok {
-				continue
-			}
+		if note := f.unifyParm(i, arg.Type()); note != nil {
+			notes = append(notes, *note)
+			continue
 		}
-		parm := f.Parms()[i]
-		if _, fail := convert(arg, parm); fail == nil {
+		parmType := f.groundParm(i)
+		if parmType == nil {
+			continue
+		}
+		if _, fail := convert(arg, parmType); fail == nil {
 			funcs[n] = f
 			n++
 			continue
 		}
 		notes = append(notes, note{
 			msg: fmt.Sprintf("%s: cannot convert argument %d, %s (%s), to %s",
-				f, i, arg, arg.Type(), parm),
-			loc: parm.Loc(),
+				f, i, arg, arg.Type(), parmType),
+			loc: parmType.Loc(),
 		})
 	}
 	return funcs[:n], notes
@@ -1277,7 +1274,7 @@ func filterUngroundReturns(funcs []Func) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		if isGround(f.Ret()) {
+		if f.groundRet() != nil {
 			funcs[n] = f
 			n++
 			continue
@@ -1388,13 +1385,9 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 	var ambigNotes []note
 	for _, id := range x.find(parserId.Name) {
 		// TODO: handle grounding for functions and function ifaces.
-		if fun, ok := id.(*FuncDef); ok && len(fun.Iface) > 0 {
+		if fun, ok := id.(*FuncDef); !isGround(id) || ok && len(fun.Iface) > 0 {
 			continue
 		}
-		if t := id.Type(); t == nil || !isGround(t) {
-			continue
-		}
-
 		expr := idToExpr(id, parserId.L)
 		if want != nil {
 			var fail *fail
@@ -1434,6 +1427,22 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 	}
 }
 
+func isGround(id id) bool {
+	switch id := id.(type) {
+	case *FuncDef:
+		return len(id.TypeParms) == 0
+	case Func:
+		for i := 0; i < id.arity(); i++ {
+			if id.groundParm(i) == nil {
+				return false
+			}
+		}
+		return id.groundRet() != nil
+	default:
+		return true
+	}
+}
+
 func idToExpr(id id, l loc.Loc) Expr {
 	switch id := id.(type) {
 	case *VarDef:
@@ -1468,7 +1477,19 @@ func instFunc(def *FuncDef, typ *FuncType) *FuncInst {
 }
 
 func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
-	typ := &FuncType{Parms: fun.Parms(), Ret: fun.Ret(), L: l}
+	var parms []Type
+	for i := 0; i < fun.arity(); i++ {
+		p := fun.groundParm(i)
+		if p == nil {
+			panic("impossible")
+		}
+		parms = append(parms, p)
+	}
+	ret := fun.groundRet()
+	if ret == nil {
+		panic("impossible")
+	}
+	typ := &FuncType{Parms: parms, Ret: ret, L: l}
 	blk := &BlockLit{Ret: typ.Ret, T: typ, L: l}
 	call := &Call{Func: fun, T: &RefType{Type: typ.Ret, L: l}, L: l}
 	call.Args = make([]Expr, len(typ.Parms))
@@ -1481,51 +1502,6 @@ func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 		call.Args[i] = &Parm{Def: &blk.Parms[i], T: typ.Parms[i], L: l}
 	}
 	return blk
-}
-
-func isGround(typ Type) bool {
-	switch typ := typ.(type) {
-	case nil:
-		return true
-	case *DefType:
-		for _, a := range typ.Args {
-			if !isGround(a) {
-				return false
-			}
-		}
-		return true
-	case *RefType:
-		return isGround(typ.Type)
-	case *ArrayType:
-		return isGround(typ.ElemType)
-	case *StructType:
-		for i := range typ.Fields {
-			if !isGround(typ.Fields[i].Type) {
-				return false
-			}
-		}
-		return true
-	case *UnionType:
-		for i := range typ.Cases {
-			if !isGround(typ.Cases[i].Type) {
-				return false
-			}
-		}
-		return true
-	case *FuncType:
-		for i := range typ.Parms {
-			if !isGround(typ.Parms[i]) {
-				return false
-			}
-		}
-		return isGround(typ.Ret)
-	case *BasicType:
-		return true
-	case *TypeVar:
-		return false
-	default:
-		panic(fmt.Sprintf("impossible type type: %T", typ))
-	}
 }
 
 // checkConvert checks a type conversion.

@@ -286,9 +286,17 @@ func (e *Select) buildString(s *strings.Builder) *strings.Builder {
 		return s
 	}
 	s.WriteRune('(')
-	e.P.buildString(s)
+	if e.P == nil {
+		s.WriteRune('_')
+	} else {
+		e.P.buildString(s)
+	}
 	s.WriteRune(')')
-	e.R.buildString(s)
+	if e.R == nil {
+		s.WriteRune('_')
+	} else {
+		e.R.buildString(s)
+	}
 	return s
 }
 
@@ -305,7 +313,11 @@ func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
 		if i > 0 {
 			s.WriteString(", ")
 		}
-		p.buildString(s)
+		if p == nil {
+			s.WriteRune('_')
+		} else {
+			p.buildString(s)
+		}
 	}
 	s.WriteRune(')')
 	if t, ok := w.R.(*StructType); w.R != nil && (!ok || len(t.Fields) > 0) {
@@ -383,7 +395,11 @@ func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
 		if i > 0 {
 			s.WriteString(", ")
 		}
-		p.buildString(s)
+		if p == nil {
+			s.WriteRune('_')
+		} else {
+			p.buildString(s)
+		}
 	}
 	s.WriteRune(')')
 	if t, ok := b.R.(*StructType); b.R != nil && (!ok || len(t.Fields) > 0) {
