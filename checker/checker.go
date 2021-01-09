@@ -1160,7 +1160,8 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 			n++
 			continue
 		}
-		notes = append(notes, newNote("%s: cannot convert argument %d, %s (%s), to %s", f, i, arg, arg.Type(), parmType).setLoc(parmType))
+		notes = append(notes, newNote("%s: cannot convert argument %s (%s) to %s",
+			f, arg, arg.Type(), parmType).setLoc(parmType))
 	}
 	return funcs[:n], notes
 }
