@@ -426,7 +426,7 @@ func TestExpr(t *testing.T) {
 		test := test
 		t.Run(test.expr, func(t *testing.T) {
 			src := fmt.Sprintf("var x := %s", test.expr)
-			p := NewParser()
+			p := New()
 			if err := p.Parse("", strings.NewReader(src)); err != nil {
 				t.Log(src)
 				t.Fatalf("failed to parse: %s", err.Error())

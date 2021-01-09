@@ -50,7 +50,7 @@ func (imp *testImporter) Load(path string) (*Mod, error) {
 	if testMod == nil {
 		return nil, fmt.Errorf("%s: not found", path)
 	}
-	p := parser.NewParserOffset(imp.files.Len() + 1)
+	p := parser.NewWithOffset(imp.files.Len() + 1)
 	err := p.Parse(testMod.path, strings.NewReader(testMod.src))
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func (imp *testImporter) Load(path string) (*Mod, error) {
 }
 
 func check(path string, files []string, mods []testMod) (*Mod, []error) {
-	p := parser.NewParser()
+	p := parser.New()
 	for i, file := range files {
 		r := strings.NewReader(file)
 		if err := p.Parse(fmt.Sprintf("%s%d", path, i), r); err != nil {

@@ -22,13 +22,13 @@ type Parser struct {
 	offs  int
 }
 
-// NewParser returns a new parser.
-func NewParser() *Parser {
+// New returns a new parser.
+func New() *Parser {
 	return &Parser{offs: 1}
 }
 
-// NewParserOffset returns a new parser with the given location offset.
-func NewParserOffset(offs int) *Parser {
+// NewWithOffset returns a new parser with the given location offset.
+func NewWithOffset(offs int) *Parser {
 	return &Parser{offs: offs}
 }
 
@@ -69,7 +69,7 @@ func (p *Parser) ParseFile(path string) error {
 
 func ParseExpr(str string) (Expr, error) {
 	_p := _NewParser(str)
-	_p.data = NewParser()
+	_p.data = New()
 	if pos, perr := _ExprAccepts(_p, 0); pos < 0 {
 		_, t := _ExprFail(_p, 0, perr)
 		return nil, parseError{loc: perr, text: _p.text, fail: t}

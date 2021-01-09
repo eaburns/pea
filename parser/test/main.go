@@ -20,7 +20,7 @@ func main() {
 		defer f.Close()
 		in = f
 	}
-	p := parser.NewParser()
+	p := parser.New()
 	if err := p.Parse(path, in); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
