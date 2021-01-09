@@ -121,7 +121,6 @@ func instIface(x scope, fun Func) note {
 	if !ok {
 		return nil
 	}
-	// TODO: once notes are recursive, don't ignore these ones.
 	var notes []note
 	x = &excludeFunc{parent: x, def: f.Def, notes: &notes}
 	for i := range f.IfaceArgs {
