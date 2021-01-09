@@ -1,64 +1,19 @@
 package checker
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
 )
 
-type fail struct {
-	msg   string
-	loc   loc.Loc
-	notes []note
-}
-
-type note struct {
-	msg string
-	loc loc.Loc // empty for built-in
-}
-
-func (f *fail) error(files loc.Files) error {
-	var s strings.Builder
-	s.WriteString(files.Location(f.loc).String())
-	s.WriteString(": ")
-	s.WriteString(f.msg)
-	for _, note := range f.notes {
-		s.WriteString("\n\t")
-		s.WriteString(note.msg)
-		if note.loc != (loc.Loc{}) {
-			s.WriteString(" (")
-			s.WriteString(files.Location(note.loc).String())
-			s.WriteRune(')')
-		}
-	}
-	return errors.New(s.String())
-}
-
-func notFound(name string, l loc.Loc) *fail {
-	return &fail{
-		msg: fmt.Sprintf("%s: not found", name),
-		loc: l,
-	}
-}
-
-func redef(l loc.Loc, name string, prev loc.Loc) *fail {
-	return &fail{
-		msg:   name + " redefined",
-		loc:   l,
-		notes: []note{{msg: "previous", loc: prev}},
-	}
-}
-
 // Check does semantic checking, and returns a *Mod on success.
 func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.Files, []error) {
-	var fails []*fail
+	var errs []Error
 	idNames := make(map[string]loc.Loc)
 	defs := make(map[parser.Def]Def)
 	typeNames := make(map[string]loc.Loc)
@@ -71,10 +26,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 		for _, parserImport := range parserFile.Imports {
 			m, err := importer.Load(parserImport.Path)
 			if err != nil {
-				fails = append(fails, &fail{
-					msg: err.Error(),
-					loc: parserImport.L,
-				})
+				errs = append(errs, newError(parserImport.L, err.Error()))
 				continue
 			}
 			name := filepath.Base(parserImport.Path)
@@ -83,7 +35,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			}
 			if name != "_" {
 				if prev, ok := idNames[name]; ok {
-					fails = append(fails, redef(parserImport.L, name, prev))
+					errs = append(errs, redef(parserImport.L, name, prev))
 					continue
 				}
 				idNames[name] = parserImport.L
@@ -116,13 +68,13 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			}
 			name := parserTypeDef.Name.Name
 			if prev, ok := typeNames[name]; ok {
-				fails = append(fails, redef(parserTypeDef.L, name, prev))
+				errs = append(errs, redef(parserTypeDef.L, name, prev))
 				continue
 			}
 			typeNames[name] = parserTypeDef.L
 			parms, fs := makeTypeParms(importer.Files(), parserTypeDef.TypeParms)
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 			}
 			typeDef := &TypeDef{
 				File:  file,
@@ -150,7 +102,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			typeDef := defs[parserTypeDef].(*TypeDef)
 			t, fs := _makeType(typeDef, parserTypeDef.Type, false)
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 			}
 			typeDef.Type = t
 		}
@@ -163,8 +115,8 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	// reporting more errors.
 	for _, def := range mod.Defs {
 		if typeDef, ok := def.(*TypeDef); ok && typeDef.Alias {
-			if fail := checkAliasCycle(typeDef); fail != nil {
-				fails = append(fails, fail)
+			if err := checkAliasCycle(typeDef); err != nil {
+				errs = append(errs, err)
 			}
 		}
 	}
@@ -183,14 +135,14 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				name := parserDef.Name.Name
 				if name != "_" {
 					if prev, ok := idNames[name]; ok {
-						fails = append(fails, redef(parserDef.L, name, prev))
+						errs = append(errs, redef(parserDef.L, name, prev))
 						continue
 					}
 					idNames[name] = parserDef.L
 				}
 				t, fs := makeType(file, parserDef.Type)
 				if len(fs) > 0 {
-					fails = append(fails, fs...)
+					errs = append(errs, fs...)
 				}
 				varDef := &VarDef{
 					File:  file,
@@ -213,25 +165,25 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 					Exp:       parserDef.Exp,
 					L:         parserDef.L,
 				}
-				var fs []*fail
+				var fs []Error
 				if funDef.Parms, fs = makeFuncParms(funDef, parserDef.Parms); len(fs) > 0 {
-					fails = append(fails, fs...)
+					errs = append(errs, fs...)
 				}
 				if funDef.Ret, fs = makeType(funDef, parserDef.Ret); len(fs) > 0 {
-					fails = append(fails, fs...)
+					errs = append(errs, fs...)
 				}
 				if funDef.Ret == nil {
 					funDef.Ret = &StructType{L: parserDef.L}
 				}
 				if funDef.Iface, fs = makeFuncDecls(funDef, parserDef.Iface); len(fs) > 0 {
-					fails = append(fails, fs...)
+					errs = append(errs, fs...)
 				}
 				mod.Defs = append(mod.Defs, funDef)
 				defs[parserDef] = funDef
 			case *parser.TestDef:
 				name := parserDef.Name.Name
 				if prev, ok := testNames[name]; ok {
-					fails = append(fails, redef(parserDef.L, name, prev))
+					errs = append(errs, redef(parserDef.L, name, prev))
 					continue
 				}
 				testNames[name] = parserDef.L
@@ -250,7 +202,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	}
 	for _, parserFile := range files {
 		for _, parserDef := range parserFile.Defs {
-			var fs []*fail
+			var fs []Error
 			switch def := defs[parserDef].(type) {
 			case *TypeDef:
 				break // nothing to do really.
@@ -262,28 +214,29 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				// TODO
 			}
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 			}
 		}
 	}
-	if len(fails) > 0 {
-		var errs []error
-		for _, fail := range fails {
-			errs = append(errs, fail.error(importer.Files()))
+	if len(errs) > 0 {
+		var es []error
+		for _, err := range errs {
+			err.done(importer.Files(), 1)
+			es = append(es, err)
 		}
-		return nil, nil, errs
+		return nil, nil, es
 	}
 	return mod, importer.Files(), nil
 }
 
-func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm, []*fail) {
-	var fails []*fail
+func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm, []Error) {
+	var errs []Error
 	seen := make(map[string]loc.Loc)
 	var typeParms []TypeParm
 	for _, parserTypeVar := range parserTypeVars {
 		name := parserTypeVar.Name
 		if prev, ok := seen[name]; ok {
-			fails = append(fails, redef(parserTypeVar.L, name, prev))
+			errs = append(errs, redef(parserTypeVar.L, name, prev))
 		} else {
 			seen[name] = parserTypeVar.L
 		}
@@ -292,31 +245,31 @@ func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm
 			L:    parserTypeVar.L,
 		})
 	}
-	return typeParms, fails
+	return typeParms, errs
 }
 
-func makeType(x scope, parserType parser.Type) (typ Type, fails []*fail) {
+func makeType(x scope, parserType parser.Type) (typ Type, errs []Error) {
 	return _makeType(x, parserType, true)
 }
 
-func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*fail) {
+func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Error) {
 	switch parserType := parserType.(type) {
 	case nil:
 		return nil, nil
 	case *parser.RefType:
-		typ, fails = _makeType(x, parserType.Type, inst)
+		typ, errs = _makeType(x, parserType.Type, inst)
 		typ = &RefType{Type: typ, L: parserType.L}
 	case *parser.NamedType:
 		var args []Type
 		for _, parserArg := range parserType.Args {
 			arg, fs := _makeType(x, parserArg, inst)
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 				continue
 			}
 			args = append(args, arg)
 		}
-		if len(fails) > 0 {
+		if len(errs) > 0 {
 			break
 		}
 		if parserType.Mod != nil {
@@ -324,31 +277,28 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*f
 			modLoc := parserType.Mod.L
 			imp := x.findMod(parserType.Mod.Name)
 			if imp == nil {
-				fails = append(fails, notFound(modName, modLoc))
-				return nil, fails
+				errs = append(errs, notFound(modName, modLoc))
+				return nil, errs
 			}
 			x = imp
 		}
 		name := parserType.Name.Name
 		if typ = x.findType(args, name, parserType.L); typ == nil {
-			fails = append(fails, &fail{
-				msg: fmt.Sprintf("undefined: %s", name),
-				loc: parserType.L,
-			})
+			errs = append(errs, notFound(name, parserType.L))
 		}
 		if dt, ok := typ.(*DefType); ok && inst {
 			typ = instType(dt)
 		}
 	case *parser.ArrayType:
 		var elemType Type
-		elemType, fails = _makeType(x, parserType.ElemType, inst)
+		elemType, errs = _makeType(x, parserType.ElemType, inst)
 		typ = &ArrayType{ElemType: elemType, L: parserType.L}
 	case *parser.StructType:
 		var fields []FieldDef
 		for _, parserField := range parserType.Fields {
 			t, fs := _makeType(x, parserField.Type, inst)
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 			}
 			fields = append(fields, FieldDef{
 				Name: parserField.Name.Name,
@@ -362,7 +312,7 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*f
 		for _, parserCase := range parserType.Cases {
 			t, fs := _makeType(x, parserCase.Type, inst)
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 			}
 			cases = append(cases, CaseDef{
 				Name: parserCase.Name.Name,
@@ -374,11 +324,11 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*f
 	case *parser.FuncType:
 		parms, fs := _makeTypes(x, parserType.Parms, inst)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		ret, fs := _makeType(x, parserType.Ret, inst)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		if ret == nil {
 			ret = &StructType{L: parserType.L}
@@ -387,38 +337,35 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, fails []*f
 	case parser.TypeVar:
 		name := parserType.Name
 		if typ = x.findType(nil, name, parserType.L); typ == nil {
-			fails = append(fails, &fail{
-				msg: fmt.Sprintf("undefined: %s", name),
-				loc: parserType.L,
-			})
+			errs = append(errs, notFound(name, parserType.L))
 		}
 	default:
 		panic(fmt.Sprintf("unsupported Type type: %T", parserType))
 	}
-	if len(fails) > 0 {
-		return nil, fails
+	if len(errs) > 0 {
+		return nil, errs
 	}
 	return typ, nil
 }
 
-func makeTypes(x scope, parserTypes []parser.Type) ([]Type, []*fail) {
+func makeTypes(x scope, parserTypes []parser.Type) ([]Type, []Error) {
 	return _makeTypes(x, parserTypes, true)
 }
 
-func _makeTypes(x scope, parserTypes []parser.Type, inst bool) ([]Type, []*fail) {
-	var fails []*fail
+func _makeTypes(x scope, parserTypes []parser.Type, inst bool) ([]Type, []Error) {
+	var errs []Error
 	var types []Type
 	for _, parserType := range parserTypes {
 		t, fs := _makeType(x, parserType, inst)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		types = append(types, t)
 	}
-	return types, fails
+	return types, errs
 }
 
-func checkAliasCycle(root *TypeDef) *fail {
+func checkAliasCycle(root *TypeDef) Error {
 	var path []*TypeDef
 	seen := make(map[*TypeDef]bool)
 	var check func(*TypeDef) bool
@@ -451,11 +398,7 @@ func checkAliasCycle(root *TypeDef) *fail {
 		}
 		// Break the alias so that checking can continue reporting more errors.
 		root.Alias = false
-		return &fail{
-			msg:   "alias cycle",
-			loc:   root.L,
-			notes: notes,
-		}
+		return newError(root.L, "alias cycle").addNotes(notes)
 	}
 	return nil
 }
@@ -723,40 +666,40 @@ func findTypeVars(parserType parser.Type, typeVars map[string]loc.Loc) {
 	}
 }
 
-func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]FuncParm, []*fail) {
+func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]FuncParm, []Error) {
 	seen := make(map[string]loc.Loc)
-	var fails []*fail
+	var errs []Error
 	var parms []FuncParm
 	for _, parserParm := range parserParms {
 		name := parserParm.Name.Name
 		if prev, ok := seen[name]; name != "_" && ok {
-			fails = append(fails, redef(parserParm.L, name, prev))
+			errs = append(errs, redef(parserParm.L, name, prev))
 		} else {
 			seen[name] = parserParm.L
 		}
 		var t Type
-		var fs []*fail
+		var fs []Error
 		if parserParm.Type != nil {
 			if t, fs = makeType(x, parserParm.Type); len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 			}
 		}
 		parms = append(parms, FuncParm{Name: name, T: t, L: parserParm.L})
 	}
-	return parms, fails
+	return parms, errs
 }
 
-func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []*fail) {
-	var fails []*fail
+func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []Error) {
+	var errs []Error
 	var decls []FuncDecl
 	for _, parserDecl := range parserDecls {
 		parms, fs := makeTypes(x, parserDecl.Parms)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		ret, fs := makeType(x, parserDecl.Ret)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		decls = append(decls, FuncDecl{
 			Name:  parserDecl.Name.Name,
@@ -765,15 +708,15 @@ func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []*fail)
 			L:     parserDecl.L,
 		})
 	}
-	return decls, fails
+	return decls, errs
 }
 
-func checkVarDef(def *VarDef, parserDef *parser.VarDef) []*fail {
-	var fails []*fail
+func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
+	var errs []Error
 	if parserDef.Expr != nil {
 		expr, fs := checkAndConvertExpr(def, parserDef.Expr, def.T)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		def.Expr = expr
 	}
@@ -781,15 +724,12 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []*fail {
 		def.T = def.Expr.Type()
 	}
 	if def.T == nil && def.Expr == nil {
-		fails = append(fails, &fail{
-			msg: "cannot infer variable type",
-			loc: def.L,
-		})
+		errs = append(errs, newError(def, "cannot infer variable type"))
 	}
-	return fails
+	return errs
 }
 
-func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
+func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Error) {
 	switch parserExpr := parserExpr.(type) {
 	case *parser.Call:
 		return checkCall(x, parserExpr, want)
@@ -823,24 +763,24 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
 	}
 }
 
-func checkAndConvertExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []*fail) {
-	expr, fails := checkExpr(x, parserExpr, want)
+func checkAndConvertExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Error) {
+	expr, errs := checkExpr(x, parserExpr, want)
 	if expr != nil && want != nil {
-		var fail *fail
-		expr, fail = convert(expr, want)
-		if fail != nil {
-			fails = append(fails, fail)
+		var err Error
+		expr, err = convert(expr, want)
+		if err != nil {
+			errs = append(errs, err)
 		}
 	}
-	return expr, fails
+	return expr, errs
 }
 
 // want is the type expected for the last expression, or nil.
-func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []*fail) {
-	var fails []*fail
+func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []Error) {
+	var errs []Error
 	var exprs []Expr
 	for i, parserExpr := range parserExprs {
-		var fs []*fail
+		var fs []Error
 		var expr Expr
 		if i == len(parserExprs)-1 && !isEmptyStruct(want) {
 			expr, fs = checkAndConvertExpr(x, parserExpr, want)
@@ -848,13 +788,13 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []*fail)
 			expr, fs = checkExpr(x, parserExpr, nil)
 		}
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		if expr != nil {
 			exprs = append(exprs, expr)
 		}
 	}
-	return exprs, fails
+	return exprs, errs
 }
 
 func isEmptyStruct(typ Type) bool {
@@ -862,7 +802,7 @@ func isEmptyStruct(typ Type) bool {
 	return ok && len(s.Fields) == 0
 }
 
-func convert(expr Expr, typ Type) (Expr, *fail) {
+func convert(expr Expr, typ Type) (Expr, Error) {
 	dstType := typ
 	srcType := expr.Type()
 	// If one is a literal type, compare their literal types, not type names.
@@ -882,10 +822,7 @@ func convert(expr Expr, typ Type) (Expr, *fail) {
 		}
 		deref, ok := expr.(*Deref)
 		if !ok {
-			return expr, &fail{
-				msg: "expression cannot be referenced",
-				loc: expr.Loc(),
-			}
+			return expr, newError(expr, "expression cannot be referenced")
 		}
 		expr = deref.Expr
 	} else {
@@ -897,10 +834,7 @@ func convert(expr Expr, typ Type) (Expr, *fail) {
 	return expr, nil
 
 mismatch:
-	return expr, &fail{
-		msg: fmt.Sprintf("type mismatch: got %s, want %s", expr.Type(), typ),
-		loc: expr.Loc(),
-	}
+	return expr, newError(expr, "type mismatch: got %s, want %s", expr.Type(), typ)
 }
 
 // valueType is the type with all leading references removed.
@@ -1000,29 +934,26 @@ func eq(a, b Type) bool {
 	}
 }
 
-func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
+func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	if _, ok := parserCall.Fun.(parser.Id); ok {
 		return checkIdCall(x, parserCall, want)
 	}
 	return checkExprCall(x, parserCall, want)
 }
 
-func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
+func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	parserId := parserCall.Fun.(parser.Id)
 	ids := x.find(parserId.Name)
 	if len(ids) == 0 {
-		args, fails := checkArgsFallback(x, parserCall.Args)
-		fails = append(fails, notFound(parserId.Name, parserId.L))
-		return &Call{Args: args, L: parserCall.L}, fails
+		args, errs := checkArgsFallback(x, parserCall.Args)
+		errs = append(errs, notFound(parserId.Name, parserId.L))
+		return &Call{Args: args, L: parserCall.L}, errs
 	}
 	funcs, notes := filterToFuncs(ids, parserId.L)
 	if len(funcs) == 0 {
-		args, fails := checkArgsFallback(x, parserCall.Args)
-		fails = append(fails, &fail{
-			msg: fmt.Sprintf("%s is not callable", parserId.Name),
-			loc: parserId.L,
-		})
-		return &Call{Args: args, L: parserCall.L}, fails
+		args, errs := checkArgsFallback(x, parserCall.Args)
+		errs = append(errs, newError(parserId.L, "%s is not callable", parserId.Name))
+		return &Call{Args: args, L: parserCall.L}, errs
 	}
 	funcs, ns := filterByArity(funcs, len(parserCall.Args))
 	if len(ns) > 0 {
@@ -1033,18 +964,18 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 		funcs, ns = filterByReturn(funcs, want)
 		notes = append(notes, ns...)
 	}
-	var fails []*fail
+	var errs []Error
 	var args []Expr
 	for i, parserArg := range parserCall.Args {
 		t := commonGroundParmType(funcs, i)
 		if t == nil {
 			arg, fs := checkAndConvertExpr(x, parserArg, nil)
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 				as, fs := checkArgsFallback(x, parserCall.Args[i+1:])
 				args = append(args, as...)
-				fails = append(fails, fs...)
-				return &Call{Args: args, L: parserCall.L}, fails
+				errs = append(errs, fs...)
+				return &Call{Args: args, L: parserCall.L}, errs
 			}
 			if arg != nil {
 				args = append(args, arg)
@@ -1056,13 +987,13 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 		}
 		arg, fs := checkExpr(x, parserArg, t)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 			as, fs := checkArgsFallback(x, parserCall.Args[i+1:])
 			args = append(args, as...)
-			fails = append(fails, fs...)
-			return &Call{Args: args, L: parserCall.L}, fails
+			errs = append(errs, fs...)
+			return &Call{Args: args, L: parserCall.L}, errs
 		}
-		if arg, fail := convert(arg, t); fail != nil {
+		if arg, err := convert(arg, t); err != nil {
 			var notes []note
 			for _, f := range funcs {
 				notes = append(notes, note{
@@ -1070,14 +1001,13 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 					loc: f.groundParm(i).Loc(),
 				})
 			}
-			fail.notes = notes
-			fails = append(fails, fail)
+			errs = append(errs, err.addNotes(notes))
 			as, fs := checkArgsFallback(x, parserCall.Args)
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 			}
 			args = append(args, as...)
-			return &Call{Args: args, L: parserCall.L}, fails
+			return &Call{Args: args, L: parserCall.L}, errs
 		} else if arg != nil {
 			args = append(args, arg)
 		}
@@ -1090,13 +1020,11 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 	notes = append(notes, ns...)
 	switch {
 	case len(funcs) == 0:
-		fail := notFound(parserId.Name, parserId.L)
-		fail.notes = notes
-		fails = append(fails, fail)
-		return &Call{Args: args, L: parserCall.L}, fails
+		errs = append(errs, notFound(parserId.Name, parserId.L).addNotes(notes))
+		return &Call{Args: args, L: parserCall.L}, errs
 	case len(funcs) > 1:
-		fails = append(fails, ambiguousCall(parserId.Name, funcs, parserId.L))
-		return &Call{Args: args, L: parserCall.L}, fails
+		errs = append(errs, ambiguousCall(parserId.Name, funcs, parserId.L))
+		return &Call{Args: args, L: parserCall.L}, errs
 	}
 
 	fun := funcs[0]
@@ -1113,7 +1041,7 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 		},
 		T: ret,
 		L: parserCall.L,
-	}, fails
+	}, errs
 }
 
 func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
@@ -1176,19 +1104,19 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func checkArgsFallback(x scope, parserArgs []parser.Expr) ([]Expr, []*fail) {
+func checkArgsFallback(x scope, parserArgs []parser.Expr) ([]Expr, []Error) {
 	var args []Expr
-	var fails []*fail
+	var errs []Error
 	for _, parserArg := range parserArgs {
 		arg, fs := checkAndConvertExpr(x, parserArg, nil)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		if arg != nil {
 			args = append(args, arg)
 		}
 	}
-	return args, fails
+	return args, errs
 }
 
 func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
@@ -1247,7 +1175,7 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 		if parmType == nil {
 			continue
 		}
-		if _, fail := convert(arg, parmType); fail == nil {
+		if _, err := convert(arg, parmType); err == nil {
 			funcs[n] = f
 			n++
 			continue
@@ -1296,7 +1224,7 @@ func filterIfaceConstraints(x scope, funcs []Func) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func ambiguousCall(name string, funcs []Func, l loc.Loc) *fail {
+func ambiguousCall(name string, funcs []Func, l loc.Loc) Error {
 	var notes []note
 	for _, f := range funcs {
 		var l loc.Loc
@@ -1314,59 +1242,53 @@ func ambiguousCall(name string, funcs []Func, l loc.Loc) *fail {
 			})
 		}
 	}
-	return &fail{
-		msg:   fmt.Sprintf("%s: ambiguous call", name),
-		loc:   l,
-		notes: notes,
-	}
+	return newError(l, "%s: ambiguous call", name).addNotes(notes)
 }
 
 func canConvertReturn(src, dst Type) bool {
+	someNonZeroLoc := loc.Loc{1, 1}
 	// To test whether a return type is convertable,
 	// we create a dummy Deref
 	// and try to convert it to the desired type.
 	// If there is no error, then we've got it.
 	// We use Deref, because the result of a call
 	// is always a Deref node.
-	_, fail := convert(&Deref{T: src, L: src.Loc()}, dst)
-	return fail == nil
+	//
+	// Our dummy node needs a non-zero loc,
+	// since errors can only be created with a non-zero loc.
+	// We are going to ignore the error, so any non-zero loc works.
+	_, err := convert(&Deref{T: src, L: someNonZeroLoc}, dst)
+	return err == nil
 }
 
-func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
-	var fails []*fail
+func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
+	var errs []Error
 	var fun *ExprFunc
 	expr, fs := checkAndConvertExpr(x, parserCall.Fun, want)
 	if len(fs) > 0 {
-		fails = append(fails, fs...)
+		errs = append(errs, fs...)
 	}
 	if expr != nil && expr.Type() != nil {
 		if funcType, ok := expr.Type().(*FuncType); !ok {
-			fails = append(fails, &fail{
-				msg: "expression is not callable",
-				loc: expr.Loc(),
-			})
+			errs = append(errs, newError(expr, "expression is not callable"))
 		} else {
 			fun = &ExprFunc{Expr: expr, FuncType: funcType}
 		}
 	}
 	if fun != nil && len(parserCall.Args) != len(fun.Parms()) {
-		fails = append(fails, &fail{
-			msg: fmt.Sprintf("got %d arguments, expected %d",
-				len(parserCall.Args), len(fun.Parms())),
-			loc: parserCall.L,
-		})
+		errs = append(errs, newError(parserCall.L, "got %d arguments, expected %d", len(parserCall.Args), len(fun.Parms())))
 	}
 	var args []Expr
 	for i, parserArg := range parserCall.Args {
 		var arg Expr
-		var fs []*fail
+		var fs []Error
 		if i < len(fun.Parms()) {
 			arg, fs = checkAndConvertExpr(x, parserArg, fun.Parms()[i])
 		} else {
 			arg, fs = checkAndConvertExpr(x, parserArg, nil)
 		}
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		if arg != nil {
 			args = append(args, arg)
@@ -1381,10 +1303,10 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) 
 		},
 		T: fun.Ret(),
 		L: parserCall.L,
-	}, fails
+	}, errs
 }
 
-func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
+func checkId(x scope, parserId parser.Id, want Type) (Expr, []Error) {
 	var exprs []Expr
 	var notFoundNotes []note
 	var ambigNotes []note
@@ -1395,8 +1317,8 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 		}
 		expr := idToExpr(id, parserId.L)
 		if want != nil {
-			var fail *fail
-			if expr, fail = convert(expr, want); fail != nil {
+			var err Error
+			if expr, err = convert(expr, want); err != nil {
 				notFoundNotes = append(notFoundNotes, note{
 					msg: fmt.Sprintf("cannot convert %s (%s) to type %s",
 						expr, expr.Type(), want),
@@ -1414,19 +1336,15 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []*fail) {
 	}
 	switch {
 	case len(exprs) == 0:
-		f := notFound(parserId.Name, parserId.L)
-		f.notes = notFoundNotes
-		return nil, []*fail{f}
+		return nil, []Error{notFound(parserId.Name, parserId.L).addNotes(notFoundNotes)}
 	case len(exprs) > 1:
-		f := &fail{
-			msg:   fmt.Sprintf("%s is ambiguous", parserId.Name),
-			loc:   parserId.L,
-			notes: ambigNotes,
-		}
+		var err Error
 		if want != nil {
-			f.msg = fmt.Sprintf("%s is ambiguous for type %s", parserId.Name, want)
+			err = newError(parserId.L, "%s is ambiguous", parserId.Name)
+		} else {
+			err = newError(parserId.L, "%s is ambiguous for type %s", parserId.Name, want)
 		}
-		return nil, []*fail{f}
+		return nil, []Error{err.addNotes(ambigNotes)}
 	default:
 		return exprs[0], nil
 	}
@@ -1498,17 +1416,17 @@ func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 // 	* The expected type of the subexpression is the conversion type,
 // 	  and it is an error if the subexpression type is not convertible
 // 	  to the conversion type.
-func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []*fail) {
-	var fails []*fail
+func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
+	var errs []Error
 	typ, fs := makeType(x, parserConvert.Type)
 	if len(fs) > 0 {
-		fails = append(fails, fs...)
+		errs = append(errs, fs...)
 	}
 	expr, fs := checkAndConvertExpr(x, parserConvert.Expr, typ)
 	if len(fs) > 0 {
-		fails = append(fails, fs...)
+		errs = append(errs, fs...)
 	}
-	return expr, fails
+	return expr, errs
 }
 
 // checkStructLit checks a struct literal.
@@ -1526,30 +1444,30 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []*fail) {
 //
 // A type is apropriate to an array literal if
 // 	* its literal type is an array type or a reference to an array type.
-func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []*fail) {
-	var fails []*fail
+func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Error) {
+	var errs []Error
 	lit := &ArrayLit{L: parserLit.L}
 	if lit.Array, _ = trim1Ref(literal(want)).(*ArrayType); lit.Array != nil {
 		for _, parserExpr := range parserLit.Exprs {
 			expr, fs := checkAndConvertExpr(x, parserExpr, lit.Array.ElemType)
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 			}
 			lit.Elems = append(lit.Elems, expr)
 		}
 		if !isRef(want) {
 			lit.T = ref(copyTypeWithLoc(want, lit.L))
-			return deref(lit), fails
+			return deref(lit), errs
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)
-		return lit, fails
+		return lit, errs
 	}
 
 	var elemType Type
 	for _, parserExpr := range parserLit.Exprs {
 		expr, fs := checkAndConvertExpr(x, parserExpr, elemType)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		lit.Elems = append(lit.Elems, expr)
 		if elemType == nil {
@@ -1557,15 +1475,12 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []*fai
 		}
 	}
 	if elemType == nil {
-		fails = append(fails, &fail{
-			msg: "unable to infer array type",
-			loc: lit.L,
-		})
-		return lit, fails
+		errs = append(errs, newError(lit, "unable to infer array type"))
+		return lit, errs
 	}
 	lit.Array = &ArrayType{ElemType: elemType, L: lit.L}
 	lit.T = ref(lit.Array)
-	return deref(lit), fails
+	return deref(lit), errs
 }
 
 // checkStructLit checks a struct literal.
@@ -1584,31 +1499,31 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []*fai
 // 	* its literal type is a struct type or a reference to a struct type,
 // 	* it has the same number of fields as the literal,
 // 	* each of the fields, in order, has the same name as the corresponding literal field.
-func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []*fail) {
-	var fails []*fail
+func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []Error) {
+	var errs []Error
 	lit := &StructLit{L: parserLit.L}
 
 	if lit.Struct = appropriateStruct(want, parserLit); lit.Struct != nil {
 		for i, parserField := range parserLit.FieldVals {
 			expr, fs := checkAndConvertExpr(x, parserField.Val, lit.Struct.Fields[i].Type)
 			if len(fs) > 0 {
-				fails = append(fails, fs...)
+				errs = append(errs, fs...)
 			}
 			lit.Fields = append(lit.Fields, expr)
 		}
 		if !isRef(want) {
 			lit.T = ref(copyTypeWithLoc(want, lit.L))
-			return deref(lit), fails
+			return deref(lit), errs
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)
-		return lit, fails
+		return lit, errs
 	}
 
 	lit.Struct = &StructType{L: lit.L}
 	for _, parserField := range parserLit.FieldVals {
 		expr, fs := checkAndConvertExpr(x, parserField.Val, nil)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		lit.Fields = append(lit.Fields, expr)
 		lit.Struct.Fields = append(lit.Struct.Fields, FieldDef{
@@ -1618,7 +1533,7 @@ func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []*f
 		})
 	}
 	lit.T = ref(lit.Struct)
-	return deref(lit), fails
+	return deref(lit), errs
 }
 
 func appropriateStruct(typ Type, lit *parser.StructLit) *StructType {
@@ -1651,19 +1566,19 @@ func appropriateStruct(typ Type, lit *parser.StructLit) *StructType {
 // 	* it has a case with the same name as the literal case,
 // 	* if the literal has a value, the corresponding case has a type,
 // 	* or if the literal has no value, the corresponding case has no type.
-func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []*fail) {
-	var fails []*fail
+func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []Error) {
+	var errs []Error
 	lit := &UnionLit{L: parserLit.L}
 	if lit.Union, lit.Case = appropriateUnion(want, parserLit); lit.Union != nil {
 		if parserLit.CaseVal.Val != nil {
-			lit.Val, fails = checkAndConvertExpr(x, parserLit.CaseVal.Val, lit.Case.Type)
+			lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, lit.Case.Type)
 		}
 		if !isRef(want) {
 			lit.T = ref(copyTypeWithLoc(want, lit.L))
-			return deref(lit), fails
+			return deref(lit), errs
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)
-		return lit, fails
+		return lit, errs
 	}
 
 	lit.Union = &UnionType{
@@ -1674,14 +1589,14 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []*fai
 		L: parserLit.L,
 	}
 	if parserLit.CaseVal.Val != nil {
-		lit.Val, fails = checkAndConvertExpr(x, parserLit.CaseVal.Val, nil)
+		lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, nil)
 	}
 	lit.Case = &lit.Union.Cases[0]
 	if lit.Val != nil {
 		lit.Case.Type = lit.Val.Type()
 	}
 	lit.T = ref(lit.Union)
-	return deref(lit), fails
+	return deref(lit), errs
 }
 
 func appropriateUnion(typ Type, lit *parser.UnionLit) (*UnionType, *CaseDef) {
@@ -1726,10 +1641,10 @@ func findCase(name string, u *UnionType) *CaseDef {
 // 	* it has the same number of parameters as the literal, and
 // 	* all explicit parameter types of the literal
 // 	  equal the corresponding parameter type of the function type.
-func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fail) {
-	var fails []*fail
+func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Error) {
+	var errs []Error
 	lit := &BlockLit{L: parserLit.L}
-	lit.Parms, fails = makeFuncParms(x, parserLit.Parms)
+	lit.Parms, errs = makeFuncParms(x, parserLit.Parms)
 	x = &blockLitScope{parent: x, BlockLit: lit}
 
 	if f := appropriateBlock(want, lit.Parms); f != nil {
@@ -1739,17 +1654,17 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fai
 			}
 			lit.Parms[i].T = copyTypeWithLoc(f.Parms[i], lit.Parms[i].L)
 		}
-		var fs []*fail
+		var fs []Error
 		lit.Exprs, fs = checkExprs(x, parserLit.Exprs, f.Ret)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
 		if !isRef(want) {
 			lit.T = ref(copyTypeWithLoc(want, lit.L))
-			return deref(lit), fails
+			return deref(lit), errs
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)
-		return lit, fails
+		return lit, errs
 	}
 
 	// Remove parameters with elided types and report an error.
@@ -1757,10 +1672,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fai
 	var parmTypes []Type
 	for _, p := range lit.Parms {
 		if p.T == nil {
-			fails = append(fails, &fail{
-				msg: fmt.Sprintf("cannot infer type of parameter %s", p.Name),
-				loc: p.L,
-			})
+			errs = append(errs, newError(p.L, "cannot infer type of parameter %s", p.Name))
 			continue
 		}
 		parmTypes = append(parmTypes, p.T)
@@ -1769,10 +1681,10 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fai
 	}
 	lit.Parms = lit.Parms[:n]
 
-	var fs []*fail
+	var fs []Error
 	lit.Exprs, fs = checkExprs(x, parserLit.Exprs, nil)
 	if len(fs) > 0 {
-		fails = append(fails, fs...)
+		errs = append(errs, fs...)
 	}
 
 	var retType Type
@@ -1783,7 +1695,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []*fai
 		retType = &StructType{L: lit.L}
 	}
 	lit.T = ref(&FuncType{Parms: parmTypes, Ret: retType, L: lit.L})
-	return deref(lit), fails
+	return deref(lit), errs
 }
 
 func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
@@ -1804,7 +1716,7 @@ func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
 // 	  or a reference to the built-in string type,
 // 	  then the type of the literal is the expected type.
 // 	* Otherwise the type is string.
-func checkStrLit(parserLit *parser.StrLit, want Type) (Expr, []*fail) {
+func checkStrLit(parserLit *parser.StrLit, want Type) (Expr, []Error) {
 	lit := &StrLit{Text: parserLit.Data, L: parserLit.L}
 	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
 	case want == nil:
@@ -1829,7 +1741,7 @@ func checkStrLit(parserLit *parser.StrLit, want Type) (Expr, []*fail) {
 // 	  with the literal value being the unicode code point value
 // 	  of the character.
 // TODO: should default to int32, not int.
-func checkCharLit(parserLit *parser.CharLit, want Type) (Expr, []*fail) {
+func checkCharLit(parserLit *parser.CharLit, want Type) (Expr, []Error) {
 	return checkIntLit(&parser.IntLit{
 		Text: strconv.FormatInt(int64(parserLit.Rune), 10),
 		L:    parserLit.L,
@@ -1845,7 +1757,7 @@ func checkCharLit(parserLit *parser.CharLit, want Type) (Expr, []*fail) {
 // 	  or a reference to a built-in float type,
 // 	  then the type of the literal is the expected type.
 // 	* Otherwise the type of the literal is int.
-func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []*fail) {
+func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []Error) {
 	lit := &IntLit{Text: parserLit.Text, L: parserLit.L}
 	if _, ok := lit.Val.SetString(parserLit.Text, 0); !ok {
 		panic("malformed int")
@@ -1908,25 +1820,19 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []*fail) {
 		max = max.Lsh(max, bits)
 		max = max.Sub(max, big.NewInt(1))
 	}
-	var fails []*fail
+	var errs []Error
 	switch {
 	case lit.Val.Cmp(min) < 0:
-		fails = append(fails, &fail{
-			msg: fmt.Sprintf("%s underflows type %s", lit.Text, want),
-			loc: lit.L,
-		})
+		errs = append(errs, newError(lit, "%s underflows type %s", lit.Text, want))
 	case lit.Val.Cmp(max) > 0:
-		fails = append(fails, &fail{
-			msg: fmt.Sprintf("%s overflows type %s", lit.Text, want),
-			loc: lit.L,
-		})
+		errs = append(errs, newError(lit, "%s overflows type %s", lit.Text, want))
 	}
 	if !isRef(want) {
 		lit.T = ref(copyTypeWithLoc(want, lit.L))
-		return deref(lit), fails
+		return deref(lit), errs
 	}
 	lit.T = copyTypeWithLoc(want, lit.L)
-	return lit, fails
+	return lit, errs
 }
 
 // checkFloatLit checks a float literal.
@@ -1939,7 +1845,7 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []*fail) {
 // 	  It is an error if the literal value is not a whole integer value
 // 	  representable by the int typ.
 // 	* Otherwise, the type is float64.
-func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []*fail) {
+func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []Error) {
 	lit := &FloatLit{Text: parserLit.Text, L: parserLit.L}
 	if _, _, err := lit.Val.Parse(parserLit.Text, 10); err != nil {
 		panic("malformed float")
@@ -1963,18 +1869,15 @@ func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []*fail) {
 		b.Kind == Uint32 ||
 		b.Kind == Uint64:
 		var i big.Int
-		var fails []*fail
+		var errs []Error
 		if _, acc := lit.Val.Int(&i); acc != big.Exact {
-			fails = append(fails, &fail{
-				msg: fmt.Sprintf("%s truncates %s", want, lit.Text),
-				loc: lit.L,
-			})
+			errs = append(errs, newError(lit, "%s truncates %s", want, lit.Text))
 		}
 		intLit, fs := checkIntLit(&parser.IntLit{Text: i.String(), L: parserLit.L}, want)
 		if len(fs) > 0 {
-			fails = append(fails, fs...)
+			errs = append(errs, fs...)
 		}
-		return intLit, fails
+		return intLit, errs
 	case b.Kind == Float32 || b.Kind == Float64:
 		if !isRef(want) {
 			lit.T = ref(copyTypeWithLoc(want, lit.L))

@@ -3,9 +3,16 @@ package loc
 
 import "fmt"
 
+// A Locer has a Loc method to return its location.
+type Locer interface {
+	Loc() Loc
+}
+
 // Loc compactly identifies a string in a set of files.
 // The zero value indicates no location.
 type Loc [2]int
+
+func (l Loc) Loc() Loc { return l }
 
 // A Location identifies a string in a file.
 // The zero value indicates no location.
