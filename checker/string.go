@@ -52,6 +52,10 @@ func (b *BasicType) String() string {
 	return b.buildString(new(strings.Builder)).String()
 }
 
+func (f *FuncDecl) String() string {
+	return f.buildString(new(strings.Builder)).String()
+}
+
 func (f *FuncInst) String() string {
 	return f.buildString(new(strings.Builder)).String()
 }
@@ -261,6 +265,22 @@ func (k BasicTypeKind) String() string {
 func (b *BasicType) buildString(w *strings.Builder) *strings.Builder {
 	w.WriteString(b.Kind.String())
 	return w
+}
+
+func (f *FuncDecl) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(f.Name)
+	s.WriteRune('(')
+	for i, p := range f.Parms {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		p.buildString(s)
+	}
+	s.WriteRune(')')
+	if t, ok := f.Ret.(*StructType); f.Ret != nil && (!ok || len(t.Fields) > 0) {
+		f.Ret.buildString(s)
+	}
+	return s
 }
 
 func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {

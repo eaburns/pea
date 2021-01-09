@@ -1,6 +1,16 @@
 package checker
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/eaburns/pea/loc"
+)
+
+func (f *FuncDecl) arity() int              { return len(f.Parms) }
+func (f *FuncDecl) groundRet() Type         { return f.Ret }
+func (*FuncDecl) unifyRet(Type) *note       { return nil }
+func (f *FuncDecl) groundParm(i int) Type   { return f.Parms[i] }
+func (*FuncDecl) unifyParm(int, Type) *note { return nil }
 
 func (f *FuncInst) arity() int { return len(f.T.Parms) }
 
@@ -54,8 +64,10 @@ func (f *FuncInst) sub(sub map[*TypeParm]Type) {
 	for i := range f.TypeArgs {
 		f.TypeArgs[i] = subType(sub, f.TypeArgs[i])
 	}
-	if len(f.IfaceArgs) > 0 {
-		panic("unimplemented")
+	for i, decl := range f.IfaceArgs {
+		// FuncInst.sub is only called before instIface,
+		// so IfaceArgs must be still *FuncDecls.
+		f.IfaceArgs[i] = subFuncDecl(sub, decl.(*FuncDecl))
 	}
 	f.T = subType(sub, f.T).(*FuncType)
 }
@@ -112,6 +124,122 @@ func isGroundType(parms map[*TypeParm]bool, typ Type) bool {
 	default:
 		panic(fmt.Sprintf("impossible Type type: %T", typ))
 	}
+}
+
+func instIface(x scope, fun Func) *note {
+	f, ok := fun.(*FuncInst)
+	if !ok {
+		return nil
+	}
+	// TODO: once notes are recursive, don't ignore these ones.
+	var notes []note
+	x = &excludeFunc{parent: x, def: f.Def, notes: &notes}
+	for i := range f.IfaceArgs {
+		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
+		fun, note := findIfaceFunc(x, f.IfaceArgs[i].(*FuncDecl))
+		if note != nil {
+			notes = append(notes, *note)
+		} else {
+			f.IfaceArgs[i] = fun
+		}
+	}
+	if len(notes) > 0 {
+		return &note{
+			msg: fmt.Sprintf("%s: failed to instantiate interface functions", fun),
+		}
+	}
+	return nil
+}
+
+func findIfaceFunc(x scope, decl *FuncDecl) (Func, *note) {
+	// TODO: instead of notes, have recursive *fails,
+	// then actually use notFoundNotes and ambigNotes here.
+	// Currently they are just discarded.
+	var notFoundNotes []note
+	var ambigNotes []note
+	var funcs []Func
+	for _, id := range x.find(decl.Name) {
+		var l loc.Loc
+		if locer, ok := id.(interface{ Loc() loc.Loc }); ok {
+			l = locer.Loc()
+		}
+		switch id.(type) {
+		case *Builtin:
+		case *FuncInst:
+		default:
+			// TODO: relax the constraint that a funcdecl be a static function.
+			notFoundNotes = append(notFoundNotes, note{
+				msg: fmt.Sprintf("%s: not a static function", id),
+				loc: l,
+			})
+			continue
+		}
+		ambigNotes = append(ambigNotes, note{msg: id.String(), loc: l})
+		funcs = append(funcs, id.(Func))
+	}
+	var n int
+	for _, f := range funcs {
+		if note := unifyFunc(x, f, decl.Type()); note != nil {
+			notFoundNotes = append(notFoundNotes, *note)
+			continue
+		}
+		funcs[n] = f
+		n++
+	}
+	funcs = funcs[:n]
+	switch {
+	case len(funcs) == 0:
+		return nil, &note{
+			msg: fmt.Sprintf("%s: not found", decl.Name),
+			loc: decl.L,
+		}
+	case len(funcs) > 1:
+		return nil, &note{
+			msg: fmt.Sprintf("%s: ambiguous", decl.Name),
+			loc: decl.L,
+		}
+	default:
+		return funcs[0], nil
+	}
+}
+
+func unifyFunc(x scope, f Func, typ Type) *note {
+	v, _ := valueType(literal(typ))
+	funcType, ok := v.(*FuncType)
+	if !ok {
+		return &note{
+			msg: fmt.Sprintf("%s: failed to unify with non-function type %s", f, typ),
+			loc: typ.Loc(),
+		}
+	}
+	if f.arity() != len(funcType.Parms) {
+		return &note{
+			msg: fmt.Sprintf("%s: failed to unify with function type %s of different arity", f, typ),
+			loc: typ.Loc(),
+		}
+	}
+	if note := f.unifyRet(funcType.Ret); note != nil {
+		return note
+	}
+	if t := f.groundRet(); !eq(t, funcType.Ret) {
+		return &note{
+			msg: fmt.Sprintf("%s: want return type %s, got %s", f, funcType.Ret, t),
+			loc: typ.Loc(),
+		}
+	}
+	for i := 0; i < f.arity(); i++ {
+		if note := f.unifyParm(i, funcType.Parms[i]); note != nil {
+			return note
+		}
+		if t := f.groundParm(i); !eq(t, funcType.Parms[i]) {
+			return &note{
+				msg: fmt.Sprintf("%s: want argument %d type %s, got %s",
+					f, i, funcType.Parms[i], t),
+				loc: typ.Loc(),
+			}
+		}
+	}
+	return instIface(x, f)
 }
 
 func (*Select) arity() int { return 1 }

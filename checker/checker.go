@@ -1083,10 +1083,11 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []*fail) {
 		}
 	}
 	if want == nil {
-		var ns []note
 		funcs, ns = filterUngroundReturns(funcs)
 		notes = append(notes, ns...)
 	}
+	funcs, ns = filterIfaceConstraints(x, funcs)
+	notes = append(notes, ns...)
 	switch {
 	case len(funcs) == 0:
 		fail := notFound(parserId.Name, parserId.L)
@@ -1277,6 +1278,20 @@ func filterUngroundReturns(funcs []Func) ([]Func, []note) {
 			msg: fmt.Sprintf("%s: cannot infer return type", f),
 			loc: l,
 		})
+	}
+	return funcs[:n], notes
+}
+
+func filterIfaceConstraints(x scope, funcs []Func) ([]Func, []note) {
+	var n int
+	var notes []note
+	for _, f := range funcs {
+		if note := instIface(x, f); note != nil {
+			notes = append(notes, *note)
+			continue
+		}
+		funcs[n] = f
+		n++
 	}
 	return funcs[:n], notes
 }

@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -23,6 +24,12 @@ type blockLitScope struct {
 	*BlockLit
 }
 
+type excludeFunc struct {
+	parent scope
+	def    *FuncDef
+	notes  *[]note
+}
+
 func (*Mod) findMod(string) *Import    { return nil }
 func (*Import) findMod(string) *Import { return nil }
 
@@ -35,25 +42,12 @@ func (f *File) findMod(name string) *Import {
 	return f.Mod.findMod(name)
 }
 
-func (v *VarDef) findMod(name string) *Import {
-	return v.File.findMod(name)
-}
-
-func (t *TypeDef) findMod(name string) *Import {
-	return t.File.findMod(name)
-}
-
-func (f *FuncDef) findMod(name string) *Import {
-	return f.File.findMod(name)
-}
-
-func (t *TestDef) findMod(name string) *Import {
-	return t.File.findMod(name)
-}
-
-func (b *blockLitScope) findMod(name string) *Import {
-	return b.parent.findMod(name)
-}
+func (v *VarDef) findMod(name string) *Import        { return v.File.findMod(name) }
+func (t *TypeDef) findMod(name string) *Import       { return t.File.findMod(name) }
+func (f *FuncDef) findMod(name string) *Import       { return f.File.findMod(name) }
+func (t *TestDef) findMod(name string) *Import       { return t.File.findMod(name) }
+func (b *blockLitScope) findMod(name string) *Import { return b.parent.findMod(name) }
+func (e *excludeFunc) findMod(name string) *Import   { return e.parent.findMod(name) }
 
 func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 	if len(args) > 0 {
@@ -134,6 +128,10 @@ func (t *TestDef) findType(args []Type, name string, l loc.Loc) Type {
 
 func (b *blockLitScope) findType(args []Type, name string, l loc.Loc) Type {
 	return b.parent.findType(args, name, l)
+}
+
+func (e *excludeFunc) findType(args []Type, name string, l loc.Loc) Type {
+	return e.parent.findType(args, name, l)
 }
 
 func findTypeVar(parms []TypeParm, args []Type, name string, l loc.Loc) *TypeVar {
@@ -320,6 +318,24 @@ func (b *blockLitScope) find(name string) []id {
 	return b.parent.find(name)
 }
 
+func (e *excludeFunc) find(name string) []id {
+	ids := e.parent.find(name)
+	var n int
+	for _, id := range ids {
+		f, ok := id.(*FuncInst)
+		if ok && f.Def == e.def {
+			*e.notes = append(*e.notes, note{
+				msg: fmt.Sprintf("%s: is excluded from the scope", f),
+				loc: f.Def.L,
+			})
+			continue
+		}
+		ids[n] = id
+		n++
+	}
+	return ids[:n]
+}
+
 func findInDefs(defs []Def, name string) []id {
 	if name == "_" {
 		return nil
@@ -343,20 +359,13 @@ func findInDefs(defs []Def, name string) []id {
 					L:    def.TypeParms[i].L,
 				})
 			}
-			if len(def.Iface) > 0 {
-				panic("unimplemented")
-			}
-			ids = append(ids, newFuncInst(def, typeArgs, nil, def.L))
+			ids = append(ids, newFuncInst(def, typeArgs, def.L))
 		}
 	}
 	return ids
 }
 
-func newFuncInst(def *FuncDef, typeArgs []Type, ifaceArgs []Func, l loc.Loc) *FuncInst {
-	if len(ifaceArgs) > 0 {
-		panic("unimplemented")
-	}
-
+func newFuncInst(def *FuncDef, typeArgs []Type, l loc.Loc) *FuncInst {
 	sub := make(map[*TypeParm]Type)
 	for i := range def.TypeParms {
 		sub[&def.TypeParms[i]] = typeArgs[i]
@@ -366,6 +375,10 @@ func newFuncInst(def *FuncDef, typeArgs []Type, ifaceArgs []Func, l loc.Loc) *Fu
 		parms = append(parms, subType(sub, p.T))
 	}
 	ret := subType(sub, def.Ret)
+	var ifaceArgs []Func
+	for i := range def.Iface {
+		ifaceArgs = append(ifaceArgs, subFuncDecl(sub, &def.Iface[i]))
+	}
 	typ := &FuncType{Parms: parms, Ret: ret, L: l}
 	inst := &FuncInst{
 		TypeArgs:  typeArgs,
@@ -374,4 +387,17 @@ func newFuncInst(def *FuncDef, typeArgs []Type, ifaceArgs []Func, l loc.Loc) *Fu
 		Def:       def,
 	}
 	return inst
+}
+
+func subFuncDecl(sub map[*TypeParm]Type, decl *FuncDecl) *FuncDecl {
+	var parms []Type
+	for _, p := range decl.Parms {
+		parms = append(parms, subType(sub, p))
+	}
+	return &FuncDecl{
+		Name:  decl.Name,
+		Parms: parms,
+		Ret:   subType(sub, decl.Ret),
+		L:     decl.L,
+	}
 }

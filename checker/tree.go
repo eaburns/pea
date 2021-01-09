@@ -225,8 +225,12 @@ func (f *FuncLocal) Loc() loc.Loc { return f.L }
 type FuncDecl struct {
 	Name  string
 	Parms []Type
-	Ret   Type // nil if no return
+	Ret   Type
 	L     loc.Loc
+}
+
+func (f *FuncDecl) Type() Type {
+	return &FuncType{Parms: f.Parms, Ret: f.Ret, L: f.L}
 }
 
 type Func interface {
