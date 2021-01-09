@@ -286,15 +286,15 @@ func (f *FuncDecl) buildString(s *strings.Builder) *strings.Builder {
 func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {
 	s.WriteString(f.Def.Name)
 	s.WriteRune('(')
-	for i, p := range f.Parms() {
+	for i, p := range f.T.Parms {
 		if i > 0 {
 			s.WriteString(", ")
 		}
 		p.buildString(s)
 	}
 	s.WriteRune(')')
-	if t, ok := f.Ret().(*StructType); f.Ret() != nil && (!ok || len(t.Fields) > 0) {
-		f.Ret().buildString(s)
+	if t, ok := f.T.Ret.(*StructType); f.T.Ret != nil && (!ok || len(t.Fields) > 0) {
+		f.T.Ret.buildString(s)
 	}
 	return s
 }
@@ -306,16 +306,16 @@ func (e *Select) buildString(s *strings.Builder) *strings.Builder {
 		return s
 	}
 	s.WriteRune('(')
-	if e.P == nil {
+	if e.Parm == nil {
 		s.WriteRune('_')
 	} else {
-		e.P.buildString(s)
+		e.Parm.buildString(s)
 	}
 	s.WriteRune(')')
-	if e.R == nil {
+	if e.Ret == nil {
 		s.WriteRune('_')
 	} else {
-		e.R.buildString(s)
+		e.Ret.buildString(s)
 	}
 	return s
 }
@@ -329,7 +329,7 @@ func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
 		return s
 	}
 	s.WriteRune('(')
-	for i, p := range w.Ps {
+	for i, p := range w.Parms {
 		if i > 0 {
 			s.WriteString(", ")
 		}
@@ -340,8 +340,8 @@ func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
 		}
 	}
 	s.WriteRune(')')
-	if t, ok := w.R.(*StructType); w.R != nil && (!ok || len(t.Fields) > 0) {
-		w.R.buildString(s)
+	if t, ok := w.Ret.(*StructType); w.Ret != nil && (!ok || len(t.Fields) > 0) {
+		w.Ret.buildString(s)
 	}
 	return s
 }
@@ -411,7 +411,7 @@ func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
 	s.WriteString("built-in ")
 	s.WriteString(b.name(false))
 	s.WriteRune('(')
-	for i, p := range b.Ps {
+	for i, p := range b.Parms {
 		if i > 0 {
 			s.WriteString(", ")
 		}
@@ -422,8 +422,8 @@ func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
 		}
 	}
 	s.WriteRune(')')
-	if t, ok := b.R.(*StructType); b.R != nil && (!ok || len(t.Fields) > 0) {
-		b.R.buildString(s)
+	if t, ok := b.Ret.(*StructType); b.Ret != nil && (!ok || len(t.Fields) > 0) {
+		b.Ret.buildString(s)
 	}
 	return s
 }
@@ -508,7 +508,7 @@ func (b *Builtin) name(paren bool) string {
 	case GreaterEq:
 		s.WriteString(">=")
 	case NumConvert:
-		return b.R.String()
+		return b.Ret.String()
 	case StrConvert:
 		return "string"
 	case Index:

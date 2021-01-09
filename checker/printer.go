@@ -296,15 +296,15 @@ func (s *Switch) print(pc *config) {
 	pc.p("Switch{")
 	pc.field("Union", s.Union)
 	pc.field("Cases", s.Cases)
-	pc.field("Ret", s.R)
+	pc.field("Ret", s.Ret)
 	pc.p("\n}")
 }
 
 func (b *Builtin) print(pc *config) {
 	pc.p("Builtin{")
 	pc.field("Op", b.Op)
-	pc.field("Parms", b.Ps)
-	pc.field("Ret", b.R)
+	pc.field("Parms", b.Parms)
+	pc.field("Ret", b.Ret)
 	pc.p("\n}")
 }
 

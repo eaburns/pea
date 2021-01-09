@@ -211,14 +211,14 @@ func unifyFunc(x scope, f Func, typ Type) note {
 
 func (*Select) arity() int { return 1 }
 
-func (s *Select) groundRet() Type { return s.R }
+func (s *Select) groundRet() Type { return s.Ret }
 
 func (s *Select) unifyRet(typ Type) note {
-	s.R = typ
+	s.Ret = typ
 	return nil
 }
 
-func (s *Select) groundParm(int) Type { return s.P }
+func (s *Select) groundParm(int) Type { return s.Parm }
 
 func (s *Select) unifyParm(i int, typ Type) note {
 	if i > 0 {
@@ -239,26 +239,27 @@ func (s *Select) unifyParm(i int, typ Type) note {
 	if f == nil {
 		return newNote("%s: %s has no field %s", s, typ, s.Field.Name).setLoc(typ)
 	}
-	if s.R != nil && !canConvertReturn(f.Type, s.R) {
-		return newNote("%s: cannot convert %s field %s (%s) to %s", s, typ, f.Name, f.Type, s.R).setLoc(typ)
+	if s.Ret != nil && !canConvertReturn(f.Type, s.Ret) {
+		return newNote("%s: cannot convert %s field %s (%s) to %s",
+			s, typ, f.Name, f.Type, s.Ret).setLoc(typ)
 	}
 	s.Struct = structType
 	s.Field = f
-	s.P = &RefType{Type: structType, L: structType.L}
-	s.R = &RefType{Type: f.Type, L: f.Type.Loc()}
+	s.Parm = &RefType{Type: structType, L: structType.L}
+	s.Ret = &RefType{Type: f.Type, L: f.Type.Loc()}
 	return nil
 }
 
-func (s *Switch) arity() int { return len(s.Ps) }
+func (s *Switch) arity() int { return len(s.Parms) }
 
-func (s *Switch) groundRet() Type { return s.R }
+func (s *Switch) groundRet() Type { return s.Ret }
 
 func (s *Switch) unifyRet(typ Type) note {
-	s.R = typ
+	s.Ret = typ
 	return nil
 }
 
-func (s *Switch) groundParm(i int) Type { return s.Ps[i] }
+func (s *Switch) groundParm(i int) Type { return s.Parms[i] }
 
 func (s *Switch) unifyParm(i int, typ Type) note {
 	switch {
@@ -268,7 +269,7 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 		if s.Union, ok = v.(*UnionType); !ok {
 			return newNote("%s: %s is not a union type", s, typ).setLoc(typ)
 		}
-		s.Ps[0] = &RefType{Type: s.Union, L: s.Union.L}
+		s.Parms[0] = &RefType{Type: s.Union, L: s.Union.L}
 		seen := make(map[*CaseDef]bool)
 		for i := range s.Cases {
 			name := s.Cases[i].Name
@@ -278,9 +279,9 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 			}
 			if seen[c] {
 				// Switch functions only exist for non-duplicated cases.
-				s.R = nil
-				for i := range s.Ps {
-					s.Ps[i] = nil
+				s.Ret = nil
+				for i := range s.Parms {
+					s.Parms[i] = nil
 				}
 				return nil
 			}
@@ -293,21 +294,21 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 			}
 			// If not all cases are convered, the return is the empty struct.
 			// Make sure that the empty struct is convertible, if needed.
-			want := s.R
-			s.R = &StructType{}
+			want := s.Ret
+			s.Ret = &StructType{}
 			t, ok := want.(*StructType)
 			if want == nil || ok && len(t.Fields) == 0 {
 				// It's OK. We either didn't have any expectation for the return,
 				// or we wanted an empty struct anyway.
 				break
 			}
-			return newNote("%s: cannot convert returned %s to %s", s, s.R, want)
+			return newNote("%s: cannot convert returned %s to %s", s, s.Ret, want)
 		}
-		if s.R != nil {
+		if s.Ret != nil {
 			goto ground_parms
 		}
 	default:
-		if s.Ps[i] != nil {
+		if s.Parms[i] != nil {
 			break
 		}
 
@@ -316,59 +317,59 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 		if !ok {
 			return newNote("%s: argument %d (%s) is not a function type", s, i, typ)
 		}
-		s.R = f.Ret
+		s.Ret = f.Ret
 		goto ground_parms
 	}
 	return nil
 
 ground_parms:
 	for j, c := range s.Cases {
-		f := &FuncType{Ret: s.R, L: c.L}
+		f := &FuncType{Ret: s.Ret, L: c.L}
 		if c.Type != nil {
 			f.Parms = []Type{c.Type}
 		}
-		s.Ps[j+1] = f
+		s.Parms[j+1] = f
 	}
 	return nil
 }
 
-func (b *Builtin) arity() int { return len(b.Ps) }
+func (b *Builtin) arity() int { return len(b.Parms) }
 
-func (b *Builtin) groundRet() Type { return b.R }
+func (b *Builtin) groundRet() Type { return b.Ret }
 
 func (b *Builtin) unifyRet(typ Type) note {
 	switch b.Op {
 	case Assign:
-		b.Ps[0] = &RefType{Type: typ}
-		b.Ps[1] = typ
-		b.R = typ
+		b.Parms[0] = &RefType{Type: typ}
+		b.Parms[1] = typ
+		b.Ret = typ
 		return nil
 	case NewArray:
 		t, note := arrayType(b, typ)
 		if note != nil {
 			return note
 		}
-		b.Ps[1] = t.ElemType
-		b.R = t
+		b.Parms[1] = t.ElemType
+		b.Ret = t
 		return nil
 	case BitNot, BitXor, BitAnd, BitOr, LeftShift, RightShift:
 		return unifyBuiltin(intTypes, b, typ)
 	case Negate, Minus, Plus, Times, Divide, Modulus:
 		return unifyBuiltin(numTypes, b, typ)
 	case Index:
-		if b.R == nil {
-			b.Ps[0] = &ArrayType{ElemType: typ}
-			b.R = &RefType{Type: typ}
+		if b.Ret == nil {
+			b.Parms[0] = &ArrayType{ElemType: typ}
+			b.Ret = &RefType{Type: typ}
 		}
 		return nil
 	case Slice:
-		if b.R == nil {
+		if b.Ret == nil {
 			t, note := arrayType(b, typ)
 			if note != nil {
 				return note
 			}
-			b.Ps[0] = t
-			b.R = t
+			b.Parms[0] = t
+			b.Ret = t
 		}
 		return nil
 	case Eq, Neq, Less, LessEq, Greater, GreaterEq, NumConvert, StrConvert, Length, Panic, Print:
@@ -378,28 +379,28 @@ func (b *Builtin) unifyRet(typ Type) note {
 	}
 }
 
-func (b *Builtin) groundParm(i int) Type { return b.Ps[i] }
+func (b *Builtin) groundParm(i int) Type { return b.Parms[i] }
 
 func (b *Builtin) unifyParm(i int, typ Type) note {
 	switch b.Op {
 	case Assign:
-		if b.Ps[i] != nil {
+		if b.Parms[i] != nil {
 			return nil
 		}
 		if r, ok := typ.(*RefType); ok {
-			b.Ps[0] = typ
-			b.Ps[1] = r.Type
-			b.R = r.Type
+			b.Parms[0] = typ
+			b.Parms[1] = r.Type
+			b.Ret = r.Type
 		} else {
-			b.Ps[0] = &RefType{Type: typ, L: typ.Loc()}
-			b.Ps[1] = typ
-			b.R = typ
+			b.Parms[0] = &RefType{Type: typ, L: typ.Loc()}
+			b.Parms[1] = typ
+			b.Ret = typ
 		}
 		return nil
 	case NewArray:
-		if i == 1 && b.Ps[1] == nil {
-			b.Ps[1] = typ
-			b.R = &ArrayType{ElemType: typ}
+		if i == 1 && b.Parms[1] == nil {
+			b.Parms[1] = typ
+			b.Ret = &ArrayType{ElemType: typ}
 		}
 		return nil
 	case BitNot, BitXor, BitAnd, BitOr, LeftShift, RightShift:
@@ -407,23 +408,23 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 	case Negate, Minus, Plus, Times, Divide, Modulus, Eq, Neq, Less, LessEq, Greater, GreaterEq, NumConvert:
 		return unifyBuiltin(numTypes, b, typ)
 	case Index:
-		if i == 0 && b.Ps[0] == nil {
+		if i == 0 && b.Parms[0] == nil {
 			t, note := arrayType(b, typ)
 			if note != nil {
 				return note
 			}
-			b.Ps[0] = t
-			b.R = &RefType{Type: t.ElemType}
+			b.Parms[0] = t
+			b.Ret = &RefType{Type: t.ElemType}
 		}
 		return nil
 	case Slice:
-		if i == 0 && b.Ps[0] == nil {
+		if i == 0 && b.Parms[0] == nil {
 			t, note := arrayType(b, typ)
 			if note != nil {
 				return note
 			}
-			b.Ps[0] = t
-			b.R = t
+			b.Parms[0] = t
+			b.Ret = t
 		}
 		return nil
 	case Length:
@@ -432,7 +433,7 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 			if note != nil {
 				return note
 			}
-			b.Ps[0] = t
+			b.Parms[0] = t
 		}
 		return nil
 	case StrConvert, Panic, Print:
@@ -456,7 +457,7 @@ var numTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint
 
 func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) note {
 	ground := true
-	for _, t := range append(b.Ps, b.R) {
+	for _, t := range append(b.Parms, b.Ret) {
 		if t == nil {
 			ground = false
 			break
@@ -479,13 +480,13 @@ func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) note {
 	if !allowed {
 		return newNote("%s: does not support type %s", b, typ)
 	}
-	for i := range b.Ps {
-		if b.Ps[i] == nil {
-			b.Ps[i] = t
+	for i := range b.Parms {
+		if b.Parms[i] == nil {
+			b.Parms[i] = t
 		}
 	}
-	if b.R == nil {
-		b.R = t
+	if b.Ret == nil {
+		b.Ret = t
 	}
 	return nil
 }

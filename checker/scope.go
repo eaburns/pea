@@ -175,7 +175,7 @@ func (m *Mod) find(name string) []id {
 		n := len(caseNames)
 		sw := Switch{
 			Cases: make([]*CaseDef, n),
-			Ps:    make([]Type, n+1),
+			Parms:    make([]Type, n+1),
 		}
 		for i, caseName := range caseNames {
 			sw.Cases[i] = &CaseDef{Name: caseName}
@@ -188,9 +188,9 @@ func (m *Mod) find(name string) []id {
 		}
 		b := &Builtin{Op: binfo.op}
 		for _, p := range binfo.parms {
-			b.Ps = append(b.Ps, p)
+			b.Parms = append(b.Parms, p)
 		}
-		b.R = binfo.ret
+		b.Ret = binfo.ret
 		ids = append(ids, b)
 	}
 	return ids

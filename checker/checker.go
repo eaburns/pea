@@ -1233,15 +1233,17 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 			fun = &ExprFunc{Expr: expr, FuncType: funcType}
 		}
 	}
-	if fun != nil && len(parserCall.Args) != len(fun.Parms()) {
-		errs = append(errs, newError(parserCall.L, "got %d arguments, expected %d", len(parserCall.Args), len(fun.Parms())))
+	if fun != nil && len(parserCall.Args) != len(fun.FuncType.Parms) {
+		err := newError(parserCall.L, "got %d arguments, expected %d",
+			len(parserCall.Args), len(fun.FuncType.Parms))
+		errs = append(errs, err)
 	}
 	var args []Expr
 	for i, parserArg := range parserCall.Args {
 		var arg Expr
 		var fs []Error
-		if i < len(fun.Parms()) {
-			arg, fs = checkAndConvertExpr(x, parserArg, fun.Parms()[i])
+		if i < len(fun.FuncType.Parms) {
+			arg, fs = checkAndConvertExpr(x, parserArg, fun.FuncType.Parms[i])
 		} else {
 			arg, fs = checkAndConvertExpr(x, parserArg, nil)
 		}
@@ -1256,10 +1258,10 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 		Expr: &Call{
 			Func: fun,
 			Args: args,
-			T:    &RefType{Type: fun.Ret(), L: parserCall.L},
+			T:    &RefType{Type: fun.FuncType.Ret, L: parserCall.L},
 			L:    parserCall.L,
 		},
-		T: fun.Ret(),
+		T: fun.FuncType.Ret,
 		L: parserCall.L,
 	}, errs
 }
