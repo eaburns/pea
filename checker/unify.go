@@ -1,16 +1,12 @@
 package checker
 
-import (
-	"fmt"
+import "fmt"
 
-	"github.com/eaburns/pea/loc"
-)
-
-func (f *FuncDecl) arity() int              { return len(f.Parms) }
-func (f *FuncDecl) groundRet() Type         { return f.Ret }
-func (*FuncDecl) unifyRet(Type) *note       { return nil }
-func (f *FuncDecl) groundParm(i int) Type   { return f.Parms[i] }
-func (*FuncDecl) unifyParm(int, Type) *note { return nil }
+func (f *FuncDecl) arity() int             { return len(f.Parms) }
+func (f *FuncDecl) groundRet() Type        { return f.Ret }
+func (*FuncDecl) unifyRet(Type) note       { return nil }
+func (f *FuncDecl) groundParm(i int) Type  { return f.Parms[i] }
+func (*FuncDecl) unifyParm(int, Type) note { return nil }
 
 func (f *FuncInst) arity() int { return len(f.T.Parms) }
 
@@ -21,17 +17,14 @@ func (f *FuncInst) groundRet() Type {
 	return f.T.Ret
 }
 
-func (f *FuncInst) unifyRet(typ Type) *note {
+func (f *FuncInst) unifyRet(typ Type) note {
 	parms := f.typeParmMap()
 	if isGroundType(parms, f.T.Ret) {
 		return nil
 	}
 	bind := unify(parms, f.T.Ret, typ)
 	if bind == nil {
-		return &note{
-			msg: fmt.Sprintf("%s: cannot unify return: %s and %s", f, f.T.Ret, typ),
-			loc: typ.Loc(),
-		}
+		return newNote("%s: cannot unify return: %s and %s", f, f.T.Ret, typ).setLoc(typ)
 	}
 	f.sub(bind)
 	return nil
@@ -44,17 +37,14 @@ func (f *FuncInst) groundParm(i int) Type {
 	return f.T.Parms[i]
 }
 
-func (f *FuncInst) unifyParm(i int, typ Type) *note {
+func (f *FuncInst) unifyParm(i int, typ Type) note {
 	parms := f.typeParmMap()
 	if isGroundType(parms, f.T.Parms[i]) {
 		return nil
 	}
 	bind := unify(parms, f.T.Parms[i], typ)
 	if bind == nil {
-		return &note{
-			msg: fmt.Sprintf("%s: cannot argument %d: %s and %s", f, i, f.T.Parms[i], typ),
-			loc: typ.Loc(),
-		}
+		return newNote("%s: cannot argument %d: %s and %s", f, i, f.T.Parms[i], typ).setLoc(typ)
 	}
 	f.sub(bind)
 	return nil
@@ -126,7 +116,7 @@ func isGroundType(parms map[*TypeParm]bool, typ Type) bool {
 	}
 }
 
-func instIface(x scope, fun Func) *note {
+func instIface(x scope, fun Func) note {
 	f, ok := fun.(*FuncInst)
 	if !ok {
 		return nil
@@ -138,49 +128,39 @@ func instIface(x scope, fun Func) *note {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
 		fun, note := findIfaceFunc(x, f.IfaceArgs[i].(*FuncDecl))
 		if note != nil {
-			notes = append(notes, *note)
+			notes = append(notes, note)
 		} else {
 			f.IfaceArgs[i] = fun
 		}
 	}
 	if len(notes) > 0 {
-		return &note{
-			msg: fmt.Sprintf("%s: failed to instantiate interface functions", fun),
-		}
+		note := newNote("%s: failed to instantiate interface", fun).setLoc(fun)
+		note.setNotes(notes)
+		return note
 	}
 	return nil
 }
 
-func findIfaceFunc(x scope, decl *FuncDecl) (Func, *note) {
-	// TODO: instead of notes, have recursive *fails,
-	// then actually use notFoundNotes and ambigNotes here.
-	// Currently they are just discarded.
+func findIfaceFunc(x scope, decl *FuncDecl) (Func, note) {
 	var notFoundNotes []note
 	var ambigNotes []note
 	var funcs []Func
 	for _, id := range x.find(decl.Name) {
-		var l loc.Loc
-		if locer, ok := id.(interface{ Loc() loc.Loc }); ok {
-			l = locer.Loc()
-		}
 		switch id.(type) {
 		case *Builtin:
 		case *FuncInst:
 		default:
 			// TODO: relax the constraint that a funcdecl be a static function.
-			notFoundNotes = append(notFoundNotes, note{
-				msg: fmt.Sprintf("%s: not a static function", id),
-				loc: l,
-			})
+			notFoundNotes = append(notFoundNotes, newNote("%s: not a static function", id).setLoc(id))
 			continue
 		}
-		ambigNotes = append(ambigNotes, note{msg: id.String(), loc: l})
+		ambigNotes = append(ambigNotes, newNote(id.String()).setLoc(id))
 		funcs = append(funcs, id.(Func))
 	}
 	var n int
 	for _, f := range funcs {
 		if note := unifyFunc(x, f, decl.Type()); note != nil {
-			notFoundNotes = append(notFoundNotes, *note)
+			notFoundNotes = append(notFoundNotes, note)
 			continue
 		}
 		funcs[n] = f
@@ -189,54 +169,41 @@ func findIfaceFunc(x scope, decl *FuncDecl) (Func, *note) {
 	funcs = funcs[:n]
 	switch {
 	case len(funcs) == 0:
-		return nil, &note{
-			msg: fmt.Sprintf("%s: not found", decl.Name),
-			loc: decl.L,
-		}
+		note := newNote("%s: not found", decl).setLoc(decl.L)
+		note.setNotes(notFoundNotes)
+		return nil, note
 	case len(funcs) > 1:
-		return nil, &note{
-			msg: fmt.Sprintf("%s: ambiguous", decl.Name),
-			loc: decl.L,
-		}
+		note := newNote("%s: ambiguous", decl).setLoc(decl.L)
+		note.setNotes(ambigNotes)
+		return nil, note
 	default:
 		return funcs[0], nil
 	}
 }
 
-func unifyFunc(x scope, f Func, typ Type) *note {
+func unifyFunc(x scope, f Func, typ Type) note {
 	v, _ := valueType(literal(typ))
 	funcType, ok := v.(*FuncType)
 	if !ok {
-		return &note{
-			msg: fmt.Sprintf("%s: failed to unify with non-function type %s", f, typ),
-			loc: typ.Loc(),
-		}
+		return newNote("%s: not a function", f).setLoc(f)
 	}
 	if f.arity() != len(funcType.Parms) {
-		return &note{
-			msg: fmt.Sprintf("%s: failed to unify with function type %s of different arity", f, typ),
-			loc: typ.Loc(),
-		}
+		return newNote("%s: parameter mismatch", f).setLoc(f)
 	}
 	if note := f.unifyRet(funcType.Ret); note != nil {
 		return note
 	}
-	if t := f.groundRet(); !eq(t, funcType.Ret) {
-		return &note{
-			msg: fmt.Sprintf("%s: want return type %s, got %s", f, funcType.Ret, t),
-			loc: typ.Loc(),
-		}
+	r := funcType.Ret
+	if t := f.groundRet(); !eq(t, r) {
+		return newNote("%s: return mismatch", f).setLoc(t)
 	}
 	for i := 0; i < f.arity(); i++ {
-		if note := f.unifyParm(i, funcType.Parms[i]); note != nil {
+		p := funcType.Parms[i]
+		if note := f.unifyParm(i, p); note != nil {
 			return note
 		}
-		if t := f.groundParm(i); !eq(t, funcType.Parms[i]) {
-			return &note{
-				msg: fmt.Sprintf("%s: want argument %d type %s, got %s",
-					f, i, funcType.Parms[i], t),
-				loc: typ.Loc(),
-			}
+		if t := f.groundParm(i); !eq(t, p) {
+			return newNote("%s: parameter mismatch", f).setLoc(t)
 		}
 	}
 	return instIface(x, f)
@@ -246,24 +213,21 @@ func (*Select) arity() int { return 1 }
 
 func (s *Select) groundRet() Type { return s.R }
 
-func (s *Select) unifyRet(typ Type) *note {
+func (s *Select) unifyRet(typ Type) note {
 	s.R = typ
 	return nil
 }
 
 func (s *Select) groundParm(int) Type { return s.P }
 
-func (s *Select) unifyParm(i int, typ Type) *note {
+func (s *Select) unifyParm(i int, typ Type) note {
 	if i > 0 {
 		panic("impossible") // can't have more than 1 argument
 	}
 	v, _ := valueType(literal(typ))
 	structType, ok := v.(*StructType)
 	if !ok {
-		return &note{
-			msg: fmt.Sprintf("%s: %s is not a struct type", s, typ),
-			loc: typ.Loc(),
-		}
+		return newNote("%s: %s is not a struct type", s, typ).setLoc(typ)
 	}
 	var f *FieldDef
 	for i = range structType.Fields {
@@ -273,17 +237,10 @@ func (s *Select) unifyParm(i int, typ Type) *note {
 		}
 	}
 	if f == nil {
-		return &note{
-			msg: fmt.Sprintf("%s: %s has no field %s", s, typ, s.Field.Name),
-			loc: typ.Loc(),
-		}
+		return newNote("%s: %s has no field %s", s, typ, s.Field.Name).setLoc(typ)
 	}
 	if s.R != nil && !canConvertReturn(f.Type, s.R) {
-		return &note{
-			msg: fmt.Sprintf("%s: cannot convert %s field %s (%s) to %s",
-				s, typ, f.Name, f.Type, s.R),
-			loc: typ.Loc(),
-		}
+		return newNote("%s: cannot convert %s field %s (%s) to %s", s, typ, f.Name, f.Type, s.R).setLoc(typ)
 	}
 	s.Struct = structType
 	s.Field = f
@@ -296,23 +253,20 @@ func (s *Switch) arity() int { return len(s.Ps) }
 
 func (s *Switch) groundRet() Type { return s.R }
 
-func (s *Switch) unifyRet(typ Type) *note {
+func (s *Switch) unifyRet(typ Type) note {
 	s.R = typ
 	return nil
 }
 
 func (s *Switch) groundParm(i int) Type { return s.Ps[i] }
 
-func (s *Switch) unifyParm(i int, typ Type) *note {
+func (s *Switch) unifyParm(i int, typ Type) note {
 	switch {
 	case i == 0:
 		var ok bool
 		v, _ := valueType(literal(typ))
 		if s.Union, ok = v.(*UnionType); !ok {
-			return &note{
-				msg: fmt.Sprintf("%s: %s is not a union type", s, typ),
-				loc: typ.Loc(),
-			}
+			return newNote("%s: %s is not a union type", s, typ).setLoc(typ)
 		}
 		s.Ps[0] = &RefType{Type: s.Union, L: s.Union.L}
 		seen := make(map[*CaseDef]bool)
@@ -320,10 +274,7 @@ func (s *Switch) unifyParm(i int, typ Type) *note {
 			name := s.Cases[i].Name
 			c := findCase(name, s.Union)
 			if c == nil {
-				return &note{
-					msg: fmt.Sprintf("%s: %s has no case %s", s, typ, name),
-					loc: typ.Loc(),
-				}
+				return newNote("%s: %s has no case %s", s, typ, name).setLoc(typ)
 			}
 			if seen[c] {
 				// Switch functions only exist for non-duplicated cases.
@@ -350,9 +301,7 @@ func (s *Switch) unifyParm(i int, typ Type) *note {
 				// or we wanted an empty struct anyway.
 				break
 			}
-			return &note{
-				msg: fmt.Sprintf("%s: cannot convert returned %s to %s", s, s.R, want),
-			}
+			return newNote("%s: cannot convert returned %s to %s", s, s.R, want)
 		}
 		if s.R != nil {
 			goto ground_parms
@@ -365,9 +314,7 @@ func (s *Switch) unifyParm(i int, typ Type) *note {
 		v, _ := valueType(typ)
 		f, ok := literal(v).(*FuncType)
 		if !ok {
-			return &note{
-				msg: fmt.Sprintf("%s: argument %d (%s) is not a function type", s, i, typ),
-			}
+			return newNote("%s: argument %d (%s) is not a function type", s, i, typ)
 		}
 		s.R = f.Ret
 		goto ground_parms
@@ -389,7 +336,7 @@ func (b *Builtin) arity() int { return len(b.Ps) }
 
 func (b *Builtin) groundRet() Type { return b.R }
 
-func (b *Builtin) unifyRet(typ Type) *note {
+func (b *Builtin) unifyRet(typ Type) note {
 	switch b.Op {
 	case Assign:
 		b.Ps[0] = &RefType{Type: typ}
@@ -433,7 +380,7 @@ func (b *Builtin) unifyRet(typ Type) *note {
 
 func (b *Builtin) groundParm(i int) Type { return b.Ps[i] }
 
-func (b *Builtin) unifyParm(i int, typ Type) *note {
+func (b *Builtin) unifyParm(i int, typ Type) note {
 	switch b.Op {
 	case Assign:
 		if b.Ps[i] != nil {
@@ -495,13 +442,11 @@ func (b *Builtin) unifyParm(i int, typ Type) *note {
 	}
 }
 
-func arrayType(b *Builtin, typ Type) (*ArrayType, *note) {
+func arrayType(b *Builtin, typ Type) (*ArrayType, note) {
 	v, _ := valueType(literal(typ))
 	t, ok := v.(*ArrayType)
 	if !ok {
-		return nil, &note{
-			msg: fmt.Sprintf("%s: return type %s is not an array type", b, typ),
-		}
+		return nil, newNote("%s: return type %s is not an array type", b, typ)
 	}
 	return t, nil
 }
@@ -509,7 +454,7 @@ func arrayType(b *Builtin, typ Type) (*ArrayType, *note) {
 var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64}
 var numTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64}
 
-func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) *note {
+func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) note {
 	ground := true
 	for _, t := range append(b.Ps, b.R) {
 		if t == nil {
@@ -532,7 +477,7 @@ func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) *note {
 		}
 	}
 	if !allowed {
-		return &note{msg: fmt.Sprintf("%s: does not support type %s", b, typ)}
+		return newNote("%s: does not support type %s", b, typ)
 	}
 	for i := range b.Ps {
 		if b.Ps[i] == nil {
@@ -549,11 +494,11 @@ func (e *ExprFunc) arity() int { return len(e.FuncType.Parms) }
 
 func (e *ExprFunc) groundRet() Type { return e.FuncType.Ret }
 
-func (e *ExprFunc) unifyRet(Type) *note { return nil }
+func (e *ExprFunc) unifyRet(Type) note { return nil }
 
 func (e *ExprFunc) groundParm(i int) Type { return e.FuncType.Parms[i] }
 
-func (e *ExprFunc) unifyParm(i int, _ Type) *note { return nil }
+func (e *ExprFunc) unifyParm(i int, _ Type) note { return nil }
 
 func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
 	if eq(literal(pat), pat) || eq(literal(typ), typ) {

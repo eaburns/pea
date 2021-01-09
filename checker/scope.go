@@ -1,7 +1,6 @@
 package checker
 
 import (
-	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -324,10 +323,7 @@ func (e *excludeFunc) find(name string) []id {
 	for _, id := range ids {
 		f, ok := id.(*FuncInst)
 		if ok && f.Def == e.def {
-			*e.notes = append(*e.notes, note{
-				msg: fmt.Sprintf("%s: is excluded from the scope", f),
-				loc: f.Def.L,
-			})
+			*e.notes = append(*e.notes, newNote("%s: is excluded from the scope", f).setLoc(f.Def))
 			continue
 		}
 		ids[n] = id

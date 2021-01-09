@@ -221,7 +221,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	if len(errs) > 0 {
 		var es []error
 		for _, err := range errs {
-			err.done(importer.Files(), 1)
+			err.done(importer.Files(), 5)
 			es = append(es, err)
 		}
 		return nil, nil, es
@@ -391,14 +391,13 @@ func checkAliasCycle(root *TypeDef) Error {
 			}
 		}
 		for _, def := range path {
-			notes = append(notes, note{
-				msg: def.Type.String(),
-				loc: def.Type.(*DefType).L,
-			})
+			notes = append(notes, newNote(def.Type.String()).setLoc(def.Type))
 		}
 		// Break the alias so that checking can continue reporting more errors.
 		root.Alias = false
-		return newError(root.L, "alias cycle").addNotes(notes)
+		err := newError(root.L, "alias cycle")
+		err.setNotes(notes)
+		return err
 	}
 	return nil
 }
@@ -996,12 +995,10 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 		if arg, err := convert(arg, t); err != nil {
 			var notes []note
 			for _, f := range funcs {
-				notes = append(notes, note{
-					msg: fmt.Sprintf("%s parameter %d is type %s", f, i, t),
-					loc: f.groundParm(i).Loc(),
-				})
+				notes = append(notes, newNote("%s parameter %d is type %s", f, i, t).setLoc(f.groundParm(i)))
 			}
-			errs = append(errs, err.addNotes(notes))
+			err.setNotes(notes)
+			errs = append(errs, err)
 			as, fs := checkArgsFallback(x, parserCall.Args)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
@@ -1020,7 +1017,9 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	notes = append(notes, ns...)
 	switch {
 	case len(funcs) == 0:
-		errs = append(errs, notFound(parserId.Name, parserId.L).addNotes(notes))
+		err := notFound(parserId.Name, parserId.L)
+		err.setNotes(notes)
+		errs = append(errs, err)
 		return &Call{Args: args, L: parserCall.L}, errs
 	case len(funcs) > 1:
 		errs = append(errs, ambiguousCall(parserId.Name, funcs, parserId.L))
@@ -1068,12 +1067,7 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 			if funcType, ok := expr.Type().(*FuncType); ok {
 				fun = &ExprFunc{Expr: expr, FuncType: funcType}
 			} else {
-				notes = append(notes, note{
-					// TODO: Once Expr.String() is added:
-					// change to fmt.Sprintf("%s is not a function", expr).
-					msg: "expression is not a function",
-					loc: expr.Loc(),
-				})
+				notes = append(notes, newNote("%s is not a function", expr).setLoc(expr))
 			}
 		}
 		if fun != nil {
@@ -1092,14 +1086,7 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 			n++
 			continue
 		}
-		var l loc.Loc
-		if locer, ok := f.(interface{ Loc() loc.Loc }); ok {
-			l = locer.Loc()
-		}
-		notes = append(notes, note{
-			msg: fmt.Sprintf("%s: expects %d arguments, got %d", f, f.arity(), arity),
-			loc: l,
-		})
+		notes = append(notes, newNote("%s: expects %d arguments, got %d", f, f.arity(), arity).setLoc(f))
 	}
 	return funcs[:n], notes
 }
@@ -1123,12 +1110,8 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		var l loc.Loc
-		if locer, ok := f.(interface{ Loc() loc.Loc }); ok {
-			l = locer.Loc()
-		}
 		if note := f.unifyRet(want); note != nil {
-			notes = append(notes, *note)
+			notes = append(notes, note)
 			continue
 		}
 		retType := f.groundRet()
@@ -1136,10 +1119,7 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 			continue
 		}
 		if !canConvertReturn(retType, want) {
-			notes = append(notes, note{
-				msg: fmt.Sprintf("%s: cannot convert returned %s to %s", f, retType, want),
-				loc: l,
-			})
+			notes = append(notes, newNote("%s: cannot convert returned %s to %s", f, retType, want).setLoc(f))
 			continue
 		}
 		funcs[n] = f
@@ -1168,7 +1148,7 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	var notes []note
 	for _, f := range funcs {
 		if note := f.unifyParm(i, arg.Type()); note != nil {
-			notes = append(notes, *note)
+			notes = append(notes, note)
 			continue
 		}
 		parmType := f.groundParm(i)
@@ -1180,11 +1160,7 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 			n++
 			continue
 		}
-		notes = append(notes, note{
-			msg: fmt.Sprintf("%s: cannot convert argument %d, %s (%s), to %s",
-				f, i, arg, arg.Type(), parmType),
-			loc: parmType.Loc(),
-		})
+		notes = append(notes, newNote("%s: cannot convert argument %d, %s (%s), to %s", f, i, arg, arg.Type(), parmType).setLoc(parmType))
 	}
 	return funcs[:n], notes
 }
@@ -1198,14 +1174,7 @@ func filterUngroundReturns(funcs []Func) ([]Func, []note) {
 			n++
 			continue
 		}
-		var l loc.Loc
-		if locer, ok := f.(interface{ Loc() loc.Loc }); ok {
-			l = locer.Loc()
-		}
-		notes = append(notes, note{
-			msg: fmt.Sprintf("%s: cannot infer return type", f),
-			loc: l,
-		})
+		notes = append(notes, newNote("%s: cannot infer return type", f).setLoc(f))
 	}
 	return funcs[:n], notes
 }
@@ -1215,7 +1184,7 @@ func filterIfaceConstraints(x scope, funcs []Func) ([]Func, []note) {
 	var notes []note
 	for _, f := range funcs {
 		if note := instIface(x, f); note != nil {
-			notes = append(notes, *note)
+			notes = append(notes, note)
 			continue
 		}
 		funcs[n] = f
@@ -1227,22 +1196,11 @@ func filterIfaceConstraints(x scope, funcs []Func) ([]Func, []note) {
 func ambiguousCall(name string, funcs []Func, l loc.Loc) Error {
 	var notes []note
 	for _, f := range funcs {
-		var l loc.Loc
-		if locer, ok := f.(interface{ Loc() loc.Loc }); ok {
-			l = locer.Loc()
-		}
-		if l != (loc.Loc{}) {
-			notes = append(notes, note{
-				msg: fmt.Sprintf("%s", f),
-				loc: l,
-			})
-		} else {
-			notes = append(notes, note{
-				msg: fmt.Sprintf("built-in %s", f),
-			})
-		}
+		notes = append(notes, newNote("%s", f).setLoc(f))
 	}
-	return newError(l, "%s: ambiguous call", name).addNotes(notes)
+	err := newError(l, "%s: ambiguous call", name)
+	err.setNotes(notes)
+	return err
 }
 
 func canConvertReturn(src, dst Type) bool {
@@ -1319,11 +1277,9 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []Error) {
 		if want != nil {
 			var err Error
 			if expr, err = convert(expr, want); err != nil {
-				notFoundNotes = append(notFoundNotes, note{
-					msg: fmt.Sprintf("cannot convert %s (%s) to type %s",
-						expr, expr.Type(), want),
-					loc: expr.Loc(),
-				})
+				notFoundNotes = append(notFoundNotes,
+					newNote("cannot convert %s (%s) to type %s",
+						expr, expr.Type(), want).setLoc(expr))
 				continue
 			}
 		}
@@ -1331,12 +1287,14 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []Error) {
 		if locer, ok := id.(interface{ Loc() loc.Loc }); ok {
 			l = locer.Loc()
 		}
-		ambigNotes = append(ambigNotes, note{msg: id.String(), loc: l})
+		ambigNotes = append(ambigNotes, newNote(id.String()).setLoc(l))
 		exprs = append(exprs, expr)
 	}
 	switch {
 	case len(exprs) == 0:
-		return nil, []Error{notFound(parserId.Name, parserId.L).addNotes(notFoundNotes)}
+		err := notFound(parserId.Name, parserId.L)
+		err.setNotes(notFoundNotes)
+		return nil, []Error{err}
 	case len(exprs) > 1:
 		var err Error
 		if want != nil {
@@ -1344,7 +1302,8 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []Error) {
 		} else {
 			err = newError(parserId.L, "%s is ambiguous for type %s", parserId.Name, want)
 		}
-		return nil, []Error{err.addNotes(ambigNotes)}
+		err.setNotes(ambigNotes)
+		return nil, []Error{err}
 	default:
 		return exprs[0], nil
 	}

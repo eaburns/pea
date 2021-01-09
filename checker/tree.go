@@ -238,9 +238,9 @@ type Func interface {
 
 	arity() int
 	groundRet() Type // nil if not grounded
-	unifyRet(Type) *note
+	unifyRet(Type) note
 	groundParm(int) Type // nil if not grounded
-	unifyParm(int, Type) *note
+	unifyParm(int, Type) note
 	buildString(*strings.Builder) *strings.Builder
 }
 
