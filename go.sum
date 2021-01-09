@@ -1,0 +1,6 @@
+github.com/eaburns/peggy v1.0.1 h1:13lzoWg0eTeVouHrqFxO3ZL/XT8YlVk8YBAe/IO9VAQ=
+github.com/eaburns/peggy v1.0.1/go.mod h1:X2pbl0EV5erfnK8kSGwo0lBCgMGokvR1E6KerAoDKXg=
+github.com/eaburns/pretty v1.0.0/go.mod h1:retcK8A0KEgdmb0nuxhvyxixwCmEPO7SKlK0IJhjg8A=
+github.com/google/go-cmp v0.5.4 h1:L8R9j+yAqZuZjsqh/z+F1NCffTKKLShY6zXTItVIZ8M=
+github.com/google/go-cmp v0.5.4/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
