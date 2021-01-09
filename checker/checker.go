@@ -755,8 +755,8 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Error) {
 	case *parser.ModSel:
 		// TODO: modsel is unimplemented
 		panic("unimplemented")
-	case parser.Id:
-		return checkId(x, parserExpr, want)
+	case parser.Ident:
+		return checkID(x, parserExpr, want)
 	default:
 		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
 	}
@@ -840,12 +840,12 @@ mismatch:
 func valueType(typ Type) (Type, int) {
 	var n int
 	for {
-		if ref, ok := typ.(*RefType); !ok {
+		ref, ok := typ.(*RefType)
+		if !ok {
 			return typ, n
-		} else {
-			n++
-			typ = ref.Type
 		}
+		n++
+		typ = ref.Type
 	}
 }
 
@@ -934,24 +934,24 @@ func eq(a, b Type) bool {
 }
 
 func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
-	if _, ok := parserCall.Fun.(parser.Id); ok {
-		return checkIdCall(x, parserCall, want)
+	if _, ok := parserCall.Fun.(parser.Ident); ok {
+		return checkIDCall(x, parserCall, want)
 	}
 	return checkExprCall(x, parserCall, want)
 }
 
-func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
-	parserId := parserCall.Fun.(parser.Id)
-	ids := x.find(parserId.Name)
+func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
+	parserID := parserCall.Fun.(parser.Ident)
+	ids := x.find(parserID.Name)
 	if len(ids) == 0 {
 		args, errs := checkArgsFallback(x, parserCall.Args)
-		errs = append(errs, notFound(parserId.Name, parserId.L))
+		errs = append(errs, notFound(parserID.Name, parserID.L))
 		return &Call{Args: args, L: parserCall.L}, errs
 	}
-	funcs, notes := filterToFuncs(ids, parserId.L)
+	funcs, notes := filterToFuncs(ids, parserID.L)
 	if len(funcs) == 0 {
 		args, errs := checkArgsFallback(x, parserCall.Args)
-		errs = append(errs, newError(parserId.L, "%s is not callable", parserId.Name))
+		errs = append(errs, newError(parserID.L, "%s is not callable", parserID.Name))
 		return &Call{Args: args, L: parserCall.L}, errs
 	}
 	funcs, ns := filterByArity(funcs, len(parserCall.Args))
@@ -1017,12 +1017,12 @@ func checkIdCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	notes = append(notes, ns...)
 	switch {
 	case len(funcs) == 0:
-		err := notFound(parserId.Name, parserId.L)
+		err := notFound(parserID.Name, parserID.L)
 		err.setNotes(notes)
 		errs = append(errs, err)
 		return &Call{Args: args, L: parserCall.L}, errs
 	case len(funcs) > 1:
-		errs = append(errs, ambiguousCall(parserId.Name, funcs, parserId.L))
+		errs = append(errs, ambiguousCall(parserID.Name, funcs, parserID.L))
 		return &Call{Args: args, L: parserCall.L}, errs
 	}
 
@@ -1267,16 +1267,16 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 	}, errs
 }
 
-func checkId(x scope, parserId parser.Id, want Type) (Expr, []Error) {
+func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 	var exprs []Expr
 	var notFoundNotes []note
 	var ambigNotes []note
-	for _, id := range x.find(parserId.Name) {
+	for _, id := range x.find(parserID.Name) {
 		// TODO: handle grounding for functions and function ifaces.
 		if !isGround(id) {
 			continue
 		}
-		expr := idToExpr(id, parserId.L)
+		expr := idToExpr(id, parserID.L)
 		if want != nil {
 			var err Error
 			if expr, err = convert(expr, want); err != nil {
@@ -1295,15 +1295,15 @@ func checkId(x scope, parserId parser.Id, want Type) (Expr, []Error) {
 	}
 	switch {
 	case len(exprs) == 0:
-		err := notFound(parserId.Name, parserId.L)
+		err := notFound(parserID.Name, parserID.L)
 		err.setNotes(notFoundNotes)
 		return nil, []Error{err}
 	case len(exprs) > 1:
 		var err Error
 		if want != nil {
-			err = newError(parserId.L, "%s is ambiguous", parserId.Name)
+			err = newError(parserID.L, "%s is ambiguous", parserID.Name)
 		} else {
-			err = newError(parserId.L, "%s is ambiguous for type %s", parserId.Name, want)
+			err = newError(parserID.L, "%s is ambiguous for type %s", parserID.Name, want)
 		}
 		err.setNotes(ambigNotes)
 		return nil, []Error{err}
@@ -1404,7 +1404,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 // 	  The expected type of elements at indices greater than 0
 // 	  is the array element type.
 //
-// A type is apropriate to an array literal if
+// A type is appropriate to an array literal if
 // 	* its literal type is an array type or a reference to an array type.
 func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Error) {
 	var errs []Error
@@ -1457,7 +1457,7 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Erro
 // 	  The type of each field is the type of its corresponding value
 // 	  with no expected type.
 //
-// A type is apropriate to a struct literal if
+// A type is appropriate to a struct literal if
 // 	* its literal type is a struct type or a reference to a struct type,
 // 	* it has the same number of fields as the literal,
 // 	* each of the fields, in order, has the same name as the corresponding literal field.
@@ -1523,7 +1523,7 @@ func appropriateStruct(typ Type, lit *parser.StructLit) *StructType {
 // 	  If the literal has a value, the type of the case
 // 	  is the type of the value with no expected type.
 //
-// A type is apropriate to a union literal if
+// A type is appropriate to a union literal if
 // 	* its literal type is a union type or a reference to a union type,
 // 	* it has a case with the same name as the literal case,
 // 	* if the literal has a value, the corresponding case has a type,
@@ -1591,14 +1591,14 @@ func findCase(name string, u *UnionType) *CaseDef {
 // 	  and it is an error if the type of the last expression
 // 	  is not convertible to the return type.
 // 	* Otherwise, the literal's type is an unnamed function type
-// 	  with parameters corresponding to the explicity type
+// 	  with parameters corresponding to the explicitly type
 // 	  of each of the literal's parameters.
 // 	  It is an error if any of the parameter's type is elided.
 // 	  If there are no expressions in the block, the type has no return type.
 // 	  Otherwise the return type is the type of the last expression
 // 	  in the block with no expected type.
 //
-// A type is apropriate to a block literal if
+// A type is appropriate to a block literal if
 // 	* its literal type is a function type or a reference to a function type,
 // 	* it has the same number of parameters as the literal, and
 // 	* all explicit parameter types of the literal
@@ -1803,7 +1803,7 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []Error) {
 // 	  then the type of the expression is the expected type.
 // 	* If the expected type's literal type is a built-in int type
 // 	  or a reference to a built-in int type,
-// 	  then the type of the experssion is the expected type.
+// 	  then the type of the expression is the expected type.
 // 	  It is an error if the literal value is not a whole integer value
 // 	  representable by the int typ.
 // 	* Otherwise, the type is float64.

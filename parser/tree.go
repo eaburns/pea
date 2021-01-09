@@ -17,7 +17,7 @@ func (f *File) Len() int        { return f.Length }
 
 type Import struct {
 	Exp  bool
-	Name *Id // nil if unspecified
+	Name *Ident // nil if unspecified
 	Path string
 	L    loc.Loc
 }
@@ -27,7 +27,7 @@ type Def interface{}
 type VarDef struct {
 	Exp   bool
 	Const bool
-	Name  Id
+	Name  Ident
 	Type  Type // nil if unspecified
 	Expr  Expr // nil if unspecified
 	L     loc.Loc
@@ -37,7 +37,7 @@ type TypeDef struct {
 	Exp       bool
 	Alias     bool
 	TypeParms []TypeVar
-	Name      Id
+	Name      Ident
 	Type      Type // nil if unspecified
 	L         loc.Loc
 }
@@ -51,8 +51,8 @@ type RefType struct {
 
 type NamedType struct {
 	Args []Type
-	Mod  *Id // nil if unspecified
-	Name Id
+	Mod  *Ident // nil if unspecified
+	Name Ident
 	L    loc.Loc
 }
 
@@ -67,7 +67,7 @@ type StructType struct {
 }
 
 type FieldDef struct {
-	Name Id
+	Name Ident
 	Type Type
 	L    loc.Loc
 }
@@ -78,7 +78,7 @@ type UnionType struct {
 }
 
 type CaseDef struct {
-	Name Id
+	Name Ident
 	Type Type // nil if an un-typed case
 	L    loc.Loc
 }
@@ -91,7 +91,7 @@ type FuncType struct {
 
 type FuncDef struct {
 	Exp   bool
-	Name  Id
+	Name  Ident
 	Parms []FuncParm
 	Ret   Type // nil if no return
 	Iface []FuncDecl
@@ -100,20 +100,20 @@ type FuncDef struct {
 }
 
 type FuncParm struct {
-	Name Id
+	Name Ident
 	Type Type
 	L    loc.Loc
 }
 
 type FuncDecl struct {
-	Name  Id
+	Name  Ident
 	Parms []Type
 	Ret   Type // nil if no return
 	L     loc.Loc
 }
 
 type TestDef struct {
-	Name  Id
+	Name  Ident
 	Exprs []Expr
 	L     loc.Loc
 }
@@ -146,8 +146,8 @@ type SubExpr struct {
 func (s *SubExpr) Loc() loc.Loc { return s.L }
 
 type ModSel struct {
-	Mod  Id
-	Name Id
+	Mod  Ident
+	Name Ident
 	L    loc.Loc
 }
 
@@ -168,7 +168,7 @@ type StructLit struct {
 func (s *StructLit) Loc() loc.Loc { return s.L }
 
 type FieldVal struct {
-	Name Id
+	Name Ident
 	Val  Expr
 	L    loc.Loc
 }
@@ -181,7 +181,7 @@ type UnionLit struct {
 func (u *UnionLit) Loc() loc.Loc { return u.L }
 
 type CaseVal struct {
-	Name Id
+	Name Ident
 	Val  Expr // nil if value-less case
 	L    loc.Loc
 }
@@ -228,9 +228,9 @@ type TypeVar struct {
 	L    loc.Loc
 }
 
-type Id struct {
+type Ident struct {
 	Name string
 	L    loc.Loc
 }
 
-func (i Id) Loc() loc.Loc { return i.L }
+func (i Ident) Loc() loc.Loc { return i.L }

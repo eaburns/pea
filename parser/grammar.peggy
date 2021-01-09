@@ -76,7 +76,7 @@ NamedType <- (args:TypeArgs)? names:ModName+ {
 	return Type(namedType(args, names, l(parser, start, end)))
 }
 
-ModName <- mod:(m:Id _ "#" { return Id(m) })? name:Id {
+ModName <- mod:(m:Id _ "#" { return Ident(m) })? name:Id {
 	return &NamedType{Mod: mod, Name: name, L: l(parser, start, end)}
 }
 
@@ -178,7 +178,7 @@ Exprs <- e0:Expr es:(_ "," e1:Expr { return Expr(e1) })* (_ ",")? {
 Asgn <- Bin<AsgnOp, AsgnArg>
 AsgnArg <- KwCall / KwArg
 AsgnOp "assignment operator" <- _ name:":=" {
-	return Id{Name: name, L: l(parser, start, end)}
+	return Ident{Name: name, L: l(parser, start, end)}
 }
 
 KwCall <- nameArgs:NameArg<Kwd, KwArg>+ {
@@ -200,32 +200,32 @@ NameArg<Name, Arg> <- name:Name arg:Arg {
 Bin5 <- Bin<Bin5Op, Bin5Arg>
 Bin5Arg <- Bin4 / Bin4Arg
 Bin5Op "operator" <- _ name:("|" O*) {
-	return Id{Name: name, L: l(parser, start, end)}
+	return Ident{Name: name, L: l(parser, start, end)}
 }
 
 Bin4 <- Bin<Bin4Op, Bin4Arg>
 Bin4Arg <- Bin3 / Bin3Arg
 Bin4Op "operator" <- _ name:("&" O*) {
-	return Id{Name: name, L: l(parser, start, end)}
+	return Ident{Name: name, L: l(parser, start, end)}
 }
 
 Bin3 <- Bin<Bin3Op, Bin3Arg>
 Bin3Arg <- Bin2 / Bin2Arg
 Bin3Op "operator 3" <- _ name:([=!<>] O*) {
-	return Id{Name: name, L: l(parser, start, end)}
+	return Ident{Name: name, L: l(parser, start, end)}
 }
 
 Bin2 <- Bin<Bin2Op, Bin2Arg>
 Bin2Arg <- Bin1 / Bin1Arg
 Bin2Op "operator" <- _ name:([+\-^] O*) {
-	return Id{Name: name, L: l(parser, start, end)}
+	return Ident{Name: name, L: l(parser, start, end)}
 }
 
 # TODO: what precedence are [~?@$]?
 Bin1 <- Bin<Bin1Op, Bin1Arg>
 Bin1Arg <- Cvt / UnArg
 Bin1Op "operator" <- _ name:([*/%] O*) {
-	return Id{Name: name, L: l(parser, start, end)}
+	return Ident{Name: name, L: l(parser, start, end)}
 }
 
 Bin<O, A> <- arg0:A calls:BinTail<O, A>+ {
@@ -252,7 +252,7 @@ Un <- !NumLit name:Op arg:UnArg {
 }
 
 Op "operator" <- _ name:O+ {
-	return Id{Name: name, L: l(parser, start, end)}
+	return Ident{Name: name, L: l(parser, start, end)}
 }
 
 UnArg <- Un / Pri / PriArg
@@ -315,19 +315,19 @@ ModSel <-
 FuncName <- FieldId / IdxOp / Op / Kwds / Cases / Id
 
 IdxOp "index operator" <- _ "[" _ "]" {
-	return Id{Name: "[]", L: l(parser, start, end)}
+	return Ident{Name: "[]", L: l(parser, start, end)}
 }
 
 Cases "cases" <- _ cases:CaseId+ {
-	return Id{Name: catNames(cases), L: l(parser, start, end)}
+	return Ident{Name: catNames(cases), L: l(parser, start, end)}
 }
 
 Kwds "keywords" <- _ keywords:Kwd+ {
-	return Id{Name: catNames(keywords), L: l(parser, start, end)}
+	return Ident{Name: catNames(keywords), L: l(parser, start, end)}
 }
 
 Kwd "keyword" <- _ id:Id ":" {
-	return Id{Name: id.Name + ":", L: l(parser, start, end)}
+	return Ident{Name: id.Name + ":", L: l(parser, start, end)}
 }
 
 ArrayLit <-
@@ -355,7 +355,7 @@ FieldVal <- _ name:FieldId val:Expr {
 }
 
 FieldId "field id" <- _ "." id:Id {
-	return Id{Name: "." + id.Name, L: l(parser, start, end)}
+	return Ident{Name: "." + id.Name, L: l(parser, start, end)}
 }
 
 UnionLit <- _ "[" cas:CaseVal _ "]" {
@@ -368,7 +368,7 @@ CaseVal <- _ name:CaseId v:Expr? {
 }
 
 CaseId "case id" <- _ "?" id:Id {
-	return Id{Name: "?" + id.Name, L: l(parser, start, end)}
+	return Ident{Name: "?" + id.Name, L: l(parser, start, end)}
 }
 
 BlkLit <- (_ "(" ps:BlkParms? _ ")")? _ "{" es:Exprs? _ "}" {
@@ -424,7 +424,7 @@ FloatLit <- _ text:(("+" / "-")? D+ "." D+ ([eE] [+\-]? D+)?) {
 }
 
 Id "identifier" <- _ !Reserved !TypeVar name:(("_" / L) ("_" / L / D)*) {
-	return Id{Name: name, L: l(parser, start, end)}
+	return Ident{Name: name, L: l(parser, start, end)}
 }
 
 TypeVar "type variable" <- _ name:[A-Z] !L !D {

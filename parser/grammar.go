@@ -617,7 +617,7 @@ func _ImportAction(parser *_Parser, start int) (int, **Import) {
 	var labels [3]string
 	use(labels)
 	var label0 string
-	var label1 *Id
+	var label1 *Ident
 	var label2 Expr
 	dp := parser.deltaPos[start][_Import]
 	if dp < 0 {
@@ -680,7 +680,7 @@ func _ImportAction(parser *_Parser, start int) (int, **Import) {
 			// Id?
 			{
 				pos11 := pos
-				label1 = new(Id)
+				label1 = new(Ident)
 				// Id
 				if p, n := _IdAction(parser, pos); n == nil {
 					goto fail12
@@ -709,7 +709,7 @@ func _ImportAction(parser *_Parser, start int) (int, **Import) {
 			labels[2] = parser.text[pos14:pos]
 		}
 		node = func(
-			start, end int, id *Id, path Expr, reserved string) *Import {
+			start, end int, id *Ident, path Expr, reserved string) *Import {
 			return &Import{
 				Exp:  reserved == "Import",
 				Name: id,
@@ -1147,7 +1147,7 @@ func _ConstDefAction(parser *_Parser, start int) (int, *Def) {
 	var labels [4]string
 	use(labels)
 	var label0 string
-	var label1 Id
+	var label1 Ident
 	var label2 *Type
 	var label3 Expr
 	dp := parser.deltaPos[start][_ConstDef]
@@ -1273,7 +1273,7 @@ func _ConstDefAction(parser *_Parser, start int) (int, *Def) {
 		ok20:
 		}
 		node = func(
-			start, end int, expr Expr, name Id, reserved string, t *Type) Def {
+			start, end int, expr Expr, name Ident, reserved string, t *Type) Def {
 			var typ Type
 			if t != nil {
 				typ = *t
@@ -1527,7 +1527,7 @@ func _VarDefAction(parser *_Parser, start int) (int, *Def) {
 	var labels [4]string
 	use(labels)
 	var label0 string
-	var label1 Id
+	var label1 Ident
 	var label2 *Type
 	var label3 Expr
 	dp := parser.deltaPos[start][_VarDef]
@@ -1653,7 +1653,7 @@ func _VarDefAction(parser *_Parser, start int) (int, *Def) {
 		ok20:
 		}
 		node = func(
-			start, end int, expr Expr, name Id, reserved string, t *Type) Def {
+			start, end int, expr Expr, name Ident, reserved string, t *Type) Def {
 			var typ Type
 			if t != nil {
 				typ = *t
@@ -1934,7 +1934,7 @@ func _TypeDefAction(parser *_Parser, start int) (int, *Def) {
 	use(labels)
 	var label0 string
 	var label1 *[]TypeVar
-	var label2 Id
+	var label2 Ident
 	var label3 string
 	var label4 *Type
 	dp := parser.deltaPos[start][_TypeDef]
@@ -2083,7 +2083,7 @@ func _TypeDefAction(parser *_Parser, start int) (int, *Def) {
 			labels[4] = parser.text[pos21:pos]
 		}
 		node = func(
-			start, end int, alias string, name Id, ps *[]TypeVar, reserved string, t *Type) Def {
+			start, end int, alias string, name Ident, ps *[]TypeVar, reserved string, t *Type) Def {
 			var parms []TypeVar
 			if ps != nil {
 				parms = *ps
@@ -3477,9 +3477,9 @@ fail:
 func _ModNameAction(parser *_Parser, start int) (int, **NamedType) {
 	var labels [3]string
 	use(labels)
-	var label0 Id
-	var label1 *Id
-	var label2 Id
+	var label0 Ident
+	var label1 *Ident
+	var label2 Ident
 	dp := parser.deltaPos[start][_ModName]
 	if dp < 0 {
 		return -1, nil
@@ -3502,7 +3502,7 @@ func _ModNameAction(parser *_Parser, start int) (int, **NamedType) {
 			// (m:Id _ "#" {…})?
 			{
 				pos4 := pos
-				label1 = new(Id)
+				label1 = new(Ident)
 				// (m:Id _ "#" {…})
 				// action
 				{
@@ -3532,8 +3532,8 @@ func _ModNameAction(parser *_Parser, start int) (int, **NamedType) {
 					}
 					pos++
 					*label1 = func(
-						start, end int, m Id) Id {
-						return Id(m)
+						start, end int, m Ident) Ident {
+						return Ident(m)
 					}(
 						start6, pos, label0)
 				}
@@ -3558,7 +3558,7 @@ func _ModNameAction(parser *_Parser, start int) (int, **NamedType) {
 			labels[2] = parser.text[pos10:pos]
 		}
 		node = func(
-			start, end int, m Id, mod *Id, name Id) *NamedType {
+			start, end int, m Ident, mod *Ident, name Ident) *NamedType {
 			return &NamedType{Mod: mod, Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0, label1, label2)
@@ -4793,7 +4793,7 @@ fail:
 func _FieldDefAction(parser *_Parser, start int) (int, *FieldDef) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Type
 	dp := parser.deltaPos[start][_FieldDef]
 	if dp < 0 {
@@ -4836,7 +4836,7 @@ func _FieldDefAction(parser *_Parser, start int) (int, *FieldDef) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, name Id, typ Type) FieldDef {
+			start, end int, name Ident, typ Type) FieldDef {
 			return FieldDef{Name: name, Type: typ, L: l(parser, start, end)}
 		}(
 			start0, pos, label0, label1)
@@ -5395,7 +5395,7 @@ fail:
 func _CaseDefAction(parser *_Parser, start int) (int, *CaseDef) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 *Type
 	dp := parser.deltaPos[start][_CaseDef]
 	if dp < 0 {
@@ -5448,7 +5448,7 @@ func _CaseDefAction(parser *_Parser, start int) (int, *CaseDef) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, name Id, t *Type) CaseDef {
+			start, end int, name Ident, t *Type) CaseDef {
 			var typ Type
 			if t != nil {
 				typ = *t
@@ -6504,7 +6504,7 @@ func _FuncDefAction(parser *_Parser, start int) (int, *Def) {
 	var labels [6]string
 	use(labels)
 	var label0 string
-	var label1 Id
+	var label1 Ident
 	var label2 *[]FuncParm
 	var label3 *Type
 	var label4 []FuncDecl
@@ -6730,7 +6730,7 @@ func _FuncDefAction(parser *_Parser, start int) (int, *Def) {
 		ok35:
 		}
 		node = func(
-			start, end int, es *[]Expr, iface []FuncDecl, name Id, ps *[]FuncParm, r *Type, reserved string) Def {
+			start, end int, es *[]Expr, iface []FuncDecl, name Ident, ps *[]FuncParm, r *Type, reserved string) Def {
 			var parms []FuncParm
 			if ps != nil {
 				parms = *ps
@@ -7124,7 +7124,7 @@ fail:
 func _FuncParmAction(parser *_Parser, start int) (int, *FuncParm) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Type
 	dp := parser.deltaPos[start][_FuncParm]
 	if dp < 0 {
@@ -7167,7 +7167,7 @@ func _FuncParmAction(parser *_Parser, start int) (int, *FuncParm) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, name Id, typ Type) FuncParm {
+			start, end int, name Ident, typ Type) FuncParm {
 			return FuncParm{Name: name, Type: typ, L: l(parser, start, end)}
 		}(
 			start0, pos, label0, label1)
@@ -7352,7 +7352,7 @@ fail:
 func _FuncDeclAction(parser *_Parser, start int) (int, *FuncDecl) {
 	var labels [3]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 *[]Type
 	var label2 *Type
 	dp := parser.deltaPos[start][_FuncDecl]
@@ -7450,7 +7450,7 @@ func _FuncDeclAction(parser *_Parser, start int) (int, *FuncDecl) {
 			labels[2] = parser.text[pos8:pos]
 		}
 		node = func(
-			start, end int, name Id, ps *[]Type, r *Type) FuncDecl {
+			start, end int, name Ident, ps *[]Type, r *Type) FuncDecl {
 			var parms []Type
 			if ps != nil {
 				parms = *ps
@@ -7923,7 +7923,7 @@ fail:
 func _TestDefAction(parser *_Parser, start int) (int, *Def) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 *[]Expr
 	dp := parser.deltaPos[start][_TestDef]
 	if dp < 0 {
@@ -8009,7 +8009,7 @@ func _TestDefAction(parser *_Parser, start int) (int, *Def) {
 		}
 		pos++
 		node = func(
-			start, end int, es *[]Expr, name Id) Def {
+			start, end int, es *[]Expr, name Ident) Def {
 			var exprs []Expr
 			if es != nil {
 				exprs = *es
@@ -8678,7 +8678,7 @@ fail:
 	return -1, failure
 }
 
-func _AsgnOpAction(parser *_Parser, start int) (int, *Id) {
+func _AsgnOpAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
 	var label0 string
@@ -8689,10 +8689,10 @@ func _AsgnOpAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _AsgnOp}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -8716,8 +8716,8 @@ func _AsgnOpAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, name string) Id {
-			return Id{Name: name, L: l(parser, start, end)}
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -9549,7 +9549,7 @@ fail:
 	return -1, failure
 }
 
-func _Bin5OpAction(parser *_Parser, start int) (int, *Id) {
+func _Bin5OpAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
 	var label0 string
@@ -9560,10 +9560,10 @@ func _Bin5OpAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Bin5Op}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -9611,8 +9611,8 @@ func _Bin5OpAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, name string) Id {
-			return Id{Name: name, L: l(parser, start, end)}
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -9900,7 +9900,7 @@ fail:
 	return -1, failure
 }
 
-func _Bin4OpAction(parser *_Parser, start int) (int, *Id) {
+func _Bin4OpAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
 	var label0 string
@@ -9911,10 +9911,10 @@ func _Bin4OpAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Bin4Op}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -9962,8 +9962,8 @@ func _Bin4OpAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, name string) Id {
-			return Id{Name: name, L: l(parser, start, end)}
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -10253,7 +10253,7 @@ fail:
 	return -1, failure
 }
 
-func _Bin3OpAction(parser *_Parser, start int) (int, *Id) {
+func _Bin3OpAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
 	var label0 string
@@ -10264,10 +10264,10 @@ func _Bin3OpAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Bin3Op}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -10316,8 +10316,8 @@ func _Bin3OpAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, name string) Id {
-			return Id{Name: name, L: l(parser, start, end)}
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -10607,7 +10607,7 @@ fail:
 	return -1, failure
 }
 
-func _Bin2OpAction(parser *_Parser, start int) (int, *Id) {
+func _Bin2OpAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
 	var label0 string
@@ -10618,10 +10618,10 @@ func _Bin2OpAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Bin2Op}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -10670,8 +10670,8 @@ func _Bin2OpAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, name string) Id {
-			return Id{Name: name, L: l(parser, start, end)}
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -10961,7 +10961,7 @@ fail:
 	return -1, failure
 }
 
-func _Bin1OpAction(parser *_Parser, start int) (int, *Id) {
+func _Bin1OpAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
 	var label0 string
@@ -10972,10 +10972,10 @@ func _Bin1OpAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Bin1Op}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -11024,8 +11024,8 @@ func _Bin1OpAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, name string) Id {
-			return Id{Name: name, L: l(parser, start, end)}
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -11429,7 +11429,7 @@ fail:
 func _UnAction(parser *_Parser, start int) (int, *Expr) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_Un]
 	if dp < 0 {
@@ -11486,7 +11486,7 @@ func _UnAction(parser *_Parser, start int) (int, *Expr) {
 			labels[1] = parser.text[pos7:pos]
 		}
 		node = func(
-			start, end int, arg Expr, name Id) Expr {
+			start, end int, arg Expr, name Ident) Expr {
 			return Expr(&Call{Fun: name, Args: []Expr{arg}, L: l(parser, start, end)})
 		}(
 			start0, pos, label1, label0)
@@ -11586,7 +11586,7 @@ fail:
 	return -1, failure
 }
 
-func _OpAction(parser *_Parser, start int) (int, *Id) {
+func _OpAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
 	var label0 string
@@ -11597,10 +11597,10 @@ func _OpAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Op}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -11646,8 +11646,8 @@ func _OpAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, name string) Id {
-			return Id{Name: name, L: l(parser, start, end)}
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -12223,7 +12223,7 @@ fail:
 func _SelAction(parser *_Parser, start int) (int, *primary) {
 	var labels [1]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	dp := parser.deltaPos[start][_Sel]
 	if dp < 0 {
 		return -1, nil
@@ -12270,7 +12270,7 @@ func _SelAction(parser *_Parser, start int) (int, *primary) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, name Id) primary {
+			start, end int, name Ident) primary {
 			name.Name = "." + name.Name
 			name.L = l(parser, start, end)
 			return primary(sel{name: name, l: name.L})
@@ -12849,7 +12849,7 @@ fail:
 func _PriArgAction(parser *_Parser, start int) (int, *Expr) {
 	var labels [1]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	dp := parser.deltaPos[start][_PriArg]
 	if dp < 0 {
 		return -1, nil
@@ -12981,7 +12981,7 @@ func _PriArgAction(parser *_Parser, start int) (int, *Expr) {
 				labels[0] = parser.text[pos15:pos]
 			}
 			node = func(
-				start, end int, id Id) Expr {
+				start, end int, id Ident) Expr {
 				return Expr(id)
 			}(
 				start14, pos, label0)
@@ -13264,7 +13264,7 @@ func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 	var labels [2]string
 	use(labels)
 	var label0 Expr
-	var label1 Id
+	var label1 Ident
 	dp := parser.deltaPos[start][_SubExpr]
 	if dp < 0 {
 		return -1, nil
@@ -13351,7 +13351,7 @@ func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 				// FieldId/IdxOp/Op/Kwds
 				{
 					pos15 := pos
-					var node14 Id
+					var node14 Ident
 					// FieldId
 					if p, n := _FieldIdAction(parser, pos); n == nil {
 						goto fail16
@@ -13413,7 +13413,7 @@ func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 			}
 			pos++
 			node = func(
-				start, end int, expr Expr, id Id) Expr {
+				start, end int, expr Expr, id Ident) Expr {
 				return Expr(&SubExpr{Expr: id, L: l(parser, start, end)})
 			}(
 				start9, pos, label0, label1)
@@ -13669,10 +13669,10 @@ fail:
 func _ModSelAction(parser *_Parser, start int) (int, *Expr) {
 	var labels [4]string
 	use(labels)
-	var label0 Id
-	var label1 Id
-	var label2 Id
-	var label3 Id
+	var label0 Ident
+	var label1 Ident
+	var label2 Ident
+	var label3 Ident
 	dp := parser.deltaPos[start][_ModSel]
 	if dp < 0 {
 		return -1, nil
@@ -13729,7 +13729,7 @@ func _ModSelAction(parser *_Parser, start int) (int, *Expr) {
 				labels[1] = parser.text[pos8:pos]
 			}
 			node = func(
-				start, end int, mod0 Id, name0 Id) Expr {
+				start, end int, mod0 Ident, name0 Ident) Expr {
 				return Expr(&ModSel{
 					Mod:  mod0,
 					Name: name0,
@@ -13804,7 +13804,7 @@ func _ModSelAction(parser *_Parser, start int) (int, *Expr) {
 			}
 			pos++
 			node = func(
-				start, end int, mod0 Id, mod1 Id, name0 Id, name1 Id) Expr {
+				start, end int, mod0 Ident, mod1 Ident, name0 Ident, name1 Ident) Expr {
 				return Expr(&ModSel{
 					Mod:  mod1,
 					Name: name1,
@@ -13949,7 +13949,7 @@ fail:
 	return -1, failure
 }
 
-func _FuncNameAction(parser *_Parser, start int) (int, *Id) {
+func _FuncNameAction(parser *_Parser, start int) (int, *Ident) {
 	dp := parser.deltaPos[start][_FuncName]
 	if dp < 0 {
 		return -1, nil
@@ -13957,15 +13957,15 @@ func _FuncNameAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _FuncName}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// FieldId/IdxOp/Op/Kwds/Cases/Id
 	{
 		pos3 := pos
-		var node2 Id
+		var node2 Ident
 		// FieldId
 		if p, n := _FieldIdAction(parser, pos); n == nil {
 			goto fail4
@@ -14126,7 +14126,7 @@ fail:
 	return -1, failure
 }
 
-func _IdxOpAction(parser *_Parser, start int) (int, *Id) {
+func _IdxOpAction(parser *_Parser, start int) (int, *Ident) {
 	dp := parser.deltaPos[start][_IdxOp]
 	if dp < 0 {
 		return -1, nil
@@ -14134,10 +14134,10 @@ func _IdxOpAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _IdxOp}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -14166,8 +14166,8 @@ func _IdxOpAction(parser *_Parser, start int) (int, *Id) {
 		}
 		pos++
 		node = func(
-			start, end int) Id {
-			return Id{Name: "[]", L: l(parser, start, end)}
+			start, end int) Ident {
+			return Ident{Name: "[]", L: l(parser, start, end)}
 		}(
 			start0, pos)
 	}
@@ -14266,10 +14266,10 @@ fail:
 	return -1, failure
 }
 
-func _CasesAction(parser *_Parser, start int) (int, *Id) {
+func _CasesAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
-	var label0 []Id
+	var label0 []Ident
 	dp := parser.deltaPos[start][_Cases]
 	if dp < 0 {
 		return -1, nil
@@ -14277,10 +14277,10 @@ func _CasesAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Cases}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -14297,7 +14297,7 @@ func _CasesAction(parser *_Parser, start int) (int, *Id) {
 			pos2 := pos
 			// CaseId+
 			{
-				var node5 Id
+				var node5 Ident
 				// CaseId
 				if p, n := _CaseIdAction(parser, pos); n == nil {
 					goto fail
@@ -14309,7 +14309,7 @@ func _CasesAction(parser *_Parser, start int) (int, *Id) {
 			}
 			for {
 				pos4 := pos
-				var node5 Id
+				var node5 Ident
 				// CaseId
 				if p, n := _CaseIdAction(parser, pos); n == nil {
 					goto fail6
@@ -14326,8 +14326,8 @@ func _CasesAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, cases []Id) Id {
-			return Id{Name: catNames(cases), L: l(parser, start, end)}
+			start, end int, cases []Ident) Ident {
+			return Ident{Name: catNames(cases), L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -14426,10 +14426,10 @@ fail:
 	return -1, failure
 }
 
-func _KwdsAction(parser *_Parser, start int) (int, *Id) {
+func _KwdsAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
-	var label0 []Id
+	var label0 []Ident
 	dp := parser.deltaPos[start][_Kwds]
 	if dp < 0 {
 		return -1, nil
@@ -14437,10 +14437,10 @@ func _KwdsAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Kwds}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -14457,7 +14457,7 @@ func _KwdsAction(parser *_Parser, start int) (int, *Id) {
 			pos2 := pos
 			// Kwd+
 			{
-				var node5 Id
+				var node5 Ident
 				// Kwd
 				if p, n := _KwdAction(parser, pos); n == nil {
 					goto fail
@@ -14469,7 +14469,7 @@ func _KwdsAction(parser *_Parser, start int) (int, *Id) {
 			}
 			for {
 				pos4 := pos
-				var node5 Id
+				var node5 Ident
 				// Kwd
 				if p, n := _KwdAction(parser, pos); n == nil {
 					goto fail6
@@ -14486,8 +14486,8 @@ func _KwdsAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, keywords []Id) Id {
-			return Id{Name: catNames(keywords), L: l(parser, start, end)}
+			start, end int, keywords []Ident) Ident {
+			return Ident{Name: catNames(keywords), L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -14579,10 +14579,10 @@ fail:
 	return -1, failure
 }
 
-func _KwdAction(parser *_Parser, start int) (int, *Id) {
+func _KwdAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	dp := parser.deltaPos[start][_Kwd]
 	if dp < 0 {
 		return -1, nil
@@ -14590,10 +14590,10 @@ func _KwdAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Kwd}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -14623,8 +14623,8 @@ func _KwdAction(parser *_Parser, start int) (int, *Id) {
 		}
 		pos++
 		node = func(
-			start, end int, id Id) Id {
-			return Id{Name: id.Name + ":", L: l(parser, start, end)}
+			start, end int, id Ident) Ident {
+			return Ident{Name: id.Name + ":", L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -15629,7 +15629,7 @@ fail:
 func _FieldValAction(parser *_Parser, start int) (int, *FieldVal) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_FieldVal]
 	if dp < 0 {
@@ -15678,7 +15678,7 @@ func _FieldValAction(parser *_Parser, start int) (int, *FieldVal) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, name Id, val Expr) FieldVal {
+			start, end int, name Ident, val Expr) FieldVal {
 			return FieldVal{Name: name, Val: val, L: l(parser, start, end)}
 		}(
 			start0, pos, label0, label1)
@@ -15771,10 +15771,10 @@ fail:
 	return -1, failure
 }
 
-func _FieldIdAction(parser *_Parser, start int) (int, *Id) {
+func _FieldIdAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	dp := parser.deltaPos[start][_FieldId]
 	if dp < 0 {
 		return -1, nil
@@ -15782,10 +15782,10 @@ func _FieldIdAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _FieldId}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -15815,8 +15815,8 @@ func _FieldIdAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, id Id) Id {
-			return Id{Name: "." + id.Name, L: l(parser, start, end)}
+			start, end int, id Ident) Ident {
+			return Ident{Name: "." + id.Name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -16093,7 +16093,7 @@ fail:
 func _CaseValAction(parser *_Parser, start int) (int, *CaseVal) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 *Expr
 	dp := parser.deltaPos[start][_CaseVal]
 	if dp < 0 {
@@ -16152,7 +16152,7 @@ func _CaseValAction(parser *_Parser, start int) (int, *CaseVal) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, name Id, v *Expr) CaseVal {
+			start, end int, name Ident, v *Expr) CaseVal {
 			var val Expr
 			if v != nil {
 				val = *v
@@ -16249,10 +16249,10 @@ fail:
 	return -1, failure
 }
 
-func _CaseIdAction(parser *_Parser, start int) (int, *Id) {
+func _CaseIdAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	dp := parser.deltaPos[start][_CaseId]
 	if dp < 0 {
 		return -1, nil
@@ -16260,10 +16260,10 @@ func _CaseIdAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _CaseId}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -16293,8 +16293,8 @@ func _CaseIdAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, id Id) Id {
-			return Id{Name: "?" + id.Name, L: l(parser, start, end)}
+			start, end int, id Ident) Ident {
+			return Ident{Name: "?" + id.Name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -16756,7 +16756,7 @@ fail:
 func _BlkParmAction(parser *_Parser, start int) (int, *FuncParm) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 *Type
 	dp := parser.deltaPos[start][_BlkParm]
 	if dp < 0 {
@@ -16809,7 +16809,7 @@ func _BlkParmAction(parser *_Parser, start int) (int, *FuncParm) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, id Id, t *Type) FuncParm {
+			start, end int, id Ident, t *Type) FuncParm {
 			var typ Type
 			if t != nil {
 				typ = *t
@@ -20367,7 +20367,7 @@ fail:
 	return -1, failure
 }
 
-func _IdAction(parser *_Parser, start int) (int, *Id) {
+func _IdAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
 	var label0 string
@@ -20378,10 +20378,10 @@ func _IdAction(parser *_Parser, start int) (int, *Id) {
 	key := _key{start: start, rule: _Id}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(Id)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node Id
+	var node Ident
 	pos := start
 	// action
 	{
@@ -20513,8 +20513,8 @@ func _IdAction(parser *_Parser, start int) (int, *Id) {
 			labels[0] = parser.text[pos10:pos]
 		}
 		node = func(
-			start, end int, name string) Id {
-			return Id{Name: name, L: l(parser, start, end)}
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}
@@ -22718,7 +22718,7 @@ fail:
 func _NameArg__Kwd__KwArgAction(parser *_Parser, start int) (int, *nameArg) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_NameArg__Kwd__KwArg]
 	if dp < 0 {
@@ -22761,7 +22761,7 @@ func _NameArg__Kwd__KwArgAction(parser *_Parser, start int) (int, *nameArg) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, arg Expr, name Id) nameArg {
+			start, end int, arg Expr, name Ident) nameArg {
 			return nameArg{name: name, arg: arg}
 		}(
 			start0, pos, label1, label0)
@@ -22846,7 +22846,7 @@ fail:
 func _NameArg__CaseId__SwitchArgAction(parser *_Parser, start int) (int, *nameArg) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_NameArg__CaseId__SwitchArg]
 	if dp < 0 {
@@ -22889,7 +22889,7 @@ func _NameArg__CaseId__SwitchArgAction(parser *_Parser, start int) (int, *nameAr
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, arg Expr, name Id) nameArg {
+			start, end int, arg Expr, name Ident) nameArg {
 			return nameArg{name: name, arg: arg}
 		}(
 			start0, pos, label1, label0)
@@ -23839,7 +23839,7 @@ fail:
 func _BinTail__AsgnOp__AsgnArgAction(parser *_Parser, start int) (int, **Call) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_BinTail__AsgnOp__AsgnArg]
 	if dp < 0 {
@@ -23882,7 +23882,7 @@ func _BinTail__AsgnOp__AsgnArgAction(parser *_Parser, start int) (int, **Call) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, arg1 Expr, name Id) *Call {
+			start, end int, arg1 Expr, name Ident) *Call {
 			return &Call{
 				Fun:  name,
 				Args: []Expr{nil, arg1},
@@ -23971,7 +23971,7 @@ fail:
 func _BinTail__Bin5Op__Bin5ArgAction(parser *_Parser, start int) (int, **Call) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_BinTail__Bin5Op__Bin5Arg]
 	if dp < 0 {
@@ -24014,7 +24014,7 @@ func _BinTail__Bin5Op__Bin5ArgAction(parser *_Parser, start int) (int, **Call) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, arg1 Expr, name Id) *Call {
+			start, end int, arg1 Expr, name Ident) *Call {
 			return &Call{
 				Fun:  name,
 				Args: []Expr{nil, arg1},
@@ -24103,7 +24103,7 @@ fail:
 func _BinTail__Bin4Op__Bin4ArgAction(parser *_Parser, start int) (int, **Call) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_BinTail__Bin4Op__Bin4Arg]
 	if dp < 0 {
@@ -24146,7 +24146,7 @@ func _BinTail__Bin4Op__Bin4ArgAction(parser *_Parser, start int) (int, **Call) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, arg1 Expr, name Id) *Call {
+			start, end int, arg1 Expr, name Ident) *Call {
 			return &Call{
 				Fun:  name,
 				Args: []Expr{nil, arg1},
@@ -24235,7 +24235,7 @@ fail:
 func _BinTail__Bin3Op__Bin3ArgAction(parser *_Parser, start int) (int, **Call) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_BinTail__Bin3Op__Bin3Arg]
 	if dp < 0 {
@@ -24278,7 +24278,7 @@ func _BinTail__Bin3Op__Bin3ArgAction(parser *_Parser, start int) (int, **Call) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, arg1 Expr, name Id) *Call {
+			start, end int, arg1 Expr, name Ident) *Call {
 			return &Call{
 				Fun:  name,
 				Args: []Expr{nil, arg1},
@@ -24367,7 +24367,7 @@ fail:
 func _BinTail__Bin2Op__Bin2ArgAction(parser *_Parser, start int) (int, **Call) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_BinTail__Bin2Op__Bin2Arg]
 	if dp < 0 {
@@ -24410,7 +24410,7 @@ func _BinTail__Bin2Op__Bin2ArgAction(parser *_Parser, start int) (int, **Call) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, arg1 Expr, name Id) *Call {
+			start, end int, arg1 Expr, name Ident) *Call {
 			return &Call{
 				Fun:  name,
 				Args: []Expr{nil, arg1},
@@ -24499,7 +24499,7 @@ fail:
 func _BinTail__Bin1Op__Bin1ArgAction(parser *_Parser, start int) (int, **Call) {
 	var labels [2]string
 	use(labels)
-	var label0 Id
+	var label0 Ident
 	var label1 Expr
 	dp := parser.deltaPos[start][_BinTail__Bin1Op__Bin1Arg]
 	if dp < 0 {
@@ -24542,7 +24542,7 @@ func _BinTail__Bin1Op__Bin1ArgAction(parser *_Parser, start int) (int, **Call) {
 			labels[1] = parser.text[pos3:pos]
 		}
 		node = func(
-			start, end int, arg1 Expr, name Id) *Call {
+			start, end int, arg1 Expr, name Ident) *Call {
 			return &Call{
 				Fun:  name,
 				Args: []Expr{nil, arg1},

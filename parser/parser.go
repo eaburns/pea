@@ -103,12 +103,12 @@ func namedType(args []Type, names []*NamedType, l loc.Loc) Type {
 }
 
 type nameArg struct {
-	name Id
+	name Ident
 	arg  Expr
 }
 
 func nary(l loc.Loc, nameArgs []nameArg) *Call {
-	var name Id
+	var name Ident
 	name.L[0] = nameArgs[0].name.L[0]
 	name.L[1] = nameArgs[len(nameArgs)-1].name.L[1]
 	var args []Expr
@@ -133,7 +133,7 @@ func bins(expr Expr, calls []*Call) Expr {
 type primary interface{}
 
 type sel struct {
-	name Id
+	name Ident
 	l    loc.Loc
 }
 
@@ -155,7 +155,7 @@ func primaries(head Expr, tail []primary) Expr {
 		case call:
 			head = &Call{Fun: head, Args: p.args, L: p.l}
 		case idx:
-			head = &Call{Fun: Id{Name: "[]", L: p.l}, Args: append([]Expr{head}, p.args...), L: p.l}
+			head = &Call{Fun: Ident{Name: "[]", L: p.l}, Args: append([]Expr{head}, p.args...), L: p.l}
 		default:
 			panic(fmt.Sprintf("bad primary type: %T", primary))
 		}
@@ -163,7 +163,7 @@ func primaries(head Expr, tail []primary) Expr {
 	return head
 }
 
-func catNames(ids []Id) string {
+func catNames(ids []Ident) string {
 	var s strings.Builder
 	for _, id := range ids {
 		s.WriteString(id.Name)

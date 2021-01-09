@@ -13,11 +13,11 @@ func TestExpr(t *testing.T) {
 		expr string
 		want interface{}
 	}{
-		{"a", Id{Name: "a"}},
-		{"a123", Id{Name: "a123"}},
-		{"_a123", Id{Name: "_a123"}},
-		{"α", Id{Name: "α"}},
-		{"test_foo", Id{Name: "test_foo"}}, // reserved word prefix
+		{"a", Ident{Name: "a"}},
+		{"a123", Ident{Name: "a123"}},
+		{"_a123", Ident{Name: "_a123"}},
+		{"α", Ident{Name: "α"}},
+		{"test_foo", Ident{Name: "test_foo"}}, // reserved word prefix
 
 		{"0.0", &FloatLit{Text: "0.0"}},
 		{"1.0", &FloatLit{Text: "1.0"}},
@@ -57,18 +57,18 @@ func TestExpr(t *testing.T) {
 
 		{
 			`(){x}`,
-			&BlockLit{Exprs: []Expr{Id{Name: "x"}}},
+			&BlockLit{Exprs: []Expr{Ident{Name: "x"}}},
 		},
 		{
 			`(i int){x}`,
 			&BlockLit{
 				Parms: []FuncParm{
 					{
-						Name: Id{Name: "i"},
-						Type: &NamedType{Name: Id{Name: "int"}},
+						Name: Ident{Name: "i"},
+						Type: &NamedType{Name: Ident{Name: "int"}},
 					},
 				},
-				Exprs: []Expr{Id{Name: "x"}},
+				Exprs: []Expr{Ident{Name: "x"}},
 			},
 		},
 		{
@@ -76,29 +76,29 @@ func TestExpr(t *testing.T) {
 			&BlockLit{
 				Parms: []FuncParm{
 					{
-						Name: Id{Name: "i"},
-						Type: &NamedType{Name: Id{Name: "int"}},
+						Name: Ident{Name: "i"},
+						Type: &NamedType{Name: Ident{Name: "int"}},
 					},
 					{
-						Name: Id{Name: "j"},
-						Type: &NamedType{Name: Id{Name: "int"}},
+						Name: Ident{Name: "j"},
+						Type: &NamedType{Name: Ident{Name: "int"}},
 					},
 				},
-				Exprs: []Expr{Id{Name: "x"}},
+				Exprs: []Expr{Ident{Name: "x"}},
 			},
 		},
 
 		{
 			`[?none]`,
 			&UnionLit{
-				CaseVal: CaseVal{Name: Id{Name: "?none"}},
+				CaseVal: CaseVal{Name: Ident{Name: "?none"}},
 			},
 		},
 		{
 			`[?some 5]`,
 			&UnionLit{
 				CaseVal: CaseVal{
-					Name: Id{Name: "?some"},
+					Name: Ident{Name: "?some"},
 					Val:  &IntLit{Text: "5"},
 				},
 			},
@@ -113,7 +113,7 @@ func TestExpr(t *testing.T) {
 			&StructLit{
 				FieldVals: []FieldVal{
 					{
-						Name: Id{Name: ".x"},
+						Name: Ident{Name: ".x"},
 						Val:  &IntLit{Text: "5"},
 					},
 				},
@@ -124,11 +124,11 @@ func TestExpr(t *testing.T) {
 			&StructLit{
 				FieldVals: []FieldVal{
 					{
-						Name: Id{Name: ".x"},
+						Name: Ident{Name: ".x"},
 						Val:  &IntLit{Text: "5"},
 					},
 					{
-						Name: Id{Name: ".y"},
+						Name: Ident{Name: ".y"},
 						Val:  &IntLit{Text: "7"},
 					},
 				},
@@ -157,9 +157,9 @@ func TestExpr(t *testing.T) {
 			&ArrayLit{
 				Exprs: []Expr{
 					&Call{
-						Fun: Id{Name: "?foo"},
+						Fun: Ident{Name: "?foo"},
 						Args: []Expr{
-							Id{Name: "x"},
+							Ident{Name: "x"},
 							&IntLit{Text: "6"},
 						},
 					},
@@ -171,9 +171,9 @@ func TestExpr(t *testing.T) {
 			&ArrayLit{
 				Exprs: []Expr{
 					&Call{
-						Fun: Id{Name: ".y"},
+						Fun: Ident{Name: ".y"},
 						Args: []Expr{
-							Id{Name: "x"},
+							Ident{Name: "x"},
 						},
 					},
 				},
@@ -183,7 +183,7 @@ func TestExpr(t *testing.T) {
 		{
 			`1.y`,
 			&Call{
-				Fun: Id{Name: ".y"},
+				Fun: Ident{Name: ".y"},
 				Args: []Expr{
 					&IntLit{Text: "1"},
 				},
@@ -192,20 +192,20 @@ func TestExpr(t *testing.T) {
 		{
 			`x.y`,
 			&Call{
-				Fun: Id{Name: ".y"},
+				Fun: Ident{Name: ".y"},
 				Args: []Expr{
-					Id{Name: "x"},
+					Ident{Name: "x"},
 				},
 			},
 		},
 		{
 			`x.y.z`,
 			&Call{
-				Fun: Id{Name: ".z"},
+				Fun: Ident{Name: ".z"},
 				Args: []Expr{
 					&Call{
-						Fun:  Id{Name: ".y"},
-						Args: []Expr{Id{Name: "x"}},
+						Fun:  Ident{Name: ".y"},
+						Args: []Expr{Ident{Name: "x"}},
 					},
 				},
 			},
@@ -214,18 +214,18 @@ func TestExpr(t *testing.T) {
 		{
 			`int : foo`,
 			&Convert{
-				Expr: Id{Name: "foo"},
-				Type: &NamedType{Name: Id{Name: "int"}},
+				Expr: Ident{Name: "foo"},
+				Type: &NamedType{Name: Ident{Name: "int"}},
 			},
 		},
 		{
 			`[.x int] : foo`,
 			&Convert{
-				Expr: Id{Name: "foo"},
+				Expr: Ident{Name: "foo"},
 				Type: &StructType{
 					Fields: []FieldDef{{
-						Name: Id{Name: ".x"},
-						Type: &NamedType{Name: Id{Name: "int"}},
+						Name: Ident{Name: ".x"},
+						Type: &NamedType{Name: Ident{Name: "int"}},
 					}},
 				},
 			},
@@ -234,34 +234,34 @@ func TestExpr(t *testing.T) {
 		{
 			`a*b+c=d&&true||false`,
 			&Call{
-				Fun: Id{Name: "||"},
+				Fun: Ident{Name: "||"},
 				Args: []Expr{
 					&Call{
-						Fun: Id{Name: "&&"},
+						Fun: Ident{Name: "&&"},
 						Args: []Expr{
 							&Call{
-								Fun: Id{Name: "="},
+								Fun: Ident{Name: "="},
 								Args: []Expr{
 									&Call{
-										Fun: Id{Name: "+"},
+										Fun: Ident{Name: "+"},
 										Args: []Expr{
 											&Call{
-												Fun: Id{Name: "*"},
+												Fun: Ident{Name: "*"},
 												Args: []Expr{
-													Id{Name: "a"},
-													Id{Name: "b"},
+													Ident{Name: "a"},
+													Ident{Name: "b"},
 												},
 											},
-											Id{Name: "c"},
+											Ident{Name: "c"},
 										},
 									},
-									Id{Name: "d"},
+									Ident{Name: "d"},
 								},
 							},
-							Id{Name: "true"},
+							Ident{Name: "true"},
 						},
 					},
-					Id{Name: "false"},
+					Ident{Name: "false"},
 				},
 			},
 		},
@@ -269,32 +269,32 @@ func TestExpr(t *testing.T) {
 		{
 			`x ?foo y`,
 			&Call{
-				Fun: Id{Name: "?foo"},
+				Fun: Ident{Name: "?foo"},
 				Args: []Expr{
-					Id{Name: "x"},
-					Id{Name: "y"},
+					Ident{Name: "x"},
+					Ident{Name: "y"},
 				},
 			},
 		},
 		{
 			`x ?foo y ?bar z ?baz a`,
 			&Call{
-				Fun: Id{Name: "?foo?bar?baz"},
+				Fun: Ident{Name: "?foo?bar?baz"},
 				Args: []Expr{
-					Id{Name: "x"},
-					Id{Name: "y"},
-					Id{Name: "z"},
-					Id{Name: "a"},
+					Ident{Name: "x"},
+					Ident{Name: "y"},
+					Ident{Name: "z"},
+					Ident{Name: "a"},
 				},
 			},
 		},
 		{
 			`x() ?foo y`,
 			&Call{
-				Fun: Id{Name: "?foo"},
+				Fun: Ident{Name: "?foo"},
 				Args: []Expr{
-					&Call{Fun: Id{Name: "x"}},
-					Id{Name: "y"},
+					&Call{Fun: Ident{Name: "x"}},
+					Ident{Name: "y"},
 				},
 			},
 		},
@@ -302,58 +302,58 @@ func TestExpr(t *testing.T) {
 		{
 			`foo: x`,
 			&Call{
-				Fun: Id{Name: "foo:"},
+				Fun: Ident{Name: "foo:"},
 				Args: []Expr{
-					Id{Name: "x"},
+					Ident{Name: "x"},
 				},
 			},
 		},
 		{
 			`foo: x bar: y baz: z`,
 			&Call{
-				Fun: Id{Name: "foo:bar:baz:"},
+				Fun: Ident{Name: "foo:bar:baz:"},
 				Args: []Expr{
-					Id{Name: "x"},
-					Id{Name: "y"},
-					Id{Name: "z"},
+					Ident{Name: "x"},
+					Ident{Name: "y"},
+					Ident{Name: "z"},
 				},
 			},
 		},
 		{
 			`foo().bar`,
 			&Call{
-				Fun: Id{Name: ".bar"},
+				Fun: Ident{Name: ".bar"},
 				Args: []Expr{
-					&Call{Fun: Id{Name: "foo"}},
+					&Call{Fun: Ident{Name: "foo"}},
 				},
 			},
 		},
 		{
 			`foo()[bar]`,
 			&Call{
-				Fun: Id{Name: "[]"},
+				Fun: Ident{Name: "[]"},
 				Args: []Expr{
-					&Call{Fun: Id{Name: "foo"}},
-					Id{Name: "bar"},
+					&Call{Fun: Ident{Name: "foo"}},
+					Ident{Name: "bar"},
 				},
 			},
 		},
 		{
 			`foo()()`,
 			&Call{
-				Fun: &Call{Fun: Id{Name: "foo"}},
+				Fun: &Call{Fun: Ident{Name: "foo"}},
 			},
 		},
 		{
 			`foo[bar].baz`,
 			&Call{
-				Fun: Id{Name: ".baz"},
+				Fun: Ident{Name: ".baz"},
 				Args: []Expr{
 					&Call{
-						Fun: Id{Name: "[]"},
+						Fun: Ident{Name: "[]"},
 						Args: []Expr{
-							Id{Name: "foo"},
-							Id{Name: "bar"},
+							Ident{Name: "foo"},
+							Ident{Name: "bar"},
 						},
 					},
 				},
@@ -363,10 +363,10 @@ func TestExpr(t *testing.T) {
 			`foo[bar]()`,
 			&Call{
 				Fun: &Call{
-					Fun: Id{Name: "[]"},
+					Fun: Ident{Name: "[]"},
 					Args: []Expr{
-						Id{Name: "foo"},
-						Id{Name: "bar"},
+						Ident{Name: "foo"},
+						Ident{Name: "bar"},
 					},
 				},
 			},
@@ -374,16 +374,16 @@ func TestExpr(t *testing.T) {
 		{
 			`foo[bar][baz]`,
 			&Call{
-				Fun: Id{Name: "[]"},
+				Fun: Ident{Name: "[]"},
 				Args: []Expr{
 					&Call{
-						Fun: Id{Name: "[]"},
+						Fun: Ident{Name: "[]"},
 						Args: []Expr{
-							Id{Name: "foo"},
-							Id{Name: "bar"},
+							Ident{Name: "foo"},
+							Ident{Name: "bar"},
 						},
 					},
-					Id{Name: "baz"},
+					Ident{Name: "baz"},
 				},
 			},
 		},
@@ -391,32 +391,32 @@ func TestExpr(t *testing.T) {
 			`foo.bar()`,
 			&Call{
 				Fun: &Call{
-					Fun:  Id{Name: ".bar"},
-					Args: []Expr{Id{Name: "foo"}},
+					Fun:  Ident{Name: ".bar"},
+					Args: []Expr{Ident{Name: "foo"}},
 				},
 			},
 		},
 		{
 			`foo.bar[baz]`,
 			&Call{
-				Fun: Id{Name: "[]"},
+				Fun: Ident{Name: "[]"},
 				Args: []Expr{
 					&Call{
-						Fun:  Id{Name: ".bar"},
-						Args: []Expr{Id{Name: "foo"}},
+						Fun:  Ident{Name: ".bar"},
+						Args: []Expr{Ident{Name: "foo"}},
 					},
-					Id{Name: "baz"},
+					Ident{Name: "baz"},
 				},
 			},
 		},
 		{
 			`foo.bar.baz`,
 			&Call{
-				Fun: Id{Name: ".baz"},
+				Fun: Ident{Name: ".baz"},
 				Args: []Expr{
 					&Call{
-						Fun:  Id{Name: ".bar"},
-						Args: []Expr{Id{Name: "foo"}},
+						Fun:  Ident{Name: ".bar"},
+						Args: []Expr{Ident{Name: "foo"}},
 					},
 				},
 			},

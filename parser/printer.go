@@ -293,7 +293,7 @@ func (t TypeVar) print(pc *config) {
 	pc.loc(t.L)
 }
 
-func (i Id) print(pc *config) {
+func (i Ident) print(pc *config) {
 	pc.p("Id(%s)", i.Name)
 	pc.loc(i.L)
 }

@@ -52,7 +52,7 @@ func (fs Files) Len() int {
 	return n
 }
 
-// Loc returns the Loc for a node in the module AST.
+// Location returns the Loc for a node in the module AST.
 func (fs Files) Location(l Loc) Location {
 	switch {
 	case len(fs) == 0:
