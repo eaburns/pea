@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
@@ -1026,7 +1027,7 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 		return &Call{Args: args, L: parserCall.L}, errs
 	}
 
-	fun := funcs[0]
+	fun := useFunc(x, funcs[0])
 	ret := fun.groundRet()
 	for i, arg := range args {
 		args[i], _ = convert(arg, fun.groundParm(i))
@@ -1043,6 +1044,23 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	}, errs
 }
 
+// idFunc is like an ExprFunc, but it holds only ids not yet converted to expressions.
+// It is used when checking ID calls in order to maintain the un-converted id
+// in order to be able to mark its use with useID() if selected as the correct overload.
+// An idFunc will only exist inside checkIDCall, and is never returned from checkIDCall.
+type idFunc struct {
+	id       id
+	funcType *FuncType
+	l        loc.Loc
+}
+
+func (i *idFunc) String() string { return i.id.String() }
+
+func (i *idFunc) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(i.String())
+	return s
+}
+
 func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 	var funcs []Func
 	var notes []note
@@ -1051,13 +1069,20 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 		var expr Expr
 		switch id := id.(type) {
 		case *VarDef:
-			expr = idToExpr(id, l)
+			if t, ok := id.T.(*FuncType); ok {
+				fun = &idFunc{id: id, funcType: t, l: l}
+			}
 		case *FuncParm:
-			expr = idToExpr(id, l)
+			if t, ok := id.T.(*FuncType); ok {
+				fun = &idFunc{id: id, funcType: t, l: l}
+			}
 		case *FuncLocal:
-			expr = idToExpr(id, l)
+			if t, ok := id.T.(*FuncType); ok {
+				fun = &idFunc{id: id, funcType: t, l: l}
+			}
 		case *BlockCap:
-			expr = idToExpr(id, l)
+			// find() does not return *BlockCap, so this is not possible.
+			panic("impossible")
 		case Func:
 			fun = id
 		default:
@@ -1194,6 +1219,20 @@ func filterIfaceConstraints(x scope, funcs []Func) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
+func useFunc(x scope, fun Func) Func {
+	switch fun := fun.(type) {
+	case *FuncInst:
+		return fun // TODO: dedup funcinst
+	case *idFunc:
+		return &ExprFunc{
+			Expr:     idToExpr(useID(x, fun.id), fun.l),
+			FuncType: fun.funcType,
+		}
+	default:
+		return fun
+	}
+}
+
 func ambiguousCall(name string, funcs []Func, l loc.Loc) Error {
 	var notes []note
 	for _, f := range funcs {
@@ -1268,7 +1307,7 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 }
 
 func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
-	var exprs []Expr
+	var ids []id
 	var notFoundNotes []note
 	var ambigNotes []note
 	for _, id := range x.find(parserID.Name) {
@@ -1276,10 +1315,9 @@ func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 		if !isGround(id) {
 			continue
 		}
-		expr := idToExpr(id, parserID.L)
 		if want != nil {
-			var err Error
-			if expr, err = convert(expr, want); err != nil {
+			expr := idToExpr(id, parserID.L)
+			if _, err := convert(expr, want); err != nil {
 				notFoundNotes = append(notFoundNotes,
 					newNote("cannot convert %s (%s) to type %s",
 						expr, expr.Type(), want).setLoc(expr))
@@ -1291,14 +1329,14 @@ func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 			l = locer.Loc()
 		}
 		ambigNotes = append(ambigNotes, newNote(id.String()).setLoc(l))
-		exprs = append(exprs, expr)
+		ids = append(ids, id)
 	}
 	switch {
-	case len(exprs) == 0:
+	case len(ids) == 0:
 		err := notFound(parserID.Name, parserID.L)
 		err.setNotes(notFoundNotes)
 		return nil, []Error{err}
-	case len(exprs) > 1:
+	case len(ids) > 1:
 		var err Error
 		if want != nil {
 			err = newError(parserID.L, "%s is ambiguous", parserID.Name)
@@ -1308,7 +1346,7 @@ func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 		err.setNotes(ambigNotes)
 		return nil, []Error{err}
 	default:
-		return exprs[0], nil
+		return idToExpr(useID(x, ids[0]), parserID.L), nil
 	}
 }
 
@@ -1326,18 +1364,32 @@ func isGround(id id) bool {
 	}
 }
 
+func useID(x scope, id id) id {
+	switch id := id.(type) {
+	case *VarDef:
+		return id // TODO: track used module level variables.
+	case *FuncParm:
+		return x.capture(id)
+	case *FuncLocal:
+		return x.capture(id)
+	case *BlockCap:
+		return x.capture(id)
+	case *FuncInst:
+		return id // TODO: dedup funcinst
+	default:
+		return id
+	}
+}
+
 func idToExpr(id id, l loc.Loc) Expr {
 	switch id := id.(type) {
 	case *VarDef:
 		return deref(&Var{Def: id, T: ref(id.T), L: l})
 	case *FuncParm:
-		// TODO: handle capture
 		return deref(&Parm{Def: id, T: ref(id.T), L: l})
 	case *FuncLocal:
-		// TODO: handle capture
 		return deref(&Local{Def: id, T: ref(id.T), L: l})
 	case *BlockCap:
-		// TODO: handle capture
 		return deref(&Cap{Def: id, T: ref(id.T), L: l})
 	case Func:
 		return wrapCallInBlock(id, l)

@@ -193,7 +193,7 @@ type FuncDef struct {
 	Name      string
 	TypeParms []TypeParm
 	Parms     []FuncParm
-	Locals    []FuncLocal
+	Locals    []*FuncLocal
 	Ret       Type
 	Iface     []FuncDecl
 	Exprs     []Expr // nil if unspecified, non-nil, len()==0 if empty
@@ -251,28 +251,28 @@ type FuncInst struct {
 	T         *FuncType
 }
 
-func (f *FuncInst) Loc() loc.Loc  { return f.Def.L }
-func (f *FuncInst) Type() Type    { return f.T }
+func (f *FuncInst) Loc() loc.Loc { return f.Def.L }
+func (f *FuncInst) Type() Type   { return f.T }
 
 type Select struct {
 	// Struct is the struct type and the type of the 0th parameter.
 	// During overload resolution, Struct is nil until parm 0 is unified.
 	Struct *StructType
 	Field  *FieldDef
-	Parm      Type
-	Ret      Type
+	Parm   Type
+	Ret    Type
 }
 
-func (s *Select) Type() Type    { return &FuncType{Parms: []Type{s.Parm}, Ret: s.Ret} }
+func (s *Select) Type() Type { return &FuncType{Parms: []Type{s.Parm}, Ret: s.Ret} }
 
 type Switch struct {
 	Union *UnionType
 	Cases []*CaseDef
-	Parms    []Type
-	Ret     Type // inferred return type
+	Parms []Type
+	Ret   Type // inferred return type
 }
 
-func (s *Switch) Type() Type    { return &FuncType{Parms: s.Parms, Ret: s.Ret} }
+func (s *Switch) Type() Type { return &FuncType{Parms: s.Parms, Ret: s.Ret} }
 
 type Op int
 
@@ -308,12 +308,12 @@ const (
 )
 
 type Builtin struct {
-	Op Op
+	Op    Op
 	Parms []Type
-	Ret  Type
+	Ret   Type
 }
 
-func (b *Builtin) Type() Type    { return &FuncType{Parms: b.Parms, Ret: b.Ret} }
+func (b *Builtin) Type() Type { return &FuncType{Parms: b.Parms, Ret: b.Ret} }
 
 type ExprFunc struct {
 	Expr
@@ -415,9 +415,9 @@ func (u *UnionLit) Type() Type   { return u.T }
 func (u *UnionLit) Loc() loc.Loc { return u.L }
 
 type BlockLit struct {
-	Caps   []BlockCap
+	Caps   []*BlockCap
 	Parms  []FuncParm
-	Locals []FuncLocal
+	Locals []*FuncLocal
 	Ret    Type // result type of the block
 	Exprs  []Expr
 	T      Type

@@ -490,14 +490,16 @@ func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) note {
 	return nil
 }
 
-func (e *ExprFunc) arity() int { return len(e.FuncType.Parms) }
+func (id *idFunc) arity() int                   { return len(id.funcType.Parms) }
+func (id *idFunc) groundRet() Type              { return id.funcType.Ret }
+func (id *idFunc) unifyRet(Type) note           { return nil }
+func (id *idFunc) groundParm(i int) Type        { return id.funcType.Parms[i] }
+func (id *idFunc) unifyParm(i int, _ Type) note { return nil }
 
-func (e *ExprFunc) groundRet() Type { return e.FuncType.Ret }
-
-func (e *ExprFunc) unifyRet(Type) note { return nil }
-
-func (e *ExprFunc) groundParm(i int) Type { return e.FuncType.Parms[i] }
-
+func (e *ExprFunc) arity() int                   { return len(e.FuncType.Parms) }
+func (e *ExprFunc) groundRet() Type              { return e.FuncType.Ret }
+func (e *ExprFunc) unifyRet(Type) note           { return nil }
+func (e *ExprFunc) groundParm(i int) Type        { return e.FuncType.Parms[i] }
 func (e *ExprFunc) unifyParm(i int, _ Type) note { return nil }
 
 func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {

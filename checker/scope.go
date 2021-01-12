@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -11,6 +12,7 @@ type scope interface {
 	find(name string) []id
 	findMod(name string) *Import
 	findType(args []Type, name string, l loc.Loc) Type
+	capture(id) id
 }
 
 type id interface {
@@ -175,7 +177,7 @@ func (m *Mod) find(name string) []id {
 		n := len(caseNames)
 		sw := Switch{
 			Cases: make([]*CaseDef, n),
-			Parms:    make([]Type, n+1),
+			Parms: make([]Type, n+1),
 		}
 		for i, caseName := range caseNames {
 			sw.Cases[i] = &CaseDef{Name: caseName}
@@ -279,7 +281,7 @@ func (f *FuncDef) find(name string) []id {
 	}
 	for i := range f.Locals {
 		if f.Locals[i].Name == name {
-			return []id{&f.Locals[i]}
+			return []id{f.Locals[i]}
 		}
 	}
 	for i := range f.Parms {
@@ -301,17 +303,12 @@ func (b *blockLitScope) find(name string) []id {
 	}
 	for i := range b.Locals {
 		if b.Locals[i].Name == name {
-			return []id{&b.Locals[i]}
+			return []id{b.Locals[i]}
 		}
 	}
 	for i := range b.Parms {
 		if b.Parms[i].Name == name {
 			return []id{&b.Parms[i]}
-		}
-	}
-	for i := range b.Caps {
-		if b.Caps[i].Name == name {
-			return []id{&b.Caps[i]}
 		}
 	}
 	return b.parent.find(name)
@@ -397,3 +394,67 @@ func subFuncDecl(sub map[*TypeParm]Type, decl *FuncDecl) *FuncDecl {
 		L:     decl.L,
 	}
 }
+
+func (*Mod) capture(id id) id       { return id }
+func (*Import) capture(id id) id    { return id }
+func (f *File) capture(id id) id    { return id }
+func (v *VarDef) capture(id id) id  { return id }
+func (t *TypeDef) capture(id id) id { return id }
+func (f *FuncDef) capture(id id) id { return id }
+func (t *TestDef) capture(id id) id { panic("impossible") }
+
+func (b *blockLitScope) capture(id id) id {
+	switch id := id.(type) {
+	case *FuncParm:
+		for i := range b.Parms {
+			if id == &b.Parms[i] {
+				return id
+			}
+		}
+	case *FuncLocal:
+		for _, l := range b.Locals {
+			if id == l {
+				return id
+			}
+		}
+	case *BlockCap:
+		// Since find() never returns a *BlockCap, we can never hit this case.
+		panic("impossible")
+	default:
+		return id
+	}
+
+	switch id := b.parent.capture(id).(type) {
+	case *FuncParm:
+		for _, c := range b.Caps {
+			if c.Parm == id {
+				return c
+			}
+		}
+		c := &BlockCap{Name: id.Name, T: id.T, L: id.L, Parm: id}
+		b.Caps = append(b.Caps, c)
+		return c
+	case *FuncLocal:
+		for _, c := range b.Caps {
+			if c.Local == id {
+				return c
+			}
+		}
+		c := &BlockCap{Name: id.Name, T: id.T, L: id.L, Local: id}
+		b.Caps = append(b.Caps, c)
+		return c
+	case *BlockCap:
+		for _, c := range b.Caps {
+			if c.Cap == id {
+				return c
+			}
+		}
+		c := &BlockCap{Name: id.Name, T: id.T, L: id.L, Cap: id}
+		b.Caps = append(b.Caps, c)
+		return c
+	default:
+		panic(fmt.Sprintf("impossible capture type: %T", id))
+	}
+}
+
+func (e *excludeFunc) capture(id id) id { return e.parent.capture(id) }

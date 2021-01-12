@@ -917,6 +917,80 @@ func TestSwitchReturnTypes(t *testing.T) {
 	}
 }
 
+func TestCaptureParm(t *testing.T) {
+	const src = `
+		var x := (i int){
+			{i + i + i}
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("%v\n", errs)
+	}
+	t.Log(mod)
+	x := findVarDef(t, "x", mod)
+	bOuter := x.Expr.(*Deref).Expr.(*BlockLit)
+	bInner := bOuter.Exprs[0].(*Deref).Expr.(*BlockLit)
+	if len(bInner.Caps) != 1 {
+		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))
+	}
+	if bInner.Caps[0].Parm != &bOuter.Parms[0] {
+		t.Errorf("expected parameter capture, got %v", bInner.Caps[0])
+	}
+}
+
+func TestCaptureCapture(t *testing.T) {
+	const src = `
+		var x := (i int){
+			{{i + i + i}}
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("%v\n", errs)
+	}
+	t.Log(mod)
+	x := findVarDef(t, "x", mod)
+	bOuter := x.Expr.(*Deref).Expr.(*BlockLit)
+	bMid := bOuter.Exprs[0].(*Deref).Expr.(*BlockLit)
+	if len(bMid.Caps) != 1 {
+		t.Fatalf("got %d mid caps, expected 1", len(bMid.Caps))
+	}
+	if bMid.Caps[0].Parm != &bOuter.Parms[0] {
+		t.Errorf("expected parameter capture, got %v", bMid.Caps[0])
+	}
+
+	bInner := bMid.Exprs[0].(*Deref).Expr.(*BlockLit)
+	if len(bInner.Caps) != 1 {
+		t.Fatalf("got %d inner caps, expected 1", len(bInner.Caps))
+	}
+	if bInner.Caps[0].Cap != bMid.Caps[0] {
+		t.Errorf("expected capture capture, got %v", bMid.Caps[0])
+	}
+}
+
+func TestCaptureOnCall(t *testing.T) {
+	const src = `
+		var x := (f (){}){
+			{f()}
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("%v\n", errs)
+	}
+	t.Log(mod)
+	x := findVarDef(t, "x", mod)
+	bOuter := x.Expr.(*Deref).Expr.(*BlockLit)
+	bInner := bOuter.Exprs[0].(*Deref).Expr.(*BlockLit)
+	if len(bInner.Caps) != 1 {
+		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))
+	}
+	if bInner.Caps[0].Parm != &bOuter.Parms[0] {
+		t.Errorf("expected parameter capture, got %v", bInner.Caps[0])
+	}
+}
+
 func TestNumLiteralErrors(t *testing.T) {
 	tests := []struct {
 		src  string
