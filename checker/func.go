@@ -1,6 +1,11 @@
 package checker
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/eaburns/pea/loc"
+)
 
 func (f *FuncDecl) arity() int             { return len(f.Parms) }
 func (f *FuncDecl) groundRet() Type        { return f.Ret }
@@ -129,6 +134,106 @@ func isGroundType(parms map[*TypeParm]bool, typ Type) bool {
 	}
 }
 
+func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
+	if eq(literalType(pat), pat) || eq(literalType(typ), typ) {
+		pat = literalType(pat)
+		typ = literalType(typ)
+	}
+	bind := make(map[*TypeParm]Type)
+	if !unifyStrict(parms, bind, valueType(pat), valueType(typ)) {
+		return nil
+	}
+	return bind
+}
+
+func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Type) bool {
+	switch pat := pat.(type) {
+	case *DefType:
+		typ, ok := typ.(*DefType)
+		if !ok || pat.Def != typ.Def {
+			return false
+		}
+		for i := range pat.Args {
+			if !unifyStrict(parms, bind, pat.Args[i], typ.Args[i]) {
+				return false
+			}
+		}
+		return true
+	case *RefType:
+		typ, ok := typ.(*RefType)
+		if !ok {
+			return false
+		}
+		return unifyStrict(parms, bind, pat.Type, typ.Type)
+	case *ArrayType:
+		typ, ok := typ.(*ArrayType)
+		if !ok {
+			return false
+		}
+		return unifyStrict(parms, bind, pat.ElemType, typ.ElemType)
+	case *StructType:
+		typ, ok := typ.(*StructType)
+		if !ok || len(pat.Fields) != len(typ.Fields) {
+			return false
+		}
+		for i := range pat.Fields {
+			patFieldType := pat.Fields[i].Type
+			typFieldType := typ.Fields[i].Type
+			if !unifyStrict(parms, bind, patFieldType, typFieldType) {
+				return false
+			}
+		}
+		return true
+	case *UnionType:
+		typ, ok := typ.(*UnionType)
+		if !ok || len(pat.Cases) != len(typ.Cases) {
+			return false
+		}
+		for i := range pat.Cases {
+			patCaseType := pat.Cases[i].Type
+			typCaseType := typ.Cases[i].Type
+			if patCaseType == nil {
+				if typCaseType != nil {
+					return false
+				}
+				continue
+			}
+			if !unifyStrict(parms, bind, patCaseType, typCaseType) {
+				return false
+			}
+		}
+		return true
+	case *FuncType:
+		typ, ok := typ.(*FuncType)
+		if !ok || len(pat.Parms) != len(typ.Parms) {
+			return false
+		}
+		for i := range pat.Parms {
+			if !unifyStrict(parms, bind, pat.Parms[i], typ.Parms[i]) {
+				return false
+			}
+		}
+		return unifyStrict(parms, bind, pat.Ret, typ.Ret)
+	case *BasicType:
+		if !eq(pat, typ) {
+			return false
+		}
+		return true
+	case *TypeVar:
+		if !parms[pat.Def] {
+			return eq(pat, typ)
+		}
+		prev, ok := bind[pat.Def]
+		if !ok {
+			bind[pat.Def] = typ
+			return true
+		}
+		return eq(prev, typ)
+	default:
+		panic(fmt.Sprintf("impossible Type type: %T", pat))
+	}
+}
+
 func instIface(x scope, fun Func) note {
 	f, ok := fun.(*FuncInst)
 	if !ok {
@@ -198,8 +303,7 @@ func findIfaceFunc(x scope, decl *FuncDecl) (Func, note) {
 }
 
 func unifyFunc(x scope, f Func, typ Type) note {
-	v, _ := valueType(literal(typ))
-	funcType, ok := v.(*FuncType)
+	funcType, ok := valueType(literalType(typ)).(*FuncType)
 	if !ok {
 		return newNote("%s: not a function", f).setLoc(f)
 	}
@@ -223,6 +327,16 @@ func unifyFunc(x scope, f Func, typ Type) note {
 		}
 	}
 	return instIface(x, f)
+}
+
+func canonicalFuncInst(f *FuncInst) *FuncInst {
+	for _, inst := range f.Def.Insts {
+		if f.eq(inst) {
+			return inst
+		}
+	}
+	f.Def.Insts = append(f.Def.Insts, f)
+	return f
 }
 
 func (f *FuncInst) eq(other Func) bool {
@@ -258,8 +372,7 @@ func (s *Select) unifyParm(i int, typ Type) note {
 	if i > 0 {
 		panic("impossible") // can't have more than 1 argument
 	}
-	v, _ := valueType(literal(typ))
-	structType, ok := v.(*StructType)
+	structType, ok := valueType(literalType(typ)).(*StructType)
 	if !ok {
 		return newNote("%s: %s is not a struct type", s, typ).setLoc(typ)
 	}
@@ -305,8 +418,7 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 	switch {
 	case i == 0:
 		var ok bool
-		v, _ := valueType(literal(typ))
-		if s.Union, ok = v.(*UnionType); !ok {
+		if s.Union, ok = valueType(literalType(typ)).(*UnionType); !ok {
 			return newNote("%s: %s is not a union type", s, typ).setLoc(typ)
 		}
 		s.Parms[0] = &RefType{Type: s.Union, L: s.Union.L}
@@ -336,8 +448,7 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 			// Make sure that the empty struct is convertible, if needed.
 			want := s.Ret
 			s.Ret = &StructType{}
-			t, ok := want.(*StructType)
-			if want == nil || ok && len(t.Fields) == 0 {
+			if want == nil || isEmptyStruct(want) {
 				// It's OK. We either didn't have any expectation for the return,
 				// or we wanted an empty struct anyway.
 				break
@@ -351,9 +462,7 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 		if s.Parms[i] != nil {
 			break
 		}
-
-		v, _ := valueType(typ)
-		f, ok := literal(v).(*FuncType)
+		f, ok := valueType(literalType(typ)).(*FuncType)
 		if !ok {
 			return newNote("%s: argument %d (%s) is not a function type", s, i, typ)
 		}
@@ -502,8 +611,7 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 }
 
 func arrayType(b *Builtin, typ Type) (*ArrayType, note) {
-	v, _ := valueType(literal(typ))
-	t, ok := v.(*ArrayType)
+	t, ok := valueType(literalType(typ)).(*ArrayType)
 	if !ok {
 		return nil, newNote("%s: return type %s is not an array type", b, typ)
 	}
@@ -525,8 +633,7 @@ func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) note {
 		return nil
 	}
 	allowed := false
-	valType, _ := valueType(literal(typ))
-	t, ok := valType.(*BasicType)
+	t, ok := valueType(literalType(typ)).(*BasicType)
 	if ok {
 		for _, k := range allowedTypes {
 			if k == t.Kind {
@@ -562,17 +669,6 @@ func (b *Builtin) eq(other Func) bool {
 	return eq(b.Ret, o.Ret)
 }
 
-func (id *idFunc) arity() int                   { return len(id.funcType.Parms) }
-func (id *idFunc) groundRet() Type              { return id.funcType.Ret }
-func (id *idFunc) unifyRet(Type) note           { return nil }
-func (id *idFunc) groundParm(i int) Type        { return id.funcType.Parms[i] }
-func (id *idFunc) unifyParm(i int, _ Type) note { return nil }
-
-// eq should never be called; it's used to check equality of FuncInst ifaces.
-// FuncInst ifaces should never have an idFunc, since it is a temporary,
-// bookkeeping type only used inside overload resolution.
-func (*idFunc) eq(Func) bool { panic("impossible") }
-
 func (e *ExprFunc) arity() int                   { return len(e.FuncType.Parms) }
 func (e *ExprFunc) groundRet() Type              { return e.FuncType.Ret }
 func (e *ExprFunc) unifyRet(Type) note           { return nil }
@@ -585,104 +681,29 @@ func (e *ExprFunc) unifyParm(i int, _ Type) note { return nil }
 // a tuple <&capture_block, &static_function>.
 func (e *ExprFunc) eq(other Func) bool { _, ok := other.(*ExprFunc); return ok }
 
-func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
-	if eq(literal(pat), pat) || eq(literal(typ), typ) {
-		pat = literal(pat)
-		typ = literal(typ)
-	}
-	patVal, _ := valueType(pat)
-	typVal, _ := valueType(typ)
-	bind := make(map[*TypeParm]Type)
-	if !unifyStrict(parms, bind, patVal, typVal) {
-		return nil
-	}
-	return bind
+// idFunc is like an ExprFunc, but it holds only ids not yet converted to expressions.
+// It is used when checking ID calls in order to maintain the un-converted id
+// in order to be able to mark its use with useID() if selected as the correct overload.
+// An idFunc will only exist inside checkIDCall, and is never returned from checkIDCall.
+type idFunc struct {
+	id       id
+	funcType *FuncType
+	l        loc.Loc
 }
 
-func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Type) bool {
-	switch pat := pat.(type) {
-	case *DefType:
-		typ, ok := typ.(*DefType)
-		if !ok || pat.Def != typ.Def {
-			return false
-		}
-		for i := range pat.Args {
-			if !unifyStrict(parms, bind, pat.Args[i], typ.Args[i]) {
-				return false
-			}
-		}
-		return true
-	case *RefType:
-		typ, ok := typ.(*RefType)
-		if !ok {
-			return false
-		}
-		return unifyStrict(parms, bind, pat.Type, typ.Type)
-	case *ArrayType:
-		typ, ok := typ.(*ArrayType)
-		if !ok {
-			return false
-		}
-		return unifyStrict(parms, bind, pat.ElemType, typ.ElemType)
-	case *StructType:
-		typ, ok := typ.(*StructType)
-		if !ok || len(pat.Fields) != len(typ.Fields) {
-			return false
-		}
-		for i := range pat.Fields {
-			patFieldType := pat.Fields[i].Type
-			typFieldType := typ.Fields[i].Type
-			if !unifyStrict(parms, bind, patFieldType, typFieldType) {
-				return false
-			}
-		}
-		return true
-	case *UnionType:
-		typ, ok := typ.(*UnionType)
-		if !ok || len(pat.Cases) != len(typ.Cases) {
-			return false
-		}
-		for i := range pat.Cases {
-			patCaseType := pat.Cases[i].Type
-			typCaseType := typ.Cases[i].Type
-			if patCaseType == nil {
-				if typCaseType != nil {
-					return false
-				}
-				continue
-			}
-			if !unifyStrict(parms, bind, patCaseType, typCaseType) {
-				return false
-			}
-		}
-		return true
-	case *FuncType:
-		typ, ok := typ.(*FuncType)
-		if !ok || len(pat.Parms) != len(typ.Parms) {
-			return false
-		}
-		for i := range pat.Parms {
-			if !unifyStrict(parms, bind, pat.Parms[i], typ.Parms[i]) {
-				return false
-			}
-		}
-		return unifyStrict(parms, bind, pat.Ret, typ.Ret)
-	case *BasicType:
-		if !eq(pat, typ) {
-			return false
-		}
-		return true
-	case *TypeVar:
-		if !parms[pat.Def] {
-			return eq(pat, typ)
-		}
-		prev, ok := bind[pat.Def]
-		if !ok {
-			bind[pat.Def] = typ
-			return true
-		}
-		return eq(prev, typ)
-	default:
-		panic(fmt.Sprintf("impossible Type type: %T", pat))
-	}
+func (i *idFunc) String() string { return i.id.String() }
+
+func (i *idFunc) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString(i.String())
+	return s
 }
+func (id *idFunc) arity() int                   { return len(id.funcType.Parms) }
+func (id *idFunc) groundRet() Type              { return id.funcType.Ret }
+func (id *idFunc) unifyRet(Type) note           { return nil }
+func (id *idFunc) groundParm(i int) Type        { return id.funcType.Parms[i] }
+func (id *idFunc) unifyParm(i int, _ Type) note { return nil }
+
+// eq should never be called; it's used to check equality of FuncInst ifaces.
+// FuncInst ifaces should never have an idFunc, since it is a temporary,
+// bookkeeping type only used inside overload resolution.
+func (*idFunc) eq(Func) bool { panic("impossible") }

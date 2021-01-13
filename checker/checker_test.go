@@ -1332,7 +1332,7 @@ func TestLiteralType(t *testing.T) {
 			if len(errs) > 0 {
 				t.Fatalf("failed to check: %s", errStr(errs))
 			}
-			got := literal(findTypeDef(t, "got", mod).Type)
+			got := literalType(findTypeDef(t, "got", mod).Type)
 			lit := findTypeDef(t, "lit", mod).Type
 			if !eq(got, lit) {
 				t.Errorf("got literal %s, want %s", got, lit)

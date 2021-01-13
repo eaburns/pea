@@ -215,7 +215,7 @@ func (f FuncType) buildString(w *strings.Builder) *strings.Builder {
 		p.buildString(w)
 	}
 	w.WriteString("){")
-	if t, ok := f.Ret.(*StructType); f.Ret != nil && (!ok || len(t.Fields) > 0) {
+	if f.Ret != nil && !isEmptyStruct(f.Ret) {
 		f.Ret.buildString(w)
 	}
 	w.WriteRune('}')
@@ -277,7 +277,7 @@ func (f *FuncDecl) buildString(s *strings.Builder) *strings.Builder {
 		p.buildString(s)
 	}
 	s.WriteRune(')')
-	if t, ok := f.Ret.(*StructType); f.Ret != nil && (!ok || len(t.Fields) > 0) {
+	if f.Ret != nil && !isEmptyStruct(f.Ret) {
 		f.Ret.buildString(s)
 	}
 	return s
@@ -293,7 +293,7 @@ func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {
 		p.buildString(s)
 	}
 	s.WriteRune(')')
-	if t, ok := f.T.Ret.(*StructType); f.T.Ret != nil && (!ok || len(t.Fields) > 0) {
+	if f.T.Ret != nil && !isEmptyStruct(f.T.Ret) {
 		f.T.Ret.buildString(s)
 	}
 	return s
@@ -340,7 +340,7 @@ func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
 		}
 	}
 	s.WriteRune(')')
-	if t, ok := w.Ret.(*StructType); w.Ret != nil && (!ok || len(t.Fields) > 0) {
+	if w.Ret != nil && !isEmptyStruct(w.Ret) {
 		w.Ret.buildString(s)
 	}
 	return s
@@ -422,7 +422,7 @@ func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
 		}
 	}
 	s.WriteRune(')')
-	if t, ok := b.Ret.(*StructType); b.Ret != nil && (!ok || len(t.Fields) > 0) {
+	if b.Ret != nil && !isEmptyStruct(b.Ret) {
 		b.Ret.buildString(s)
 	}
 	return s

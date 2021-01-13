@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
@@ -403,45 +402,6 @@ func checkAliasCycle(root *TypeDef) Error {
 	return nil
 }
 
-func instType(typ Type) Type {
-	typ = resolveAlias(typ)
-	switch typ := typ.(type) {
-	case nil:
-		break
-	case *RefType:
-		typ.Type = instType(typ.Type)
-	case *DefType:
-		if typ.Def == nil {
-			return typ
-		}
-		if typ.Inst = findInst(typ.Def, typ.Args); typ.Inst == nil {
-			typ.Inst = newInst(typ.Def, typ.Args)
-		}
-	case *ArrayType:
-		typ.ElemType = instType(typ.ElemType)
-	case *StructType:
-		for i := range typ.Fields {
-			typ.Fields[i].Type = instType(typ.Fields[i].Type)
-		}
-	case *UnionType:
-		for i := range typ.Cases {
-			typ.Cases[i].Type = instType(typ.Cases[i].Type)
-		}
-	case *FuncType:
-		for i := range typ.Parms {
-			typ.Parms[i] = instType(typ.Parms[i])
-		}
-		typ.Ret = instType(typ.Ret)
-	case *TypeVar:
-		break
-	case *BasicType:
-		break
-	default:
-		panic(fmt.Sprintf("unsupported Type type: %T", typ))
-	}
-	return typ
-}
-
 func resolveAlias(typ Type) Type {
 	defType, ok := typ.(*DefType)
 	if !ok || !defType.Def.Alias {
@@ -453,159 +413,6 @@ func resolveAlias(typ Type) Type {
 		sub[&defType.Def.Parms[i]] = arg
 	}
 	return resolveAlias(subType(sub, aliased))
-}
-
-func findInst(def *TypeDef, args []Type) *TypeInst {
-next:
-	for _, inst := range def.Insts {
-		for i, a := range inst.Args {
-			if !eq(args[i], a) {
-				continue next
-			}
-		}
-		return inst
-	}
-	return nil
-}
-
-func newInst(def *TypeDef, args []Type) *TypeInst {
-	if def.Alias {
-		panic(fmt.Sprintf("should-be resolved alias: %s", def.Name))
-	}
-	inst := &TypeInst{Args: make([]Type, len(args))}
-	sub := make(map[*TypeParm]Type, len(def.Parms))
-	for i, arg := range args {
-		// We are making one canonical instance.
-		// For location-independence,
-		// set the canonical instance's arguments
-		// to the corresponding parameter locations.
-		inst.Args[i] = copyTypeWithLoc(arg, def.Parms[i].L)
-		sub[&def.Parms[i]] = inst.Args[i]
-	}
-	def.Insts = append(def.Insts, inst)
-	inst.Type = subType(sub, def.Type)
-	return inst
-}
-
-func subType(sub map[*TypeParm]Type, typ Type) Type {
-	switch typ := typ.(type) {
-	case nil:
-		return nil
-	case *RefType:
-		copy := *typ
-		copy.Type = subType(sub, typ.Type)
-		return &copy
-	case *DefType:
-		copy := *typ
-		copy.Args = nil
-		for _, arg := range typ.Args {
-			copy.Args = append(copy.Args, subType(sub, arg))
-		}
-		if typ.Inst != nil {
-			return instType(&copy)
-		}
-		return &copy
-	case *ArrayType:
-		copy := *typ
-		copy.ElemType = subType(sub, typ.ElemType)
-		return &copy
-	case *StructType:
-		var copy StructType
-		for i := range typ.Fields {
-			f := typ.Fields[i]
-			f.Type = subType(sub, f.Type)
-			copy.Fields = append(copy.Fields, f)
-		}
-		return &copy
-	case *UnionType:
-		var copy UnionType
-		for i := range typ.Cases {
-			c := typ.Cases[i]
-			c.Type = subType(sub, c.Type)
-			copy.Cases = append(copy.Cases, c)
-		}
-		return &copy
-	case *FuncType:
-		var copy FuncType
-		for _, p := range typ.Parms {
-			copy.Parms = append(copy.Parms, subType(sub, p))
-		}
-		copy.Ret = subType(sub, typ.Ret)
-		return &copy
-	case *TypeVar:
-		if s, ok := sub[typ.Def]; ok {
-			return s
-		}
-		copy := *typ
-		return &copy
-	case *BasicType:
-		copy := *typ
-		return &copy
-	default:
-		panic(fmt.Sprintf("unsupported Type type: %T", typ))
-	}
-}
-
-func copyTypeWithLoc(typ Type, l loc.Loc) Type {
-	switch typ := typ.(type) {
-	case nil:
-		return nil
-	case *RefType:
-		return &RefType{
-			Type: copyTypeWithLoc(typ.Type, l),
-			L:    l,
-		}
-	case *DefType:
-		copy := *typ
-		for i := range copy.Args {
-			copy.Args[i] = copyTypeWithLoc(copy.Args[i], l)
-		}
-		copy.L = l
-		return &copy
-	case *ArrayType:
-		return &ArrayType{
-			ElemType: copyTypeWithLoc(typ.ElemType, l),
-			L:        l,
-		}
-	case *StructType:
-		var copy StructType
-		for i := range typ.Fields {
-			f := typ.Fields[i]
-			f.L = l
-			f.Type = copyTypeWithLoc(f.Type, l)
-			copy.Fields = append(copy.Fields, f)
-		}
-		copy.L = l
-		return &copy
-	case *UnionType:
-		var copy UnionType
-		for i := range typ.Cases {
-			c := typ.Cases[i]
-			c.L = l
-			c.Type = copyTypeWithLoc(c.Type, l)
-			copy.Cases = append(copy.Cases, c)
-		}
-		copy.L = l
-		return &copy
-	case *FuncType:
-		var copy FuncType
-		for _, p := range typ.Parms {
-			copy.Parms = append(copy.Parms, copyTypeWithLoc(p, l))
-		}
-		copy.Ret = copyTypeWithLoc(typ.Ret, l)
-		copy.L = l
-		return &copy
-	case *TypeVar:
-		copy := *typ
-		copy.L = l
-		return &copy
-	case *BasicType:
-		copy := *typ
-		copy.L = l
-		return &copy
-	default:
-		panic(fmt.Sprintf("unsupported Type type: %T", typ))
-	}
 }
 
 func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
@@ -797,24 +604,23 @@ func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []Error)
 	return exprs, errs
 }
 
-func isEmptyStruct(typ Type) bool {
-	s, ok := typ.(*StructType)
-	return ok && len(s.Fields) == 0
-}
-
 func convert(expr Expr, typ Type) (Expr, Error) {
 	dstType := typ
 	srcType := expr.Type()
 	// If one is a literal type, compare their literal types, not type names.
-	if eq(srcType, literal(srcType)) || eq(dstType, literal(dstType)) {
-		dstType = literal(dstType)
-		srcType = literal(srcType)
+	if eq(srcType, literalType(srcType)) || eq(dstType, literalType(dstType)) {
+		dstType = literalType(dstType)
+		srcType = literalType(srcType)
 	}
-	dstValueType, dstRefDepth := valueType(dstType)
-	srcValueType, srcRefDepth := valueType(srcType)
+
+	dstValueType := valueType(dstType)
+	dstRefDepth := refDepth(dstType)
+	srcValueType := valueType(srcType)
+	srcRefDepth := refDepth(srcType)
 	if !eq(dstValueType, srcValueType) {
 		goto mismatch
 	}
+
 	if dstRefDepth > srcRefDepth {
 		// Consider whether the expression is "addressable".
 		if dstRefDepth > srcRefDepth+1 {
@@ -835,103 +641,6 @@ func convert(expr Expr, typ Type) (Expr, Error) {
 
 mismatch:
 	return expr, newError(expr, "type mismatch: got %s, want %s", expr.Type(), typ)
-}
-
-// valueType is the type with all leading references removed.
-func valueType(typ Type) (Type, int) {
-	var n int
-	for {
-		ref, ok := typ.(*RefType)
-		if !ok {
-			return typ, n
-		}
-		n++
-		typ = ref.Type
-	}
-}
-
-func eq(a, b Type) bool {
-	if a == nil || b == nil {
-		// nil indicates an error; just be equal to anything.
-		return true
-	}
-	switch a := a.(type) {
-	case *DefType:
-		if a.Def.Alias {
-			panic("impossible")
-		}
-		b, ok := b.(*DefType)
-		if !ok {
-			return false
-		}
-		if b.Def.Alias {
-			panic("impossible")
-		}
-		if len(a.Args) != len(b.Args) || a.Def != b.Def {
-			return false
-		}
-		for i, aArg := range a.Args {
-			bArg := b.Args[i]
-			if !eq(aArg, bArg) {
-				return false
-			}
-		}
-		return true
-	case *RefType:
-		b, ok := b.(*RefType)
-		return ok && eq(a.Type, b.Type)
-	case *ArrayType:
-		b, ok := b.(*ArrayType)
-		return ok && eq(a.ElemType, b.ElemType)
-	case *StructType:
-		b, ok := b.(*StructType)
-		if !ok || len(a.Fields) != len(b.Fields) {
-			return false
-		}
-		for i := range a.Fields {
-			aField := &a.Fields[i]
-			bField := &b.Fields[i]
-			if aField.Name != bField.Name || !eq(aField.Type, bField.Type) {
-				return false
-			}
-		}
-		return true
-	case *UnionType:
-		b, ok := b.(*UnionType)
-		if !ok || len(a.Cases) != len(b.Cases) {
-			return false
-		}
-		for i := range a.Cases {
-			aCase := &a.Cases[i]
-			bCase := &b.Cases[i]
-			if aCase.Name != bCase.Name ||
-				(aCase.Type == nil) != (bCase.Type == nil) ||
-				(aCase.Type != nil && !eq(aCase.Type, bCase.Type)) {
-				return false
-			}
-		}
-		return true
-	case *FuncType:
-		b, ok := b.(*FuncType)
-		if !ok || len(a.Parms) != len(b.Parms) {
-			return false
-		}
-		for i, aParm := range a.Parms {
-			bParm := b.Parms[i]
-			if !eq(aParm, bParm) {
-				return false
-			}
-		}
-		return eq(a.Ret, b.Ret)
-	case *BasicType:
-		b, ok := b.(*BasicType)
-		return ok && a.Kind == b.Kind
-	case *TypeVar:
-		b, ok := b.(*TypeVar)
-		return ok && a.Def == b.Def
-	default:
-		panic(fmt.Sprintf("impossible Type type: %T", a))
-	}
 }
 
 func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
@@ -1042,23 +751,6 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 		T: ret,
 		L: parserCall.L,
 	}, errs
-}
-
-// idFunc is like an ExprFunc, but it holds only ids not yet converted to expressions.
-// It is used when checking ID calls in order to maintain the un-converted id
-// in order to be able to mark its use with useID() if selected as the correct overload.
-// An idFunc will only exist inside checkIDCall, and is never returned from checkIDCall.
-type idFunc struct {
-	id       id
-	funcType *FuncType
-	l        loc.Loc
-}
-
-func (i *idFunc) String() string { return i.id.String() }
-
-func (i *idFunc) buildString(s *strings.Builder) *strings.Builder {
-	s.WriteString(i.String())
-	return s
 }
 
 func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
@@ -1381,16 +1073,6 @@ func useID(x scope, id id) id {
 	}
 }
 
-func canonicalFuncInst(f *FuncInst) *FuncInst {
-	for _, inst := range f.Def.Insts {
-		if f.eq(inst) {
-			return inst
-		}
-	}
-	f.Def.Insts = append(f.Def.Insts, f)
-	return f
-}
-
 func idToExpr(id id, l loc.Loc) Expr {
 	switch id := id.(type) {
 	case *VarDef:
@@ -1471,7 +1153,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Error) {
 	var errs []Error
 	lit := &ArrayLit{L: parserLit.L}
-	if lit.Array, _ = trim1Ref(literal(want)).(*ArrayType); lit.Array != nil {
+	if lit.Array, _ = trim1Ref(literalType(want)).(*ArrayType); lit.Array != nil {
 		for _, parserExpr := range parserLit.Exprs {
 			expr, fs := checkAndConvertExpr(x, parserExpr, lit.Array.ElemType)
 			if len(fs) > 0 {
@@ -1561,7 +1243,7 @@ func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []Er
 }
 
 func appropriateStruct(typ Type, lit *parser.StructLit) *StructType {
-	s, ok := trim1Ref(literal(typ)).(*StructType)
+	s, ok := trim1Ref(literalType(typ)).(*StructType)
 	if !ok || len(s.Fields) != len(lit.FieldVals) {
 		return nil
 	}
@@ -1624,7 +1306,7 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []Erro
 }
 
 func appropriateUnion(typ Type, lit *parser.UnionLit) (*UnionType, *CaseDef) {
-	u, ok := trim1Ref(literal(typ)).(*UnionType)
+	u, ok := trim1Ref(literalType(typ)).(*UnionType)
 	if !ok {
 		return nil, nil
 	}
@@ -1723,7 +1405,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 }
 
 func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
-	f, ok := trim1Ref(literal(typ)).(*FuncType)
+	f, ok := trim1Ref(literalType(typ)).(*FuncType)
 	if !ok || len(f.Parms) != len(litParms) {
 		return nil
 	}
@@ -1742,7 +1424,7 @@ func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
 // 	* Otherwise the type is string.
 func checkStrLit(parserLit *parser.StrLit, want Type) (Expr, []Error) {
 	lit := &StrLit{Text: parserLit.Data, L: parserLit.L}
-	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
+	switch b, ok := trim1Ref(literalType(want)).(*BasicType); {
 	case want == nil:
 		fallthrough
 	case !ok:
@@ -1788,7 +1470,7 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []Error) {
 	}
 	var bits uint
 	var signed bool
-	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
+	switch b, ok := trim1Ref(literalType(want)).(*BasicType); {
 	case want == nil:
 		fallthrough
 	case !ok:
@@ -1874,7 +1556,7 @@ func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []Error) {
 	if _, _, err := lit.Val.Parse(parserLit.Text, 10); err != nil {
 		panic("malformed float")
 	}
-	switch b, ok := trim1Ref(literal(want)).(*BasicType); {
+	switch b, ok := trim1Ref(literalType(want)).(*BasicType); {
 	case want == nil:
 		fallthrough
 	case !ok:
@@ -1926,51 +1608,4 @@ func deref(expr Expr) Expr {
 		panic(fmt.Sprintf("impossible type: %s", expr.Type()))
 	}
 	return &Deref{Expr: expr, T: t, L: expr.Loc()}
-}
-
-func ref(typ Type) Type {
-	return &RefType{Type: typ, L: typ.Loc()}
-}
-
-func isRef(typ Type) bool {
-	switch typ := typ.(type) {
-	case nil:
-		return false
-	case *RefType:
-		return true
-	case *DefType:
-		return typ.Inst != nil && isRef(typ.Inst.Type)
-	default:
-		return false
-	}
-}
-
-func trim1Ref(typ Type) Type {
-	if typ == nil {
-		return nil
-	}
-	if ref, ok := typ.(*RefType); ok {
-		return ref.Type
-	}
-	return typ
-}
-
-func literal(typ Type) Type {
-	if typ == nil {
-		return nil
-	}
-	switch typ := typ.(type) {
-	case *RefType:
-		if typ.Type == nil {
-			return nil
-		}
-		return &RefType{Type: literal(typ.Type), L: typ.L}
-	case *DefType:
-		if typ.Inst == nil || typ.Inst.Type == nil {
-			return nil
-		}
-		return literal(typ.Inst.Type)
-	default:
-		return typ
-	}
 }
