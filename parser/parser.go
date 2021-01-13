@@ -153,21 +153,21 @@ func primaries(head Expr, tail []primary) Expr {
 		switch p := primary.(type) {
 		case sel:
 			head = &Call{
-				Fun: p.name,
+				Fun:  p.name,
 				Args: []Expr{head},
-				L: loc.Loc{l0, p.l[1]},
+				L:    loc.Loc{l0, p.l[1]},
 			}
 		case call:
 			head = &Call{
-				Fun: head,
+				Fun:  head,
 				Args: p.args,
-				L: loc.Loc{l0, p.l[1]},
+				L:    loc.Loc{l0, p.l[1]},
 			}
 		case idx:
 			head = &Call{
-				Fun: Ident{Name: "[]", L: p.l},
+				Fun:  Ident{Name: "[]", L: p.l},
 				Args: append([]Expr{head}, p.args...),
-				L: loc.Loc{l0, p.l[1]},
+				L:    loc.Loc{l0, p.l[1]},
 			}
 		default:
 			panic(fmt.Sprintf("bad primary type: %T", primary))

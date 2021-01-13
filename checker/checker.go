@@ -582,26 +582,95 @@ func checkAndConvertExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Er
 	return expr, errs
 }
 
+// newLocals indicates whether new local variables may be created.
 // want is the type expected for the last expression, or nil.
-func checkExprs(x scope, parserExprs []parser.Expr, want Type) ([]Expr, []Error) {
+func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, want Type) ([]Expr, []Error) {
 	var errs []Error
 	var exprs []Expr
 	for i, parserExpr := range parserExprs {
-		var fs []Error
+		if call, ok := isAssign(parserExpr); ok && newLocals {
+			if id, ok := isNewID(x, call.Args[0]); ok {
+				local, assign, es := newLocal(x, call, id)
+				if len(es) > 0 {
+					errs = append(errs, es...)
+				}
+				if local == nil || assign == nil {
+					continue
+				}
+				exprs = append(exprs, assign)
+				x = &localScope{parent: x, FuncLocal: local}
+				continue
+			}
+		}
+		var es []Error
 		var expr Expr
 		if i == len(parserExprs)-1 && !isEmptyStruct(want) {
-			expr, fs = checkAndConvertExpr(x, parserExpr, want)
+			expr, es = checkAndConvertExpr(x, parserExpr, want)
 		} else {
-			expr, fs = checkExpr(x, parserExpr, nil)
+			expr, es = checkExpr(x, parserExpr, nil)
 		}
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
+		if len(es) > 0 {
+			errs = append(errs, es...)
 		}
 		if expr != nil {
 			exprs = append(exprs, expr)
 		}
 	}
 	return exprs, errs
+}
+
+func isAssign(parserExpr parser.Expr) (call *parser.Call, ok bool) {
+	if call, ok = parserExpr.(*parser.Call); !ok {
+		return nil, false
+	}
+	if id, ok := call.Fun.(parser.Ident); !ok || id.Name != ":=" {
+		return nil, false
+	}
+	return call, true
+}
+
+func isNewID(x scope, parserExpr parser.Expr) (parser.Ident, bool) {
+	parserID, ok := parserExpr.(parser.Ident)
+	if !ok {
+		return parser.Ident{}, false
+	}
+	for _, id := range x.find(parserID.Name) {
+		switch id.(type) {
+		case *VarDef:
+			return parser.Ident{}, false
+		case *FuncParm:
+			return parser.Ident{}, false
+		case *FuncLocal:
+			return parser.Ident{}, false
+		}
+	}
+	return parserID, true
+}
+
+func newLocal(x scope, call *parser.Call, id parser.Ident) (*FuncLocal, *Call, []Error) {
+	expr, errs := checkExpr(x, call.Args[1], nil)
+	if expr == nil {
+		return nil, nil, errs
+	}
+	local := x.newLocal(id.Name, expr.Type(), id.L)
+	if local == nil {
+		errs = append(errs, newError(call.L, "local defined outside of a block"))
+		return nil, nil, errs
+	}
+	assign := &Call{
+		Func: &Builtin{
+			Op:    Assign,
+			Parms: []Type{refType(expr.Type()), expr.Type()},
+			Ret:   expr.Type(),
+		},
+		Args: []Expr{
+			&Local{Def: local, T: expr.Type(), L: id.L},
+			expr,
+		},
+		T: expr.Type(),
+		L: call.L,
+	}
+	return local, assign, errs
 }
 
 func convert(expr Expr, typ Type) (Expr, Error) {
@@ -1361,7 +1430,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 			lit.Parms[i].T = copyTypeWithLoc(f.Parms[i], lit.Parms[i].L)
 		}
 		var fs []Error
-		lit.Exprs, fs = checkExprs(x, parserLit.Exprs, f.Ret)
+		lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, f.Ret)
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
@@ -1388,7 +1457,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 	lit.Parms = lit.Parms[:n]
 
 	var fs []Error
-	lit.Exprs, fs = checkExprs(x, parserLit.Exprs, nil)
+	lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, nil)
 	if len(fs) > 0 {
 		errs = append(errs, fs...)
 	}

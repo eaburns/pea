@@ -9,7 +9,21 @@ import (
 
 	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
+	"github.com/google/go-cmp/cmp"
 )
+
+var diffOpts = []cmp.Option{
+	cmp.FilterPath(isLoc, cmp.Ignore()),
+}
+
+func isLoc(path cmp.Path) bool {
+	for _, s := range path {
+		if s.String() == ".L" {
+			return true
+		}
+	}
+	return false
+}
 
 type testMod struct {
 	path string
@@ -140,6 +154,68 @@ func TestRedef(t *testing.T) {
 				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
 			}
 		})
+	}
+}
+
+// TODO: add tests for func and test locals once their Exprs checking is implemented.
+func TestBlockNewLocal(t *testing.T) {
+	const src = ` 
+		// x and y are locals of the outer block.
+		// z is a local of the inner block.
+		// All other variables are not locals.
+		var a := 1
+		var testVar := (b int){
+			x := 1,
+			{z := x},
+			y := "hello",
+			x := 3,
+			a := 5,
+			b := 6,
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("failed to parse and check: %s", errs[0])
+	}
+	block := findVarDef(t, "testVar", mod).Expr.(*Deref).Expr.(*BlockLit)
+	want := []*FuncLocal{
+		{Name: "x", T: &BasicType{Kind: Int}},
+		{Name: "y", T: &BasicType{Kind: String}},
+	}
+	if diff := cmp.Diff(want, block.Locals, diffOpts...); diff != "" {
+		t.Errorf("outer-block locals differ: %s", diff)
+	}
+
+	block2 := block.Exprs[1].(*Deref).Expr.(*BlockLit)
+	want = []*FuncLocal{
+		{Name: "z", T: &BasicType{Kind: Int}},
+	}
+	if diff := cmp.Diff(want, block2.Locals, diffOpts...); diff != "" {
+		t.Errorf("inner-block locals differ: %s", diff)
+	}
+}
+
+func TestNoNewLocalInNestedExpr(t *testing.T) {
+	const src = `
+		var testVar := 1 + (x := 2)
+	`
+	switch _, errs := check("test", []string{src}, nil); {
+	case len(errs) != 1:
+		t.Errorf("expected 1 error, got %d", len(errs))
+	case !strings.Contains(errs[0].Error(), "x: not found"):
+		t.Errorf("expected not found error, got %s", errs[0])
+	}
+}
+
+func TestNoNewLocalInArrayExprs(t *testing.T) {
+	const src = `
+		var testVar := [1, x := 2]
+	`
+	switch _, errs := check("test", []string{src}, nil); {
+	case len(errs) != 1:
+		t.Errorf("expected 1 error, got %d", len(errs))
+	case !strings.Contains(errs[0].Error(), "x: not found"):
+		t.Errorf("expected not found error, got %s", errs[0])
 	}
 }
 

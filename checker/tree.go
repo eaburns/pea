@@ -180,11 +180,12 @@ type BasicType struct {
 func (b *BasicType) Loc() loc.Loc { return b.L }
 
 type TestDef struct {
-	File  *File
-	Mod   string
-	Name  string
-	Exprs []Expr
-	L     loc.Loc
+	File   *File
+	Mod    string
+	Name   string
+	Locals []*FuncLocal
+	Exprs  []Expr
+	L      loc.Loc
 }
 
 type FuncDef struct {

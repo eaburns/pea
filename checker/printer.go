@@ -20,10 +20,10 @@ func (m *Mod) Print(w io.Writer, opts ...PrintOpt) error {
 }
 
 type config struct {
-	w              io.Writer
-	files          loc.Files
-	n              int
-	ident          string
+	w     io.Writer
+	files loc.Files
+	n     int
+	ident string
 }
 
 type printerError struct{ error }
@@ -45,8 +45,8 @@ func print(w io.Writer, tree printer, opts ...PrintOpt) (err error) {
 		}
 	}()
 	pc := &config{
-		w:              w,
-		ident:          "  ",
+		w:     w,
+		ident: "  ",
 	}
 	for _, opt := range opts {
 		opt(pc)
@@ -228,6 +228,14 @@ func (f *FuncDef) print(pc *config) {
 
 func (f FuncParm) print(pc *config) {
 	pc.p("FuncParm{")
+	pc.loc(f.L)
+	pc.field("Name", f.Name)
+	pc.field("Type", f.T)
+	pc.p("\n}")
+}
+
+func (f *FuncLocal) print(pc *config) {
+	pc.p("FuncLocal{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
 	pc.field("Type", f.T)

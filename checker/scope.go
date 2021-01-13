@@ -13,6 +13,7 @@ type scope interface {
 	findMod(name string) *Import
 	findType(args []Type, name string, l loc.Loc) Type
 	capture(id) id
+	newLocal(string, Type, loc.Loc) *FuncLocal
 }
 
 type id interface {
@@ -29,6 +30,11 @@ type excludeFunc struct {
 	parent scope
 	def    *FuncDef
 	notes  *[]note
+}
+
+type localScope struct {
+	parent scope
+	*FuncLocal
 }
 
 func (*Mod) findMod(string) *Import    { return nil }
@@ -49,6 +55,7 @@ func (f *FuncDef) findMod(name string) *Import       { return f.File.findMod(nam
 func (t *TestDef) findMod(name string) *Import       { return t.File.findMod(name) }
 func (b *blockLitScope) findMod(name string) *Import { return b.parent.findMod(name) }
 func (e *excludeFunc) findMod(name string) *Import   { return e.parent.findMod(name) }
+func (o *localScope) findMod(name string) *Import    { return o.parent.findMod(name) }
 
 func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 	if len(args) > 0 {
@@ -133,6 +140,10 @@ func (b *blockLitScope) findType(args []Type, name string, l loc.Loc) Type {
 
 func (e *excludeFunc) findType(args []Type, name string, l loc.Loc) Type {
 	return e.parent.findType(args, name, l)
+}
+
+func (o *localScope) findType(args []Type, name string, l loc.Loc) Type {
+	return o.parent.findType(args, name, l)
 }
 
 func findTypeVar(parms []TypeParm, args []Type, name string, l loc.Loc) *TypeVar {
@@ -279,11 +290,6 @@ func (f *FuncDef) find(name string) []id {
 	if name == "_" {
 		return nil
 	}
-	for i := range f.Locals {
-		if f.Locals[i].Name == name {
-			return []id{f.Locals[i]}
-		}
-	}
 	for i := range f.Parms {
 		if f.Parms[i].Name == name {
 			return []id{&f.Parms[i]}
@@ -300,11 +306,6 @@ func (t *TestDef) find(name string) []id {
 func (b *blockLitScope) find(name string) []id {
 	if name == "_" {
 		return nil
-	}
-	for i := range b.Locals {
-		if b.Locals[i].Name == name {
-			return []id{b.Locals[i]}
-		}
 	}
 	for i := range b.Parms {
 		if b.Parms[i].Name == name {
@@ -327,6 +328,14 @@ func (e *excludeFunc) find(name string) []id {
 		n++
 	}
 	return ids[:n]
+}
+
+func (o *localScope) find(name string) []id {
+	ids := o.parent.find(name)
+	if o.Name == name {
+		ids = append(ids, o.FuncLocal)
+	}
+	return ids
 }
 
 func findInDefs(defs []Def, name string) []id {
@@ -458,3 +467,42 @@ func (b *blockLitScope) capture(id id) id {
 }
 
 func (e *excludeFunc) capture(id id) id { return e.parent.capture(id) }
+
+func (o *localScope) capture(id id) id {
+	if l, ok := id.(*FuncLocal); ok && l == o.FuncLocal {
+		return o.FuncLocal
+	}
+	return o.parent.capture(id)
+}
+
+func (*Mod) newLocal(string, Type, loc.Loc) *FuncLocal                 { return nil }
+func (*Import) newLocal(string, Type, loc.Loc) *FuncLocal              { return nil }
+func (f *File) newLocal(string, Type, loc.Loc) *FuncLocal              { return nil }
+func (v *VarDef) newLocal(name string, typ Type, l loc.Loc) *FuncLocal { return nil }
+func (t *TypeDef) newLocal(string, Type, loc.Loc) *FuncLocal           { return nil }
+
+func (f *FuncDef) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
+	local := &FuncLocal{Name: name, T: typ, L: l}
+	f.Locals = append(f.Locals, local)
+	return local
+}
+
+func (t *TestDef) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
+	local := &FuncLocal{Name: name, T: typ, L: l}
+	t.Locals = append(t.Locals, local)
+	return local
+}
+
+func (b *blockLitScope) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
+	local := &FuncLocal{Name: name, T: typ, L: l}
+	b.Locals = append(b.Locals, local)
+	return local
+}
+
+func (e *excludeFunc) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
+	return e.parent.newLocal(name, typ, l)
+}
+
+func (o *localScope) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
+	return o.parent.newLocal(name, typ, l)
+}
