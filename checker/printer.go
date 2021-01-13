@@ -24,7 +24,6 @@ type config struct {
 	files          loc.Files
 	n              int
 	ident          string
-	printTypeInsts bool
 }
 
 type printerError struct{ error }
@@ -48,7 +47,6 @@ func print(w io.Writer, tree printer, opts ...PrintOpt) (err error) {
 	pc := &config{
 		w:              w,
 		ident:          "  ",
-		printTypeInsts: true,
 	}
 	for _, opt := range opts {
 		opt(pc)
@@ -101,11 +99,8 @@ func (t *TypeDef) print(pc *config) {
 	pc.field("Name", t.Name)
 	pc.field("Exp", t.Exp)
 	pc.field("Parms", t.Parms)
-	printTypeInsts := pc.printTypeInsts
-	pc.printTypeInsts = false
 	pc.field("Type", t.Type)
 	pc.field("Insts", t.Insts)
-	pc.printTypeInsts = printTypeInsts
 	pc.p("\n}")
 }
 
@@ -142,13 +137,7 @@ func (d *DefType) print(pc *config) {
 		pc.field("Def", fmt.Sprintf("{ Mod: %s, Name: %s }", d.Def.Mod, d.Def.Name))
 		pc.loc(d.Def.L)
 	}
-	if pc.printTypeInsts {
-		pc.printTypeInsts = false
-		pc.field("Inst", d.Inst)
-		pc.printTypeInsts = true
-	} else {
-		pc.field("Inst", fmt.Sprintf("<%p>", d.Inst))
-	}
+	pc.field("Inst", fmt.Sprintf("<%p>", d.Inst))
 	pc.p("\n}")
 }
 
