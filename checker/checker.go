@@ -608,7 +608,7 @@ func convert(expr Expr, typ Type) (Expr, Error) {
 	dstType := typ
 	srcType := expr.Type()
 	// If one is a literal type, compare their literal types, not type names.
-	if eq(srcType, literalType(srcType)) || eq(dstType, literalType(dstType)) {
+	if eqType(srcType, literalType(srcType)) || eqType(dstType, literalType(dstType)) {
 		dstType = literalType(dstType)
 		srcType = literalType(srcType)
 	}
@@ -617,7 +617,7 @@ func convert(expr Expr, typ Type) (Expr, Error) {
 	dstRefDepth := refDepth(dstType)
 	srcValueType := valueType(srcType)
 	srcRefDepth := refDepth(srcType)
-	if !eq(dstValueType, srcValueType) {
+	if !eqType(dstValueType, srcValueType) {
 		goto mismatch
 	}
 
@@ -853,7 +853,7 @@ func commonGroundParmType(funcs []Func, i int) Type {
 			return nil
 		case t == nil:
 			t = f.groundParm(i)
-		case !eq(t, f.groundParm(i)):
+		case !eqType(t, f.groundParm(i)):
 			return nil
 		}
 	}
@@ -1076,13 +1076,13 @@ func useID(x scope, id id) id {
 func idToExpr(id id, l loc.Loc) Expr {
 	switch id := id.(type) {
 	case *VarDef:
-		return deref(&Var{Def: id, T: ref(id.T), L: l})
+		return deref(&Var{Def: id, T: refType(id.T), L: l})
 	case *FuncParm:
-		return deref(&Parm{Def: id, T: ref(id.T), L: l})
+		return deref(&Parm{Def: id, T: refType(id.T), L: l})
 	case *FuncLocal:
-		return deref(&Local{Def: id, T: ref(id.T), L: l})
+		return deref(&Local{Def: id, T: refType(id.T), L: l})
 	case *BlockCap:
-		return deref(&Cap{Def: id, T: ref(id.T), L: l})
+		return deref(&Cap{Def: id, T: refType(id.T), L: l})
 	case Func:
 		return wrapCallInBlock(id, l)
 	default:
@@ -1161,8 +1161,8 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Erro
 			}
 			lit.Elems = append(lit.Elems, expr)
 		}
-		if !isRef(want) {
-			lit.T = ref(copyTypeWithLoc(want, lit.L))
+		if !isRefType(want) {
+			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), errs
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)
@@ -1185,7 +1185,7 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Erro
 		return lit, errs
 	}
 	lit.Array = &ArrayType{ElemType: elemType, L: lit.L}
-	lit.T = ref(lit.Array)
+	lit.T = refType(lit.Array)
 	return deref(lit), errs
 }
 
@@ -1217,8 +1217,8 @@ func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []Er
 			}
 			lit.Fields = append(lit.Fields, expr)
 		}
-		if !isRef(want) {
-			lit.T = ref(copyTypeWithLoc(want, lit.L))
+		if !isRefType(want) {
+			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), errs
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)
@@ -1238,7 +1238,7 @@ func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []Er
 			L:    parserField.L,
 		})
 	}
-	lit.T = ref(lit.Struct)
+	lit.T = refType(lit.Struct)
 	return deref(lit), errs
 }
 
@@ -1279,8 +1279,8 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []Erro
 		if parserLit.CaseVal.Val != nil {
 			lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, lit.Case.Type)
 		}
-		if !isRef(want) {
-			lit.T = ref(copyTypeWithLoc(want, lit.L))
+		if !isRefType(want) {
+			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), errs
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)
@@ -1301,7 +1301,7 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []Erro
 	if lit.Val != nil {
 		lit.Case.Type = lit.Val.Type()
 	}
-	lit.T = ref(lit.Union)
+	lit.T = refType(lit.Union)
 	return deref(lit), errs
 }
 
@@ -1365,8 +1365,8 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
-		if !isRef(want) {
-			lit.T = ref(copyTypeWithLoc(want, lit.L))
+		if !isRefType(want) {
+			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), errs
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)
@@ -1400,7 +1400,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 	if retType == nil {
 		retType = &StructType{L: lit.L}
 	}
-	lit.T = ref(&FuncType{Parms: parmTypes, Ret: retType, L: lit.L})
+	lit.T = refType(&FuncType{Parms: parmTypes, Ret: retType, L: lit.L})
 	return deref(lit), errs
 }
 
@@ -1410,7 +1410,7 @@ func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
 		return nil
 	}
 	for i := range f.Parms {
-		if t := litParms[i].T; t != nil && !eq(f.Parms[i], t) {
+		if t := litParms[i].T; t != nil && !eqType(f.Parms[i], t) {
 			return nil
 		}
 	}
@@ -1430,11 +1430,11 @@ func checkStrLit(parserLit *parser.StrLit, want Type) (Expr, []Error) {
 	case !ok:
 		fallthrough
 	default:
-		lit.T = ref(&BasicType{Kind: String, L: parserLit.L})
+		lit.T = refType(&BasicType{Kind: String, L: parserLit.L})
 		return deref(lit), nil
 	case b.Kind == String:
-		if !isRef(want) {
-			lit.T = ref(copyTypeWithLoc(want, lit.L))
+		if !isRefType(want) {
+			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), nil
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)
@@ -1533,8 +1533,8 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []Error) {
 	case lit.Val.Cmp(max) > 0:
 		errs = append(errs, newError(lit, "%s overflows type %s", lit.Text, want))
 	}
-	if !isRef(want) {
-		lit.T = ref(copyTypeWithLoc(want, lit.L))
+	if !isRefType(want) {
+		lit.T = refType(copyTypeWithLoc(want, lit.L))
 		return deref(lit), errs
 	}
 	lit.T = copyTypeWithLoc(want, lit.L)
@@ -1562,7 +1562,7 @@ func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []Error) {
 	case !ok:
 		fallthrough
 	default:
-		lit.T = ref(&BasicType{Kind: Float64, L: parserLit.L})
+		lit.T = refType(&BasicType{Kind: Float64, L: parserLit.L})
 		return deref(lit), nil
 	case b.Kind == Int ||
 		b.Kind == Int8 ||
@@ -1585,8 +1585,8 @@ func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []Error) {
 		}
 		return intLit, errs
 	case b.Kind == Float32 || b.Kind == Float64:
-		if !isRef(want) {
-			lit.T = ref(copyTypeWithLoc(want, lit.L))
+		if !isRefType(want) {
+			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), nil
 		}
 		lit.T = copyTypeWithLoc(want, lit.L)

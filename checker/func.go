@@ -19,11 +19,11 @@ func (f *FuncDecl) eq(other Func) bool {
 		return false
 	}
 	for i := range f.Parms {
-		if !eq(f.Parms[i], o.Parms[i]) {
+		if !eqType(f.Parms[i], o.Parms[i]) {
 			return false
 		}
 	}
-	return eq(f.Ret, o.Ret)
+	return eqType(f.Ret, o.Ret)
 }
 
 func (f *FuncInst) arity() int { return len(f.T.Parms) }
@@ -135,7 +135,7 @@ func isGroundType(parms map[*TypeParm]bool, typ Type) bool {
 }
 
 func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
-	if eq(literalType(pat), pat) || eq(literalType(typ), typ) {
+	if eqType(literalType(pat), pat) || eqType(literalType(typ), typ) {
 		pat = literalType(pat)
 		typ = literalType(typ)
 	}
@@ -215,20 +215,20 @@ func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Typ
 		}
 		return unifyStrict(parms, bind, pat.Ret, typ.Ret)
 	case *BasicType:
-		if !eq(pat, typ) {
+		if !eqType(pat, typ) {
 			return false
 		}
 		return true
 	case *TypeVar:
 		if !parms[pat.Def] {
-			return eq(pat, typ)
+			return eqType(pat, typ)
 		}
 		prev, ok := bind[pat.Def]
 		if !ok {
 			bind[pat.Def] = typ
 			return true
 		}
-		return eq(prev, typ)
+		return eqType(prev, typ)
 	default:
 		panic(fmt.Sprintf("impossible Type type: %T", pat))
 	}
@@ -314,7 +314,7 @@ func unifyFunc(x scope, f Func, typ Type) note {
 		return note
 	}
 	r := funcType.Ret
-	if t := f.groundRet(); !eq(t, r) {
+	if t := f.groundRet(); !eqType(t, r) {
 		return newNote("%s: return mismatch", f).setLoc(t)
 	}
 	for i := 0; i < f.arity(); i++ {
@@ -322,7 +322,7 @@ func unifyFunc(x scope, f Func, typ Type) note {
 		if note := f.unifyParm(i, p); note != nil {
 			return note
 		}
-		if t := f.groundParm(i); !eq(t, p) {
+		if t := f.groundParm(i); !eqType(t, p) {
 			return newNote("%s: parameter mismatch", f).setLoc(t)
 		}
 	}
@@ -345,7 +345,7 @@ func (f *FuncInst) eq(other Func) bool {
 		return false
 	}
 	for i := range f.TypeArgs {
-		if !eq(f.TypeArgs[i], o.TypeArgs[i]) {
+		if !eqType(f.TypeArgs[i], o.TypeArgs[i]) {
 			return false
 		}
 	}
@@ -400,7 +400,7 @@ func (s *Select) unifyParm(i int, typ Type) note {
 func (s *Select) eq(other Func) bool {
 	o, ok := other.(*Select)
 	return ok && s.Struct == o.Struct && s.Field == o.Field &&
-		eq(s.Parm, o.Parm) && eq(s.Ret, o.Ret)
+		eqType(s.Parm, o.Parm) && eqType(s.Ret, o.Ret)
 }
 
 func (s *Switch) arity() int { return len(s.Parms) }
@@ -493,11 +493,11 @@ func (s *Switch) eq(other Func) bool {
 		}
 	}
 	for i := range s.Parms {
-		if !eq(s.Parms[i], o.Parms[i]) {
+		if !eqType(s.Parms[i], o.Parms[i]) {
 			return false
 		}
 	}
-	return eq(s.Ret, o.Ret)
+	return eqType(s.Ret, o.Ret)
 }
 
 func (b *Builtin) arity() int { return len(b.Parms) }
@@ -662,11 +662,11 @@ func (b *Builtin) eq(other Func) bool {
 		return false
 	}
 	for i := range b.Parms {
-		if !eq(b.Parms[i], o.Parms[i]) {
+		if !eqType(b.Parms[i], o.Parms[i]) {
 			return false
 		}
 	}
-	return eq(b.Ret, o.Ret)
+	return eqType(b.Ret, o.Ret)
 }
 
 func (e *ExprFunc) arity() int                   { return len(e.FuncType.Parms) }

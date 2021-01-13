@@ -1298,7 +1298,7 @@ func TestLiteralInference(t *testing.T) {
 			// not correct reporting of type mismatch.
 			expr, _ := checkAndConvertExpr(mod.Files[0], parserExpr, infer)
 			want := findTypeDef(t, "want", mod).Type
-			if !eq(expr.Type(), want) {
+			if !eqType(expr.Type(), want) {
 				t.Errorf("got %s, want %s", expr.Type(), want)
 			}
 		})
@@ -1334,7 +1334,7 @@ func TestLiteralType(t *testing.T) {
 			}
 			got := literalType(findTypeDef(t, "got", mod).Type)
 			lit := findTypeDef(t, "lit", mod).Type
-			if !eq(got, lit) {
+			if !eqType(got, lit) {
 				t.Errorf("got literal %s, want %s", got, lit)
 			}
 		})
@@ -1691,13 +1691,13 @@ func TestEq(t *testing.T) {
 			typ := findVarDef(t, "x", mod).T
 			for i := range test.Same {
 				s := findVarDef(t, fmt.Sprintf("s%d", i), mod).T
-				if !eq(typ, s) {
+				if !eqType(typ, s) {
 					t.Errorf("%s != %s", typ, s)
 				}
 			}
 			for i := range test.Diff {
 				d := findVarDef(t, fmt.Sprintf("d%d", i), mod).T
-				if eq(typ, d) {
+				if eqType(typ, d) {
 					t.Errorf("%s = %s", typ, d)
 				}
 			}

@@ -11,18 +11,18 @@ func isEmptyStruct(typ Type) bool {
 	return ok && len(s.Fields) == 0
 }
 
-func ref(typ Type) Type {
+func refType(typ Type) Type {
 	return &RefType{Type: typ, L: typ.Loc()}
 }
 
-func isRef(typ Type) bool {
+func isRefType(typ Type) bool {
 	switch typ := typ.(type) {
 	case nil:
 		return false
 	case *RefType:
 		return true
 	case *DefType:
-		return typ.Inst != nil && isRef(typ.Inst.Type)
+		return typ.Inst != nil && isRefType(typ.Inst.Type)
 	default:
 		return false
 	}
@@ -84,7 +84,7 @@ func refDepth(typ Type) int {
 	}
 }
 
-func eq(a, b Type) bool {
+func eqType(a, b Type) bool {
 	if a == nil || b == nil {
 		// nil indicates an error; just be equal to anything.
 		return true
@@ -106,17 +106,17 @@ func eq(a, b Type) bool {
 		}
 		for i, aArg := range a.Args {
 			bArg := b.Args[i]
-			if !eq(aArg, bArg) {
+			if !eqType(aArg, bArg) {
 				return false
 			}
 		}
 		return true
 	case *RefType:
 		b, ok := b.(*RefType)
-		return ok && eq(a.Type, b.Type)
+		return ok && eqType(a.Type, b.Type)
 	case *ArrayType:
 		b, ok := b.(*ArrayType)
-		return ok && eq(a.ElemType, b.ElemType)
+		return ok && eqType(a.ElemType, b.ElemType)
 	case *StructType:
 		b, ok := b.(*StructType)
 		if !ok || len(a.Fields) != len(b.Fields) {
@@ -125,7 +125,7 @@ func eq(a, b Type) bool {
 		for i := range a.Fields {
 			aField := &a.Fields[i]
 			bField := &b.Fields[i]
-			if aField.Name != bField.Name || !eq(aField.Type, bField.Type) {
+			if aField.Name != bField.Name || !eqType(aField.Type, bField.Type) {
 				return false
 			}
 		}
@@ -140,7 +140,7 @@ func eq(a, b Type) bool {
 			bCase := &b.Cases[i]
 			if aCase.Name != bCase.Name ||
 				(aCase.Type == nil) != (bCase.Type == nil) ||
-				(aCase.Type != nil && !eq(aCase.Type, bCase.Type)) {
+				(aCase.Type != nil && !eqType(aCase.Type, bCase.Type)) {
 				return false
 			}
 		}
@@ -152,11 +152,11 @@ func eq(a, b Type) bool {
 		}
 		for i, aParm := range a.Parms {
 			bParm := b.Parms[i]
-			if !eq(aParm, bParm) {
+			if !eqType(aParm, bParm) {
 				return false
 			}
 		}
-		return eq(a.Ret, b.Ret)
+		return eqType(a.Ret, b.Ret)
 	case *BasicType:
 		b, ok := b.(*BasicType)
 		return ok && a.Kind == b.Kind
@@ -211,7 +211,7 @@ func findInst(def *TypeDef, args []Type) *TypeInst {
 next:
 	for _, inst := range def.Insts {
 		for i, a := range inst.Args {
-			if !eq(args[i], a) {
+			if !eqType(args[i], a) {
 				continue next
 			}
 		}
