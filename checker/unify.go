@@ -8,6 +8,19 @@ func (*FuncDecl) unifyRet(Type) note       { return nil }
 func (f *FuncDecl) groundParm(i int) Type  { return f.Parms[i] }
 func (*FuncDecl) unifyParm(int, Type) note { return nil }
 
+func (f *FuncDecl) eq(other Func) bool {
+	o, ok := other.(*FuncDecl)
+	if !ok || f.Name != o.Name || len(f.Parms) != len(o.Parms) {
+		return false
+	}
+	for i := range f.Parms {
+		if !eq(f.Parms[i], o.Parms[i]) {
+			return false
+		}
+	}
+	return eq(f.Ret, o.Ret)
+}
+
 func (f *FuncInst) arity() int { return len(f.T.Parms) }
 
 func (f *FuncInst) groundRet() Type {
@@ -176,7 +189,11 @@ func findIfaceFunc(x scope, decl *FuncDecl) (Func, note) {
 		note.setNotes(ambigNotes)
 		return nil, note
 	default:
-		return funcs[0], nil
+		fun := funcs[0]
+		if f, ok := fun.(*FuncInst); ok {
+			fun = canonicalFuncInst(f)
+		}
+		return fun, nil
 	}
 }
 
@@ -206,6 +223,24 @@ func unifyFunc(x scope, f Func, typ Type) note {
 		}
 	}
 	return instIface(x, f)
+}
+
+func (f *FuncInst) eq(other Func) bool {
+	o, ok := other.(*FuncInst)
+	if !ok || f.Def != o.Def {
+		return false
+	}
+	for i := range f.TypeArgs {
+		if !eq(f.TypeArgs[i], o.TypeArgs[i]) {
+			return false
+		}
+	}
+	for i := range f.IfaceArgs {
+		if !f.IfaceArgs[i].eq(o.IfaceArgs[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (*Select) arity() int { return 1 }
@@ -247,6 +282,12 @@ func (s *Select) unifyParm(i int, typ Type) note {
 	s.Parm = &RefType{Type: structType, L: structType.L}
 	s.Ret = &RefType{Type: f.Type, L: f.Type.Loc()}
 	return nil
+}
+
+func (s *Select) eq(other Func) bool {
+	o, ok := other.(*Select)
+	return ok && s.Struct == o.Struct && s.Field == o.Field &&
+		eq(s.Parm, o.Parm) && eq(s.Ret, o.Ret)
 }
 
 func (s *Switch) arity() int { return len(s.Parms) }
@@ -330,6 +371,24 @@ ground_parms:
 		s.Parms[j+1] = f
 	}
 	return nil
+}
+
+func (s *Switch) eq(other Func) bool {
+	o, ok := other.(*Switch)
+	if !ok || s.Union != o.Union || len(s.Cases) != len(o.Cases) || len(s.Parms) != len(o.Parms) {
+		return false
+	}
+	for i := range s.Cases {
+		if s.Cases[i] != o.Cases[i] {
+			return false
+		}
+	}
+	for i := range s.Parms {
+		if !eq(s.Parms[i], o.Parms[i]) {
+			return false
+		}
+	}
+	return eq(s.Ret, o.Ret)
 }
 
 func (b *Builtin) arity() int { return len(b.Parms) }
@@ -490,17 +549,41 @@ func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) note {
 	return nil
 }
 
+func (b *Builtin) eq(other Func) bool {
+	o, ok := other.(*Builtin)
+	if !ok || b.Op != o.Op || len(b.Parms) != len(o.Parms) {
+		return false
+	}
+	for i := range b.Parms {
+		if !eq(b.Parms[i], o.Parms[i]) {
+			return false
+		}
+	}
+	return eq(b.Ret, o.Ret)
+}
+
 func (id *idFunc) arity() int                   { return len(id.funcType.Parms) }
 func (id *idFunc) groundRet() Type              { return id.funcType.Ret }
 func (id *idFunc) unifyRet(Type) note           { return nil }
 func (id *idFunc) groundParm(i int) Type        { return id.funcType.Parms[i] }
 func (id *idFunc) unifyParm(i int, _ Type) note { return nil }
 
+// eq should never be called; it's used to check equality of FuncInst ifaces.
+// FuncInst ifaces should never have an idFunc, since it is a temporary,
+// bookkeeping type only used inside overload resolution.
+func (*idFunc) eq(Func) bool { panic("impossible") }
+
 func (e *ExprFunc) arity() int                   { return len(e.FuncType.Parms) }
 func (e *ExprFunc) groundRet() Type              { return e.FuncType.Ret }
 func (e *ExprFunc) unifyRet(Type) note           { return nil }
 func (e *ExprFunc) groundParm(i int) Type        { return e.FuncType.Parms[i] }
 func (e *ExprFunc) unifyParm(i int, _ Type) note { return nil }
+
+// eq returns whether other is an *ExprFunc.
+// As far as Func.eq is concerned, all *ExprFuncs are the same,
+// because their underlying representation must be the same:
+// a tuple <&capture_block, &static_function>.
+func (e *ExprFunc) eq(other Func) bool { _, ok := other.(*ExprFunc); return ok }
 
 func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
 	if eq(literal(pat), pat) || eq(literal(typ), typ) {

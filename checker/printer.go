@@ -233,6 +233,7 @@ func (f *FuncDef) print(pc *config) {
 	pc.field("Iface", f.Iface)
 	pc.field("Exprs", f.Exprs)
 	pc.field("Exp", f.Exp)
+	pc.field("Insts", f.Insts)
 	pc.p("\n}")
 }
 

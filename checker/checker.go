@@ -1222,7 +1222,7 @@ func filterIfaceConstraints(x scope, funcs []Func) ([]Func, []note) {
 func useFunc(x scope, fun Func) Func {
 	switch fun := fun.(type) {
 	case *FuncInst:
-		return fun // TODO: dedup funcinst
+		return canonicalFuncInst(fun)
 	case *idFunc:
 		return &ExprFunc{
 			Expr:     idToExpr(useID(x, fun.id), fun.l),
@@ -1375,10 +1375,20 @@ func useID(x scope, id id) id {
 	case *BlockCap:
 		return x.capture(id)
 	case *FuncInst:
-		return id // TODO: dedup funcinst
+		return canonicalFuncInst(id)
 	default:
 		return id
 	}
+}
+
+func canonicalFuncInst(f *FuncInst) *FuncInst {
+	for _, inst := range f.Def.Insts {
+		if f.eq(inst) {
+			return inst
+		}
+	}
+	f.Def.Insts = append(f.Def.Insts, f)
+	return f
 }
 
 func idToExpr(id id, l loc.Loc) Expr {

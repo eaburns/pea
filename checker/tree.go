@@ -242,6 +242,7 @@ type Func interface {
 	groundParm(int) Type // nil if not grounded
 	unifyParm(int, Type) note
 	buildString(*strings.Builder) *strings.Builder
+	eq(Func) bool
 }
 
 type FuncInst struct {
