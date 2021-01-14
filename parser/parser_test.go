@@ -425,13 +425,13 @@ func TestExpr(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.expr, func(t *testing.T) {
-			src := fmt.Sprintf("var x := %s", test.expr)
+			src := fmt.Sprintf("var _ (){} := {%s}", test.expr)
 			p := New()
 			if err := p.Parse("", strings.NewReader(src)); err != nil {
 				t.Log(src)
 				t.Fatalf("failed to parse: %s", err.Error())
 			}
-			got := p.Files[0].Defs[0].(*VarDef).Expr
+			got := p.Files[0].Defs[0].(*VarDef).Expr.(*BlockLit).Exprs[0]
 			opts := []cmp.Option{
 				cmp.FilterPath(isLoc, cmp.Ignore()),
 			}

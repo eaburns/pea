@@ -12,6 +12,9 @@ func isEmptyStruct(typ Type) bool {
 }
 
 func refType(typ Type) Type {
+	if typ == nil {
+		return nil
+	}
 	return &RefType{Type: typ, L: typ.Loc()}
 }
 

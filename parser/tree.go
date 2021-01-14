@@ -28,7 +28,7 @@ type VarDef struct {
 	Exp   bool
 	Const bool
 	Name  Ident
-	Type  Type // nil if unspecified
+	Type  Type
 	Expr  Expr // nil if unspecified
 	L     loc.Loc
 }

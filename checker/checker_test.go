@@ -120,12 +120,12 @@ func TestRedef(t *testing.T) {
 	}{
 		{
 			name: "var redef",
-			src: "var a := 1		var a := 1",
+			src: "var a int := 1		var a itn := 1",
 			err: "redefined",
 		},
 		{
 			name: "var _ not redef",
-			src: "var _ := 1		var _ := 1",
+			src: "var _ int := 1		var _ int := 1",
 			err: "",
 		},
 		{
@@ -163,8 +163,8 @@ func TestBlockNewLocal(t *testing.T) {
 		// x and y are locals of the outer block.
 		// z is a local of the inner block.
 		// All other variables are not locals.
-		var a := 1
-		var testVar := (b int){
+		var a int := 1
+		var testVar (int){} := (b int){
 			x := 1,
 			{z := x},
 			y := "hello",
@@ -197,7 +197,7 @@ func TestBlockNewLocal(t *testing.T) {
 
 func TestNoNewLocalInNestedExpr(t *testing.T) {
 	const src = `
-		var testVar := 1 + (x := 2)
+		var testVar int := 1 + (x := 2)
 	`
 	switch _, errs := check("test", []string{src}, nil); {
 	case len(errs) != 1:
@@ -209,7 +209,7 @@ func TestNoNewLocalInNestedExpr(t *testing.T) {
 
 func TestNoNewLocalInArrayExprs(t *testing.T) {
 	const src = `
-		var testVar := [1, x := 2]
+		var testVar [int] := [1, x := 2]
 	`
 	switch _, errs := check("test", []string{src}, nil); {
 	case len(errs) != 1:
@@ -935,12 +935,20 @@ func TestOverloadResolution(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			src := fmt.Sprintf("%s\nvar zz %s :=%s\n", test.src, test.ret, test.call)
+			var src string
+			if test.ret != "" {
+				src = fmt.Sprintf("%s\nvar zz %s := %s\n", test.src, test.ret, test.call)
+			} else {
+				src = fmt.Sprintf("%s\nvar zz (){} := { _ := (%s) }\n", test.src, test.call)
+			}
 			t.Log(src)
 			mod, errs := check("test", []string{src}, nil)
 			switch {
 			case test.err == "" && len(errs) == 0:
 				expr := findVarDef(t, "zz", mod).Expr
+				if test.ret == "" {
+					expr = expr.(*Deref).Expr.(*BlockLit).Exprs[0].(*Call).Args[1]
+				}
 				call := findCall(expr)
 				if call == nil {
 					t.Fatalf("no call: %s", expr)
@@ -976,7 +984,7 @@ func findCall(e Expr) *Call {
 func TestSwitchReturnTypes(t *testing.T) {
 	const src = `
 		type a_or_b [?a, ?b]
-		var _ := {
+		var _ (){} := {
 			m() ?a {1} ?b {1},
 			//m() ?a {"hello"} ?b {1},
 			m() ?a {1},
@@ -995,7 +1003,7 @@ func TestSwitchReturnTypes(t *testing.T) {
 
 func TestCaptureParm(t *testing.T) {
 	const src = `
-		var x := (i int){
+		var x (int){} := (i int){
 			{i + i + i}
 		}
 	`
@@ -1017,7 +1025,7 @@ func TestCaptureParm(t *testing.T) {
 
 func TestCaptureCapture(t *testing.T) {
 	const src = `
-		var x := (i int){
+		var x (int){} := (i int){
 			{{i + i + i}}
 		}
 	`
@@ -1047,7 +1055,7 @@ func TestCaptureCapture(t *testing.T) {
 
 func TestCaptureOnCall(t *testing.T) {
 	const src = `
-		var x := (f (){}){
+		var x ((){}){} := (f (){}){
 			{f()}
 		}
 	`

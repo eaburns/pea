@@ -19,8 +19,7 @@ Import <- _ reserved:("import" / "Import") id:Id? path:StrLit {
 
 Def <- ConstDef / VarDef / TypeDef / FuncDef / TestDef
 
-ConstDef <- _ reserved:("const" / "Const") name:Id t:Type? (_ ":=" expr:Expr)? {
-	var typ Type; if t != nil { typ = *t }
+ConstDef <- _ reserved:("const" / "Const") name:Id typ:Type (_ ":=" expr:Expr)? {
 	return Def(&VarDef{
 		Exp: reserved == "Const",
 		Const: true,
@@ -31,8 +30,7 @@ ConstDef <- _ reserved:("const" / "Const") name:Id t:Type? (_ ":=" expr:Expr)? {
 	})
 }
 
-VarDef <- _ reserved:("var" / "Var") name:Id t:Type? (_ ":=" expr:Expr)? {
-	var typ Type; if t != nil { typ = *t }
+VarDef <- _ reserved:("var" / "Var") name:Id typ:Type (_ ":=" expr:Expr)? {
 	return Def(&VarDef{
 		Exp: reserved == "Var",
 		Const: false,
