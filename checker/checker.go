@@ -716,6 +716,9 @@ func newLocal(x scope, call *parser.Call, id parser.Ident) (*FuncLocal, *Call, [
 }
 
 func convert(expr Expr, typ Type) (Expr, Error) {
+	if expr == nil {
+		return nil, nil
+	}
 	dstType := typ
 	srcType := expr.Type()
 	// If one is a literal type, compare their literal types, not type names.
@@ -790,16 +793,14 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 		t := commonGroundParmType(funcs, i)
 		if t == nil {
 			arg, fs := checkAndConvertExpr(x, parserArg, nil)
-			if len(fs) > 0 {
+			if arg == nil || arg.Type() == nil || len(fs) > 0 {
 				errs = append(errs, fs...)
 				as, fs := checkArgsFallback(x, parserCall.Args[i+1:])
 				args = append(args, as...)
 				errs = append(errs, fs...)
 				return &Call{Args: args, L: parserCall.L}, errs
 			}
-			if arg != nil {
-				args = append(args, arg)
-			}
+			args = append(args, arg)
 			var ns []note
 			funcs, ns = filterByGroundedArg(funcs, i, arg)
 			notes = append(notes, ns...)
@@ -1708,6 +1709,8 @@ func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []Error) {
 func deref(expr Expr) Expr {
 	var t Type
 	switch ref := expr.Type().(type) {
+	case nil:
+		return nil
 	case *RefType:
 		t = ref.Type
 	case *DefType:

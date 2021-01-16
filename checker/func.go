@@ -266,6 +266,7 @@ func findIfaceFunc(x scope, decl *FuncDecl) (Func, note) {
 		switch id.(type) {
 		case *Builtin:
 		case *FuncInst:
+		case *FuncDecl:
 		default:
 			// TODO: relax the constraint that a funcdecl be a static function.
 			notFoundNotes = append(notFoundNotes, newNote("%s: not a static function", id).setLoc(id))
