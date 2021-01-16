@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -8,11 +9,15 @@ import (
 	"github.com/eaburns/pea/parser"
 )
 
+var dump = flag.Bool("d", false, "dump the check tree")
+
 func main() {
+	flag.Parse()
+
 	in := os.Stdin
 	path := "<stdin>"
-	if len(os.Args) > 1 {
-		path = os.Args[1]
+	if len(flag.Args()) == 1 {
+		path = flag.Arg(0)
 		f, err := os.Open(path)
 		if err != nil {
 			fmt.Printf("failed to open %s: %s", path, err)
@@ -33,13 +38,7 @@ func main() {
 		}
 		os.Exit(1)
 	}
-	m.Print(os.Stdout, checker.PrintLocs(fs))
-
-	for _, def := range m.Defs {
-		td, ok := def.(*checker.TypeDef)
-		if !ok {
-			continue
-		}
-		fmt.Printf("%s: %s\n", td.Name, td.Type.String())
+	if *dump {
+		m.Print(os.Stdout, checker.PrintLocs(fs))
 	}
 }
