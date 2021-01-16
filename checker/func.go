@@ -28,26 +28,6 @@ func (f *FuncDecl) eq(other Func) bool {
 
 func (f *FuncInst) arity() int { return len(f.T.Parms) }
 
-func (f *FuncInst) groundRet() Type {
-	if !isGroundType(f.typeParmMap(), f.T.Ret) {
-		return nil
-	}
-	return f.T.Ret
-}
-
-func (f *FuncInst) unifyRet(typ Type) note {
-	parms := f.typeParmMap()
-	if isGroundType(parms, f.T.Ret) {
-		return nil
-	}
-	bind := unify(parms, f.T.Ret, typ)
-	if bind == nil {
-		return newNote("%s: cannot unify return: %s and %s", f, f.T.Ret, typ).setLoc(typ)
-	}
-	f.sub(bind)
-	return nil
-}
-
 func (f *FuncInst) groundParm(i int) Type {
 	if !isGroundType(f.typeParmMap(), f.T.Parms[i]) {
 		return nil
@@ -63,6 +43,26 @@ func (f *FuncInst) unifyParm(i int, typ Type) note {
 	bind := unify(parms, f.T.Parms[i], typ)
 	if bind == nil {
 		return newNote("%s: cannot argument %d: %s and %s", f, i, f.T.Parms[i], typ).setLoc(typ)
+	}
+	f.sub(bind)
+	return nil
+}
+
+func (f *FuncInst) groundRet() Type {
+	if !isGroundType(f.typeParmMap(), f.T.Ret) {
+		return nil
+	}
+	return f.T.Ret
+}
+
+func (f *FuncInst) unifyRet(typ Type) note {
+	parms := f.typeParmMap()
+	if isGroundType(parms, f.T.Ret) {
+		return nil
+	}
+	bind := unify(parms, f.T.Ret, typ)
+	if bind == nil {
+		return newNote("%s: cannot unify return: %s and %s", f, f.T.Ret, typ).setLoc(typ)
 	}
 	f.sub(bind)
 	return nil
@@ -360,13 +360,6 @@ func (f *FuncInst) eq(other Func) bool {
 
 func (*Select) arity() int { return 1 }
 
-func (s *Select) groundRet() Type { return s.Ret }
-
-func (s *Select) unifyRet(typ Type) note {
-	s.Ret = typ
-	return nil
-}
-
 func (s *Select) groundParm(int) Type { return s.Parm }
 
 func (s *Select) unifyParm(i int, typ Type) note {
@@ -387,10 +380,6 @@ func (s *Select) unifyParm(i int, typ Type) note {
 	if f == nil {
 		return newNote("%s: %s has no field %s", s, typ, s.Field.Name).setLoc(typ)
 	}
-	if s.Ret != nil && !canConvertReturn(f.Type, s.Ret) {
-		return newNote("%s: cannot convert %s field %s (%s) to %s",
-			s, typ, f.Name, f.Type, s.Ret).setLoc(typ)
-	}
 	s.Struct = structType
 	s.Field = f
 	s.Parm = &RefType{Type: structType, L: structType.L}
@@ -404,14 +393,11 @@ func (s *Select) eq(other Func) bool {
 		eqType(s.Parm, o.Parm) && eqType(s.Ret, o.Ret)
 }
 
+func (s *Select) groundRet() Type { return s.Ret }
+
+func (s *Select) unifyRet(typ Type) note { return nil }
+
 func (s *Switch) arity() int { return len(s.Parms) }
-
-func (s *Switch) groundRet() Type { return s.Ret }
-
-func (s *Switch) unifyRet(typ Type) note {
-	s.Ret = typ
-	return nil
-}
 
 func (s *Switch) groundParm(i int) Type { return s.Parms[i] }
 
@@ -446,17 +432,7 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 				continue
 			}
 			// If not all cases are convered, the return is the empty struct.
-			// Make sure that the empty struct is convertible, if needed.
-			want := s.Ret
 			s.Ret = &StructType{}
-			if want == nil || isEmptyStruct(want) {
-				// It's OK. We either didn't have any expectation for the return,
-				// or we wanted an empty struct anyway.
-				break
-			}
-			return newNote("%s: cannot convert returned %s to %s", s, s.Ret, want)
-		}
-		if s.Ret != nil {
 			goto ground_parms
 		}
 	default:
@@ -467,11 +443,12 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 		if !ok {
 			return newNote("%s: argument %d (%s) is not a function type", s, i, typ)
 		}
-		s.Ret = f.Ret
-		goto ground_parms
+		if s.Ret == nil {
+			s.Ret = f.Ret
+			goto ground_parms
+		}
 	}
 	return nil
-
 ground_parms:
 	for j, c := range s.Cases {
 		f := &FuncType{Ret: s.Ret, L: c.L}
@@ -482,6 +459,10 @@ ground_parms:
 	}
 	return nil
 }
+
+func (s *Switch) groundRet() Type { return s.Ret }
+
+func (s *Switch) unifyRet(typ Type) note { return nil }
 
 func (s *Switch) eq(other Func) bool {
 	o, ok := other.(*Switch)
@@ -503,56 +484,12 @@ func (s *Switch) eq(other Func) bool {
 
 func (b *Builtin) arity() int { return len(b.Parms) }
 
-func (b *Builtin) groundRet() Type { return b.Ret }
-
-func (b *Builtin) unifyRet(typ Type) note {
-	switch b.Op {
-	case Assign:
-		b.Parms[0] = &RefType{Type: typ}
-		b.Parms[1] = typ
-		b.Ret = typ
-		return nil
-	case NewArray:
-		t, note := arrayType(b, typ)
-		if note != nil {
-			return note
-		}
-		b.Parms[1] = t.ElemType
-		b.Ret = t
-		return nil
-	case BitNot, BitXor, BitAnd, BitOr, LeftShift, RightShift:
-		return unifyBuiltin(intTypes, b, typ)
-	case Negate, Minus, Plus, Times, Divide, Modulus:
-		return unifyBuiltin(numTypes, b, typ)
-	case Index:
-		if b.Ret == nil {
-			b.Parms[0] = &ArrayType{ElemType: typ}
-			b.Ret = &RefType{Type: typ}
-		}
-		return nil
-	case Slice:
-		if b.Ret == nil {
-			t, note := arrayType(b, typ)
-			if note != nil {
-				return note
-			}
-			b.Parms[0] = t
-			b.Ret = t
-		}
-		return nil
-	case Eq, Neq, Less, LessEq, Greater, GreaterEq, NumConvert, StrConvert, Length, Return, Panic, Print:
-		return nil
-	default:
-		panic("impossible op type")
-	}
-}
-
 func (b *Builtin) groundParm(i int) Type { return b.Parms[i] }
 
 func (b *Builtin) unifyParm(i int, typ Type) note {
 	switch b.Op {
 	case Assign:
-		if b.Parms[i] != nil {
+		if i != 0 {
 			return nil
 		}
 		if r, ok := typ.(*RefType); ok {
@@ -565,51 +502,68 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 			b.Ret = typ
 		}
 		return nil
+
 	case NewArray:
-		if i == 1 && b.Parms[1] == nil {
-			b.Parms[1] = typ
-			b.Ret = &ArrayType{ElemType: typ}
+		if i != 1 {
+			return nil
 		}
+		b.Parms[1] = typ
+		b.Ret = &ArrayType{ElemType: typ}
 		return nil
+
 	case BitNot, BitXor, BitAnd, BitOr, LeftShift, RightShift:
 		return unifyBuiltin(intTypes, b, typ)
-	case Negate, Minus, Plus, Times, Divide, Modulus, Eq, Neq, Less, LessEq, Greater, GreaterEq, NumConvert:
+
+	case Negate, Minus, Plus, Times, Divide, Modulus, Eq,
+		Neq, Less, LessEq, Greater, GreaterEq, NumConvert:
 		return unifyBuiltin(numTypes, b, typ)
+
 	case Index:
-		if i == 0 && b.Parms[0] == nil {
-			t, note := arrayType(b, typ)
-			if note != nil {
-				return note
-			}
-			b.Parms[0] = t
-			b.Ret = &RefType{Type: t.ElemType}
+		if i != 0 || b.Parms[i] != nil {
+			return nil
 		}
+		t, note := arrayType(b, typ)
+		if note != nil {
+			return note
+		}
+		b.Parms[0] = t
+		b.Ret = &RefType{Type: t.ElemType}
 		return nil
+
 	case Slice:
-		if i == 0 && b.Parms[0] == nil {
-			t, note := arrayType(b, typ)
-			if note != nil {
-				return note
-			}
-			b.Parms[0] = t
-			b.Ret = t
+		if i != 0 || b.Parms[i] != nil {
+			return nil
 		}
+		t, note := arrayType(b, typ)
+		if note != nil {
+			return note
+		}
+		b.Parms[0] = t
+		b.Ret = t
 		return nil
+
 	case Length:
-		if i == 0 {
-			t, note := arrayType(b, typ)
-			if note != nil {
-				return note
-			}
-			b.Parms[0] = t
+		if i != 0 {
+			return nil
 		}
+		t, note := arrayType(b, typ)
+		if note != nil {
+			return note
+		}
+		b.Parms[0] = t
 		return nil
+
 	case StrConvert, Return, Panic, Print:
 		return nil
+
 	default:
 		panic("impossible op type")
 	}
 }
+
+func (b *Builtin) groundRet() Type { return b.Ret }
+
+func (b *Builtin) unifyRet(typ Type) note { return nil }
 
 func arrayType(b *Builtin, typ Type) (*ArrayType, note) {
 	t, ok := valueType(literalType(typ)).(*ArrayType)
@@ -671,10 +625,10 @@ func (b *Builtin) eq(other Func) bool {
 }
 
 func (e *ExprFunc) arity() int                   { return len(e.FuncType.Parms) }
-func (e *ExprFunc) groundRet() Type              { return e.FuncType.Ret }
-func (e *ExprFunc) unifyRet(Type) note           { return nil }
 func (e *ExprFunc) groundParm(i int) Type        { return e.FuncType.Parms[i] }
 func (e *ExprFunc) unifyParm(i int, _ Type) note { return nil }
+func (e *ExprFunc) groundRet() Type              { return e.FuncType.Ret }
+func (e *ExprFunc) unifyRet(Type) note           { return nil }
 
 // eq returns whether other is an *ExprFunc.
 // As far as Func.eq is concerned, all *ExprFuncs are the same,
@@ -699,10 +653,10 @@ func (i *idFunc) buildString(s *strings.Builder) *strings.Builder {
 	return s
 }
 func (id *idFunc) arity() int                   { return len(id.funcType.Parms) }
-func (id *idFunc) groundRet() Type              { return id.funcType.Ret }
-func (id *idFunc) unifyRet(Type) note           { return nil }
 func (id *idFunc) groundParm(i int) Type        { return id.funcType.Parms[i] }
 func (id *idFunc) unifyParm(i int, _ Type) note { return nil }
+func (id *idFunc) groundRet() Type              { return id.funcType.Ret }
+func (id *idFunc) unifyRet(Type) note           { return nil }
 
 // eq should never be called; it's used to check equality of FuncInst ifaces.
 // FuncInst ifaces should never have an idFunc, since it is a temporary,

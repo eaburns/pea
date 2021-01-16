@@ -782,11 +782,6 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	if len(ns) > 0 {
 		notes = append(notes, ns...)
 	}
-	if want != nil {
-		var ns []note
-		funcs, ns = filterByReturn(funcs, want)
-		notes = append(notes, ns...)
-	}
 	var errs []Error
 	var args []Expr
 	for i, parserArg := range parserCall.Args {
@@ -831,10 +826,16 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 			args = append(args, arg)
 		}
 	}
-	if want == nil {
+
+	if want != nil {
+		var ns []note
+		funcs, ns = filterByReturn(funcs, want)
+		notes = append(notes, ns...)
+	} else {
 		funcs, ns = filterUngroundReturns(funcs)
 		notes = append(notes, ns...)
 	}
+
 	funcs, ns = filterIfaceConstraints(x, funcs)
 	notes = append(notes, ns...)
 	switch {

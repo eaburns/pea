@@ -639,7 +639,7 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "type point [.x float64, .y float64]",
 			call: "(point : [.x 4, .y 4]).y",
 			ret:  "string",
-			err:  "cannot convert point field \\.y \\(float64\\) to string",
+			err:  "cannot convert returned &float64 to string",
 		},
 		{
 			name: "built-in selector mismatches, but func def matches",
@@ -754,7 +754,7 @@ func TestOverloadResolution(t *testing.T) {
 				type a_or_b [?a, ?b]
 				func make() a_or_b
 			`,
-			call: "make() ?a () {1} ?b () {2}",
+			call: "make() ?a () {uint8 : 1} ?b () {2}",
 			ret:  "uint8",
 			want: "built-in ?a?b(&[?a, ?b], (){uint8}, (){uint8})uint8",
 		},
@@ -823,7 +823,7 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "var a string := \"\"",
 			call: "a := 6",
 			ret:  "int",
-			err:  "cannot convert a \\(string\\) to type &int",
+			err:  "type mismatch: got int, want string",
 		},
 		{
 			name: "built-in assign, expected, rhs mismatch",
@@ -845,7 +845,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in new array, expected type",
-			call: "new(5, 0)",
+			call: "new(5, int8 : 0)",
 			ret:  "[int8]",
 			want: "built-in new(int, int8)[int8]",
 		},
@@ -854,24 +854,24 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "type byte_array_ref &[int8]",
 			call: "new(5, 0)",
 			ret:  "byte_array_ref",
-			want: "built-in new(int, int8)[int8]",
+			err:  "cannot convert returned \\[int\\] to byte_array_ref",
 		},
 		{
 			name: "built-in new array, expected non-array type",
 			call: "new(5, 0)",
 			ret:  "string",
-			err:  "string is not an array type",
+			err:  "cannot convert returned \\[int\\] to string",
 		},
 		{
 			name: "built-in new array, expected non-array def type",
 			src:  "type test_type [.x int]",
 			call: "new(5, 0)",
 			ret:  "test_type",
-			err:  "test_type is not an array type",
+			err:  "cannot convert returned \\[int\\] to test_type",
 		},
 		{
 			name: "built-in bit-wise not, expected type",
-			call: "^1",
+			call: "^(int8 : 1)",
 			ret:  "int8",
 			want: "built-in ^(int8)int8",
 		},
@@ -882,7 +882,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in bit-wise xor, expected type",
-			call: "1 ^ 2",
+			call: "(int8 : 1) ^ 2",
 			ret:  "int8",
 			want: "built-in ^(int8, int8)int8",
 		},
@@ -893,7 +893,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in bit-wise and, expected type",
-			call: "1 & 2",
+			call: "(int8 : 1) & 2",
 			ret:  "int8",
 			want: "built-in &(int8, int8)int8",
 		},
@@ -904,7 +904,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in bit-wise or, expected type",
-			call: "1 | 2",
+			call: "(int8 : 1) | 2",
 			ret:  "int8",
 			want: "built-in |(int8, int8)int8",
 		},
@@ -915,13 +915,13 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in bit-wise or, not for floats",
-			call: "1.0 | 2.0",
+			call: "(float64 : 1.0) | 2.0",
 			ret:  "float64",
 			err:  "not found",
 		},
 		{
 			name: "built-in left shift, expected type",
-			call: "1 << 3",
+			call: "(int8 : 1) << 3",
 			ret:  "int8",
 			want: "built-in <<(int8, int)int8",
 		},
@@ -932,7 +932,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in negate, expected type",
-			call: "- 1",
+			call: "- (int8 : 1)",
 			ret:  "int8",
 			want: "built-in -(int8)int8",
 		},
@@ -943,7 +943,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in minus, expected type",
-			call: "2 - 1",
+			call: "(int8 : 2) - 1",
 			ret:  "int8",
 			want: "built-in -(int8, int8)int8",
 		},
@@ -954,7 +954,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in plus, expected type",
-			call: "2 + 1",
+			call: "(int8 : 2) + 1",
 			ret:  "int8",
 			want: "built-in +(int8, int8)int8",
 		},
@@ -965,7 +965,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in times, expected type",
-			call: "2 * 1",
+			call: "(int8 : 2) * 1",
 			ret:  "int8",
 			want: "built-in *(int8, int8)int8",
 		},
@@ -976,7 +976,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in divide, expected type",
-			call: "2 / 1",
+			call: "(int8 : 2) / 1",
 			ret:  "int8",
 			want: "built-in /(int8, int8)int8",
 		},
@@ -987,7 +987,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in mod, expected type",
-			call: "2 % 1",
+			call: "(int8 : 2) % 1",
 			ret:  "int8",
 			want: "built-in %(int8, int8)int8",
 		},
@@ -1131,7 +1131,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in array slice, expected type",
-			call: "[5, 6, 7][1, 2]",
+			call: "[(float32 : 5), 6, 7][1, 2]",
 			ret:  "[float32]",
 			want: "built-in []([float32], int, int)[float32]",
 		},
@@ -1139,7 +1139,7 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in array slice, expected type not an array",
 			call: "[5, 6, 7][1, 2]",
 			ret:  "int",
-			err:  "not an array type",
+			err:  "cannot convert returned \\[int\\] to int",
 		},
 		{
 			name: "built-in array slice, arg not an array",
@@ -1231,7 +1231,7 @@ func TestSwitchReturnTypes(t *testing.T) {
 			m() ?b {1},
 		}
 		var _ int := m() ?a {1} ?b {1}
-		var _ [.] := m() ?a {1} ?b {1}
+		//var _ [.] := m() ?a {1} ?b {1}
 		var _ [.] := m() ?a {1}
 		var _ [.] := m() ?a {} ?b {}
 		func m() a_or_b
