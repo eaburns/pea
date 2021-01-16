@@ -1116,9 +1116,11 @@ func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 	var notFoundNotes []note
 	var ambigNotes []note
 	for _, id := range x.find(parserID.Name) {
-		// TODO: handle grounding for functions and function ifaces.
 		if !isGround(id) {
-			continue
+			if n := unifyFunc(x, id.(Func), want); n != nil {
+				notFoundNotes = append(notFoundNotes, n)
+				continue
+			}
 		}
 		if want != nil {
 			expr := idToExpr(id, parserID.L)
