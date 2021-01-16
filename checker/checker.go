@@ -1337,7 +1337,7 @@ func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []Er
 			}
 			lit.Fields = append(lit.Fields, expr)
 		}
-		if !isRefType(want) {
+		if !isRefType(literalType(want)) {
 			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), errs
 		}
@@ -1399,7 +1399,8 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []Erro
 		if parserLit.CaseVal.Val != nil {
 			lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, lit.Case.Type)
 		}
-		if !isRefType(want) {
+		if !isRefType(literalType(want)) {
+			fmt.Println("not a ref")
 			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), errs
 		}
@@ -1553,7 +1554,7 @@ func checkStrLit(parserLit *parser.StrLit, want Type) (Expr, []Error) {
 		lit.T = refType(&BasicType{Kind: String, L: parserLit.L})
 		return deref(lit), nil
 	case b.Kind == String:
-		if !isRefType(want) {
+		if !isRefType(literalType(want)) {
 			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), nil
 		}
@@ -1653,7 +1654,7 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []Error) {
 	case lit.Val.Cmp(max) > 0:
 		errs = append(errs, newError(lit, "%s overflows type %s", lit.Text, want))
 	}
-	if !isRefType(want) {
+	if !isRefType(literalType(want)) {
 		lit.T = refType(copyTypeWithLoc(want, lit.L))
 		return deref(lit), errs
 	}
@@ -1705,7 +1706,7 @@ func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []Error) {
 		}
 		return intLit, errs
 	case b.Kind == Float32 || b.Kind == Float64:
-		if !isRefType(want) {
+		if !isRefType(literalType(want)) {
 			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), nil
 		}

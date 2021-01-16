@@ -19,16 +19,8 @@ func refType(typ Type) Type {
 }
 
 func isRefType(typ Type) bool {
-	switch typ := typ.(type) {
-	case nil:
-		return false
-	case *RefType:
-		return true
-	case *DefType:
-		return typ.Inst != nil && isRefType(typ.Inst.Type)
-	default:
-		return false
-	}
+	_, ok := typ.(*RefType)
+	return ok
 }
 
 func trim1Ref(typ Type) Type {
