@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -623,7 +624,7 @@ func (b *BlockLit) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (t *StrLit) buildString(s *strings.Builder) *strings.Builder {
-	s.WriteString(t.Text)
+	s.WriteString(strconv.Quote(t.Text))
 	return s
 }
 

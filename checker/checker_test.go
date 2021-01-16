@@ -311,7 +311,7 @@ func TestNoNewLocalInArrayExprs(t *testing.T) {
 	}
 }
 
-func TestCheckFuncReturn(t *testing.T) {
+func TestCheckFuncReturnCall(t *testing.T) {
 	tests := []struct {
 		name string
 		src  string
@@ -358,7 +358,7 @@ func TestCheckFuncReturn(t *testing.T) {
 		{
 			name: "return type mismatch",
 			src:  "func foo() int { return: \"hello\" }",
-			err:  "got string, want int",
+			err:  `cannot convert "hello" \(string\) to type int`,
 		},
 	}
 	for _, test := range tests {
@@ -459,6 +459,269 @@ func TestCheckFuncScope(t *testing.T) {
 	}
 }
 
+func TestNewLocalTypes(t *testing.T) {
+	tests := []struct {
+		src  string
+		expr string
+		want string
+		err  string
+	}{
+		{
+			src:  "var int_array [int]",
+			expr: "int_array",
+			want: "[int]",
+		},
+		{
+			src:  "var int_array [int]",
+			expr: "&[int] : int_array",
+			want: "&[int]",
+		},
+		{
+			src:  "var int_array [int]",
+			expr: "&&[int] : int_array",
+			err:  "cannot convert int_array \\(\\[int\\]\\) to type &&\\[int\\]",
+		},
+		{
+			src:  "var int_array [int]",
+			expr: "int_array[0]",
+			want: "int",
+		},
+		{
+			src:  "var int_array [int]",
+			expr: "&int : int_array[0]",
+			want: "&int",
+		},
+		{
+			src:  "var int_array [int]",
+			expr: "&&int : int_array[0]",
+			want: "&&int",
+		},
+		{
+			src:  "var int_array [int]",
+			expr: "&&&int : int_array[0]",
+			err:  "cannot convert returned &int to &&&int",
+		},
+		{
+			src:  "var int_ref_array [&int]",
+			expr: "int_ref_array[0]",
+			want: "int",
+		},
+		{
+			src:  "var int_ref_array [&int]",
+			expr: "&int : int_ref_array[0]",
+			want: "&int",
+		},
+		{
+			src:  "var int_ref_array [&int]",
+			expr: "&&int : int_ref_array[0]",
+			want: "&&int",
+		},
+		{
+			src:  "var int_ref_array [&int]",
+			expr: "&&&int : int_ref_array[0]",
+			want: "&&&int",
+		},
+		{
+			src:  "var int_ref_array [&int]",
+			expr: "&&&&int : int_ref_array[0]",
+			err:  "cannot convert returned &&int to &&&&int",
+		},
+		{
+			src:  "var int_array_ref &[int]",
+			expr: "int_array_ref[0]",
+			want: "int",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			expr: "make_point()",
+			want: "point",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			expr: "&point : make_point()",
+			want: "&point",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			expr: "&&point : make_point()",
+			err:  "cannot convert returned point to &&point",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			expr: "make_point().x",
+			want: "int",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			expr: "&int : make_point().x",
+			want: "&int",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			expr: "&&int : make_point().x",
+			want: "&&int",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			expr: "&&&int : make_point().x",
+			err:  "cannot convert returned &int to &&&int",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.expr, func(t *testing.T) {
+			src := fmt.Sprintf("%s\nvar xxx (){} := {got := %s}\n", test.src, test.expr)
+			if test.want != "" {
+				src += fmt.Sprintf("var want %s\n", test.want)
+			}
+			t.Log(src)
+			switch mod, errs := check("test", []string{src}, nil); {
+			case test.err == "" && len(errs) == 0:
+				xxx := findVarDef(t, "xxx", mod)
+				got := xxx.Expr.(*Deref).Expr.(*BlockLit).Locals[0].Type()
+				want := findVarDef(t, "want", mod).Type()
+				if !eqType(got, want) {
+					t.Errorf("got %s, want %s", got, want)
+				}
+			case test.err == "" && len(errs) > 0:
+				t.Fatalf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Fatalf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Fatalf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
+func TestArgumentConversions(t *testing.T) {
+	tests := []struct {
+		src  string
+		parm string
+		expr string
+		err  string
+	}{
+		{
+			parm: "int",
+			expr: "1",
+		},
+		{
+			parm: "&int",
+			expr: "1",
+		},
+		{
+			parm: "&&int",
+			expr: "1",
+			err:  `cannot convert 1 \(int\) to type &&int`,
+		},
+		{
+			src:  "var x int",
+			parm: "int",
+			expr: "x",
+		},
+		{
+			src:  "var x int",
+			parm: "&int",
+			expr: "x",
+		},
+		{
+			src:  "var x int",
+			parm: "&&int",
+			expr: "x",
+			err:  `cannot convert x \(int\) to type &&int`,
+		},
+		{
+			src:  "func x()int",
+			parm: "int",
+			expr: "x()",
+		},
+		{
+			src:  "func x()int",
+			parm: "&int",
+			expr: "x()",
+		},
+		{
+			src:  "func x()int",
+			parm: "&&int",
+			expr: "x()",
+			err:  `cannot convert returned int to &&int`,
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			parm: "int",
+			expr: "make_point().x",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			parm: "&int",
+			expr: "make_point().x",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			parm: "&&int",
+			expr: "make_point().x",
+		},
+		{
+			src: `
+				type point [.x int, .y int]
+				func make_point() point
+			`,
+			parm: "&&&int",
+			expr: "make_point().x",
+			err:  "cannot convert returned &int to &&&int",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.parm+" : "+test.expr, func(t *testing.T) {
+			src := fmt.Sprintf("%s\nfunc fff(_ %s)\nvar _ (){} := {fff(%s)}",
+				test.src, test.parm, test.expr)
+			t.Log(src)
+			switch _, errs := check("test", []string{src}, nil); {
+			case test.err == "" && len(errs) == 0:
+				break
+			case test.err == "" && len(errs) > 0:
+				t.Fatalf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Fatalf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Fatalf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+
+}
+
 func TestOverloadResolution(t *testing.T) {
 	tests := []struct {
 		name string
@@ -497,7 +760,7 @@ func TestOverloadResolution(t *testing.T) {
 			name: "argument type mismatch",
 			src:  "func x(i int)",
 			call: "x(\"hello\")",
-			err:  "type mismatch: got string, want int",
+			err:  `cannot convert "hello" \(string\) to type int`,
 		},
 		{
 			name: "0-ary no return function found",
@@ -766,7 +1029,7 @@ func TestOverloadResolution(t *testing.T) {
 				func f(_ point_b)
 			`,
 			call: "f(point_a : [.x 1, .y 1])",
-			err:  "type mismatch: got point_a, want point_b",
+			err:  `cannot convert \[\.x 1, \.y 1\] \(point_a\) to type point_b`,
 		},
 		{
 			name: "convert defined to literal type",
@@ -823,20 +1086,20 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "var a string := \"\"",
 			call: "a := 6",
 			ret:  "int",
-			err:  "type mismatch: got int, want string",
+			err:  `cannot convert 6 \(int\) to type string`,
 		},
 		{
 			name: "built-in assign, expected, rhs mismatch",
 			src:  "var a int := 1",
 			call: "a := \"\"",
 			ret:  "int",
-			err:  "got string, want int",
+			err:  `cannot convert "" \(string\) to type int`,
 		},
 		{
 			name: "built-in assign, lhs/rhs mismatch",
 			src:  "var a int := 1",
 			call: "a := \"\"",
-			err:  "got string, want int",
+			err:  `cannot convert "" \(string\) to type int`,
 		},
 		{
 			name: "built-in new array, no expected type",

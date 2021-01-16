@@ -716,45 +716,41 @@ func newLocal(x scope, call *parser.Call, id parser.Ident) (*FuncLocal, *Call, [
 }
 
 func convert(expr Expr, typ Type) (Expr, Error) {
-	if expr == nil {
-		return nil, nil
+	if expr == nil || expr.Type() == nil {
+		return expr, nil
 	}
-	dstType := typ
 	srcType := expr.Type()
-	// If one is a literal type, compare their literal types, not type names.
-	if eqType(srcType, literalType(srcType)) || eqType(dstType, literalType(dstType)) {
-		dstType = literalType(dstType)
-		srcType = literalType(srcType)
+	dstType := typ
+
+	srcLitType := literalType(srcType)
+	dstLitType := literalType(dstType)
+	if eqType(srcType, srcLitType) || eqType(dstType, dstLitType) {
+		srcType, dstType = srcLitType, dstLitType
 	}
 
-	dstValueType := valueType(dstType)
-	dstRefDepth := refDepth(dstType)
 	srcValueType := valueType(srcType)
-	srcRefDepth := refDepth(srcType)
+	dstValueType := valueType(dstType)
 	if !eqType(dstValueType, srcValueType) {
-		goto mismatch
+		return expr, newError(expr, "cannot convert %s (%s) to type %s",
+			expr, expr.Type(), typ)
 	}
 
-	if dstRefDepth > srcRefDepth {
-		// Consider whether the expression is "addressable".
-		if dstRefDepth > srcRefDepth+1 {
-			goto mismatch
-		}
+	expr0 := expr
+	srcRefDepth, dstRefDepth := refDepth(srcType), refDepth(dstType)
+	for srcRefDepth < dstRefDepth {
 		deref, ok := expr.(*Deref)
 		if !ok {
-			return expr, newError(expr, "expression cannot be referenced")
+			return expr0, newError(expr0, "cannot convert %s (%s) to type %s",
+				expr0, expr0.Type(), typ)
 		}
 		expr = deref.Expr
-	} else {
-		// Automatic dereference.
-		for i := 0; i < srcRefDepth-dstRefDepth; i++ {
-			expr = deref(expr)
-		}
+		srcRefDepth++
+	}
+	for dstRefDepth < srcRefDepth {
+		expr = deref(expr)
+		srcRefDepth--
 	}
 	return expr, nil
-
-mismatch:
-	return expr, newError(expr, "type mismatch: got %s, want %s", expr.Type(), typ)
 }
 
 func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
@@ -854,16 +850,16 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	for i, arg := range args {
 		args[i], _ = convert(arg, fun.groundParm(i))
 	}
-	return &Deref{
-		Expr: &Call{
-			Func: fun,
-			Args: args,
-			T:    &RefType{Type: ret, L: parserCall.L},
-			L:    parserCall.L,
-		},
-		T: ret,
-		L: parserCall.L,
-	}, errs
+	var expr Expr = &Call{
+		Func: fun,
+		Args: args,
+		T:    &RefType{Type: ret, L: ret.Loc()},
+		L:    parserCall.L,
+	}
+	for isRefType(expr.Type()) {
+		expr = deref(expr)
+	}
+	return expr, errs
 }
 
 func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
@@ -1099,16 +1095,17 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 			args = append(args, arg)
 		}
 	}
-	return &Deref{
-		Expr: &Call{
-			Func: fun,
-			Args: args,
-			T:    &RefType{Type: fun.FuncType.Ret, L: parserCall.L},
-			L:    parserCall.L,
-		},
-		T: fun.FuncType.Ret,
-		L: parserCall.L,
-	}, errs
+	ret := fun.FuncType.Ret
+	expr = &Call{
+		Func: fun,
+		Args: args,
+		T:    &RefType{Type: ret, L: ret.Loc()},
+		L:    parserCall.L,
+	}
+	for isRefType(expr.Type()) {
+		expr = deref(expr)
+	}
+	return expr, errs
 }
 
 func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
@@ -1222,7 +1219,15 @@ func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 	blk := &BlockLit{Ret: typ.Ret, T: typ, L: l}
 	call := &Call{Func: fun, T: &RefType{Type: typ.Ret, L: l}, L: l}
 	call.Args = make([]Expr, len(typ.Parms))
-	blk.Exprs = []Expr{&Deref{Expr: call, T: typ.Ret, L: l}}
+	expr := deref(call)
+	for isRefType(expr.Type()) {
+		expr = deref(expr)
+	}
+	expr, err := convert(expr, typ.Ret)
+	if err != nil {
+		panic("impossible")
+	}
+	blk.Exprs = []Expr{expr}
 	blk.Parms = make([]FuncParm, len(typ.Parms))
 	for i := range typ.Parms {
 		blk.Parms[i].Name = fmt.Sprintf("x%d", i)
