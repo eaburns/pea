@@ -220,6 +220,7 @@ func (f *FuncDef) print(pc *config) {
 	pc.field("Parms", f.Parms)
 	pc.field("Ret", f.Ret)
 	pc.field("Iface", f.Iface)
+	pc.field("Locals", f.Locals)
 	pc.field("Exprs", f.Exprs)
 	pc.field("Exp", f.Exp)
 	pc.field("Insts", f.Insts)
@@ -270,6 +271,7 @@ func (t *TestDef) print(pc *config) {
 	pc.loc(t.L)
 	pc.field("Mod", t.Mod)
 	pc.field("Name", t.Name)
+	pc.field("Locals", t.Locals)
 	pc.field("Exprs", t.Exprs)
 	pc.p("\n}")
 }

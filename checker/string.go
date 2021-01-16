@@ -398,6 +398,8 @@ func (o Op) String() string {
 		return "Slice"
 	case Length:
 		return "Length"
+	case Return:
+		return "Return"
 	case Panic:
 		return "Panic"
 	case Print:
@@ -519,6 +521,12 @@ func (b *Builtin) name(paren bool) string {
 		return ".length"
 	case Panic:
 		return "panic"
+	case Return:
+		if len(b.Parms) == 0 {
+			return "return"
+		} else {
+			return "return:"
+		}
 	case Print:
 		return "print"
 	default:

@@ -94,8 +94,8 @@ func check(path string, files []string, mods []testMod) (*Mod, []error) {
 
 func findTypeDef(t *testing.T, name string, mod *Mod) *TypeDef {
 	for _, def := range mod.Defs {
-		if td, ok := def.(*TypeDef); ok && td.Name == name {
-			return td
+		if d, ok := def.(*TypeDef); ok && d.Name == name {
+			return d
 		}
 	}
 	t.Fatalf("failed to find type definition %s", name)
@@ -104,11 +104,31 @@ func findTypeDef(t *testing.T, name string, mod *Mod) *TypeDef {
 
 func findVarDef(t *testing.T, name string, mod *Mod) *VarDef {
 	for _, def := range mod.Defs {
-		if vd, ok := def.(*VarDef); ok && vd.Name == name {
-			return vd
+		if d, ok := def.(*VarDef); ok && d.Name == name {
+			return d
 		}
 	}
 	t.Fatalf("failed to find variable definition %s", name)
+	panic("impossible")
+}
+
+func findFuncDef(t *testing.T, name string, mod *Mod) *FuncDef {
+	for _, def := range mod.Defs {
+		if d, ok := def.(*FuncDef); ok && d.Name == name {
+			return d
+		}
+	}
+	t.Fatalf("failed to find function definition %s", name)
+	panic("impossible")
+}
+
+func findTestDef(t *testing.T, name string, mod *Mod) *TestDef {
+	for _, def := range mod.Defs {
+		if d, ok := def.(*TestDef); ok && d.Name == name {
+			return d
+		}
+	}
+	t.Fatalf("failed to find test definition %s", name)
 	panic("impossible")
 }
 
@@ -157,7 +177,79 @@ func TestRedef(t *testing.T) {
 	}
 }
 
-// TODO: add tests for func and test locals once their Exprs checking is implemented.
+func TestFuncNewLocal(t *testing.T) {
+	const src = ` 
+		// x and y are locals of the func.
+		// z is a local of the block.
+		// All other variables are not locals.
+		var a int := 1
+		func testFunc(b int){
+			x := 1,
+			{z := x},
+			y := "hello",
+			x := 3,
+			a := 5,
+			b := 6,
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("failed to parse and check: %s", errs[0])
+	}
+	fun := findFuncDef(t, "testFunc", mod)
+	want := []*FuncLocal{
+		{Name: "x", T: &BasicType{Kind: Int}},
+		{Name: "y", T: &BasicType{Kind: String}},
+	}
+	if diff := cmp.Diff(want, fun.Locals, diffOpts...); diff != "" {
+		t.Errorf("func locals differ: %s", diff)
+	}
+
+	block := fun.Exprs[1].(*Deref).Expr.(*BlockLit)
+	want = []*FuncLocal{
+		{Name: "z", T: &BasicType{Kind: Int}},
+	}
+	if diff := cmp.Diff(want, block.Locals, diffOpts...); diff != "" {
+		t.Errorf("block locals differ: %s", diff)
+	}
+}
+
+func TestTestNewLocal(t *testing.T) {
+	const src = ` 
+		// x and y are locals of the test.
+		// z is a local of the block.
+		// All other variables are not locals.
+		var a int := 1
+		test testDef {
+			x := 1,
+			{z := x},
+			y := "hello",
+			x := 3,
+			a := 5,
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("failed to parse and check: %s", errs[0])
+	}
+	test := findTestDef(t, "testDef", mod)
+	want := []*FuncLocal{
+		{Name: "x", T: &BasicType{Kind: Int}},
+		{Name: "y", T: &BasicType{Kind: String}},
+	}
+	if diff := cmp.Diff(want, test.Locals, diffOpts...); diff != "" {
+		t.Errorf("test locals differ: %s", diff)
+	}
+
+	block := test.Exprs[1].(*Deref).Expr.(*BlockLit)
+	want = []*FuncLocal{
+		{Name: "z", T: &BasicType{Kind: Int}},
+	}
+	if diff := cmp.Diff(want, block.Locals, diffOpts...); diff != "" {
+		t.Errorf("block locals differ: %s", diff)
+	}
+}
+
 func TestBlockNewLocal(t *testing.T) {
 	const src = ` 
 		// x and y are locals of the outer block.
@@ -216,6 +308,154 @@ func TestNoNewLocalInArrayExprs(t *testing.T) {
 		t.Errorf("expected 1 error, got %d", len(errs))
 	case !strings.Contains(errs[0].Error(), "x: not found"):
 		t.Errorf("expected not found error, got %s", errs[0])
+	}
+}
+
+func TestCheckFuncReturn(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		err  string
+	}{
+		{
+			name: "ok no return",
+			src:  "func foo() {}",
+		},
+		{
+			name: "ok return",
+			src:  "func foo() int { return: 1 }",
+		},
+		{
+			name: "ok return, not first expr",
+			src:  "func foo() int { 1, 2, 3, return: 1 }",
+		},
+		{
+			name: "ok return in parens",
+			src:  "func foo() int { (((return: 1))) }",
+		},
+		{
+			name: "ok no return on declaration",
+			src:  "func foo() int",
+		},
+		{
+			name: "ok 0-ary return",
+			src:  "func foo() { return() }",
+		},
+		{
+			name: "ok 1-ary return empty struct",
+			src:  "func foo() { return: [.] }",
+		},
+		{
+			name: "missing return empty body",
+			src:  "func foo() int {}",
+			err:  "must end in a return",
+		},
+		{
+			name: "missing return non-empty body",
+			src:  "func foo() int { 1 }",
+			err:  "must end in a return",
+		},
+		{
+			name: "return type mismatch",
+			src:  "func foo() int { return: \"hello\" }",
+			err:  "got string, want int",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Log(test.src)
+			switch _, errs := check("test", []string{test.src}, nil); {
+			case test.err == "" && len(errs) == 0:
+				break
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
+func TestCheckFuncScope(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		err  string
+	}{
+		{
+			name: "interface function lookup in call resolution",
+			src: `
+				func foo(t T) bool : =(T, T) bool {
+					return: t = t
+				}
+			`,
+		},
+		{
+			name: "interface function lookup in ID resolution",
+			src: `
+				func foo(t T) (T,T){bool} : =(T, T) bool {
+					return: (=)
+				}
+			`,
+		},
+		{
+			name: "interface function lookup causes ambiguity",
+			src: `
+				func foo() bool : =(int, int) bool {
+					return: 1 = 1
+				}
+			`,
+			err: "ambiguous",
+		},
+		{
+			name: "param shadows module-level function",
+			src: `
+				func x(_ string)
+				func foo(x int) {
+					x("hello")
+				}
+			`,
+			err: "x is not callable",
+		},
+		{
+			name: "param shadows module-level var",
+			src: `
+				var x string
+				func foo(x int) string {
+					return: x
+				}
+			`,
+			err: "cannot convert x \\(int\\) to type string",
+		},
+		{
+			name: "param shadows interface func",
+			src: `
+				var x string
+				func foo(x int) (){} : x() {
+					return: x
+				}
+			`,
+			err: "cannot convert x \\(int\\) to type \\(\\){}",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Log(test.src)
+			switch _, errs := check("test", []string{test.src}, nil); {
+			case test.err == "" && len(errs) == 0:
+				break
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
 	}
 }
 

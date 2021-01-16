@@ -202,19 +202,19 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	}
 	for _, parserFile := range files {
 		for _, parserDef := range parserFile.Defs {
-			var fs []Error
+			var es []Error
 			switch def := defs[parserDef].(type) {
 			case *TypeDef:
 				break // nothing to do really.
 			case *VarDef:
-				fs = checkVarDef(def, parserDef.(*parser.VarDef))
+				es = checkVarDef(def, parserDef.(*parser.VarDef))
 			case *FuncDef:
-				// TODO
+				es = checkFuncDef(def, parserDef.(*parser.FuncDef))
 			case *TestDef:
-				// TODO
+				es = checkTestDef(def, parserDef.(*parser.TestDef))
 			}
-			if len(fs) > 0 {
-				errs = append(errs, fs...)
+			if len(es) > 0 {
+				errs = append(errs, es...)
 			}
 		}
 	}
@@ -533,6 +533,48 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
 	if def.T == nil && def.Expr == nil {
 		errs = append(errs, newError(def, "cannot infer variable type"))
 	}
+	return errs
+}
+
+func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
+	var errs []Error
+	def.Exprs, errs = checkExprs(def, true, parserDef.Exprs, nil)
+	if len(parserDef.Exprs) == 0 && parserDef.Exprs != nil {
+		def.Exprs = []Expr{}
+	}
+	if !isEmptyStruct(def.Ret) &&
+		def.Exprs != nil &&
+		(len(def.Exprs) == 0 || !isReturn(def.Exprs[len(def.Exprs)-1])) {
+		errs = append(errs, newError(def, "function must end in a return"))
+	}
+	return errs
+}
+
+func isReturn(expr Expr) bool {
+	for {
+		deref, ok := expr.(*Deref)
+		if !ok {
+			break
+		}
+		expr = deref.Expr
+	}
+	call, ok := expr.(*Call)
+	if !ok {
+		return false
+	}
+	if call.Func == nil {
+		// The call is already an error.
+		// Let's not report another error;
+		// just assume it would have been a return.
+		return true
+	}
+	b, ok := call.Func.(*Builtin)
+	return ok && b.Op == Return
+}
+
+func checkTestDef(def *TestDef, parserDef *parser.TestDef) []Error {
+	var errs []Error
+	def.Exprs, errs = checkExprs(def, true, parserDef.Exprs, nil)
 	return errs
 }
 

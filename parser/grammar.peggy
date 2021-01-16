@@ -129,7 +129,7 @@ FuncType <- _ "(" ps:Types? _ ")" _ "{" r:Type? _ "}" {
 	return Type(&FuncType{Parms: parms, Ret: ret, L: l(parser, start, end)})
 }
 
-FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:FuncDecls)? (_ "{" es:Exprs? _ "}")? {
+FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:FuncDecls)? es:FuncBody? {
 	var parms []FuncParm; if ps != nil { parms = *ps }
 	var ret Type; if r != nil { ret = *r }
 	var exprs []Expr; if es != nil { exprs = *es }
@@ -142,6 +142,11 @@ FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" 
 		Exprs: exprs,
 		L: l(parser, start, end),
 	})
+}
+
+FuncBody <- _ "{" exprs:Exprs? _ "}" {
+	if exprs == nil { return []Expr{} }
+	return []Expr(*exprs)
 }
 
 FuncParms <- p0:FuncParm ps:(_ "," p1:FuncParm { return FuncParm(p1) })* (_ ",")? {

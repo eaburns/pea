@@ -539,7 +539,7 @@ func (b *Builtin) unifyRet(typ Type) note {
 			b.Ret = t
 		}
 		return nil
-	case Eq, Neq, Less, LessEq, Greater, GreaterEq, NumConvert, StrConvert, Length, Panic, Print:
+	case Eq, Neq, Less, LessEq, Greater, GreaterEq, NumConvert, StrConvert, Length, Return, Panic, Print:
 		return nil
 	default:
 		panic("impossible op type")
@@ -603,7 +603,7 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 			b.Parms[0] = t
 		}
 		return nil
-	case StrConvert, Panic, Print:
+	case StrConvert, Return, Panic, Print:
 		return nil
 	default:
 		panic("impossible op type")

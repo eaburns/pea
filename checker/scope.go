@@ -295,11 +295,29 @@ func (f *FuncDef) find(name string) []id {
 			return []id{&f.Parms[i]}
 		}
 	}
-	return f.File.find(name)
+	ids := f.File.find(name)
+	for i := range f.Iface {
+		if f.Iface[i].Name == name {
+			ids = append(ids, &f.Iface[i])
+		}
+	}
+	if name == "return:" {
+		ids = append(ids, &Builtin{
+			Op:    Return,
+			Parms: []Type{f.Ret},
+			Ret:   &StructType{L: f.L},
+		})
+	}
+	if name == "return" && isEmptyStruct(f.Ret) {
+		ids = append(ids, &Builtin{
+			Op:  Return,
+			Ret: &StructType{L: f.L},
+		})
+	}
+	return ids
 }
 
 func (t *TestDef) find(name string) []id {
-	// TODO: tests need locals
 	return t.File.find(name)
 }
 

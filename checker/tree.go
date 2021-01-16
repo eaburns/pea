@@ -304,6 +304,7 @@ const (
 	Index
 	Slice
 	Length
+	Return
 	Panic
 
 	Print
