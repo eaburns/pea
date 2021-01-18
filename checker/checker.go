@@ -1400,7 +1400,6 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []Erro
 			lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, lit.Case.Type)
 		}
 		if !isRefType(literalType(want)) {
-			fmt.Println("not a ref")
 			lit.T = refType(copyTypeWithLoc(want, lit.L))
 			return deref(lit), errs
 		}
