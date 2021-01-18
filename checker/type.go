@@ -33,23 +33,44 @@ func trim1Ref(typ Type) Type {
 	return typ
 }
 
+// literalType returns the literal type or nil if the type cannot be converted to a literal.
 func literalType(typ Type) Type {
-	if typ == nil {
-		return nil
-	}
 	switch typ := typ.(type) {
+	case nil:
+		return nil
 	case *RefType:
 		if typ.Type == nil {
 			return nil
 		}
-		return &RefType{Type: literalType(typ.Type), L: typ.L}
+		lit := literalType(typ.Type)
+		if lit == nil {
+			return nil
+		}
+		return &RefType{Type: lit, L: typ.L}
 	case *DefType:
 		if typ.Inst == nil || typ.Inst.Type == nil {
 			return nil
 		}
 		return literalType(typ.Inst.Type)
+	case *TypeVar:
+		return nil
 	default:
 		return typ
+	}
+}
+
+func isLiteralType(typ Type) bool {
+	switch typ := typ.(type) {
+	case nil:
+		return true
+	case *RefType:
+		return isLiteralType(typ.Type)
+	case *DefType:
+		return false
+	case *TypeVar:
+		return false
+	default:
+		return true
 	}
 }
 

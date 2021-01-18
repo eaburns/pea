@@ -722,10 +722,14 @@ func convert(expr Expr, typ Type) (Expr, Error) {
 	srcType := expr.Type()
 	dstType := typ
 
-	srcLitType := literalType(srcType)
-	dstLitType := literalType(dstType)
-	if eqType(srcType, srcLitType) || eqType(dstType, dstLitType) {
-		srcType, dstType = srcLitType, dstLitType
+	if isLiteralType(srcType) {
+		if dstLitType := literalType(dstType); dstLitType != nil {
+			dstType = dstLitType
+		}
+	} else if isLiteralType(dstType) {
+		if srcLitType := literalType(srcType); srcLitType != nil {
+			srcType = srcLitType
+		}
 	}
 
 	srcValueType := valueType(srcType)

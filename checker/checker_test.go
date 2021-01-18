@@ -445,7 +445,7 @@ func TestNewLocalTypes(t *testing.T) {
 				func make_point() point
 			`,
 			expr: "make_point()",
-			want:  "point",
+			want: "point",
 		},
 		{
 			src: `
@@ -453,7 +453,7 @@ func TestNewLocalTypes(t *testing.T) {
 				func make_point() point
 			`,
 			expr: "&point : make_point()",
-			want:  "&point",
+			want: "&point",
 		},
 		{
 			src: `
@@ -469,7 +469,7 @@ func TestNewLocalTypes(t *testing.T) {
 				func make_point_ref() point_ref
 			`,
 			expr: "make_point_ref()",
-			want:  "point_ref",
+			want: "point_ref",
 		},
 		{
 			src: `
@@ -477,7 +477,7 @@ func TestNewLocalTypes(t *testing.T) {
 				func new_point_ref() &point_ref
 			`,
 			expr: "new_point_ref()",
-			want:  "point_ref",
+			want: "point_ref",
 		},
 	}
 	for _, test := range tests {
@@ -1474,10 +1474,127 @@ func TestOverloadResolution(t *testing.T) {
 			call: "print(\"hello\")",
 			want: "built-in print(string)",
 		},
+		{
+			name: "unify parm simple",
+			src:  "func f(_ T)",
+			call: "f(1)",
+			want: "f(int)",
+		},
+		{
+			name: "unify parm matches a defined type",
+			src: `
+				func f(_ T)
+				type point [.x int, .y int]
+			`,
+			call: "f(point : [.x 0, .y 0])",
+			want: "f(point)",
+		},
+		{
+			name: "unify parm matches infers conversion to literal type",
+			src: `
+				func f(_ [.x X, .y Y])
+				type (X, Y) pair [.x X, .y Y]
+				var x (int, string) pair
+			`,
+			call: `f(x)`,
+			want: "f([.x int, .y string])",
+		},
+		{
+			name: "unify parm matches infers conversion from literal type",
+			src: `
+				func f(_ (X, Y) pair)
+				type (X, Y) pair [.x X, .y Y]
+			`,
+			call: `f([.x 0, .y "hello"])`,
+			want: "f((int, string) pair)",
+		},
+		{
+			name: "unify parm matches a reference type",
+			src:  "func f(_ T)",
+			call: "f(&int : 1)",
+			want: "f(&int)",
+		},
+		{
+			name: "unify parm matches a same number of references",
+			src: `
+				func f(_ &&T)
+				var x &int
+			`,
+			call: "f(&&int : x)",
+			want: "f(&&int)",
+		},
+		{
+			name: "unify parm matches more references",
+			src: `
+				func f(_ &T)
+				var x &int
+			`,
+			call: "f(&&int : x)",
+			want: "f(&&int)",
+		},
+		{
+			name: "unify parm infers reference conversion",
+			src: `
+				func f(_ &T)
+				var x int
+			`,
+			call: "f(x)",
+			want: "f(&int)",
+		},
+		{
+			name: "unify parm infers reference conversion of def type",
+			src: `
+				func f(_ &T)
+				type point [.x int, .y int]
+				var x point
+			`,
+			call: "f(x)",
+			want: "f(&point)",
+		},
+		{
+			name: "unify parm infers reference conversion of def ref type",
+			src: `
+				func f(_ &T)
+				type point &[.x int, .y int]
+				var x point
+			`,
+			call: "f(x)",
+			want: "f(&point)",
+		},
+		{
+			name: "unify parm infers reference conversion, but conversion fails",
+			src: `
+				func f(_ &&T)
+				var x int
+			`,
+			call: "f(x)",
+			err:  `cannot convert argument x \(int\) to &&int`,
+		},
+		{
+			name: "unify parm infers reference conversion to multiple references",
+			src: `
+				func f(_ &&T)
+				var x &int
+			`,
+			call: "f(int : x)",
+			want: "f(&&int)",
+		},
+		{
+			name: "unify parm ref conversion, bind happens inside literal",
+			src: `
+				func f(_ &&[.foo X])
+				var x &[.foo int]
+			`,
+			call: "f(x)",
+			want: "f(&&[.foo int])",
+		},
 	}
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
+			if strings.HasPrefix(test.name, "SKIP") {
+				t.Skip()
+			}
 			var src string
 			if test.ret != "" {
 				src = fmt.Sprintf("%s\nvar zz %s := %s\n", test.src, test.ret, test.call)

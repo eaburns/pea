@@ -135,12 +135,22 @@ func isGroundType(parms map[*TypeParm]bool, typ Type) bool {
 }
 
 func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
-	if eqType(literalType(pat), pat) || eqType(literalType(typ), typ) {
-		pat = literalType(pat)
-		typ = literalType(typ)
+	if isLiteralType(pat) {
+		if lit := literalType(typ); lit != nil {
+			typ = lit
+		}
+	} else if isLiteralType(typ) {
+		if lit := literalType(pat); lit != nil {
+			pat = lit
+		}
+	}
+	patRefDepth := refDepth(pat)
+	typRefDepth := refDepth(typ)
+	for i := typRefDepth; i < patRefDepth; i++ {
+		pat = pat.(*RefType).Type
 	}
 	bind := make(map[*TypeParm]Type)
-	if !unifyStrict(parms, bind, valueType(pat), valueType(typ)) {
+	if !unifyStrict(parms, bind, pat, typ) {
 		return nil
 	}
 	return bind
