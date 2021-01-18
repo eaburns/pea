@@ -51,6 +51,9 @@ func literalType(typ Type) Type {
 		if typ.Inst == nil || typ.Inst.Type == nil {
 			return nil
 		}
+		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+			return nil
+		}
 		return literalType(typ.Inst.Type)
 	case *TypeVar:
 		return nil
