@@ -134,6 +134,20 @@ func isGroundType(parms map[*TypeParm]bool, typ Type) bool {
 	}
 }
 
+// unify unifies typ with a function parameter type pat
+// and returns the binding from type variables to types.
+// parms are the function's type parameters.
+//
+// typ unifies with pat…
+// 	* if pat is a literal type, typ's literal type unifies with pat,
+// 	* or if typ is a literal type, pat's literal type unifies with pat.
+// 	* if the reference depth of typ is less than pat,
+// 		typ unifies with pat, with leading references removed until equal depth.
+// 	* or if the reference depth of pat is less than typ,
+// 		- if pat is a type variable, typ strictly unifies with pat,
+// 		- or if pat is a reference, typ's referred type unifies with pat's referred type,
+// 		- otherwise, typ's referred type unifies with pat.
+// 	* otherwise, typ strictly unifies with pat.
 func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
 	if isLiteralType(pat) {
 		if lit := literalType(typ); lit != nil {
@@ -146,8 +160,21 @@ func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
 	}
 	patRefDepth := refDepth(pat)
 	typRefDepth := refDepth(typ)
-	for i := typRefDepth; i < patRefDepth; i++ {
+	for typRefDepth < patRefDepth {
 		pat = pat.(*RefType).Type
+		patRefDepth--
+	}
+loop:
+	for typRefDepth > patRefDepth {
+		switch pat.(type) {
+		case *TypeVar:
+			break loop
+		case *RefType:
+			pat = pat.(*RefType).Type
+			patRefDepth--
+		}
+		typ = typ.(*RefType).Type
+		typRefDepth--
 	}
 	bind := make(map[*TypeParm]Type)
 	if !unifyStrict(parms, bind, pat, typ) {
@@ -156,6 +183,36 @@ func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
 	return bind
 }
 
+// unifyStrict strictly unifies typ with another type, pat
+// and returns the binding from type variables to types.
+// parms are the free type parameters.
+//
+// typ strictly unifies with pat…
+// 	* if pat is a def type and typ is a def type and
+// 		- they both have the same type definition, and
+// 		- each argument of typ strictly unifies with the corresponding of pat;
+// 	* or if pat is a ref type and typ is a ref type and
+// 		the referred type of typ strictly unifies with the referred type of pat;
+// 	* or if pat is an array type and typ is an array type and
+// 		the element type of typ strictly unifies with the element type of pat;
+// 	* or if pat is a struct type and typ is a struct type and
+// 		- pat and typ have the same number of fields,
+// 		- each field of typ has the same name as the corresponding field of pat, and
+// 		- the type of each field of typ strictly unifies with the type of the corresponding field of pat,
+// 	* or if pat is a union type and typ is a union type and,
+// 		- pat and typ have the same number of cases,
+// 		- each case of typ has the same name as the corresponding case of pat, and
+// 		- each case of typ either is untyped and so is the corresponding case of pat
+// 			or is typed and so is the corresponding case of pat and
+// 			the type of the case of typ strictly unifies with that of pat;
+// 	* or if pat is a function typ and typ is a function type and,
+// 		- they have the same number of parameters,
+// 		- each parameter type of typ strictly unifies with the corresponding parameter type of pat, and
+// 		- the return type of typ strictly unifies with the return type of pat;
+// 	* or pat is a type variable that is a free parameter,
+// 		in which case the unification contains a binding from pat=typ,
+// 	* otherwise pat and typ are equal.
+// It is an error for multiple bindings to the same type variable to have differing types.
 func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Type) bool {
 	switch pat := pat.(type) {
 	case *DefType:

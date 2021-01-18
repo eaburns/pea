@@ -1680,12 +1680,21 @@ func TestOverloadResolution(t *testing.T) {
 			want: "f(&&int)",
 		},
 		{
-			name: "unify parm matches more references",
+			name: "unify parm infers dereference conversion",
+			src: `
+				func f(_ [.x T])
+				var x &[.x int]
+			`,
+			call: "f(x)",
+			want: "f([.x int])",
+		},
+		{
+			name: "unify parm infers dereference conversion to type var",
 			src: `
 				func f(_ &T)
-				var x &int
+				var x &&int
 			`,
-			call: "f(&&int : x)",
+			call: "f(x)",
 			want: "f(&&int)",
 		},
 		{
