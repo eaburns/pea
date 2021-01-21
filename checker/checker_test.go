@@ -915,22 +915,53 @@ func TestOverloadResolution(t *testing.T) {
 			want: "x()&int",
 		},
 		{
-			name: "built-in selector",
-			src:  "type point [.x float64, .y float64]",
-			call: "(point : [.x 4, .y 4]).x",
-			want: "built-in .x(&[.x float64, .y float64])&float64",
+			name: "built-in selector literal type",
+			call: "[.x 4].x",
+			want: "built-in .x(&[.x int])&int",
+		},
+		{
+			name: "built-in selector ref literal type",
+			call: "(&[.x int] : [.x 4]).x",
+			want: "built-in .x(&[.x int])&int",
+		},
+		{
+			name: "built-in selector def type",
+			src:  "type t [.x int]",
+			call: "(t : [.x 4]).x",
+			want: "built-in .x(&t)&int",
+		},
+		{
+			name: "built-in selector ref def type",
+			src:  "type t [.x int]",
+			call: "(&t : [.x 4]).x",
+			want: "built-in .x(&t)&int",
+		},
+		{
+			name: "built-in selector def ref type",
+			src:  "type t &[.x int]",
+			call: "(t : [.x 4]).x",
+			want: "built-in .x(t)&int",
+		},
+		{
+			name: "built-in selector def ref ref type fails",
+			src: `
+				type t &&[.x int]
+				var x t
+			`,
+			call: "x.x",
+			err:  "not a struct type",
 		},
 		{
 			name: "built-in selector, other field",
 			src:  "type point [.x float64, .y float64]",
 			call: "(point : [.x 4, .y 4]).y",
-			want: "built-in .y(&[.x float64, .y float64])&float64",
+			want: "built-in .y(&point)&float64",
 		},
 		{
 			name: "built-in selector, not a struct",
 			src:  "type point int",
 			call: "(point : 1).z",
-			err:  "point is not a struct type",
+			err:  "is not a struct type",
 		},
 		{
 			name: "built-in selector, no field",
@@ -962,7 +993,7 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "(point : [.x 4, .y 4]).x",
 			ret:  "float64",
-			want: "built-in .x(&[.x float64, .y float64])&float64",
+			want: "built-in .x(&point)&float64",
 		},
 		{
 			name: "built-in selector and func def ambiguity",
@@ -987,7 +1018,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().x",
-			want: "built-in .x(&[.x int, .y int])&int",
+			want: "built-in .x(&other#foo)&int",
 		},
 		{
 			name: "built-in selector, other mod opaque struct fails",
@@ -1003,7 +1034,22 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().x",
-			err:  `built-in .x: other#_foo is not a struct type`,
+			err:  `is not a struct type`,
+		},
+		{
+			name: "built-in switch literal type, not-typed case",
+			call: "[?a] ?a {}",
+			want: "built-in ?a(&[?a], (){})",
+		},
+		{
+			name: "built-in switch literal type, typed case",
+			call: "[?a 1] ?a (_ int) {}",
+			want: "built-in ?a(&[?a int], (int){})",
+		},
+		{
+			name: "built-in switch ref literal type, typed case",
+			call: "(&[?a int] : [?a 1]) ?a (_ int) {}",
+			want: "built-in ?a(&[?a int], (int){})",
 		},
 		{
 			name: "built-in switch not-typed cases",
@@ -1012,7 +1058,34 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() ?a {} ?b {}",
-			want: "built-in ?a?b(&[?a, ?b], (){}, (){})",
+			want: "built-in ?a?b(&a_or_b, (){}, (){})",
+		},
+		{
+			name: "built-in switch def union",
+			src:  "type a_or_b [?a, ?b]",
+			call: "(a_or_b : [?a]) ?a {} ?b {}",
+			want: "built-in ?a?b(&a_or_b, (){}, (){})",
+		},
+		{
+			name: "built-in switch def union ref",
+			src:  "type a_or_b &[?a, ?b]",
+			call: "(a_or_b : [?a]) ?a {} ?b {}",
+			want: "built-in ?a?b(a_or_b, (){}, (){})",
+		},
+		{
+			name: "built-in switch ref def union",
+			src:  "type a_or_b [?a, ?b]",
+			call: "(&a_or_b : [?a]) ?a {} ?b {}",
+			want: "built-in ?a?b(&a_or_b, (){}, (){})",
+		},
+		{
+			name: "built-in switch def union ref ref fails",
+			src: `
+				type a_or_b &&[?a, ?b]
+				var x a_or_b
+			`,
+			call: "(a_or_b : x) ?a {} ?b {}",
+			err:  "not a union type",
 		},
 		{
 			name: "built-in switch typed cases",
@@ -1021,7 +1094,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() ?a (_ string) {1} ?b (_ int) {1}",
-			want: "built-in ?a?b(&[?a string, ?b int], (string){int}, (int){int})int",
+			want: "built-in ?a?b(&a_or_b, (string){int}, (int){int})int",
 		},
 		{
 			name: "built-in switch mixed typed and non-typed cases",
@@ -1030,7 +1103,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() ?a () {1} ?b (_ int) {1}",
-			want: "built-in ?a?b(&[?a, ?b int], (){int}, (int){int})int",
+			want: "built-in ?a?b(&a_or_b, (){int}, (int){int})int",
 		},
 		{
 			name: "built-in switch cases re-ordered",
@@ -1039,7 +1112,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() ?b (_ int) {1} ?a () {1} ",
-			want: "built-in ?b?a(&[?a, ?b int], (int){int}, (){int})int",
+			want: "built-in ?b?a(&a_or_b, (int){int}, (){int})int",
 		},
 		{
 			name: "built-in switch not all cases, case not typed",
@@ -1048,7 +1121,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() ?a () {1} ",
-			want: "built-in ?a(&[?a, ?b int], (){})",
+			want: "built-in ?a(&a_or_b, (){})",
 		},
 		{
 			name: "built-in switch not all cases, case typed",
@@ -1057,7 +1130,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() ?b (_ int) {1} ",
-			want: "built-in ?b(&[?a, ?b int], (int){})",
+			want: "built-in ?b(&a_or_b, (int){})",
 		},
 		{
 			name: "built-in switch not all cases, does not convert return",
@@ -1091,7 +1164,7 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "make() ?a () {uint8 : 1} ?b () {2}",
 			ret:  "uint8",
-			want: "built-in ?a?b(&[?a, ?b], (){uint8}, (){uint8})uint8",
+			want: "built-in ?a?b(&a_or_b, (){uint8}, (){uint8})uint8",
 		},
 		{
 			name: "built-in switch, other mod union",
@@ -1106,7 +1179,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo() ?none {} ?some (i int) {}",
-			want: "built-in ?none?some(&[?none, ?some int], (){}, (int){})",
+			want: "built-in ?none?some(&other#foo, (){}, (int){})",
 		},
 		{
 			name: "built-in switch, other mod opaque union fails",
@@ -1122,7 +1195,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo() ?none {} ?some (i int) {}",
-			err:  `built-in \?none\?some: other#_foo is not a union type`,
+			err:  `not a union type`,
 		},
 		{
 			name: "no convert between non-literal types",
@@ -1416,7 +1489,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo() + make_foo()",
-			want: "built-in +(int64, int64)int64",
+			want: "built-in +(other#foo, other#foo)other#foo",
 		},
 		{
 			name: "built-in op, other mod opaque int fails",
@@ -1518,7 +1591,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "int32(make_foo())",
-			want: "built-in int32(int64)int32",
+			want: "built-in int32(other#foo)int32",
 		},
 		{
 			name: "built-in convert, other mod opaque int fails",
@@ -1548,9 +1621,21 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in []([uint8], int)&uint8",
 		},
 		{
+			name: "built-in def array index",
+			src:  "type my_array [int]",
+			call: "(my_array : [5, 6, 7])[1]",
+			want: "built-in [](my_array, int)&int",
+		},
+		{
 			name: "built-in string index",
 			call: `"hello"[1]`,
 			want: "built-in [](string, int)uint8",
+		},
+		{
+			name: "built-in def string slice",
+			src:  "type my_string string",
+			call: `(my_string : "hello")[1]`,
+			want: "built-in [](my_string, int)uint8",
 		},
 		{
 			name: "built-in array slice, no expected type",
@@ -1564,6 +1649,12 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in []([float32], int, int)[float32]",
 		},
 		{
+			name: "built-in def array slice",
+			src:  "type my_array [int]",
+			call: "(my_array : [5, 6, 7])[1, 2]",
+			want: "built-in [](my_array, int, int)my_array",
+		},
+		{
 			name: "built-in array slice, expected type not an array",
 			call: "[5, 6, 7][1, 2]",
 			ret:  "int",
@@ -1572,7 +1663,7 @@ func TestOverloadResolution(t *testing.T) {
 		{
 			name: "built-in array slice, arg not an array",
 			call: "1[1, 2]",
-			err:  "not an array type",
+			err:  "not an array or string",
 		},
 		{
 			name: "built-in string slice",
@@ -1580,14 +1671,49 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in [](string, int, int)string",
 		},
 		{
-			name: "built-in .length",
-			call: "[\"hello\"].length",
-			want: "built-in .length([string])int",
+			name: "built-in def string slice",
+			src:  "type my_string string",
+			call: `(my_string : "hello")[1, 5]`,
+			want: "built-in [](my_string, int, int)my_string",
 		},
 		{
-			name: "built-in .length, not an array",
+			name: "built-in .length string",
+			call: `"hello".length`,
+			want: "built-in .length(string)int",
+		},
+		{
+			name: "built-in .length def string",
+			src:  "type my_string string",
+			call: `(my_string : "hello").length`,
+			want: "built-in .length(my_string)int",
+		},
+		{
+			name: "built-in .length def string ref fails",
+			src:  "type my_string &string",
+			call: `(my_string : "hello").length`,
+			err:  "not an array or string",
+		},
+		{
+			name: "built-in .length array",
+			call: `[1].length`,
+			want: "built-in .length([int])int",
+		},
+		{
+			name: "built-in .length def array",
+			src:  "type my_array [int]",
+			call: `(my_array : [1, 2, 3]).length`,
+			want: "built-in .length(my_array)int",
+		},
+		{
+			name: "built-in .length def array ref fails",
+			src:  "type my_string &[int]",
+			call: `(my_string : [1, 2, 3]).length`,
+			err:  "not an array or string",
+		},
+		{
+			name: "built-in .length, not an array or string",
 			call: "5.length",
-			err:  "not an array",
+			err:  "not an array or string",
 		},
 		{
 			name: "built-in .length, other mod array",
@@ -1602,7 +1728,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().length",
-			want: "built-in .length([int])int",
+			want: "built-in .length(other#foo)int",
 		},
 		{
 			name: "built-in .length, other mod opaque array fails",
@@ -1618,7 +1744,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().length",
-			err:  "other#_foo is not an array type",
+			err:  "not an array or string",
 		},
 		{
 			name: "built-in panic",
@@ -1994,6 +2120,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "1.0", infer: "t", want: "t", src: "type t &int"},
 		{expr: "1.0", infer: "[int]", want: "float64"},
 		{expr: "1.0", infer: "string", want: "float64"},
+		{expr: "1.0", infer: "&&int8", want: "float64"},
 		{expr: "1.0", infer: "&&float32", want: "float64"},
 		{expr: "1.0", infer: "&t", want: "float64", src: "type t &float32"},
 		{expr: "1.0", infer: "t", want: "float64", src: "type t &&float32"},

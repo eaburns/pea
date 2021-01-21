@@ -168,6 +168,8 @@ const (
 	Float32
 	Float64
 	String
+
+	noBasicTypeKind
 )
 
 type BasicTypeKind int

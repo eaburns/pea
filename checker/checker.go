@@ -1533,21 +1533,18 @@ func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
 // 	* Otherwise the type is string.
 func checkStrLit(parserLit *parser.StrLit, want Type) (Expr, []Error) {
 	lit := &StrLit{Text: parserLit.Data, L: parserLit.L}
-	switch b, ok := trim1Ref(literalType(want)).(*BasicType); {
+	switch {
 	case want == nil:
-		fallthrough
-	case !ok:
 		fallthrough
 	default:
 		lit.T = refType(&BasicType{Kind: String, L: parserLit.L})
 		return deref(lit), nil
-	case b.Kind == String:
-		if !isRefType(literalType(want)) {
-			lit.T = refType(copyTypeWithLoc(want, lit.L))
-			return deref(lit), nil
-		}
+	case isStringRefType(want):
 		lit.T = copyTypeWithLoc(want, lit.L)
 		return lit, nil
+	case isStringType(want):
+		lit.T = refType(copyTypeWithLoc(want, lit.L))
+		return deref(lit), nil
 	}
 }
 
@@ -1573,52 +1570,64 @@ func checkCharLit(parserLit *parser.CharLit, want Type) (Expr, []Error) {
 // 	  then the type of the literal is the expected type.
 // 	* Otherwise the type of the literal is int.
 func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []Error) {
-	lit := &IntLit{Text: parserLit.Text, L: parserLit.L}
-	if _, ok := lit.Val.SetString(parserLit.Text, 0); !ok {
-		panic("malformed int")
-	}
-	var bits uint
-	var signed bool
-	switch b, ok := trim1Ref(literalType(want)).(*BasicType); {
+	switch {
 	case want == nil:
 		fallthrough
-	case !ok:
-		fallthrough
 	default:
-		want = &BasicType{Kind: Int, L: parserLit.L}
-		fallthrough
-	case b.Kind == Int:
+		t := &BasicType{Kind: Int, L: parserLit.L}
+		lit, errs := newIntLit(parserLit, t)
+		lit.T = refType(t)
+		return deref(lit), errs
+	case isFloatType(want) || isFloatRefType(want):
+		floatLit := &parser.FloatLit{Text: parserLit.Text, L: parserLit.L}
+		return checkFloatLit(floatLit, want)
+	case isIntRefType(want):
+		lit, errs := newIntLit(parserLit, want)
+		lit.T = copyTypeWithLoc(want, lit.L)
+		return lit, errs
+	case isIntType(want):
+		lit, errs := newIntLit(parserLit, want)
+		lit.T = refType(copyTypeWithLoc(want, lit.L))
+		return deref(lit), errs
+	}
+}
+
+func newIntLit(parserLit *parser.IntLit, want Type) (*IntLit, []Error) {
+	var bits uint
+	var signed bool
+	switch basicKind(want) {
+	case Int:
 		bits = 64 // TODO: set by a flag
 		signed = true
-	case b.Kind == Int8:
+	case Int8:
 		bits = 8
 		signed = true
-	case b.Kind == Int16:
+	case Int16:
 		bits = 16
 		signed = true
-	case b.Kind == Int32:
+	case Int32:
 		bits = 32
 		signed = true
-	case b.Kind == Int64:
+	case Int64:
 		bits = 64
 		signed = true
-	case b.Kind == Uint:
+	case Uint:
 		bits = 64 // TODO: set by a flag
 		signed = false
-	case b.Kind == Uint8:
+	case Uint8:
 		bits = 8
 		signed = false
-	case b.Kind == Uint16:
+	case Uint16:
 		bits = 16
 		signed = false
-	case b.Kind == Uint32:
+	case Uint32:
 		bits = 32
 		signed = false
-	case b.Kind == Uint64:
+	case Uint64:
 		bits = 64
 		signed = false
-	case b.Kind == Float32 || b.Kind == Float64:
-		return checkFloatLit(&parser.FloatLit{Text: parserLit.Text, L: lit.L}, want)
+	default:
+		panic("impossible int kind")
 	}
 	var min, max *big.Int
 	if signed {
@@ -1635,6 +1644,10 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []Error) {
 		max = max.Lsh(max, bits)
 		max = max.Sub(max, big.NewInt(1))
 	}
+	lit := &IntLit{Text: parserLit.Text, L: parserLit.L}
+	if _, ok := lit.Val.SetString(parserLit.Text, 0); !ok {
+		panic("malformed int")
+	}
 	var errs []Error
 	switch {
 	case lit.Val.Cmp(min) < 0:
@@ -1642,11 +1655,6 @@ func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []Error) {
 	case lit.Val.Cmp(max) > 0:
 		errs = append(errs, newError(lit, "%s overflows type %s", lit.Text, want))
 	}
-	if !isRefType(literalType(want)) {
-		lit.T = refType(copyTypeWithLoc(want, lit.L))
-		return deref(lit), errs
-	}
-	lit.T = copyTypeWithLoc(want, lit.L)
 	return lit, errs
 }
 
@@ -1665,41 +1673,29 @@ func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []Error) {
 	if _, _, err := lit.Val.Parse(parserLit.Text, 10); err != nil {
 		panic("malformed float")
 	}
-	switch b, ok := trim1Ref(literalType(want)).(*BasicType); {
+	switch {
 	case want == nil:
-		fallthrough
-	case !ok:
 		fallthrough
 	default:
 		lit.T = refType(&BasicType{Kind: Float64, L: parserLit.L})
 		return deref(lit), nil
-	case b.Kind == Int ||
-		b.Kind == Int8 ||
-		b.Kind == Int16 ||
-		b.Kind == Int32 ||
-		b.Kind == Int64 ||
-		b.Kind == Uint ||
-		b.Kind == Uint8 ||
-		b.Kind == Uint16 ||
-		b.Kind == Uint32 ||
-		b.Kind == Uint64:
+	case isIntType(want) || isIntRefType(want):
 		var i big.Int
 		var errs []Error
 		if _, acc := lit.Val.Int(&i); acc != big.Exact {
 			errs = append(errs, newError(lit, "%s truncates %s", want, lit.Text))
 		}
-		intLit, fs := checkIntLit(&parser.IntLit{Text: i.String(), L: parserLit.L}, want)
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
+		intLit, es := checkIntLit(&parser.IntLit{Text: i.String(), L: parserLit.L}, want)
+		if len(es) > 0 {
+			errs = append(errs, es...)
 		}
 		return intLit, errs
-	case b.Kind == Float32 || b.Kind == Float64:
-		if !isRefType(literalType(want)) {
-			lit.T = refType(copyTypeWithLoc(want, lit.L))
-			return deref(lit), nil
-		}
+	case isFloatRefType(want):
 		lit.T = copyTypeWithLoc(want, lit.L)
 		return lit, nil
+	case isFloatType(want):
+		lit.T = refType(copyTypeWithLoc(want, lit.L))
+		return deref(lit), nil
 	}
 }
 

@@ -433,23 +433,26 @@ func (s *Select) unifyParm(i int, typ Type) note {
 	if i > 0 {
 		panic("impossible") // can't have more than 1 argument
 	}
-	structType, ok := valueType(literalType(typ)).(*StructType)
-	if !ok {
-		return newNote("%s: %s is not a struct type", s, typ).setLoc(typ)
+	switch v := valueType(typ); {
+	case isStructType(v):
+		s.Parm = &RefType{Type: v, L: v.Loc()}
+	case isStructRefType(v):
+		s.Parm = v
+	default:
+		return newNote("%s: argument 0 (%s) is not a struct type", s, typ).setLoc(typ)
 	}
+	s.Struct = valueType(literalType(typ)).(*StructType)
 	var f *FieldDef
-	for i = range structType.Fields {
-		if structType.Fields[i].Name == s.Field.Name {
-			f = &structType.Fields[i]
+	for i = range s.Struct.Fields {
+		if s.Struct.Fields[i].Name == s.Field.Name {
+			f = &s.Struct.Fields[i]
 			break
 		}
 	}
 	if f == nil {
 		return newNote("%s: %s has no field %s", s, typ, s.Field.Name).setLoc(typ)
 	}
-	s.Struct = structType
 	s.Field = f
-	s.Parm = &RefType{Type: structType, L: structType.L}
 	s.Ret = &RefType{Type: f.Type, L: f.Type.Loc()}
 	return nil
 }
@@ -471,11 +474,15 @@ func (s *Switch) groundParm(i int) Type { return s.Parms[i] }
 func (s *Switch) unifyParm(i int, typ Type) note {
 	switch {
 	case i == 0:
-		var ok bool
-		if s.Union, ok = valueType(literalType(typ)).(*UnionType); !ok {
-			return newNote("%s: %s is not a union type", s, typ).setLoc(typ)
+		switch v := valueType(typ); {
+		case isUnionType(v):
+			s.Parms[0] = &RefType{Type: v, L: v.Loc()}
+		case isUnionRefType(v):
+			s.Parms[0] = v
+		default:
+			return newNote("%s: argument 0 (%s) is not a union type", s, typ).setLoc(typ)
 		}
-		s.Parms[0] = &RefType{Type: s.Union, L: s.Union.L}
+		s.Union = valueType(literalType(typ)).(*UnionType)
 		seen := make(map[*CaseDef]bool)
 		for i := range s.Cases {
 			name := s.Cases[i].Name
@@ -556,19 +563,20 @@ func (b *Builtin) groundParm(i int) Type { return b.Parms[i] }
 func (b *Builtin) unifyParm(i int, typ Type) note {
 	switch b.Op {
 	case Assign:
-		if i != 0 {
+		switch r, ok := typ.(*RefType); {
+		case i != 0:
 			return nil
-		}
-		if r, ok := typ.(*RefType); ok {
+		case ok:
 			b.Parms[0] = typ
 			b.Parms[1] = r.Type
 			b.Ret = r.Type
-		} else {
+			return nil
+		default:
 			b.Parms[0] = &RefType{Type: typ, L: typ.Loc()}
 			b.Parms[1] = typ
 			b.Ret = typ
+			return nil
 		}
-		return nil
 
 	case NewArray:
 		if i != 1 {
@@ -586,39 +594,43 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 		return unifyBuiltin(numTypes, b, typ)
 
 	case Index:
-		if i != 0 || b.Parms[i] != nil {
+		switch v := valueType(typ); {
+		case i != 0:
 			return nil
+		case isArrayType(v):
+			b.Parms[0] = v
+			b.Ret = &RefType{Type: literalType(v).(*ArrayType).ElemType}
+			return nil
+		case isStringType(v):
+			b.Parms[0] = v
+			b.Ret = basic(Uint8)
+			return nil
+		default:
+			return newNote("%s: argument 0 (%s) is not an array or string", b, typ)
 		}
-		t, note := arrayType(b, typ)
-		if note != nil {
-			return note
-		}
-		b.Parms[0] = t
-		b.Ret = &RefType{Type: t.ElemType}
-		return nil
 
 	case Slice:
-		if i != 0 || b.Parms[i] != nil {
+		switch v := valueType(typ); {
+		case i != 0:
 			return nil
+		case isArrayType(v) || isStringType(v):
+			b.Parms[0] = v
+			b.Ret = v
+			return nil
+		default:
+			return newNote("%s: argument 0 (%s) is not an array or string", b, typ)
 		}
-		t, note := arrayType(b, typ)
-		if note != nil {
-			return note
-		}
-		b.Parms[0] = t
-		b.Ret = t
-		return nil
 
 	case Length:
-		if i != 0 {
+		switch v := valueType(typ); {
+		case i != 0:
 			return nil
+		case isArrayType(v) || isStringType(v):
+			b.Parms[0] = v
+			return nil
+		default:
+			return newNote("%s: argument 0 (%s) is not an array or string", b, typ)
 		}
-		t, note := arrayType(b, typ)
-		if note != nil {
-			return note
-		}
-		b.Parms[0] = t
-		return nil
 
 	case StrConvert, Return, Panic, Print:
 		return nil
@@ -631,14 +643,6 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 func (b *Builtin) groundRet() Type { return b.Ret }
 
 func (b *Builtin) unifyRet(typ Type) note { return nil }
-
-func arrayType(b *Builtin, typ Type) (*ArrayType, note) {
-	t, ok := valueType(literalType(typ)).(*ArrayType)
-	if !ok {
-		return nil, newNote("%s: return type %s is not an array type", b, typ)
-	}
-	return t, nil
-}
 
 var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64}
 var numTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64}
@@ -655,8 +659,8 @@ func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) note {
 		return nil
 	}
 	allowed := false
-	t, ok := valueType(literalType(typ)).(*BasicType)
-	if ok {
+
+	if t, ok := valueType(basicType(typ)).(*BasicType); ok {
 		for _, k := range allowedTypes {
 			if k == t.Kind {
 				allowed = true
@@ -667,6 +671,7 @@ func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) note {
 	if !allowed {
 		return newNote("%s: does not support type %s", b, typ)
 	}
+	t := valueType(typ)
 	for i := range b.Parms {
 		if b.Parms[i] == nil {
 			b.Parms[i] = t

@@ -55,10 +55,16 @@ func literalType(typ Type) Type {
 			return nil
 		}
 		return literalType(typ.Inst.Type)
-	case *TypeVar:
-		return nil
-	default:
+	case *ArrayType:
 		return typ
+	case *StructType:
+		return typ
+	case *UnionType:
+		return typ
+	case *FuncType:
+		return typ
+	default:
+		return nil
 	}
 }
 
@@ -74,6 +80,282 @@ func isLiteralType(typ Type) bool {
 		return false
 	default:
 		return true
+	}
+}
+
+func isStructType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *StructType:
+		return true
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isStructType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
+func isStructRefType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *RefType:
+		return isStructType(typ.Type)
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isStructRefType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
+func isUnionType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *UnionType:
+		return true
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isUnionType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
+func isUnionRefType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *RefType:
+		return isUnionType(typ.Type)
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isUnionRefType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
+func isArrayType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *ArrayType:
+		return true
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isArrayType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
+func isStringType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isStringType(typ.Inst.Type)
+		}
+	case *BasicType:
+		return typ.Kind == String
+	}
+	return false
+}
+
+func isStringRefType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *RefType:
+		return isStringType(typ.Type)
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isStringRefType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
+func isIntType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isIntType(typ.Inst.Type)
+		}
+	case *BasicType:
+		switch typ.Kind {
+		case Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64:
+			return true
+		}
+	}
+	return false
+}
+
+func isIntRefType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *RefType:
+		return isIntType(typ.Type)
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isIntRefType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
+func isFloatType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isFloatType(typ.Inst.Type)
+		}
+	case *BasicType:
+		switch typ.Kind {
+		case Float32, Float64:
+			return true
+		}
+	}
+	return false
+}
+
+func isFloatRefType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *RefType:
+		return isFloatType(typ.Type)
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isFloatRefType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
+func basicKind(typ Type) BasicTypeKind {
+	switch typ := typ.(type) {
+	case nil:
+		return noBasicTypeKind
+	case *RefType:
+		if typ.Type == nil {
+			return noBasicTypeKind
+		}
+		return basicKind(typ.Type)
+	case *DefType:
+		if typ.Inst == nil || typ.Inst.Type == nil {
+			return noBasicTypeKind
+		}
+		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+			return noBasicTypeKind
+		}
+		return basicKind(typ.Inst.Type)
+	case *BasicType:
+		return typ.Kind
+	default:
+		return noBasicTypeKind
+	}
+}
+
+func intType(typ Type) Type {
+	switch typ := typ.(type) {
+	case nil:
+		return nil
+	case *RefType:
+		if typ.Type == nil {
+			return nil
+		}
+		lit := intType(typ.Type)
+		if lit == nil {
+			return nil
+		}
+		return &RefType{Type: lit, L: typ.L}
+	case *DefType:
+		if typ.Inst == nil || typ.Inst.Type == nil {
+			return nil
+		}
+		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+			return nil
+		}
+		return intType(typ.Inst.Type)
+	case *BasicType:
+		switch typ.Kind {
+		case Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64:
+			return typ
+		default:
+			return nil
+		}
+	default:
+		return nil
+	}
+}
+
+func floatType(typ Type) Type {
+	switch typ := typ.(type) {
+	case nil:
+		return nil
+	case *RefType:
+		if typ.Type == nil {
+			return nil
+		}
+		lit := floatType(typ.Type)
+		if lit == nil {
+			return nil
+		}
+		return &RefType{Type: lit, L: typ.L}
+	case *DefType:
+		if typ.Inst == nil || typ.Inst.Type == nil {
+			return nil
+		}
+		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+			return nil
+		}
+		return floatType(typ.Inst.Type)
+	case *BasicType:
+		if typ.Kind == Float32 || typ.Kind == Float64 {
+			return typ
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+func basicType(typ Type) Type {
+	switch typ := typ.(type) {
+	case nil:
+		return nil
+	case *RefType:
+		if typ.Type == nil {
+			return nil
+		}
+		lit := basicType(typ.Type)
+		if lit == nil {
+			return nil
+		}
+		return &RefType{Type: lit, L: typ.L}
+	case *DefType:
+		if typ.Inst == nil || typ.Inst.Type == nil {
+			return nil
+		}
+		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+			return nil
+		}
+		return basicType(typ.Inst.Type)
+	case *BasicType:
+		return typ
+	default:
+		return nil
 	}
 }
 

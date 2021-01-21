@@ -252,8 +252,6 @@ var builtins = []builtin{
 	{name: "string", op: StrConvert, parms: []Type{byteArray()}, ret: basic(String)},
 	{name: "[]", op: Index, parms: []Type{nil, basic(Int)}, ret: nil},
 	{name: "[]", op: Slice, parms: []Type{nil, basic(Int), basic(Int)}, ret: nil},
-	{name: "[]", op: Index, parms: []Type{basic(String), basic(Int)}, ret: basic(Uint8)},
-	{name: "[]", op: Slice, parms: []Type{basic(String), basic(Int), basic(Int)}, ret: basic(String)},
 	{name: ".length", op: Length, parms: []Type{nil}, ret: basic(Int)},
 	{name: "panic", op: Panic, parms: []Type{basic(String)}, ret: &StructType{}},
 	{name: "print", op: Print, parms: []Type{basic(String)}, ret: &StructType{}},
