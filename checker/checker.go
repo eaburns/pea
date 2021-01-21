@@ -1074,7 +1074,7 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 	for i, parserArg := range parserCall.Args {
 		var arg Expr
 		var fs []Error
-		if i < len(fun.FuncType.Parms) {
+		if fun != nil && i < len(fun.FuncType.Parms) {
 			arg, fs = checkAndConvertExpr(x, parserArg, fun.FuncType.Parms[i])
 		} else {
 			arg, fs = checkAndConvertExpr(x, parserArg, nil)
@@ -1086,13 +1086,11 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 			args = append(args, arg)
 		}
 	}
-	ret := fun.FuncType.Ret
-	expr = &Call{
-		Func: fun,
-		Args: args,
-		T:    &RefType{Type: ret, L: ret.Loc()},
-		L:    parserCall.L,
+	var ret Type
+	if fun != nil {
+		ret = &RefType{Type: fun.FuncType.Ret, L: fun.FuncType.Ret.Loc()}
 	}
+	expr = &Call{Func: fun, Args: args, T: ret, L: parserCall.L}
 	for isRefType(expr.Type()) {
 		expr = deref(expr)
 	}
