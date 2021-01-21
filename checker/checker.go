@@ -402,19 +402,6 @@ func checkAliasCycle(root *TypeDef) Error {
 	return nil
 }
 
-func resolveAlias(typ Type) Type {
-	defType, ok := typ.(*DefType)
-	if !ok || !defType.Def.Alias {
-		return typ
-	}
-	aliased := copyTypeWithLoc(defType.Def.Type, defType.L)
-	sub := make(map[*TypeParm]Type)
-	for i, arg := range defType.Args {
-		sub[&defType.Def.Parms[i]] = arg
-	}
-	return resolveAlias(subType(sub, aliased))
-}
-
 func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
 	typeVars := make(map[string]loc.Loc)
 	for _, parserFuncParm := range parserFuncDef.Parms {

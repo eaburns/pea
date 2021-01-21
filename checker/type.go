@@ -226,6 +226,19 @@ func instType(typ Type) Type {
 	return typ
 }
 
+func resolveAlias(typ Type) Type {
+	defType, ok := typ.(*DefType)
+	if !ok || !defType.Def.Alias {
+		return typ
+	}
+	aliased := copyTypeWithLoc(defType.Def.Type, defType.L)
+	sub := make(map[*TypeParm]Type)
+	for i, arg := range defType.Args {
+		sub[&defType.Def.Parms[i]] = arg
+	}
+	return resolveAlias(subType(sub, aliased))
+}
+
 func findInst(def *TypeDef, args []Type) *TypeInst {
 next:
 	for _, inst := range def.Insts {
@@ -272,10 +285,7 @@ func subType(sub map[*TypeParm]Type, typ Type) Type {
 		for _, arg := range typ.Args {
 			copy.Args = append(copy.Args, subType(sub, arg))
 		}
-		if typ.Inst != nil {
-			return instType(&copy)
-		}
-		return &copy
+		return instType(&copy)
 	case *ArrayType:
 		copy := *typ
 		copy.ElemType = subType(sub, typ.ElemType)
