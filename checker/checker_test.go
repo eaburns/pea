@@ -840,6 +840,15 @@ func TestOverloadResolution(t *testing.T) {
 			want: "x()",
 		},
 		{
+			name: "call def-function-type variable",
+			src: `
+				type my_fun (int){}
+				var x my_fun
+			`,
+			call: "x(1)",
+			want: "x",
+		},
+		{
 			name: "choose matching func variable over mismatching func",
 			src: "var x (int){}	func x()",
 			call: "x(1)",
@@ -1928,6 +1937,25 @@ func findCall(e Expr) *Call {
 	default:
 		fmt.Printf("%T unimplemented", e)
 		return nil
+	}
+}
+
+// This tests some simple Church numerals implementation.
+// It's not testing anything inparticular, really,
+// but when creating it, it uncovered several bugs
+// in calling def-function types and type instantiation,
+// so it seems useful to just have it here to catch any regressions.
+func TestChurch(t *testing.T){
+	const src = `
+		Type num (num){num}
+		Func zero() num { return: (f){ (x){x} } }
+		Func next(n num) num { return: (f){ (x){ n(f(x)) } } }
+		Func +(n num, m num) num { return: (f){ (x){ m(f)(n(f)(x)) } } }
+		Func *(n num, m num) num { return: (f){ (x){ m(n(f))(x) } } }
+		Func ^(n num, m num) num { return: m(n) }
+	`
+	if _, errs := check("church", []string{src}, nil); len(errs) > 0 {
+		t.Errorf("failed to check: %s", errs[0])
 	}
 }
 

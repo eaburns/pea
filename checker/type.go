@@ -83,6 +83,22 @@ func isLiteralType(typ Type) bool {
 	}
 }
 
+// funcType returns a *FuncType if typ is a function type, otherwise nil.
+func funcType(typ Type) *FuncType {
+	switch typ := typ.(type) {
+	case *FuncType:
+		return typ
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return funcType(typ.Inst.Type)
+		}
+	}
+	return nil
+}
+
+
 func isStructType(typ Type) bool {
 	switch typ := typ.(type) {
 	case *StructType:

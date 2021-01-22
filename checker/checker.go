@@ -762,7 +762,9 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	funcs, notes := filterToFuncs(ids, parserID.L)
 	if len(funcs) == 0 {
 		args, errs := checkArgsFallback(x, parserCall.Args)
-		errs = append(errs, newError(parserID.L, "%s is not callable", parserID.Name))
+		err := newError(parserID.L, "%s is not callable", parserID.Name)
+		err.setNotes(notes)
+		errs = append(errs, err)
 		return &Call{Args: args, L: parserCall.L}, errs
 	}
 	funcs, ns := filterByArity(funcs, len(parserCall.Args))
@@ -858,18 +860,17 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 	var notes []note
 	for _, id := range ids {
 		var fun Func
-		var expr Expr
 		switch id := id.(type) {
 		case *VarDef:
-			if t, ok := id.T.(*FuncType); ok {
+			if t := funcType(id.T); t != nil {
 				fun = &idFunc{id: id, funcType: t, l: l}
 			}
 		case *FuncParm:
-			if t, ok := id.T.(*FuncType); ok {
+			if t := funcType(id.T); t != nil {
 				fun = &idFunc{id: id, funcType: t, l: l}
 			}
 		case *FuncLocal:
-			if t, ok := id.T.(*FuncType); ok {
+			if t := funcType(id.T); t != nil {
 				fun = &idFunc{id: id, funcType: t, l: l}
 			}
 		case *BlockCap:
@@ -880,16 +881,12 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 		default:
 			panic(fmt.Sprintf("impossible id type: %T", id))
 		}
-		if expr != nil {
-			if funcType, ok := expr.Type().(*FuncType); ok {
-				fun = &ExprFunc{Expr: expr, FuncType: funcType}
-			} else {
-				notes = append(notes, newNote("%s is not a function", expr).setLoc(expr))
-			}
+		if fun == nil {
+			note := newNote("%s (%s) is not a function", id, id.Type()).setLoc(id)
+			notes = append(notes, note)
+			continue
 		}
-		if fun != nil {
-			funcs = append(funcs, fun)
-		}
+		funcs = append(funcs, fun)
 	}
 	return funcs, notes
 }
@@ -1059,10 +1056,11 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 		errs = append(errs, fs...)
 	}
 	if expr != nil && expr.Type() != nil {
-		if funcType, ok := expr.Type().(*FuncType); !ok {
-			errs = append(errs, newError(expr, "expression is not callable"))
+		if t := funcType(expr.Type()); t == nil {
+			err := newError(expr, "%s (%s) is not callable", expr, expr.Type())
+			errs = append(errs, err)
 		} else {
-			fun = &ExprFunc{Expr: expr, FuncType: funcType}
+			fun = &ExprFunc{Expr: expr, FuncType: t}
 		}
 	}
 	if fun != nil && len(parserCall.Args) != len(fun.FuncType.Parms) {
