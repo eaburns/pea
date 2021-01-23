@@ -314,11 +314,12 @@ func (e *ExprFunc) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (d *Deref) print(pc *config) {
-	pc.p("Deref{")
-	pc.loc(d.L)
-	pc.field("Expr", d.Expr)
-	pc.field("Type", d.T)
+func (c *Convert) print(pc *config) {
+	pc.p("Convert{")
+	pc.loc(c.L)
+	pc.field("Kind", c.Kind)
+	pc.field("Expr", c.Expr)
+	pc.field("Type", c.T)
 	pc.p("\n}")
 }
 

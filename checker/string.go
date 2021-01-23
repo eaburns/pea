@@ -77,8 +77,8 @@ func (c *Call) String() string {
 	return c.buildString(new(strings.Builder)).String()
 }
 
-func (d *Deref) String() string {
-	return d.buildString(new(strings.Builder)).String()
+func (c *Convert) String() string {
+	return c.buildString(new(strings.Builder)).String()
 }
 
 func (v *Var) String() string {
@@ -389,10 +389,6 @@ func (o Op) String() string {
 		return "Greater"
 	case GreaterEq:
 		return "GreaterEq"
-	case NumConvert:
-		return "NumConvert"
-	case StrConvert:
-		return "StrConvert"
 	case Index:
 		return "Index"
 	case Slice:
@@ -510,10 +506,6 @@ func (b *Builtin) name(paren bool) string {
 		s.WriteRune('>')
 	case GreaterEq:
 		s.WriteString(">=")
-	case NumConvert:
-		return b.Ret.String()
-	case StrConvert:
-		return "string"
 	case Index:
 		s.WriteString("[]")
 	case Slice:
@@ -539,8 +531,29 @@ func (b *Builtin) name(paren bool) string {
 	return s.String()
 }
 
-func (d *Deref) buildString(s *strings.Builder) *strings.Builder {
-	return d.Expr.buildString(s)
+func (c ConvertKind) String() string {
+	switch c {
+	case Noop:
+		return "Noop"
+	case Deref:
+		return "Deref"
+	case NumConvert:
+		return "NumConvert"
+	case StrConvert:
+		return "StrConvert"
+	default:
+		panic("impossible ConvertKind")
+	}
+}
+
+func (c *Convert) buildString(s *strings.Builder) *strings.Builder {
+	if !c.Explicit {
+		return c.Expr.buildString(s)
+	}
+	c.T.buildString(s)
+	s.WriteString(" : ")
+	c.Expr.buildString(s)
+	return s
 }
 
 func (v *Var) buildString(s *strings.Builder) *strings.Builder {

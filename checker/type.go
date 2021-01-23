@@ -98,7 +98,6 @@ func funcType(typ Type) *FuncType {
 	return nil
 }
 
-
 func isStructType(typ Type) bool {
 	switch typ := typ.(type) {
 	case *StructType:
@@ -153,6 +152,11 @@ func isUnionRefType(typ Type) bool {
 		}
 	}
 	return false
+}
+
+func isByteArray(typ Type) bool {
+	return isArrayType(typ) &&
+		basicKind(literalType(typ).(*ArrayType).ElemType) == Uint8
 }
 
 func isArrayType(typ Type) bool {
@@ -259,30 +263,6 @@ func isFloatRefType(typ Type) bool {
 	return false
 }
 
-func basicKind(typ Type) BasicTypeKind {
-	switch typ := typ.(type) {
-	case nil:
-		return noBasicTypeKind
-	case *RefType:
-		if typ.Type == nil {
-			return noBasicTypeKind
-		}
-		return basicKind(typ.Type)
-	case *DefType:
-		if typ.Inst == nil || typ.Inst.Type == nil {
-			return noBasicTypeKind
-		}
-		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
-			return noBasicTypeKind
-		}
-		return basicKind(typ.Inst.Type)
-	case *BasicType:
-		return typ.Kind
-	default:
-		return noBasicTypeKind
-	}
-}
-
 func intType(typ Type) Type {
 	switch typ := typ.(type) {
 	case nil:
@@ -372,6 +352,30 @@ func basicType(typ Type) Type {
 		return typ
 	default:
 		return nil
+	}
+}
+
+func basicKind(typ Type) BasicTypeKind {
+	switch typ := typ.(type) {
+	case nil:
+		return noBasicTypeKind
+	case *RefType:
+		if typ.Type == nil {
+			return noBasicTypeKind
+		}
+		return basicKind(typ.Type)
+	case *DefType:
+		if typ.Inst == nil || typ.Inst.Type == nil {
+			return noBasicTypeKind
+		}
+		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+			return noBasicTypeKind
+		}
+		return basicKind(typ.Inst.Type)
+	case *BasicType:
+		return typ.Kind
+	default:
+		return noBasicTypeKind
 	}
 }
 

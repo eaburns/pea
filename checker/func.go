@@ -590,7 +590,7 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 		return unifyBuiltin(intTypes, b, typ)
 
 	case Negate, Minus, Plus, Times, Divide, Modulus, Eq,
-		Neq, Less, LessEq, Greater, GreaterEq, NumConvert:
+		Neq, Less, LessEq, Greater, GreaterEq:
 		return unifyBuiltin(numTypes, b, typ)
 
 	case Index:
@@ -632,7 +632,7 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 			return newNote("%s: argument 0 (%s) is not an array or string", b, typ)
 		}
 
-	case StrConvert, Return, Panic, Print:
+	case Return, Panic, Print:
 		return nil
 
 	default:

@@ -205,7 +205,7 @@ func TestFuncNewLocal(t *testing.T) {
 		t.Errorf("func locals differ: %s", diff)
 	}
 
-	block := fun.Exprs[1].(*Deref).Expr.(*BlockLit)
+	block := fun.Exprs[1].(*Convert).Expr.(*BlockLit)
 	want = []*FuncLocal{
 		{Name: "z", T: &BasicType{Kind: Int}},
 	}
@@ -241,7 +241,7 @@ func TestTestNewLocal(t *testing.T) {
 		t.Errorf("test locals differ: %s", diff)
 	}
 
-	block := test.Exprs[1].(*Deref).Expr.(*BlockLit)
+	block := test.Exprs[1].(*Convert).Expr.(*BlockLit)
 	want = []*FuncLocal{
 		{Name: "z", T: &BasicType{Kind: Int}},
 	}
@@ -269,7 +269,7 @@ func TestBlockNewLocal(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	block := findVarDef(t, "testVar", mod).Expr.(*Deref).Expr.(*BlockLit)
+	block := findVarDef(t, "testVar", mod).Expr.(*Convert).Expr.(*BlockLit)
 	want := []*FuncLocal{
 		{Name: "x", T: &BasicType{Kind: Int}},
 		{Name: "y", T: &BasicType{Kind: String}},
@@ -278,7 +278,7 @@ func TestBlockNewLocal(t *testing.T) {
 		t.Errorf("outer-block locals differ: %s", diff)
 	}
 
-	block2 := block.Exprs[1].(*Deref).Expr.(*BlockLit)
+	block2 := block.Exprs[1].(*Convert).Expr.(*BlockLit)
 	want = []*FuncLocal{
 		{Name: "z", T: &BasicType{Kind: Int}},
 	}
@@ -491,7 +491,7 @@ func TestNewLocalTypes(t *testing.T) {
 			switch mod, errs := check("test", []string{src}, nil); {
 			case test.err == "" && len(errs) == 0:
 				xxx := findVarDef(t, "xxx", mod)
-				got := xxx.Expr.(*Deref).Expr.(*BlockLit).Locals[0].Type()
+				got := xxx.Expr.(*Convert).Expr.(*BlockLit).Locals[0].Type()
 				want := findVarDef(t, "want", mod).Type()
 				if !eqType(got, want) {
 					t.Errorf("got %s, want %s", got, want)
@@ -759,7 +759,262 @@ func TestArgumentConversions(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestConversions(t *testing.T) {
+	tests := []struct {
+		name string
+		src string
+		err string
+	}{
+		{src: "func f(x int) { y := int : x }"},
+		{src: "func f(x int) { y := int8 : x }"},
+		{src: "func f(x int) { y := int16 : x }"},
+		{src: "func f(x int) { y := int32 : x }"},
+		{src: "func f(x int) { y := int64 : x }"},
+		{src: "func f(x int) { y := uint : x }"},
+		{src: "func f(x int) { y := uint8 : x }"},
+		{src: "func f(x int) { y := uint16 : x }"},
+		{src: "func f(x int) { y := uint32 : x }"},
+		{src: "func f(x int) { y := uint64 : x }"},
+		{src: "func f(x int) { y := float32 : x }"},
+		{src: "func f(x int) { y := float64 : x }"},
+		{src: "type num int	func f(x int) { y := num : x }"},
+		{src: "func f(x int8) { y := int : x }"},
+		{src: "func f(x int8) { y := int8 : x }"},
+		{src: "func f(x int8) { y := int16 : x }"},
+		{src: "func f(x int8) { y := int32 : x }"},
+		{src: "func f(x int8) { y := int64 : x }"},
+		{src: "func f(x int8) { y := uint : x }"},
+		{src: "func f(x int8) { y := uint8 : x }"},
+		{src: "func f(x int8) { y := uint16 : x }"},
+		{src: "func f(x int8) { y := uint32 : x }"},
+		{src: "func f(x int8) { y := uint64 : x }"},
+		{src: "func f(x int8) { y := float32 : x }"},
+		{src: "func f(x int8) { y := float64 : x }"},
+		{src: "type num int	func f(x int8) { y := num : x }"},
+		{src: "func f(x int16) { y := int : x }"},
+		{src: "func f(x int16) { y := int8 : x }"},
+		{src: "func f(x int16) { y := int16 : x }"},
+		{src: "func f(x int16) { y := int32 : x }"},
+		{src: "func f(x int16) { y := int64 : x }"},
+		{src: "func f(x int16) { y := uint : x }"},
+		{src: "func f(x int16) { y := uint8 : x }"},
+		{src: "func f(x int16) { y := uint16 : x }"},
+		{src: "func f(x int16) { y := uint32 : x }"},
+		{src: "func f(x int16) { y := uint64 : x }"},
+		{src: "func f(x int16) { y := float32 : x }"},
+		{src: "func f(x int16) { y := float64 : x }"},
+		{src: "type num int	func f(x int16) { y := num : x }"},
+		{src: "func f(x int32) { y := int : x }"},
+		{src: "func f(x int32) { y := int8 : x }"},
+		{src: "func f(x int32) { y := int16 : x }"},
+		{src: "func f(x int32) { y := int32 : x }"},
+		{src: "func f(x int32) { y := int64 : x }"},
+		{src: "func f(x int32) { y := uint : x }"},
+		{src: "func f(x int32) { y := uint8 : x }"},
+		{src: "func f(x int32) { y := uint16 : x }"},
+		{src: "func f(x int32) { y := uint32 : x }"},
+		{src: "func f(x int32) { y := uint64 : x }"},
+		{src: "func f(x int32) { y := float32 : x }"},
+		{src: "func f(x int32) { y := float64 : x }"},
+		{src: "type num int	func f(x int32) { y := num : x }"},
+		{src: "func f(x int64) { y := int : x }"},
+		{src: "func f(x int64) { y := int8 : x }"},
+		{src: "func f(x int64) { y := int16 : x }"},
+		{src: "func f(x int64) { y := int32 : x }"},
+		{src: "func f(x int64) { y := int64 : x }"},
+		{src: "func f(x int64) { y := uint : x }"},
+		{src: "func f(x int64) { y := uint8 : x }"},
+		{src: "func f(x int64) { y := uint16 : x }"},
+		{src: "func f(x int64) { y := uint32 : x }"},
+		{src: "func f(x int64) { y := uint64 : x }"},
+		{src: "func f(x int64) { y := float32 : x }"},
+		{src: "func f(x int64) { y := float64 : x }"},
+		{src: "type num int	func f(x int64) { y := num : x }"},
+		{src: "func f(x uint) { y := int : x }"},
+		{src: "func f(x uint) { y := int8 : x }"},
+		{src: "func f(x uint) { y := int16 : x }"},
+		{src: "func f(x uint) { y := int32 : x }"},
+		{src: "func f(x uint) { y := int64 : x }"},
+		{src: "func f(x uint) { y := uint : x }"},
+		{src: "func f(x uint) { y := uint8 : x }"},
+		{src: "func f(x uint) { y := uint16 : x }"},
+		{src: "func f(x uint) { y := uint32 : x }"},
+		{src: "func f(x uint) { y := uint64 : x }"},
+		{src: "func f(x uint) { y := float32 : x }"},
+		{src: "func f(x uint) { y := float64 : x }"},
+		{src: "type num int	func f(x uint) { y := num : x }"},
+		{src: "func f(x uint8) { y := int : x }"},
+		{src: "func f(x uint8) { y := int8 : x }"},
+		{src: "func f(x uint8) { y := int16 : x }"},
+		{src: "func f(x uint8) { y := int32 : x }"},
+		{src: "func f(x uint8) { y := int64 : x }"},
+		{src: "func f(x uint8) { y := uint : x }"},
+		{src: "func f(x uint8) { y := uint8 : x }"},
+		{src: "func f(x uint8) { y := uint16 : x }"},
+		{src: "func f(x uint8) { y := uint32 : x }"},
+		{src: "func f(x uint8) { y := uint64 : x }"},
+		{src: "func f(x uint8) { y := float32 : x }"},
+		{src: "func f(x uint8) { y := float64 : x }"},
+		{src: "type num int	func f(x uint8) { y := num : x }"},
+		{src: "func f(x uint16) { y := int : x }"},
+		{src: "func f(x uint16) { y := int8 : x }"},
+		{src: "func f(x uint16) { y := int16 : x }"},
+		{src: "func f(x uint16) { y := int32 : x }"},
+		{src: "func f(x uint16) { y := int64 : x }"},
+		{src: "func f(x uint16) { y := uint : x }"},
+		{src: "func f(x uint16) { y := uint8 : x }"},
+		{src: "func f(x uint16) { y := uint16 : x }"},
+		{src: "func f(x uint16) { y := uint32 : x }"},
+		{src: "func f(x uint16) { y := uint64 : x }"},
+		{src: "func f(x uint16) { y := float32 : x }"},
+		{src: "func f(x uint16) { y := float64 : x }"},
+		{src: "type num int	func f(x uint16) { y := num : x }"},
+		{src: "func f(x uint32) { y := int : x }"},
+		{src: "func f(x uint32) { y := int8 : x }"},
+		{src: "func f(x uint32) { y := int16 : x }"},
+		{src: "func f(x uint32) { y := int32 : x }"},
+		{src: "func f(x uint32) { y := int64 : x }"},
+		{src: "func f(x uint32) { y := uint : x }"},
+		{src: "func f(x uint32) { y := uint8 : x }"},
+		{src: "func f(x uint32) { y := uint16 : x }"},
+		{src: "func f(x uint32) { y := uint32 : x }"},
+		{src: "func f(x uint32) { y := uint64 : x }"},
+		{src: "func f(x uint32) { y := float32 : x }"},
+		{src: "func f(x uint32) { y := float64 : x }"},
+		{src: "type num int	func f(x uint32) { y := num : x }"},
+		{src: "func f(x uint64) { y := int : x }"},
+		{src: "func f(x uint64) { y := int8 : x }"},
+		{src: "func f(x uint64) { y := int16 : x }"},
+		{src: "func f(x uint64) { y := int32 : x }"},
+		{src: "func f(x uint64) { y := int64 : x }"},
+		{src: "func f(x uint64) { y := uint : x }"},
+		{src: "func f(x uint64) { y := uint8 : x }"},
+		{src: "func f(x uint64) { y := uint16 : x }"},
+		{src: "func f(x uint64) { y := uint32 : x }"},
+		{src: "func f(x uint64) { y := uint64 : x }"},
+		{src: "func f(x uint64) { y := float32 : x }"},
+		{src: "func f(x uint64) { y := float64 : x }"},
+		{src: "type num int	func f(x uint64) { y := num : x }"},
+		{src: "func f(x float32) { y := int : x }"},
+		{src: "func f(x float32) { y := int8 : x }"},
+		{src: "func f(x float32) { y := int16 : x }"},
+		{src: "func f(x float32) { y := int32 : x }"},
+		{src: "func f(x float32) { y := int64 : x }"},
+		{src: "func f(x float32) { y := uint : x }"},
+		{src: "func f(x float32) { y := uint8 : x }"},
+		{src: "func f(x float32) { y := uint16 : x }"},
+		{src: "func f(x float32) { y := uint32 : x }"},
+		{src: "func f(x float32) { y := uint64 : x }"},
+		{src: "func f(x float32) { y := float32 : x }"},
+		{src: "func f(x float32) { y := float64 : x }"},
+		{src: "type num int	func f(x float32) { y := num : x }"},
+		{src: "func f(x float64) { y := int : x }"},
+		{src: "func f(x float64) { y := int8 : x }"},
+		{src: "func f(x float64) { y := int16 : x }"},
+		{src: "func f(x float64) { y := int32 : x }"},
+		{src: "func f(x float64) { y := int64 : x }"},
+		{src: "func f(x float64) { y := uint : x }"},
+		{src: "func f(x float64) { y := uint8 : x }"},
+		{src: "func f(x float64) { y := uint16 : x }"},
+		{src: "func f(x float64) { y := uint32 : x }"},
+		{src: "func f(x float64) { y := uint64 : x }"},
+		{src: "func f(x float64) { y := float32 : x }"},
+		{src: "func f(x float64) { y := float64 : x }"},
+		{src: "type num int	func f(x float64) { y := num : x }"},
+		{src: "type num int	func f(x num) { y := int : x }"},
+		{src: "type num int	func f(x num) { y := int8 : x }"},
+		{src: "type num int	func f(x num) { y := int16 : x }"},
+		{src: "type num int	func f(x num) { y := int32 : x }"},
+		{src: "type num int	func f(x num) { y := int64 : x }"},
+		{src: "type num int	func f(x num) { y := uint : x }"},
+		{src: "type num int	func f(x num) { y := uint8 : x }"},
+		{src: "type num int	func f(x num) { y := uint16 : x }"},
+		{src: "type num int	func f(x num) { y := uint32 : x }"},
+		{src: "type num int	func f(x num) { y := uint64 : x }"},
+		{src: "type num int	func f(x num) { y := float32 : x }"},
+		{src: "type num int	func f(x num) { y := float64 : x }"},
+		{src: "type num1 int		type num2 int		func f(x num1) { y := num2 : x }"},
+		{
+			src: "func f(x string) { y := int : x }",
+			err: "cannot convert",
+		},
+
+		{src: "func f(x [uint8]) { y := string : x }"},
+		{src: "type str [uint8]	func f(x str) { y := string : x }"},
+
+		{src: "func f(x int) { y := &int : x }"},
+		{
+			src: "func f(x int) { y := &&int : x }",
+			err: "cannot convert",
+		},
+
+		{src: "func f(x &int) { y := int : x }"},
+		{src: "func f(x &&int) { y := &int : x }"},
+		{src: "func f(x &&int) { y := int : x }"},
+
+		{src: "func f(x [.x int]) { y := [.x int] : x }"},
+		{src: "type t [.x int]	func f(x t) { y := [.x int] : x }"},
+		{src: "type t [.x int]	func f(x [.x int]) { y := t : x }"},
+		{
+			src: "type t [.x int]	type u [.x int]	func f(x u) { y := t : x }",
+			err: "cannot convert",
+		},
+
+		{
+			name: "explicit conversion of an explicit conversion is ok",
+			src: "func f(x int) { y := int : (&int : x) }",
+		},
+		{
+			name: "no implicit conversion of an explicit conversion",
+			src: "func f(x int) { x := &int : x }",
+			err: "cannot convert",
+		},
+		{
+			name: "disambiguate id by conversion",
+			src: `
+				var x int
+				func x()
+				func f() { y := int : x }
+			`,
+		},
+		{
+			name: "disambiguate id by conversion with implicit reference",
+			src: `
+				var x int
+				func x()
+				func f() { y := &int : x }
+			`,
+		},
+		{
+			name: "disambiguate id by conversion and convert again",
+			src: `
+				var x int
+				func x()
+				func f() { y := uint8 : (int : x) }
+			`,
+		},
+	}
+	for _, test := range tests {
+		test := test
+		name := test.name
+		if name == "" {
+			name = test.src
+		}
+		t.Run(name, func(t *testing.T) {
+			switch _, errs := check("test", []string{test.src}, nil); {
+			case test.err == "" && len(errs) == 0:
+				break
+			case test.err == "" && len(errs) > 0:
+				t.Fatalf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Fatalf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Fatalf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
 }
 
 func TestOverloadResolution(t *testing.T) {
@@ -898,8 +1153,12 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "reference convert matching arg",
-			src: "func x(u int, s string)		func x(i &int, j int)",
-			call: "x(&int : 1, \"hello\")",
+			src: `
+				func x(u int, s string)
+				func x(i &int, j int)
+				var int_ref &int
+			`,
+			call: "x(int_ref, \"hello\")",
 			want: "x(int, string)",
 		},
 		{
@@ -935,20 +1194,29 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in selector def type",
-			src:  "type t [.x int]",
-			call: "(t : [.x 4]).x",
+			src: `
+				type t [.x int]
+				var t_var t
+			`,
+			call: "t_var.x",
 			want: "built-in .x(&t)&int",
 		},
 		{
 			name: "built-in selector ref def type",
-			src:  "type t [.x int]",
-			call: "(&t : [.x 4]).x",
+			src: `
+				type t [.x int]
+				var t_ref_var &t
+			`,
+			call: "t_ref_var.x",
 			want: "built-in .x(&t)&int",
 		},
 		{
 			name: "built-in selector def ref type",
-			src:  "type t &[.x int]",
-			call: "(t : [.x 4]).x",
+			src: `
+				type t &[.x int]
+				var t_var t
+			`,
+			call: "t_var.x",
 			want: "built-in .x(t)&int",
 		},
 		{
@@ -962,26 +1230,38 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in selector, other field",
-			src:  "type point [.x float64, .y float64]",
-			call: "(point : [.x 4, .y 4]).y",
+			src: `
+				type point [.x float64, .y float64]
+				var point_var point
+			`,
+			call: "point_var.y",
 			want: "built-in .y(&point)&float64",
 		},
 		{
 			name: "built-in selector, not a struct",
-			src:  "type point int",
-			call: "(point : 1).z",
+			src: `
+				type point int
+				var point_var point
+			`,
+			call: "point_var.z",
 			err:  "is not a struct type",
 		},
 		{
 			name: "built-in selector, no field",
-			src:  "type point [.x float64, .y float64]",
-			call: "(point : [.x 4, .y 4]).z",
+			src: `
+				type point [.x float64, .y float64]
+				var point_var point
+			`,
+			call: "point_var.z",
 			err:  "point has no field .z",
 		},
 		{
 			name: "built-in selector, wrong return type",
-			src:  "type point [.x float64, .y float64]",
-			call: "(point : [.x 4, .y 4]).y",
+			src: `
+				type point [.x float64, .y float64]
+				var point_var point
+			`,
+			call: "point_var.y",
 			ret:  "string",
 			err:  "cannot convert returned &float64 to string",
 		},
@@ -990,8 +1270,9 @@ func TestOverloadResolution(t *testing.T) {
 			src: `
 				type point [.x float64, .y float64]
 				func .z(_ point)float64
+				var point_var point
 			`,
-			call: "(point : [.x 4, .y 4]).z",
+			call: "point_var.z",
 			want: ".z(point)float64",
 		},
 		{
@@ -999,8 +1280,9 @@ func TestOverloadResolution(t *testing.T) {
 			src: `
 				type point [.x float64, .y float64]
 				func .x(_ point)string
+				var point_var point
 			`,
-			call: "(point : [.x 4, .y 4]).x",
+			call: "point_var.x",
 			ret:  "float64",
 			want: "built-in .x(&point)&float64",
 		},
@@ -1009,8 +1291,9 @@ func TestOverloadResolution(t *testing.T) {
 			src: `
 				type point [.x float64, .y float64]
 				func .x(_ point)float64
+				var point_var point
 			`,
-			call: "(point : [.x 4, .y 4]).x",
+			call: "point_var.x",
 			ret:  "float64",
 			err:  "ambiguous",
 		},
@@ -1071,14 +1354,20 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in switch def union",
-			src:  "type a_or_b [?a, ?b]",
-			call: "(a_or_b : [?a]) ?a {} ?b {}",
+			src: `
+				type a_or_b [?a, ?b]
+				var a_or_b_var a_or_b
+			`,
+			call: "a_or_b_var ?a {} ?b {}",
 			want: "built-in ?a?b(&a_or_b, (){}, (){})",
 		},
 		{
 			name: "built-in switch def union ref",
-			src:  "type a_or_b &[?a, ?b]",
-			call: "(a_or_b : [?a]) ?a {} ?b {}",
+			src: `
+				type a_or_b &[?a, ?b]
+				var a_or_b_var a_or_b
+			`,
+			call: "a_or_b_var ?a {} ?b {}",
 			want: "built-in ?a?b(a_or_b, (){}, (){})",
 		},
 		{
@@ -1212,17 +1501,19 @@ func TestOverloadResolution(t *testing.T) {
 				type point_a [.x float64, .y float64]
 				type point_b [.x float64, .y float64]
 				func f(_ point_b)
+				var point_a_var point_a
 			`,
-			call: "f(point_a : [.x 1, .y 1])",
-			err:  `cannot convert \[\.x 1, \.y 1\] \(point_a\) to type point_b`,
+			call: "f(point_a_var)",
+			err:  `cannot convert point_a_var \(point_a\) to type point_b`,
 		},
 		{
 			name: "convert defined to literal type",
 			src: `
 				type point [.x float64, .y float64]
 				func f(_ [.x float64, .y float64])
+				var point_var point
 			`,
-			call: "f(point : [.x 1, .y 1])",
+			call: "f(point_var)",
 			want: "f([.x float64, .y float64])",
 		},
 		{
@@ -1230,8 +1521,9 @@ func TestOverloadResolution(t *testing.T) {
 			src: `
 				type point [.x float64, .y float64]
 				func f(_ point)
+				var lit_point_var [.x float64, .y float64]
 			`,
-			call: "f([.x float64, .y float64] : [.x 1, .y 1])",
+			call: "f(lit_point_var)",
 			want: "f(point)",
 		},
 		{
@@ -1517,108 +1809,6 @@ func TestOverloadResolution(t *testing.T) {
 			err:  `built-in \+\(_, _\): does not support type other#_foo`,
 		},
 		{
-			name: "built-in convert int",
-			call: "int(int8 : 3)",
-			want: "built-in int(int8)int",
-		},
-		{
-			name: "built-in convert int8",
-			call: "int8(int16 : 3)",
-			want: "built-in int8(int16)int8",
-		},
-		{
-			name: "built-in convert int16",
-			call: "int16(int32 : 3)",
-			want: "built-in int16(int32)int16",
-		},
-		{
-			name: "built-in convert int32",
-			call: "int32(int64 : 3)",
-			want: "built-in int32(int64)int32",
-		},
-		{
-			name: "built-in convert int64",
-			call: "int64(uint : 3)",
-			want: "built-in int64(uint)int64",
-		},
-		{
-			name: "built-in convert uint",
-			call: "uint(uint8 : 3)",
-			want: "built-in uint(uint8)uint",
-		},
-		{
-			name: "built-in convert uint8",
-			call: "uint8(uint16 : 3)",
-			want: "built-in uint8(uint16)uint8",
-		},
-		{
-			name: "built-in convert uint16",
-			call: "uint16(uint32 : 3)",
-			want: "built-in uint16(uint32)uint16",
-		},
-		{
-			name: "built-in convert uint32",
-			call: "uint32(uint64 : 3)",
-			want: "built-in uint32(uint64)uint32",
-		},
-		{
-			name: "built-in convert uint64",
-			call: "uint64(float32 : 3)",
-			want: "built-in uint64(float32)uint64",
-		},
-		{
-			name: "built-in convert float32",
-			call: "float32(float64 : 3)",
-			want: "built-in float32(float64)float32",
-		},
-		{
-			name: "built-in convert float64",
-			call: "float64(3)",
-			want: "built-in float64(int)float64",
-		},
-		{
-			name: "built-in byte array to string conversion",
-			call: "string([(uint8 : 3), 4, 5])",
-			want: "built-in string([uint8])string",
-		},
-		{
-			name: "built-in conversion ambiguity",
-			src:  "func string(_ [uint8])string",
-			call: "string([(uint8 : 3), 4, 5])",
-			err:  "ambiguous call",
-		},
-		{
-			name: "built-in convert, other mod int",
-			src: `
-				import "other"
-				func make_foo() other#foo
-			`,
-			otherMod: testMod{
-				path: "other",
-				src: `
-					Type foo int64
-				`,
-			},
-			call: "int32(make_foo())",
-			want: "built-in int32(other#foo)int32",
-		},
-		{
-			name: "built-in convert, other mod opaque int fails",
-			src: `
-				import "other"
-				func make_foo() other#foo
-			`,
-			otherMod: testMod{
-				path: "other",
-				src: `
-					Type foo := _foo
-					type _foo int32
-				`,
-			},
-			call: "int32(make_foo())",
-			err:  `built-in int32\(_\)int32: does not support type other#_foo`,
-		},
-		{
 			name: "built-in array index, no expected type",
 			call: "[5, 6, 7][1]",
 			want: "built-in []([int], int)&int",
@@ -1874,9 +2064,9 @@ func TestOverloadResolution(t *testing.T) {
 			name: "unify parm infers reference conversion to multiple references",
 			src: `
 				func f(_ &&T)
-				var x &int
+				func x() &int
 			`,
-			call: "f(int : x)",
+			call: "f(x())",
 			want: "f(&&int)",
 		},
 		{
@@ -1907,7 +2097,7 @@ func TestOverloadResolution(t *testing.T) {
 			case test.err == "" && len(errs) == 0:
 				expr := findVarDef(t, "zz", mod).Expr
 				if test.ret == "" {
-					expr = expr.(*Deref).Expr.(*BlockLit).Exprs[0].(*Call).Args[1]
+					expr = expr.(*Convert).Expr.(*BlockLit).Exprs[0].(*Call).Args[1]
 				}
 				call := findCall(expr)
 				if call == nil {
@@ -1932,7 +2122,7 @@ func findCall(e Expr) *Call {
 	switch e := e.(type) {
 	case *Call:
 		return e
-	case *Deref:
+	case *Convert:
 		return findCall(e.Expr)
 	default:
 		fmt.Printf("%T unimplemented", e)
@@ -1945,7 +2135,7 @@ func findCall(e Expr) *Call {
 // but when creating it, it uncovered several bugs
 // in calling def-function types and type instantiation,
 // so it seems useful to just have it here to catch any regressions.
-func TestChurch(t *testing.T){
+func TestChurch(t *testing.T) {
 	const src = `
 		Type num (num){num}
 		Func zero() num { return: (f){ (x){x} } }
@@ -1992,8 +2182,8 @@ func TestCaptureParm(t *testing.T) {
 	}
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
-	bOuter := x.Expr.(*Deref).Expr.(*BlockLit)
-	bInner := bOuter.Exprs[0].(*Deref).Expr.(*BlockLit)
+	bOuter := x.Expr.(*Convert).Expr.(*BlockLit)
+	bInner := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))
 	}
@@ -2014,8 +2204,8 @@ func TestCaptureCapture(t *testing.T) {
 	}
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
-	bOuter := x.Expr.(*Deref).Expr.(*BlockLit)
-	bMid := bOuter.Exprs[0].(*Deref).Expr.(*BlockLit)
+	bOuter := x.Expr.(*Convert).Expr.(*BlockLit)
+	bMid := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bMid.Caps) != 1 {
 		t.Fatalf("got %d mid caps, expected 1", len(bMid.Caps))
 	}
@@ -2023,7 +2213,7 @@ func TestCaptureCapture(t *testing.T) {
 		t.Errorf("expected parameter capture, got %v", bMid.Caps[0])
 	}
 
-	bInner := bMid.Exprs[0].(*Deref).Expr.(*BlockLit)
+	bInner := bMid.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d inner caps, expected 1", len(bInner.Caps))
 	}
@@ -2044,8 +2234,8 @@ func TestCaptureOnCall(t *testing.T) {
 	}
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
-	bOuter := x.Expr.(*Deref).Expr.(*BlockLit)
-	bInner := bOuter.Exprs[0].(*Deref).Expr.(*BlockLit)
+	bOuter := x.Expr.(*Convert).Expr.(*BlockLit)
+	bInner := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))
 	}

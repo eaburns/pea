@@ -539,11 +539,11 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 
 func isReturn(expr Expr) bool {
 	for {
-		deref, ok := expr.(*Deref)
-		if !ok {
+		convert, ok := expr.(*Convert)
+		if !ok || convert.Kind != Deref {
 			break
 		}
-		expr = deref.Expr
+		expr = convert.Expr
 	}
 	call, ok := expr.(*Call)
 	if !ok {
@@ -572,7 +572,7 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Error) {
 	case *parser.Convert:
 		return checkConvert(x, parserExpr)
 	case *parser.SubExpr:
-		return checkAndConvertExpr(x, parserExpr.Expr, want)
+		return checkExpr(x, parserExpr.Expr, want)
 	case *parser.ArrayLit:
 		return checkArrayLit(x, parserExpr, want)
 	case *parser.StructLit:
@@ -603,7 +603,7 @@ func checkAndConvertExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Er
 	expr, errs := checkExpr(x, parserExpr, want)
 	if expr != nil && want != nil {
 		var err Error
-		expr, err = convert(expr, want)
+		expr, err = convert(expr, want, false)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -702,12 +702,20 @@ func newLocal(x scope, call *parser.Call, id parser.Ident) (*FuncLocal, *Call, [
 	return local, assign, errs
 }
 
-func convert(expr Expr, typ Type) (Expr, Error) {
+func convert(expr Expr, typ Type, explicit bool) (Expr, Error) {
 	if expr == nil || expr.Type() == nil {
 		return expr, nil
 	}
 	srcType := expr.Type()
 	dstType := typ
+
+	if convert, ok := expr.(*Convert); !explicit && ok && convert.Explicit {
+		if eqType(srcType, dstType) {
+			return expr, nil
+		}
+		return expr, newError(expr, "cannot convert %s (%s) to type %s",
+			expr, expr.Type(), typ)
+	}
 
 	if isLiteralType(srcType) {
 		if dstLitType := literalType(dstType); dstLitType != nil {
@@ -729,12 +737,12 @@ func convert(expr Expr, typ Type) (Expr, Error) {
 	expr0 := expr
 	srcRefDepth, dstRefDepth := refDepth(srcType), refDepth(dstType)
 	for srcRefDepth < dstRefDepth {
-		deref, ok := expr.(*Deref)
-		if !ok {
+		convert, ok := expr.(*Convert)
+		if !ok || convert.Kind != Deref {
 			return expr0, newError(expr0, "cannot convert %s (%s) to type %s",
 				expr0, expr0.Type(), typ)
 		}
-		expr = deref.Expr
+		expr = convert.Expr
 		srcRefDepth++
 	}
 	for dstRefDepth < srcRefDepth {
@@ -790,15 +798,16 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 			notes = append(notes, ns...)
 			continue
 		}
-		arg, fs := checkExpr(x, parserArg, t)
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
-			as, fs := checkArgsFallback(x, parserCall.Args[i+1:])
+		arg, es := checkExpr(x, parserArg, t)
+		// TODO: these errors should become notes and be appended.
+		if len(es) > 0 {
+			errs = append(errs, es...)
+			as, es := checkArgsFallback(x, parserCall.Args[i+1:])
 			args = append(args, as...)
-			errs = append(errs, fs...)
+			errs = append(errs, es...)
 			return &Call{Args: args, L: parserCall.L}, errs
 		}
-		if arg, err := convert(arg, t); err != nil {
+		if arg, err := convert(arg, t, false); err != nil {
 			var notes []note
 			for _, f := range funcs {
 				notes = append(notes, newNote("%s parameter %d is type %s", f, i, t).setLoc(f.groundParm(i)))
@@ -841,7 +850,7 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	fun := useFunc(x, funcs[0])
 	ret := fun.groundRet()
 	for i, arg := range args {
-		args[i], _ = convert(arg, fun.groundParm(i))
+		args[i], _ = convert(arg, fun.groundParm(i), false)
 	}
 	var expr Expr = &Call{
 		Func: fun,
@@ -969,7 +978,7 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 		if parmType == nil {
 			continue
 		}
-		if _, err := convert(arg, parmType); err == nil {
+		if _, err := convert(arg, parmType, false); err == nil {
 			funcs[n] = f
 			n++
 			continue
@@ -1044,7 +1053,7 @@ func canConvertReturn(src, dst Type) bool {
 	// Our dummy node needs a non-zero loc,
 	// since errors can only be created with a non-zero loc.
 	// We are going to ignore the error, so any non-zero loc works.
-	_, err := convert(&Deref{T: src, L: someNonZeroLoc}, dst)
+	_, err := convert(&Convert{Kind: Deref, T: src, L: someNonZeroLoc}, dst, false)
 	return err == nil
 }
 
@@ -1096,10 +1105,14 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 }
 
 func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
-	var ids []id
 	var notFoundNotes []note
 	var ambigNotes []note
-	for _, id := range x.find(parserID.Name) {
+	ids := x.find(parserID.Name)
+	if len(ids) == 1 {
+		return idToExpr(useID(x, ids[0]), parserID.L), nil
+	}
+	var n int
+	for _, id := range ids {
 		if !isGround(id) {
 			if n := unifyFunc(x, id.(Func), want); n != nil {
 				notFoundNotes = append(notFoundNotes, n)
@@ -1108,7 +1121,7 @@ func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 		}
 		if want != nil {
 			expr := idToExpr(id, parserID.L)
-			if _, err := convert(expr, want); err != nil {
+			if _, err := convert(expr, want, false); err != nil {
 				notFoundNotes = append(notFoundNotes,
 					newNote("cannot convert %s (%s) to type %s",
 						expr, expr.Type(), want).setLoc(expr))
@@ -1120,8 +1133,10 @@ func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 			l = locer.Loc()
 		}
 		ambigNotes = append(ambigNotes, newNote(id.String()).setLoc(l))
-		ids = append(ids, id)
+		ids[n] = id
+		n++
 	}
+	ids = ids[:n]
 	switch {
 	case len(ids) == 0:
 		err := notFound(parserID.Name, parserID.L)
@@ -1210,7 +1225,7 @@ func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 	for isRefType(expr.Type()) {
 		expr = deref(expr)
 	}
-	expr, err := convert(expr, typ.Ret)
+	expr, err := convert(expr, typ.Ret, false)
 	if err != nil {
 		panic("impossible")
 	}
@@ -1227,19 +1242,46 @@ func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 
 // checkConvert checks a type conversion.
 // 	* The expected type of the subexpression is the conversion type,
-// 	  and it is an error if the subexpression type is not convertible
+// 	  and it is an error if the subexpression type is not explicitly convertible
 // 	  to the conversion type.
 func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
-	var errs []Error
-	typ, fs := makeType(x, parserConvert.Type)
-	if len(fs) > 0 {
-		errs = append(errs, fs...)
+	typ, errs := makeType(x, parserConvert.Type)
+	expr, es := checkExpr(x, parserConvert.Expr, typ)
+	if len(es) > 0 {
+		errs = append(errs, es...)
 	}
-	expr, fs := checkAndConvertExpr(x, parserConvert.Expr, typ)
-	if len(fs) > 0 {
-		errs = append(errs, fs...)
+	if expr == nil || expr.Type() == nil {
+		return expr, errs
 	}
-	return expr, errs
+	cvt := &Convert{
+		Explicit: true,
+		Expr:     expr,
+		T:        typ,
+		L:        parserConvert.L,
+	}
+	switch basicKind(typ) {
+	case Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
+		if !isRefType(typ) && (isIntType(expr.Type()) || isFloatType(expr.Type())) {
+			cvt.Kind = NumConvert
+			return cvt, errs
+		}
+	case String:
+		if !isRefType(typ) && isByteArray(expr.Type()) {
+			cvt.Kind = StrConvert
+			return cvt, errs
+		}
+	}
+	// The conversion would happen implicitly,
+	// but it was made explicit in the code.
+	// Here we do the implicit conversion,
+	// and stick a Noop conversion node on top of it
+	// to track that it was requested explicitly.
+	expr, err := convert(expr, typ, true)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	cvt.Kind = Noop
+	return cvt, errs
 }
 
 // checkStructLit checks a struct literal.
@@ -1625,7 +1667,7 @@ func newIntLit(parserLit *parser.IntLit, want Type) (*IntLit, []Error) {
 		bits = 64
 		signed = false
 	default:
-		panic("impossible int kind")
+		panic(fmt.Sprintf("impossible int kind: %s", want))
 	}
 	var min, max *big.Int
 	if signed {
@@ -1712,5 +1754,5 @@ func deref(expr Expr) Expr {
 	default:
 		panic(fmt.Sprintf("impossible type: %s", expr.Type()))
 	}
-	return &Deref{Expr: expr, T: t, L: expr.Loc()}
+	return &Convert{Kind: Deref, Expr: expr, T: t, L: expr.Loc()}
 }

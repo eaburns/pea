@@ -301,8 +301,6 @@ const (
 	LessEq
 	Greater
 	GreaterEq
-	NumConvert
-	StrConvert // string([int8])
 	Index
 	Slice
 	Length
@@ -343,14 +341,34 @@ type Call struct {
 func (c *Call) Type() Type   { return c.T }
 func (c *Call) Loc() loc.Loc { return c.L }
 
-type Deref struct {
-	Expr Expr
-	T    Type
-	L    loc.Loc
+type ConvertKind int
+
+const (
+	// Noop is a no-op conversion.
+	// It is used to track explicit conversion nodes,
+	// but nothing is actually converted.
+	Noop ConvertKind = iota
+
+	// Deref is a dereference conversion.
+	Deref
+
+	// StrConvert is a conversion from [int8] to string.
+	StrConvert
+
+	// NumConvert is a numeric conversion.
+	NumConvert
+)
+
+type Convert struct {
+	Kind     ConvertKind
+	Explicit bool
+	Expr     Expr
+	T        Type
+	L        loc.Loc
 }
 
-func (d *Deref) Type() Type   { return d.T }
-func (d *Deref) Loc() loc.Loc { return d.L }
+func (d *Convert) Type() Type   { return d.T }
+func (d *Convert) Loc() loc.Loc { return d.L }
 
 type Var struct {
 	Def *VarDef
