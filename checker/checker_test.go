@@ -177,6 +177,84 @@ func TestRedef(t *testing.T) {
 	}
 }
 
+func TestVarCycle(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		err  string
+	}{
+		{
+			name: "self cycle",
+			src: "var a int := a",
+			err: "cyclic initialization",
+		},
+		{
+			name: "simple funcall cycle",
+			src: `
+				var a int := foo()
+				func foo() int {return: a}
+			`,
+			err: "cyclic initialization",
+		},
+		{
+			name: "multi-var cycle",
+			src: `
+				var a int := b
+				var b int := c
+				var c int := d
+				var d int := a
+			`,
+			err: "cyclic initialization",
+		},
+		{
+			name: "multi-var-and-call cycle",
+			src: `
+				var a int := foo()
+				func foo() int { return: b }
+				var b int := bar()
+				func bar() int { return: c }
+				var c int := baz()
+				func baz() int { return: a }
+			`,
+			err: "cyclic initialization",
+		},
+		{
+			name: "ident fun cycle",
+			src: `
+				var a int := foo()
+				func foo() int { x := bar, return: x() }
+				func bar() int { return: a }
+			`,
+			err: "cyclic initialization",
+		},
+		{
+			name: "iface call cycle",
+			src: `
+				var a int := foo(5)
+				func foo(t T) T : bar(T)T { return: bar(t) }
+				func bar(i int)int { return: i + a }
+			`,
+			err: "cyclic initialization",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Log(test.src)
+			switch _, errs := check("test", []string{test.src}, nil); {
+			case test.err == "" && len(errs) == 0:
+				break
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
 func TestFuncNewLocal(t *testing.T) {
 	const src = `
 		// x and y are locals of the func.
@@ -764,8 +842,8 @@ func TestArgumentConversions(t *testing.T) {
 func TestConversions(t *testing.T) {
 	tests := []struct {
 		name string
-		src string
-		err string
+		src  string
+		err  string
 	}{
 		{src: "func f(x int) { int : x }"},
 		{src: "func f(x int) { int8 : x }"},
@@ -964,12 +1042,12 @@ func TestConversions(t *testing.T) {
 
 		{
 			name: "explicit conversion of an explicit conversion is ok",
-			src: "func f(x int) { int : (&int : x) }",
+			src:  "func f(x int) { int : (&int : x) }",
 		},
 		{
 			name: "no implicit conversion of an explicit conversion",
-			src: "func f(x int) { x := &int : x }",
-			err: "cannot convert",
+			src:  "func f(x int) { x := &int : x }",
+			err:  "cannot convert",
 		},
 		{
 			name: "disambiguate id by conversion",

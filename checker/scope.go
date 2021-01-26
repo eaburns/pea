@@ -13,6 +13,8 @@ type scope interface {
 	findMod(name string) *Import
 	findType(args []Type, name string, l loc.Loc) Type
 	capture(id) id
+	useVar(loc.Loc, *VarDef)
+	callFunc(loc.Loc, *FuncDef)
 	newLocal(string, Type, loc.Loc) *FuncLocal
 }
 
@@ -509,3 +511,61 @@ func (e *excludeFunc) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
 func (o *localScope) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
 	return o.parent.newLocal(name, typ, l)
 }
+
+func (*Mod) useVar(loc.Loc, *VarDef)    {}
+func (*Import) useVar(loc.Loc, *VarDef) {}
+func (*File) useVar(loc.Loc, *VarDef)   {}
+
+func (v *VarDef) useVar(l loc.Loc, used *VarDef) {
+	for _, u := range v.usedVars {
+		if u.Var == used {
+			return
+		}
+	}
+	v.usedVars = append(v.usedVars, varUse{Var: used, L: l})
+}
+
+func (t *TypeDef) useVar(loc.Loc, *VarDef) {}
+
+func (f *FuncDef) useVar(l loc.Loc, used *VarDef) {
+	for _, u := range f.usedVars {
+		if u.Var == used {
+			return
+		}
+	}
+	f.usedVars = append(f.usedVars, varUse{Var: used, L: l})
+}
+
+func (t *TestDef) useVar(loc.Loc, *VarDef)           {}
+func (b *blockLitScope) useVar(l loc.Loc, v *VarDef) { b.parent.useVar(l, v) }
+func (e *excludeFunc) useVar(l loc.Loc, v *VarDef)   { e.parent.useVar(l, v) }
+func (o *localScope) useVar(l loc.Loc, v *VarDef)    { o.parent.useVar(l, v) }
+
+func (*Mod) callFunc(loc.Loc, *FuncDef)    {}
+func (*Import) callFunc(loc.Loc, *FuncDef) {}
+func (*File) callFunc(loc.Loc, *FuncDef)   {}
+
+func (v *VarDef) callFunc(l loc.Loc, called *FuncDef) {
+	for _, c := range v.calledFuncs {
+		if c.Func == called {
+			return
+		}
+	}
+	v.calledFuncs = append(v.calledFuncs, funcUse{Func: called, L: l})
+}
+
+func (t *TypeDef) callFunc(loc.Loc, *FuncDef) {}
+
+func (f *FuncDef) callFunc(l loc.Loc, called *FuncDef) {
+	for _, c := range f.calledFuncs {
+		if c.Func == called {
+			return
+		}
+	}
+	f.calledFuncs = append(f.calledFuncs, funcUse{Func: called, L: l})
+}
+
+func (t *TestDef) callFunc(loc.Loc, *FuncDef)           {}
+func (b *blockLitScope) callFunc(l loc.Loc, f *FuncDef) { b.parent.callFunc(l, f) }
+func (e *excludeFunc) callFunc(l loc.Loc, f *FuncDef)   { e.parent.callFunc(l, f) }
+func (o *localScope) callFunc(l loc.Loc, f *FuncDef)    { o.parent.callFunc(l, f) }

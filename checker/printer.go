@@ -87,8 +87,32 @@ func (v *VarDef) print(pc *config) {
 	pc.field("Name", v.Name)
 	pc.field("Const", v.Const)
 	pc.field("Type", v.T)
-	pc.field("Expr", v.Expr)
 	pc.field("Exp", v.Exp)
+	if len(v.usedVars) > 0 {
+		pc.n++
+		pc.p("\nusedVars: {")
+		for i, use := range v.usedVars {
+			if i > 0 {
+				pc.p(", ")
+			}
+			pc.p(use.Var.String())
+		}
+		pc.p("}")
+		pc.n--
+	}
+	if len(v.calledFuncs) > 0 {
+		pc.n++
+		pc.p("\ncalledFuncs: {")
+		for i, use := range v.calledFuncs {
+			if i > 0 {
+				pc.p(", ")
+			}
+			pc.p(use.Func.String())
+		}
+		pc.p("}")
+		pc.n--
+	}
+	pc.field("Expr", v.Expr)
 	pc.p("\n}")
 }
 
@@ -221,6 +245,30 @@ func (f *FuncDef) print(pc *config) {
 	pc.field("Ret", f.Ret)
 	pc.field("Iface", f.Iface)
 	pc.field("Locals", f.Locals)
+	if len(f.usedVars) > 0 {
+		pc.n++
+		pc.p("\nusedVars: {")
+		for i, use := range f.usedVars {
+			if i > 0 {
+				pc.p(", ")
+			}
+			pc.p(use.Var.String())
+		}
+		pc.p("}")
+		pc.n--
+	}
+	if len(f.calledFuncs) > 0 {
+		pc.n++
+		pc.p("\ncalledFuncs: {")
+		for i, use := range f.calledFuncs {
+			if i > 0 {
+				pc.p(", ")
+			}
+			pc.p(use.Func.String())
+		}
+		pc.p("}")
+		pc.n--
+	}
 	pc.field("Exprs", f.Exprs)
 	pc.field("Exp", f.Exp)
 	pc.field("Insts", f.Insts)

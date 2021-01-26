@@ -12,7 +12,11 @@ type Mod struct {
 	Path     string
 	Imported bool
 	Files    []*File
-	Defs     []Def
+	// Defs contains all module-level definitions.
+	// VarDefs will appear in topoligical order
+	// with VarDefs appearing always after those
+	// on which they have initialization dependencies.
+	Defs []Def
 }
 
 func (m *Mod) Name() string {
@@ -51,6 +55,19 @@ type VarDef struct {
 	Const bool
 	Exp   bool
 	L     loc.Loc
+
+	usedVars    []varUse
+	calledFuncs []funcUse
+}
+
+type varUse struct {
+	Var *VarDef
+	L   loc.Loc
+}
+
+type funcUse struct {
+	Func *FuncDef
+	L    loc.Loc
 }
 
 func (v *VarDef) Type() Type   { return v.T }
@@ -203,6 +220,9 @@ type FuncDef struct {
 	Exp       bool
 	Insts     []*FuncInst
 	L         loc.Loc
+
+	usedVars    []varUse
+	calledFuncs []funcUse
 }
 
 func (f *FuncDef) Loc() loc.Loc { return f.L }

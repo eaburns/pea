@@ -301,7 +301,7 @@ func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Typ
 	}
 }
 
-func instIface(x scope, fun Func) note {
+func instIface(x scope, l loc.Loc, fun Func) note {
 	f, ok := fun.(*FuncInst)
 	if !ok {
 		return nil
@@ -310,7 +310,7 @@ func instIface(x scope, fun Func) note {
 	x = &excludeFunc{parent: x, def: f.Def, notes: &notes}
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
-		fun, note := findIfaceFunc(x, f.IfaceArgs[i].(*FuncDecl))
+		fun, note := findIfaceFunc(x, l, f.IfaceArgs[i].(*FuncDecl))
 		if note != nil {
 			notes = append(notes, note)
 		} else {
@@ -325,7 +325,7 @@ func instIface(x scope, fun Func) note {
 	return nil
 }
 
-func findIfaceFunc(x scope, decl *FuncDecl) (Func, note) {
+func findIfaceFunc(x scope, l loc.Loc, decl *FuncDecl) (Func, note) {
 	var notFoundNotes []note
 	var ambigNotes []note
 	var funcs []Func
@@ -344,7 +344,7 @@ func findIfaceFunc(x scope, decl *FuncDecl) (Func, note) {
 	}
 	var n int
 	for _, f := range funcs {
-		if note := unifyFunc(x, f, decl.Type()); note != nil {
+		if note := unifyFunc(x, l, f, decl.Type()); note != nil {
 			notFoundNotes = append(notFoundNotes, note)
 			continue
 		}
@@ -364,13 +364,14 @@ func findIfaceFunc(x scope, decl *FuncDecl) (Func, note) {
 	default:
 		fun := funcs[0]
 		if f, ok := fun.(*FuncInst); ok {
+			x.callFunc(l, f.Def)
 			fun = canonicalFuncInst(f)
 		}
 		return fun, nil
 	}
 }
 
-func unifyFunc(x scope, f Func, typ Type) note {
+func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
 	funcType, ok := valueType(literalType(typ)).(*FuncType)
 	if !ok {
 		return newNote("%s: not a function", f).setLoc(f)
@@ -394,7 +395,7 @@ func unifyFunc(x scope, f Func, typ Type) note {
 			return newNote("%s: parameter mismatch", f).setLoc(t)
 		}
 	}
-	return instIface(x, f)
+	return instIface(x, l, f)
 }
 
 func canonicalFuncInst(f *FuncInst) *FuncInst {

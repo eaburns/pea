@@ -218,6 +218,9 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			}
 		}
 	}
+	if es := topoSortVars(mod); len(es) > 0 {
+		errs = append(errs, es...)
+	}
 	if len(errs) > 0 {
 		var es []error
 		for _, err := range errs {
@@ -520,6 +523,92 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
 	if def.T == nil && def.Expr == nil {
 		errs = append(errs, newError(def, "cannot infer variable type"))
 	}
+	return errs
+}
+
+func topoSortVars(mod *Mod) []Error {
+	var errs []Error
+	var sorted []Def
+	var path []interface{}
+	onPath := make(map[*VarDef]bool)
+
+	var sortVar func(loc.Loc, *VarDef) bool
+	var sortFunc func(loc.Loc, *FuncDef) bool
+	sortVar = func(l loc.Loc, vr *VarDef) bool {
+		path = append(path, varUse{Var: vr, L: l})
+		defer func() { path = path[:len(path)-1] }()
+		if onPath[vr] {
+			var i int
+			for ; i < len(path); i++ {
+				if vu, ok := path[i].(varUse); ok && vu.Var == vr {
+					break
+				}
+			}
+			var notes []note
+			prev := vr.Name
+			for i++; i < len(path); i++ {
+				switch use := path[i].(type) {
+				case varUse:
+					note := newNote("%s uses %s", prev, use.Var.Name)
+					note.setLoc(use.L)
+					notes = append(notes, note)
+					prev = use.Var.Name
+				case funcUse:
+					note := newNote("%s calls %s", prev, use.Func.Name)
+					note.setLoc(use.L)
+					notes = append(notes, note)
+					prev = use.Func.Name
+				default:
+					panic("impossible")
+				}
+			}
+			err := newError(vr, "%s has a cyclic initialization", vr.Name)
+			err.setNotes(notes)
+			errs = append(errs, err)
+			return false
+		}
+		onPath[vr] = true
+		defer func() { delete(onPath, vr) }()
+		for _, v := range vr.usedVars {
+			if !sortVar(v.L, v.Var) {
+				return false
+			}
+		}
+		for _, f := range vr.calledFuncs {
+			if !sortFunc(f.L, f.Func) {
+				return false
+			}
+		}
+		sorted = append(sorted, vr)
+		return true
+	}
+	sortFunc = func(l loc.Loc, fun *FuncDef) bool {
+		path = append(path, funcUse{Func: fun, L: l})
+		defer func() { path = path[:len(path)-1] }()
+		for _, v := range fun.usedVars {
+			if !sortVar(v.L, v.Var) {
+				return false
+			}
+		}
+		for _, f := range fun.calledFuncs {
+			if !sortFunc(f.L, f.Func) {
+				return false
+			}
+		}
+		return true
+	}
+
+	var n int
+	for _, def := range mod.Defs {
+		v, ok := def.(*VarDef)
+		if !ok {
+			mod.Defs[n] = def
+			n++
+			continue
+		}
+		sortVar(v.L, v)
+	}
+	mod.Defs = append(mod.Defs[:n], sorted...)
 	return errs
 }
 
@@ -834,7 +923,7 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 		notes = append(notes, ns...)
 	}
 
-	funcs, ns = filterIfaceConstraints(x, funcs)
+	funcs, ns = filterIfaceConstraints(x, parserCall.L, funcs)
 	notes = append(notes, ns...)
 	switch {
 	case len(funcs) == 0:
@@ -847,7 +936,7 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 		return &Call{Args: args, L: parserCall.L}, errs
 	}
 
-	fun := useFunc(x, funcs[0])
+	fun := useFunc(x, parserCall.L, funcs[0])
 	ret := fun.groundRet()
 	for i, arg := range args {
 		args[i], _ = convert(arg, fun.groundParm(i), false)
@@ -1003,11 +1092,11 @@ func filterUngroundReturns(funcs []Func) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func filterIfaceConstraints(x scope, funcs []Func) ([]Func, []note) {
+func filterIfaceConstraints(x scope, l loc.Loc, funcs []Func) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		if note := instIface(x, f); note != nil {
+		if note := instIface(x, l, f); note != nil {
 			notes = append(notes, note)
 			continue
 		}
@@ -1017,13 +1106,14 @@ func filterIfaceConstraints(x scope, funcs []Func) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func useFunc(x scope, fun Func) Func {
+func useFunc(x scope, l loc.Loc, fun Func) Func {
 	switch fun := fun.(type) {
 	case *FuncInst:
+		x.callFunc(l, fun.Def)
 		return canonicalFuncInst(fun)
 	case *idFunc:
 		return &ExprFunc{
-			Expr:     idToExpr(useID(x, fun.id), fun.l),
+			Expr:     idToExpr(useID(x, l, fun.id), fun.l),
 			FuncType: fun.funcType,
 		}
 	default:
@@ -1109,12 +1199,12 @@ func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 	var ambigNotes []note
 	ids := x.find(parserID.Name)
 	if len(ids) == 1 {
-		return idToExpr(useID(x, ids[0]), parserID.L), nil
+		return idToExpr(useID(x, parserID.L, ids[0]), parserID.L), nil
 	}
 	var n int
 	for _, id := range ids {
 		if !isGround(id) {
-			if n := unifyFunc(x, id.(Func), want); n != nil {
+			if n := unifyFunc(x, parserID.L, id.(Func), want); n != nil {
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
@@ -1152,7 +1242,7 @@ func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 		err.setNotes(ambigNotes)
 		return nil, []Error{err}
 	default:
-		return idToExpr(useID(x, ids[0]), parserID.L), nil
+		return idToExpr(useID(x, parserID.L, ids[0]), parserID.L), nil
 	}
 }
 
@@ -1170,10 +1260,11 @@ func isGround(id id) bool {
 	}
 }
 
-func useID(x scope, id id) id {
+func useID(x scope, l loc.Loc, id id) id {
 	switch id := id.(type) {
 	case *VarDef:
-		return id // TODO: track used module level variables.
+		x.useVar(l, id)
+		return id
 	case *FuncParm:
 		return x.capture(id)
 	case *FuncLocal:
@@ -1181,6 +1272,7 @@ func useID(x scope, id id) id {
 	case *BlockCap:
 		return x.capture(id)
 	case *FuncInst:
+		x.callFunc(l, id.Def)
 		return canonicalFuncInst(id)
 	default:
 		return id
