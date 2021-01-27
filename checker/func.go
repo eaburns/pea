@@ -310,7 +310,7 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 	x = &excludeFunc{parent: x, def: f.Def, notes: &notes}
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
-		fun, note := findIfaceFunc(x, l, f.IfaceArgs[i].(*FuncDecl))
+		fun, note := findIfaceFunc(x, l, f.Def, f.IfaceArgs[i].(*FuncDecl))
 		if note != nil {
 			notes = append(notes, note)
 		} else {
@@ -325,7 +325,7 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 	return nil
 }
 
-func findIfaceFunc(x scope, l loc.Loc, decl *FuncDecl) (Func, note) {
+func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, decl *FuncDecl) (Func, note) {
 	var notFoundNotes []note
 	var ambigNotes []note
 	var funcs []Func
@@ -364,7 +364,7 @@ func findIfaceFunc(x scope, l loc.Loc, decl *FuncDecl) (Func, note) {
 	default:
 		fun := funcs[0]
 		if f, ok := fun.(*FuncInst); ok {
-			x.callFunc(l, f.Def)
+			x.useFunc(l, funDef, decl, f.Def)
 			fun = canonicalFuncInst(f)
 		}
 		return fun, nil

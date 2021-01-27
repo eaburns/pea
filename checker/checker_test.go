@@ -185,8 +185,8 @@ func TestVarCycle(t *testing.T) {
 	}{
 		{
 			name: "self cycle",
-			src: "var a int := a",
-			err: "cyclic initialization",
+			src:  "var a int := a",
+			err:  "cyclic initialization",
 		},
 		{
 			name: "simple funcall cycle",
@@ -252,6 +252,41 @@ func TestVarCycle(t *testing.T) {
 				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
 			}
 		})
+	}
+}
+
+func TestVarSorting(t *testing.T) {
+	const src = `
+		var x int := foo(z) + y
+		var xx int := z
+		var y int := 1
+		var z int := 2
+		func foo(t T) T : bar(T)T {return: bar(t)}
+		func bar(_ int) int
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("failed to parse and check: %s", errs[0])
+	}
+	var i int
+	ord := make(map[string]int)
+	for _, def := range mod.Defs {
+		if vr, ok := def.(*VarDef); ok {
+			ord[vr.Name] = i
+			i++
+		}
+	}
+	t.Logf("%v\n", ord)
+	// x depends on z and y.
+	if ord["x"] < ord["z"] {
+		t.Errorf("x comes before z")
+	}
+	if ord["x"] < ord["y"] {
+		t.Errorf("x comes before y")
+	}
+	// xx depends on z
+	if ord["xx"] < ord["z"] {
+		t.Errorf("xx comes before z")
 	}
 }
 

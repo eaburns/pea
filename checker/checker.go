@@ -531,9 +531,10 @@ func topoSortVars(mod *Mod) []Error {
 	var sorted []Def
 	var path []interface{}
 	onPath := make(map[*VarDef]bool)
+	seen := make(map[*VarDef]bool)
 
 	var sortVar func(loc.Loc, *VarDef) bool
-	var sortFunc func(loc.Loc, *FuncDef) bool
+	var sortFunc func(loc.Loc, funcUse) bool
 	sortVar = func(l loc.Loc, vr *VarDef) bool {
 		path = append(path, varUse{Var: vr, L: l})
 		defer func() { path = path[:len(path)-1] }()
@@ -555,9 +556,15 @@ func topoSortVars(mod *Mod) []Error {
 					prev = use.Var.Name
 				case funcUse:
 					note := newNote("%s calls %s", prev, use.Func.Name)
+					prev = use.Func.Name
 					note.setLoc(use.L)
 					notes = append(notes, note)
-					prev = use.Func.Name
+					if use.Arg != nil {
+						note = newNote("%s calls %s", prev, use.Arg.Name)
+						prev = use.Arg.Name
+						note.setLoc(use.Parm.L)
+						notes = append(notes, note)
+					}
 				default:
 					panic("impossible")
 				}
@@ -569,29 +576,37 @@ func topoSortVars(mod *Mod) []Error {
 		}
 		onPath[vr] = true
 		defer func() { delete(onPath, vr) }()
+		if seen[vr] {
+			return true
+		}
+		seen[vr] = true
 		for _, v := range vr.usedVars {
 			if !sortVar(v.L, v.Var) {
 				return false
 			}
 		}
-		for _, f := range vr.calledFuncs {
-			if !sortFunc(f.L, f.Func) {
+		for _, f := range vr.usedFuncs {
+			if !sortFunc(f.L, f) {
 				return false
 			}
 		}
 		sorted = append(sorted, vr)
 		return true
 	}
-	sortFunc = func(l loc.Loc, fun *FuncDef) bool {
-		path = append(path, funcUse{Func: fun, L: l})
+	sortFunc = func(l loc.Loc, use funcUse) bool {
+		path = append(path, use)
 		defer func() { path = path[:len(path)-1] }()
+		fun := use.Func
+		if use.Arg != nil {
+			fun = use.Arg
+		}
 		for _, v := range fun.usedVars {
 			if !sortVar(v.L, v.Var) {
 				return false
 			}
 		}
-		for _, f := range fun.calledFuncs {
-			if !sortFunc(f.L, f.Func) {
+		for _, f := range fun.usedFuncs {
+			if !sortFunc(f.L, f) {
 				return false
 			}
 		}
@@ -1109,7 +1124,7 @@ func filterIfaceConstraints(x scope, l loc.Loc, funcs []Func) ([]Func, []note) {
 func useFunc(x scope, l loc.Loc, fun Func) Func {
 	switch fun := fun.(type) {
 	case *FuncInst:
-		x.callFunc(l, fun.Def)
+		x.useFunc(l, fun.Def, nil, nil)
 		return canonicalFuncInst(fun)
 	case *idFunc:
 		return &ExprFunc{
@@ -1272,7 +1287,7 @@ func useID(x scope, l loc.Loc, id id) id {
 	case *BlockCap:
 		return x.capture(id)
 	case *FuncInst:
-		x.callFunc(l, id.Def)
+		x.useFunc(l, id.Def, nil, nil)
 		return canonicalFuncInst(id)
 	default:
 		return id

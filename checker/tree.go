@@ -56,18 +56,26 @@ type VarDef struct {
 	Exp   bool
 	L     loc.Loc
 
-	usedVars    []varUse
-	calledFuncs []funcUse
+	usedVars  []varUse
+	usedFuncs []funcUse
 }
 
 type varUse struct {
-	Var *VarDef
 	L   loc.Loc
+	Var *VarDef
 }
 
 type funcUse struct {
-	Func *FuncDef
 	L    loc.Loc
+	Func *FuncDef
+	// Parm is an iface parameter of Func or nil.
+	// If Parm is non-nil, this is marking a use of Arg
+	// as the parameter to a call to Func.
+	// Func's use itself is tracked as a separate funcUse
+	// with Parm==nil and Arg == nil.
+	Parm *FuncDecl
+	// Arg is the arg to Parm if it is non-nil.
+	Arg *FuncDef
 }
 
 func (v *VarDef) Type() Type   { return v.T }
@@ -221,8 +229,8 @@ type FuncDef struct {
 	Insts     []*FuncInst
 	L         loc.Loc
 
-	usedVars    []varUse
-	calledFuncs []funcUse
+	usedVars  []varUse
+	usedFuncs []funcUse
 }
 
 func (f *FuncDef) Loc() loc.Loc { return f.L }

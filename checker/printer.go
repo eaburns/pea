@@ -100,14 +100,18 @@ func (v *VarDef) print(pc *config) {
 		pc.p("}")
 		pc.n--
 	}
-	if len(v.calledFuncs) > 0 {
+	if len(v.usedFuncs) > 0 {
 		pc.n++
-		pc.p("\ncalledFuncs: {")
-		for i, use := range v.calledFuncs {
+		pc.p("\nusedFuncs: {")
+		for i, use := range v.usedFuncs {
 			if i > 0 {
 				pc.p(", ")
 			}
-			pc.p(use.Func.String())
+			if use.Arg != nil {
+				pc.p(use.Arg.String())
+			} else {
+				pc.p(use.Func.String())
+			}
 		}
 		pc.p("}")
 		pc.n--
@@ -257,14 +261,18 @@ func (f *FuncDef) print(pc *config) {
 		pc.p("}")
 		pc.n--
 	}
-	if len(f.calledFuncs) > 0 {
+	if len(f.usedFuncs) > 0 {
 		pc.n++
 		pc.p("\ncalledFuncs: {")
-		for i, use := range f.calledFuncs {
+		for i, use := range f.usedFuncs {
 			if i > 0 {
 				pc.p(", ")
 			}
-			pc.p(use.Func.String())
+			if use.Arg != nil {
+				pc.p(use.Arg.String())
+			} else {
+				pc.p(use.Func.String())
+			}
 		}
 		pc.p("}")
 		pc.n--
