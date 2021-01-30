@@ -15,7 +15,7 @@ import (
 
 var diffOpts = []cmp.Option{
 	cmp.FilterPath(isLoc, cmp.Ignore()),
-	cmpopts.IgnoreUnexported(FuncLocal{}),
+	cmpopts.IgnoreUnexported(LocalDef{}),
 }
 
 func isLoc(path cmp.Path) bool {
@@ -353,10 +353,10 @@ func TestSubFuncInst(t *testing.T) {
 	if diff := cmp.Diff(&FuncType{Parms: []Type{intType}, Ret: intType}, inst.T, diffOpts...); diff != "" {
 		t.Errorf("inst.T: %s", diff)
 	}
-	if diff := cmp.Diff([]*FuncParm{&FuncParm{Name: "p", T: intType}}, inst.Parms, diffOpts...); diff != "" {
+	if diff := cmp.Diff([]*ParmDef{&ParmDef{Name: "p", T: intType}}, inst.Parms, diffOpts...); diff != "" {
 		t.Errorf("inst.Parms: %s", diff)
 	}
-	if diff := cmp.Diff([]*FuncLocal{&FuncLocal{Name: "l", T: intType}}, inst.Locals, diffOpts...); diff != "" {
+	if diff := cmp.Diff([]*LocalDef{&LocalDef{Name: "l", T: intType}}, inst.Locals, diffOpts...); diff != "" {
 		t.Errorf("inst.Locals: %s", diff)
 	}
 }
@@ -401,7 +401,7 @@ func TestFuncNewLocal(t *testing.T) {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
 	fun := findFuncDef(t, "testFunc", mod)
-	want := []*FuncLocal{
+	want := []*LocalDef{
 		{Name: "x", T: &BasicType{Kind: Int}},
 		{Name: "y", T: &BasicType{Kind: String}},
 	}
@@ -410,7 +410,7 @@ func TestFuncNewLocal(t *testing.T) {
 	}
 
 	block := fun.Exprs[1].(*Convert).Expr.(*BlockLit)
-	want = []*FuncLocal{
+	want = []*LocalDef{
 		{Name: "z", T: &BasicType{Kind: Int}},
 	}
 	if diff := cmp.Diff(want, block.Locals, diffOpts...); diff != "" {
@@ -440,7 +440,7 @@ func TestTestNewLocal(t *testing.T) {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
 	test := findTestDef(t, "testDef", mod)
-	want := []*FuncLocal{
+	want := []*LocalDef{
 		{Name: "x", T: &BasicType{Kind: Int}},
 		{Name: "y", T: &BasicType{Kind: String}},
 	}
@@ -449,7 +449,7 @@ func TestTestNewLocal(t *testing.T) {
 	}
 
 	block := test.Exprs[1].(*Convert).Expr.(*BlockLit)
-	want = []*FuncLocal{
+	want = []*LocalDef{
 		{Name: "z", T: &BasicType{Kind: Int}},
 	}
 	if diff := cmp.Diff(want, block.Locals, diffOpts...); diff != "" {
@@ -480,7 +480,7 @@ func TestBlockNewLocal(t *testing.T) {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
 	block := findVarDef(t, "testVar", mod).Expr.(*Convert).Expr.(*BlockLit)
-	want := []*FuncLocal{
+	want := []*LocalDef{
 		{Name: "x", T: &BasicType{Kind: Int}},
 		{Name: "y", T: &BasicType{Kind: String}},
 	}
@@ -489,7 +489,7 @@ func TestBlockNewLocal(t *testing.T) {
 	}
 
 	block2 := block.Exprs[1].(*Convert).Expr.(*BlockLit)
-	want = []*FuncLocal{
+	want = []*LocalDef{
 		{Name: "z", T: &BasicType{Kind: Int}},
 	}
 	if diff := cmp.Diff(want, block2.Locals, diffOpts...); diff != "" {

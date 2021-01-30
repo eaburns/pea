@@ -15,7 +15,7 @@ type scope interface {
 	capture(id) id
 	useVar(loc.Loc, *VarDef)
 	useFunc(loc.Loc, *FuncDef, *FuncDecl, *FuncDef)
-	newLocal(string, Type, loc.Loc) *FuncLocal
+	newLocal(string, Type, loc.Loc) *LocalDef
 }
 
 type id interface {
@@ -36,7 +36,7 @@ type excludeFunc struct {
 
 type localScope struct {
 	parent scope
-	*FuncLocal
+	*LocalDef
 }
 
 func (*Mod) findMod(string) *Import    { return nil }
@@ -338,7 +338,7 @@ func (e *excludeFunc) find(name string) []id {
 func (o *localScope) find(name string) []id {
 	ids := o.parent.find(name)
 	if o.Name == name {
-		ids = append(ids, o.FuncLocal)
+		ids = append(ids, o.LocalDef)
 	}
 	return ids
 }
@@ -419,13 +419,13 @@ func (t *TestDef) capture(id id) id { panic("impossible") }
 
 func (b *blockLitScope) capture(id id) id {
 	switch id := id.(type) {
-	case *FuncParm:
+	case *ParmDef:
 		for i := range b.Parms {
 			if id == &b.Parms[i] {
 				return id
 			}
 		}
-	case *FuncLocal:
+	case *LocalDef:
 		for _, l := range b.Locals {
 			if id == l {
 				return id
@@ -439,7 +439,7 @@ func (b *blockLitScope) capture(id id) id {
 	}
 
 	switch id := b.parent.capture(id).(type) {
-	case *FuncParm:
+	case *ParmDef:
 		for _, c := range b.Caps {
 			if c.Parm == id {
 				return c
@@ -448,7 +448,7 @@ func (b *blockLitScope) capture(id id) id {
 		c := &BlockCap{Name: id.Name, T: id.T, L: id.L, Parm: id}
 		b.Caps = append(b.Caps, c)
 		return c
-	case *FuncLocal:
+	case *LocalDef:
 		for _, c := range b.Caps {
 			if c.Local == id {
 				return c
@@ -474,41 +474,41 @@ func (b *blockLitScope) capture(id id) id {
 func (e *excludeFunc) capture(id id) id { return e.parent.capture(id) }
 
 func (o *localScope) capture(id id) id {
-	if l, ok := id.(*FuncLocal); ok && l == o.FuncLocal {
-		return o.FuncLocal
+	if l, ok := id.(*LocalDef); ok && l == o.LocalDef {
+		return o.LocalDef
 	}
 	return o.parent.capture(id)
 }
 
-func (*Mod) newLocal(string, Type, loc.Loc) *FuncLocal                 { return nil }
-func (*Import) newLocal(string, Type, loc.Loc) *FuncLocal              { return nil }
-func (f *File) newLocal(string, Type, loc.Loc) *FuncLocal              { return nil }
-func (v *VarDef) newLocal(name string, typ Type, l loc.Loc) *FuncLocal { return nil }
-func (t *TypeDef) newLocal(string, Type, loc.Loc) *FuncLocal           { return nil }
+func (*Mod) newLocal(string, Type, loc.Loc) *LocalDef                 { return nil }
+func (*Import) newLocal(string, Type, loc.Loc) *LocalDef              { return nil }
+func (f *File) newLocal(string, Type, loc.Loc) *LocalDef              { return nil }
+func (v *VarDef) newLocal(name string, typ Type, l loc.Loc) *LocalDef { return nil }
+func (t *TypeDef) newLocal(string, Type, loc.Loc) *LocalDef           { return nil }
 
-func (f *FuncDef) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
-	local := &FuncLocal{Name: name, T: typ, L: l}
+func (f *FuncDef) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
+	local := &LocalDef{Name: name, T: typ, L: l}
 	f.Locals = append(f.Locals, local)
 	return local
 }
 
-func (t *TestDef) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
-	local := &FuncLocal{Name: name, T: typ, L: l}
+func (t *TestDef) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
+	local := &LocalDef{Name: name, T: typ, L: l}
 	t.Locals = append(t.Locals, local)
 	return local
 }
 
-func (b *blockLitScope) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
-	local := &FuncLocal{Name: name, T: typ, L: l}
+func (b *blockLitScope) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
+	local := &LocalDef{Name: name, T: typ, L: l}
 	b.Locals = append(b.Locals, local)
 	return local
 }
 
-func (e *excludeFunc) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
+func (e *excludeFunc) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
 	return e.parent.newLocal(name, typ, l)
 }
 
-func (o *localScope) newLocal(name string, typ Type, l loc.Loc) *FuncLocal {
+func (o *localScope) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
 	return o.parent.newLocal(name, typ, l)
 }
 

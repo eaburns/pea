@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-func (v *VarDef) String() string    { return v.Name }
-func (f *FuncDef) String() string   { return f.Name }
-func (f *FuncParm) String() string  { return f.Name }
-func (f *FuncLocal) String() string { return f.Name }
+func (v *VarDef) String() string   { return v.Name }
+func (f *FuncDef) String() string  { return f.Name }
+func (f *ParmDef) String() string  { return f.Name }
+func (f *LocalDef) String() string { return f.Name }
 
 func (b *BlockCap) String() string {
 	switch {

@@ -477,10 +477,10 @@ func findTypeVars(parserType parser.Type, typeVars map[string]loc.Loc) {
 	}
 }
 
-func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]FuncParm, []Error) {
+func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]ParmDef, []Error) {
 	seen := make(map[string]loc.Loc)
 	var errs []Error
-	var parms []FuncParm
+	var parms []ParmDef
 	for _, parserParm := range parserParms {
 		name := parserParm.Name.Name
 		if prev, ok := seen[name]; name != "_" && ok {
@@ -495,7 +495,7 @@ func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]FuncParm, []Error)
 				errs = append(errs, fs...)
 			}
 		}
-		parms = append(parms, FuncParm{Name: name, T: t, L: parserParm.L})
+		parms = append(parms, ParmDef{Name: name, T: t, L: parserParm.L})
 	}
 	return parms, errs
 }
@@ -755,7 +755,7 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, want Type) (
 					continue
 				}
 				exprs = append(exprs, assign)
-				x = &localScope{parent: x, FuncLocal: local}
+				x = &localScope{parent: x, LocalDef: local}
 				continue
 			}
 		}
@@ -795,16 +795,16 @@ func isNewID(x scope, parserExpr parser.Expr) (parser.Ident, bool) {
 		switch id.(type) {
 		case *VarDef:
 			return parser.Ident{}, false
-		case *FuncParm:
+		case *ParmDef:
 			return parser.Ident{}, false
-		case *FuncLocal:
+		case *LocalDef:
 			return parser.Ident{}, false
 		}
 	}
 	return parserID, true
 }
 
-func newLocal(x scope, call *parser.Call, id parser.Ident) (*FuncLocal, *Call, []Error) {
+func newLocal(x scope, call *parser.Call, id parser.Ident) (*LocalDef, *Call, []Error) {
 	expr, errs := checkExpr(x, call.Args[1], nil)
 	if expr == nil {
 		return nil, nil, errs
@@ -1010,11 +1010,11 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 			if t := funcType(id.T); t != nil {
 				fun = &idFunc{id: id, funcType: t, l: l}
 			}
-		case *FuncParm:
+		case *ParmDef:
 			if t := funcType(id.T); t != nil {
 				fun = &idFunc{id: id, funcType: t, l: l}
 			}
-		case *FuncLocal:
+		case *LocalDef:
 			if t := funcType(id.T); t != nil {
 				fun = &idFunc{id: id, funcType: t, l: l}
 			}
@@ -1312,9 +1312,9 @@ func useID(x scope, l loc.Loc, useLocal bool, id id) id {
 	case *VarDef:
 		x.useVar(l, id)
 		return id
-	case *FuncParm:
+	case *ParmDef:
 		return x.capture(id)
-	case *FuncLocal:
+	case *LocalDef:
 		if useLocal {
 			id.used = true
 		}
@@ -1333,9 +1333,9 @@ func idToExpr(id id, l loc.Loc) Expr {
 	switch id := id.(type) {
 	case *VarDef:
 		return deref(&Var{Def: id, T: refType(id.T), L: l})
-	case *FuncParm:
+	case *ParmDef:
 		return deref(&Parm{Def: id, T: refType(id.T), L: l})
-	case *FuncLocal:
+	case *LocalDef:
 		return deref(&Local{Def: id, T: refType(id.T), L: l})
 	case *BlockCap:
 		return deref(&Cap{Def: id, T: refType(id.T), L: l})
@@ -1372,7 +1372,7 @@ func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 		panic("impossible")
 	}
 	blk.Exprs = []Expr{expr}
-	blk.Parms = make([]FuncParm, len(typ.Parms))
+	blk.Parms = make([]ParmDef, len(typ.Parms))
 	for i := range typ.Parms {
 		blk.Parms[i].Name = fmt.Sprintf("x%d", i)
 		blk.Parms[i].T = typ.Parms[i]
@@ -1700,7 +1700,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 	return deref(lit), errs
 }
 
-func appropriateBlock(typ Type, litParms []FuncParm) *FuncType {
+func appropriateBlock(typ Type, litParms []ParmDef) *FuncType {
 	f, ok := trim1Ref(literalType(typ)).(*FuncType)
 	if !ok || len(f.Parms) != len(litParms) {
 		return nil

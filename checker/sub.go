@@ -3,8 +3,8 @@ package checker
 import "fmt"
 
 type bindings struct {
-	Parms  map[*FuncParm]*FuncParm
-	Locals map[*FuncLocal]*FuncLocal
+	Parms  map[*ParmDef]*ParmDef
+	Locals map[*LocalDef]*LocalDef
 	Caps   map[*BlockCap]*BlockCap
 	Types  map[*TypeParm]Type
 	Funcs  map[*FuncDecl]Func
@@ -12,8 +12,8 @@ type bindings struct {
 
 func subFuncInst(inst *FuncInst) {
 	bindings := bindings{
-		Parms:  make(map[*FuncParm]*FuncParm),
-		Locals: make(map[*FuncLocal]*FuncLocal),
+		Parms:  make(map[*ParmDef]*ParmDef),
+		Locals: make(map[*LocalDef]*LocalDef),
 		Caps:   make(map[*BlockCap]*BlockCap),
 		Types:  make(map[*TypeParm]Type),
 		Funcs:  make(map[*FuncDecl]Func),
@@ -25,10 +25,10 @@ func subFuncInst(inst *FuncInst) {
 		bindings.Funcs[&inst.Def.Iface[i]] = inst.IfaceArgs[i]
 	}
 
-	inst.Parms = make([]*FuncParm, 0, len(inst.Def.Parms))
+	inst.Parms = make([]*ParmDef, 0, len(inst.Def.Parms))
 	for i := range inst.Def.Parms {
 		parm := &inst.Def.Parms[i]
-		instParm := &FuncParm{
+		instParm := &ParmDef{
 			Name: parm.Name,
 			T:    subType(bindings.Types, parm.T),
 			L:    parm.L,
@@ -36,9 +36,9 @@ func subFuncInst(inst *FuncInst) {
 		bindings.Parms[parm] = instParm
 		inst.Parms = append(inst.Parms, instParm)
 	}
-	inst.Locals = make([]*FuncLocal, 0, len(inst.Def.Locals))
+	inst.Locals = make([]*LocalDef, 0, len(inst.Def.Locals))
 	for _, local := range inst.Def.Locals {
-		instLocal := &FuncLocal{
+		instLocal := &LocalDef{
 			Name: local.Name,
 			T:    subType(bindings.Types, local.T),
 			L:    local.L,
@@ -257,9 +257,9 @@ func (b *BlockLit) subExpr(bindings bindings) Expr {
 		bindings.Caps[cap] = capCopy
 		capsCopy = append(capsCopy, capCopy)
 	}
-	parmsCopy := make([]FuncParm, 0, len(b.Parms))
+	parmsCopy := make([]ParmDef, 0, len(b.Parms))
 	for _, parm := range b.Parms {
-		parmsCopy = append(parmsCopy, FuncParm{
+		parmsCopy = append(parmsCopy, ParmDef{
 			Name: parm.Name,
 			T:    subType(bindings.Types, parm.T),
 			L:    parm.L,
@@ -268,9 +268,9 @@ func (b *BlockLit) subExpr(bindings bindings) Expr {
 	for i := range b.Parms {
 		bindings.Parms[&parmsCopy[i]] = &b.Parms[i]
 	}
-	localsCopy := make([]*FuncLocal, 0, len(b.Locals))
+	localsCopy := make([]*LocalDef, 0, len(b.Locals))
 	for _, local := range b.Locals {
-		localCopy := &FuncLocal{
+		localCopy := &LocalDef{
 			Name: local.Name,
 			T:    subType(bindings.Types, local.T),
 			L:    local.L,

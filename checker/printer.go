@@ -286,7 +286,7 @@ func (f *FuncDef) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f FuncParm) print(pc *config) {
+func (f ParmDef) print(pc *config) {
 	pc.p("FuncParm{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
@@ -294,7 +294,7 @@ func (f FuncParm) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f *FuncLocal) print(pc *config) {
+func (f *LocalDef) print(pc *config) {
 	pc.p("FuncLocal{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)

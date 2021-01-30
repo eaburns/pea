@@ -212,7 +212,7 @@ type TestDef struct {
 	File   *File
 	Mod    string
 	Name   string
-	Locals []*FuncLocal
+	Locals []*LocalDef
 	Exprs  []Expr
 	L      loc.Loc
 }
@@ -222,8 +222,8 @@ type FuncDef struct {
 	Mod       string
 	Name      string
 	TypeParms []TypeParm
-	Parms     []FuncParm
-	Locals    []*FuncLocal
+	Parms     []ParmDef
+	Locals    []*LocalDef
 	Ret       Type
 	Iface     []FuncDecl
 	Exprs     []Expr // nil if unspecified, non-nil, len()==0 if empty
@@ -237,16 +237,16 @@ type FuncDef struct {
 
 func (f *FuncDef) Loc() loc.Loc { return f.L }
 
-type FuncParm struct {
+type ParmDef struct {
 	Name string
 	T    Type
 	L    loc.Loc
 }
 
-func (f *FuncParm) Type() Type   { return f.T }
-func (f *FuncParm) Loc() loc.Loc { return f.L }
+func (f *ParmDef) Type() Type   { return f.T }
+func (f *ParmDef) Loc() loc.Loc { return f.L }
 
-type FuncLocal struct {
+type LocalDef struct {
 	Name string
 	T    Type
 	L    loc.Loc
@@ -254,8 +254,8 @@ type FuncLocal struct {
 	used bool
 }
 
-func (f *FuncLocal) Type() Type   { return f.T }
-func (f *FuncLocal) Loc() loc.Loc { return f.L }
+func (f *LocalDef) Type() Type   { return f.T }
+func (f *LocalDef) Loc() loc.Loc { return f.L }
 
 type FuncDecl struct {
 	Name  string
@@ -300,8 +300,8 @@ type FuncInst struct {
 
 	// The following fields are populated by subFuncInst.
 
-	Parms  []*FuncParm
-	Locals []*FuncLocal
+	Parms  []*ParmDef
+	Locals []*LocalDef
 	Exprs  []Expr
 }
 
@@ -434,7 +434,7 @@ func (v *Var) Type() Type   { return v.T }
 func (v *Var) Loc() loc.Loc { return v.L }
 
 type Local struct {
-	Def *FuncLocal
+	Def *LocalDef
 	T   Type
 	L   loc.Loc
 }
@@ -443,7 +443,7 @@ func (l *Local) Type() Type   { return l.T }
 func (l *Local) Loc() loc.Loc { return l.L }
 
 type Parm struct {
-	Def *FuncParm
+	Def *ParmDef
 	T   Type
 	L   loc.Loc
 }
@@ -493,8 +493,8 @@ func (u *UnionLit) Loc() loc.Loc { return u.L }
 
 type BlockLit struct {
 	Caps   []*BlockCap
-	Parms  []FuncParm
-	Locals []*FuncLocal
+	Parms  []ParmDef
+	Locals []*LocalDef
 	Ret    Type // result type of the block
 	Exprs  []Expr
 	T      Type
@@ -510,8 +510,8 @@ type BlockCap struct {
 	L    loc.Loc
 
 	// Parm, Local, and Cap are mutually exclusive.
-	Parm  *FuncParm
-	Local *FuncLocal
+	Parm  *ParmDef
+	Local *LocalDef
 	Cap   *BlockCap
 }
 
