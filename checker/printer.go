@@ -20,10 +20,11 @@ func (m *Mod) Print(w io.Writer, opts ...PrintOpt) error {
 }
 
 type config struct {
-	w     io.Writer
-	files loc.Files
-	n     int
-	ident string
+	w             io.Writer
+	files         loc.Files
+	n             int
+	ident         string
+	printInstBody bool
 }
 
 type printerError struct{ error }
@@ -279,7 +280,9 @@ func (f *FuncDef) print(pc *config) {
 	}
 	pc.field("Exprs", f.Exprs)
 	pc.field("Exp", f.Exp)
+	pc.printInstBody = true
 	pc.field("Insts", f.Insts)
+	pc.printInstBody = false
 	pc.p("\n}")
 }
 
@@ -309,7 +312,7 @@ func (f FuncDecl) print(pc *config) {
 }
 
 func (f *FuncInst) print(pc *config) {
-	pc.p("FuncInst{")
+	pc.p("FuncInst{	<%p>", f)
 	if f.Def != nil {
 		pc.n++
 		pc.p("\nDef: %s", fmt.Sprintf("{ Name: %s }", f.Def.Name))
@@ -319,6 +322,11 @@ func (f *FuncInst) print(pc *config) {
 	pc.field("TypeArgs", f.TypeArgs)
 	pc.field("IfaceArgs", f.IfaceArgs)
 	pc.field("Type", f.T)
+	if pc.printInstBody {
+		pc.field("Parms", f.Parms)
+		pc.field("Locals", f.Locals)
+		pc.field("Exprs", f.Exprs)
+	}
 	pc.p("\n}")
 }
 
@@ -335,7 +343,11 @@ func (t *TestDef) print(pc *config) {
 func (c *Call) print(pc *config) {
 	pc.p("Call{")
 	pc.loc(c.L)
-	pc.field("Func", c.Func)
+	if inst, ok := c.Func.(*FuncInst); ok {
+		pc.field("Func", fmt.Sprintf("FuncInst(<%p>)", inst))
+	} else {
+		pc.field("Func", c.Func)
+	}
 	pc.field("Args", c.Args)
 	pc.field("Type", c.T)
 	pc.p("\n}")
@@ -345,6 +357,8 @@ func (s *Select) print(pc *config) {
 	pc.p("Select{")
 	pc.field("Struct", s.Struct)
 	pc.field("Field", s.Field)
+	pc.field("Parm", s.Parm)
+	pc.field("Ret", s.Ret)
 	pc.p("\n}")
 }
 
@@ -352,6 +366,7 @@ func (s *Switch) print(pc *config) {
 	pc.p("Switch{")
 	pc.field("Union", s.Union)
 	pc.field("Cases", s.Cases)
+	pc.field("Parms", s.Parms)
 	pc.field("Ret", s.Ret)
 	pc.p("\n}")
 }

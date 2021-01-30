@@ -573,62 +573,6 @@ func newInst(def *TypeDef, args []Type) *TypeInst {
 	return inst
 }
 
-func subType(sub map[*TypeParm]Type, typ Type) Type {
-	switch typ := typ.(type) {
-	case nil:
-		return nil
-	case *RefType:
-		copy := *typ
-		copy.Type = subType(sub, typ.Type)
-		return &copy
-	case *DefType:
-		copy := *typ
-		copy.Args = nil
-		for _, arg := range typ.Args {
-			copy.Args = append(copy.Args, subType(sub, arg))
-		}
-		return instType(&copy)
-	case *ArrayType:
-		copy := *typ
-		copy.ElemType = subType(sub, typ.ElemType)
-		return &copy
-	case *StructType:
-		var copy StructType
-		for i := range typ.Fields {
-			f := typ.Fields[i]
-			f.Type = subType(sub, f.Type)
-			copy.Fields = append(copy.Fields, f)
-		}
-		return &copy
-	case *UnionType:
-		var copy UnionType
-		for i := range typ.Cases {
-			c := typ.Cases[i]
-			c.Type = subType(sub, c.Type)
-			copy.Cases = append(copy.Cases, c)
-		}
-		return &copy
-	case *FuncType:
-		var copy FuncType
-		for _, p := range typ.Parms {
-			copy.Parms = append(copy.Parms, subType(sub, p))
-		}
-		copy.Ret = subType(sub, typ.Ret)
-		return &copy
-	case *TypeVar:
-		if s, ok := sub[typ.Def]; ok {
-			return s
-		}
-		copy := *typ
-		return &copy
-	case *BasicType:
-		copy := *typ
-		return &copy
-	default:
-		panic(fmt.Sprintf("unsupported Type type: %T", typ))
-	}
-}
-
 func copyTypeWithLoc(typ Type, l loc.Loc) Type {
 	switch typ := typ.(type) {
 	case nil:
@@ -686,6 +630,51 @@ func copyTypeWithLoc(typ Type, l loc.Loc) Type {
 		copy := *typ
 		copy.L = l
 		return &copy
+	default:
+		panic(fmt.Sprintf("unsupported Type type: %T", typ))
+	}
+}
+
+func hasTypeVariable(typ Type) bool {
+	switch typ := typ.(type) {
+	case nil:
+		return false
+	case *RefType:
+		return hasTypeVariable(typ.Type)
+	case *DefType:
+		for _, arg := range typ.Args {
+			if hasTypeVariable(arg) {
+				return true
+			}
+		}
+		return false
+	case *ArrayType:
+		return hasTypeVariable(typ.ElemType)
+	case *StructType:
+		for i := range typ.Fields {
+			if hasTypeVariable(typ.Fields[i].Type) {
+				return false
+			}
+		}
+		return false
+	case *UnionType:
+		for i := range typ.Cases {
+			if hasTypeVariable(typ.Cases[i].Type) {
+				return false
+			}
+		}
+		return false
+	case *FuncType:
+		for i := range typ.Parms {
+			if hasTypeVariable(typ.Parms[i]) {
+				return false
+			}
+		}
+		return hasTypeVariable(typ.Ret)
+	case *TypeVar:
+		return true
+	case *BasicType:
+		return false
 	default:
 		panic(fmt.Sprintf("unsupported Type type: %T", typ))
 	}

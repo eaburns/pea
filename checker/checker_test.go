@@ -290,6 +290,75 @@ func TestVarSorting(t *testing.T) {
 	}
 }
 
+func TestRecursiveTypeParmFuncOK(t *testing.T) {
+	const src = `
+		func loop(t T) T {return: loop(t)}
+		var i int := loop(1)
+	`
+	if _, errs := check("test", []string{src}, nil); len(errs) != 0 {
+		t.Fatalf("expected 0 errors, got: %s", errs[0])
+	}
+}
+
+func TestTooMuchSubstitution(t *testing.T) {
+	const src = `
+		func next1(t T) T : +(T, T)T, one()T { return: next2(t) }
+		func next2(t T) T : +(T, T)T, one() T { return: next3(t) }
+		func next3(t T) T : +(T, T)T, one() T { return: next4(t) }
+		func next4(t T) T : +(T, T)T, one() T { return: next5(t) }
+		func next5(t T) T : +(T, T)T, one() T { return: next6(t) }
+		func next6(t T) T : +(T, T)T, one() T { return: t + one() }
+		func one()int { return: 1 }
+		var i int := next1(1)
+	`
+	_, errs := check("test", []string{src}, nil)
+	if len(errs) != 1 {
+		t.Fatalf("expected 1 error, got none")
+	}
+	if errs[0].Error() != "too much substitution" {
+		t.Errorf("got %s, expected too much substitution", errs[0])
+	}
+}
+
+func TestSubFuncInst(t *testing.T) {
+	const src = `
+		var v string := "abc"
+		func f(p T) T : string(T)string {
+			{ print(string(p)) },
+			print(v),
+			l := p,
+			return: l
+		}
+		func string(_ int) string
+		var _ int := f(5)
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("got %s, expected no errors", errs[0])
+	}
+	f := findFuncDef(t, "f", mod)
+	if len(f.Insts) != 1 {
+		t.Fatalf("got %d instances, expected 1", len(f.Insts))
+	}
+	intType := &BasicType{Kind: Int}
+	inst := f.Insts[0]
+	if diff := cmp.Diff([]Type{intType}, inst.TypeArgs, diffOpts...); diff != "" {
+		t.Errorf("inst.TypeArgs: %s", diff)
+	}
+	if len(inst.IfaceArgs) != 1 || inst.IfaceArgs[0] != findFuncDef(t, "string", mod).Insts[0] {
+		t.Errorf("inst.IfaceArgs are wrong")
+	}
+	if diff := cmp.Diff(&FuncType{Parms: []Type{intType}, Ret: intType}, inst.T, diffOpts...); diff != "" {
+		t.Errorf("inst.T: %s", diff)
+	}
+	if diff := cmp.Diff([]*FuncParm{&FuncParm{Name: "p", T: intType}}, inst.Parms, diffOpts...); diff != "" {
+		t.Errorf("inst.Parms: %s", diff)
+	}
+	if diff := cmp.Diff([]*FuncLocal{&FuncLocal{Name: "l", T: intType}}, inst.Locals, diffOpts...); diff != "" {
+		t.Errorf("inst.Locals: %s", diff)
+	}
+}
+
 func TestFuncNewLocal(t *testing.T) {
 	const src = `
 		// x and y are locals of the func.

@@ -69,6 +69,14 @@ func (f *FuncInst) unifyRet(typ Type) note {
 }
 
 func (f *FuncInst) sub(sub map[*TypeParm]Type) {
+	if f.subbed == nil && len(f.Def.TypeParms) > 0 {
+		f.subbed = make([]bool, len(f.Def.TypeParms))
+	}
+	for i := range f.Def.TypeParms {
+		if _, ok := sub[&f.Def.TypeParms[i]]; ok {
+			f.subbed[i] = true
+		}
+	}
 	for i := range f.TypeArgs {
 		f.TypeArgs[i] = subType(sub, f.TypeArgs[i])
 	}
@@ -83,7 +91,7 @@ func (f *FuncInst) sub(sub map[*TypeParm]Type) {
 func (f *FuncInst) typeParmMap() map[*TypeParm]bool {
 	parmMap := make(map[*TypeParm]bool, len(f.Def.TypeParms))
 	for i := range f.Def.TypeParms {
-		parmMap[&f.Def.TypeParms[i]] = true
+		parmMap[&f.Def.TypeParms[i]] = f.subbed == nil || !f.subbed[i]
 	}
 	return parmMap
 }
@@ -399,11 +407,20 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
 }
 
 func canonicalFuncInst(f *FuncInst) *FuncInst {
+	// Only bother canonicalizing function instances that have non-variable types,
+	// since only instances with non-variable types will be needed to emit code.
+	for _, arg := range f.TypeArgs {
+		if hasTypeVariable(arg) {
+			return f
+		}
+	}
+
 	for _, inst := range f.Def.Insts {
 		if f.eq(inst) {
 			return inst
 		}
 	}
+	f.Def.File.Mod.toSub = append(f.Def.File.Mod.toSub, f)
 	f.Def.Insts = append(f.Def.Insts, f)
 	return f
 }

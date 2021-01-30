@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"path/filepath"
@@ -229,6 +230,19 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 		}
 		return nil, nil, es
 	}
+
+	for i := 0; i < 5; i++ {
+		toSub := mod.toSub
+		mod.toSub = nil
+		for _, inst := range toSub {
+			subFuncInst(inst)
+		}
+	}
+	if len(mod.toSub) > 0 {
+		// TODO: improve too much substitution error message
+		return nil, nil, []error{errors.New("too much substitution")}
+	}
+
 	return mod, importer.Files(), nil
 }
 
@@ -531,7 +545,8 @@ func topoSortVars(mod *Mod) []Error {
 	var sorted []Def
 	var path []interface{}
 	onPath := make(map[*VarDef]bool)
-	seen := make(map[*VarDef]bool)
+	seenVar := make(map[*VarDef]bool)
+	seenFunc := make(map[*FuncDef]bool)
 
 	var sortVar func(loc.Loc, *VarDef) bool
 	var sortFunc func(loc.Loc, funcUse) bool
@@ -576,10 +591,10 @@ func topoSortVars(mod *Mod) []Error {
 		}
 		onPath[vr] = true
 		defer func() { delete(onPath, vr) }()
-		if seen[vr] {
+		if seenVar[vr] {
 			return true
 		}
-		seen[vr] = true
+		seenVar[vr] = true
 		for _, v := range vr.usedVars {
 			if !sortVar(v.L, v.Var) {
 				return false
@@ -594,12 +609,16 @@ func topoSortVars(mod *Mod) []Error {
 		return true
 	}
 	sortFunc = func(l loc.Loc, use funcUse) bool {
-		path = append(path, use)
-		defer func() { path = path[:len(path)-1] }()
 		fun := use.Func
 		if use.Arg != nil {
 			fun = use.Arg
 		}
+		if seenFunc[fun] {
+			return true
+		}
+		seenFunc[fun] = true
+		path = append(path, use)
+		defer func() { path = path[:len(path)-1] }()
 		for _, v := range fun.usedVars {
 			if !sortVar(v.L, v.Var) {
 				return false

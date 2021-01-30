@@ -17,6 +17,8 @@ type Mod struct {
 	// with VarDefs appearing always after those
 	// on which they have initialization dependencies.
 	Defs []Def
+
+	toSub []*FuncInst
 }
 
 func (m *Mod) Name() string {
@@ -107,9 +109,9 @@ type Type interface {
 	// String returns a human-readable string representation
 	// appropriate for error messages.
 	String() string
-	buildString(w *strings.Builder) *strings.Builder
-
 	Loc() loc.Loc
+
+	buildString(w *strings.Builder) *strings.Builder
 }
 
 type DefType struct {
@@ -281,6 +283,24 @@ type FuncInst struct {
 	IfaceArgs []Func
 	Def       *FuncDef
 	T         *FuncType
+
+	// subbed parallels TypeParms.
+	// It indicates which TypeParms
+	// have been substituted.
+	// This is used to determine grounded types
+	// with respect to a FuncInst.
+	// It's not enough to look at whether
+	// the type has a TypeParm TypeVar in it,
+	// since the TypeVar may be substituted
+	// for an instance of itself in a recursive call;
+	// this is still "grounded".
+	subbed []bool
+
+	// The following fields are populated by subFuncInst.
+
+	Parms  []*FuncParm
+	Locals []*FuncLocal
+	Exprs  []Expr
 }
 
 func (f *FuncInst) Loc() loc.Loc { return f.Def.L }
@@ -357,6 +377,10 @@ type Expr interface {
 	Loc() loc.Loc
 
 	buildString(*strings.Builder) *strings.Builder
+	// subExpr returns a copy of the Expr
+	// with TypeVars and FuncDecls substituted.
+	// The return is always a copy.
+	subExpr(bindings) Expr
 }
 
 type Call struct {
