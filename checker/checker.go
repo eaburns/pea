@@ -657,6 +657,11 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 		(len(def.Exprs) == 0 || !isReturn(def.Exprs[len(def.Exprs)-1])) {
 		errs = append(errs, newError(def, "function must end in a return"))
 	}
+	for _, l := range def.Locals {
+		if !l.used {
+			errs = append(errs, newError(l, "%s unused", l.Name))
+		}
+	}
 	return errs
 }
 
@@ -716,7 +721,7 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Error) {
 		// TODO: modsel is unimplemented
 		panic("unimplemented")
 	case parser.Ident:
-		return checkID(x, parserExpr, want)
+		return checkID(x, parserExpr, true, want)
 	default:
 		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
 	}
@@ -907,12 +912,20 @@ func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	for i, parserArg := range parserCall.Args {
 		t := commonGroundParmType(funcs, i)
 		if t == nil {
-			arg, fs := checkAndConvertExpr(x, parserArg, nil)
-			if arg == nil || arg.Type() == nil || len(fs) > 0 {
-				errs = append(errs, fs...)
-				as, fs := checkArgsFallback(x, parserCall.Args[i+1:])
+			var arg Expr
+			var es []Error
+			// If this is the LHS of an assignment to an Ident,
+			// don't mark it as "used" if it is a local variable.
+			if lhs, ok := parserArg.(parser.Ident); ok && i == 0 && parserID.Name == ":=" {
+				arg, es = checkID(x, lhs, false, t)
+			} else {
+				arg, es = checkAndConvertExpr(x, parserArg, nil)
+			}
+			if arg == nil || arg.Type() == nil || len(es) > 0 {
+				errs = append(errs, es...)
+				as, es := checkArgsFallback(x, parserCall.Args[i+1:])
 				args = append(args, as...)
-				errs = append(errs, fs...)
+				errs = append(errs, es...)
 				return &Call{Args: args, L: parserCall.L}, errs
 			}
 			args = append(args, arg)
@@ -1147,7 +1160,7 @@ func useFunc(x scope, l loc.Loc, fun Func) Func {
 		return canonicalFuncInst(fun)
 	case *idFunc:
 		return &ExprFunc{
-			Expr:     idToExpr(useID(x, l, fun.id), fun.l),
+			Expr:     idToExpr(useID(x, l, true, fun.id), fun.l),
 			FuncType: fun.funcType,
 		}
 	default:
@@ -1228,12 +1241,12 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 	return expr, errs
 }
 
-func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
+func checkID(x scope, parserID parser.Ident, useLocal bool, want Type) (Expr, []Error) {
 	var notFoundNotes []note
 	var ambigNotes []note
 	ids := x.find(parserID.Name)
 	if len(ids) == 1 {
-		return idToExpr(useID(x, parserID.L, ids[0]), parserID.L), nil
+		return idToExpr(useID(x, parserID.L, useLocal, ids[0]), parserID.L), nil
 	}
 	var n int
 	for _, id := range ids {
@@ -1276,7 +1289,7 @@ func checkID(x scope, parserID parser.Ident, want Type) (Expr, []Error) {
 		err.setNotes(ambigNotes)
 		return nil, []Error{err}
 	default:
-		return idToExpr(useID(x, parserID.L, ids[0]), parserID.L), nil
+		return idToExpr(useID(x, parserID.L, useLocal, ids[0]), parserID.L), nil
 	}
 }
 
@@ -1294,7 +1307,7 @@ func isGround(id id) bool {
 	}
 }
 
-func useID(x scope, l loc.Loc, id id) id {
+func useID(x scope, l loc.Loc, useLocal bool, id id) id {
 	switch id := id.(type) {
 	case *VarDef:
 		x.useVar(l, id)
@@ -1302,6 +1315,9 @@ func useID(x scope, l loc.Loc, id id) id {
 	case *FuncParm:
 		return x.capture(id)
 	case *FuncLocal:
+		if useLocal {
+			id.used = true
+		}
 		return x.capture(id)
 	case *BlockCap:
 		return x.capture(id)
@@ -1666,6 +1682,11 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 	lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, nil)
 	if len(fs) > 0 {
 		errs = append(errs, fs...)
+	}
+	for _, l := range lit.Locals {
+		if !l.used {
+			errs = append(errs, newError(l, "%s unused", l.Name))
+		}
 	}
 
 	var retType Type

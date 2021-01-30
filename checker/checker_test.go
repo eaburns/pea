@@ -10,10 +10,12 @@ import (
 	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 var diffOpts = []cmp.Option{
 	cmp.FilterPath(isLoc, cmp.Ignore()),
+	cmpopts.IgnoreUnexported(FuncLocal{}),
 }
 
 func isLoc(path cmp.Path) bool {
@@ -359,6 +361,23 @@ func TestSubFuncInst(t *testing.T) {
 	}
 }
 
+func TestUnusedLocal(t *testing.T) {
+	const src = `
+		func testFunc(){
+			x := 1,
+			x := 2,
+			x := 3,
+		}
+	`
+	_, errs := check("test", []string{src}, nil)
+	if len(errs) != 1 {
+		t.Fatal("expected an error, got none")
+	}
+	if !regexp.MustCompile("x unused").MatchString(errs[0].Error()) {
+		t.Errorf("expected x unused, got %s", errs[0])
+	}
+}
+
 func TestFuncNewLocal(t *testing.T) {
 	const src = `
 		// x and y are locals of the func.
@@ -367,12 +386,15 @@ func TestFuncNewLocal(t *testing.T) {
 		var a int := 1
 		func testFunc(b int){
 			x := 1,
-			{z := x},
+			{z := x, use(z)},
 			y := "hello",
 			x := 3,
 			a := 5,
 			b := 6,
+			use(x),
+			use(y),
 		}
+		func use(_ T)
 	`
 	mod, errs := check("test", []string{src}, nil)
 	if len(errs) > 0 {
@@ -404,11 +426,14 @@ func TestTestNewLocal(t *testing.T) {
 		var a int := 1
 		test testDef {
 			x := 1,
-			{z := x},
+			{z := x, use(z)},
 			y := "hello",
 			x := 3,
 			a := 5,
+			use(x),
+			use(y),
 		}
+		func use(_ T)
 	`
 	mod, errs := check("test", []string{src}, nil)
 	if len(errs) > 0 {
@@ -440,12 +465,15 @@ func TestBlockNewLocal(t *testing.T) {
 		var a int := 1
 		var testVar (int){} := (b int){
 			x := 1,
-			{z := x},
+			{z := x, use(z)},
 			y := "hello",
 			x := 3,
 			a := 5,
 			b := 6,
+			use(x),
+			use(y),
 		}
+		func use(_ T)
 	`
 	mod, errs := check("test", []string{src}, nil)
 	if len(errs) > 0 {

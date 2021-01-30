@@ -250,6 +250,8 @@ type FuncLocal struct {
 	Name string
 	T    Type
 	L    loc.Loc
+
+	used bool
 }
 
 func (f *FuncLocal) Type() Type   { return f.T }
