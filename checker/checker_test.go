@@ -1539,6 +1539,12 @@ func TestOverloadResolution(t *testing.T) {
 			err:  `is not a struct type`,
 		},
 		{
+			name: "built-in switch on bool",
+			src:  "const true bool := [?true]",
+			call: "true ?true (){} ?false (){}",
+			want: "built-in ?true?false(&bool, (){}, (){})",
+		},
+		{
 			name: "built-in switch literal type, not-typed case",
 			call: "[?a] ?a {}",
 			want: "built-in ?a(&[?a], (){})",
@@ -2754,6 +2760,10 @@ func TestLiteralInference(t *testing.T) {
 			},
 		},
 
+		{expr: "[?true]", infer: "bool", want: "bool"},
+		{expr: "[?false]", infer: "bool", want: "bool"},
+		{expr: "[?true]", infer: "&bool", want: "&bool"},
+		{expr: "[?false]", infer: "&bool", want: "&bool"},
 		{expr: "[?none]", want: "[?none]"},
 		{expr: "[?none]", infer: "&&[?none]", want: "[?none]"},
 		{expr: "[?none]", infer: "&[?none]", want: "&[?none]"},

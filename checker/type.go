@@ -33,6 +33,13 @@ func trim1Ref(typ Type) Type {
 	return typ
 }
 
+var boolUnion = &UnionType{
+	Cases: []CaseDef{
+		CaseDef{Name: "?false"},
+		CaseDef{Name: "?true"},
+	},
+}
+
 // literalType returns the literal type or nil if the type cannot be converted to a literal.
 func literalType(typ Type) Type {
 	switch typ := typ.(type) {
@@ -63,6 +70,11 @@ func literalType(typ Type) Type {
 		return typ
 	case *FuncType:
 		return typ
+	case *BasicType:
+		if typ.Kind != Bool {
+			return nil
+		}
+		return copyTypeWithLoc(boolUnion, typ.Loc())
 	default:
 		return nil
 	}
@@ -77,6 +89,8 @@ func isLiteralType(typ Type) bool {
 	case *DefType:
 		return false
 	case *TypeVar:
+		return false
+	case *BasicType:
 		return false
 	default:
 		return true
@@ -136,6 +150,8 @@ func isUnionType(typ Type) bool {
 			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
 			return isUnionType(typ.Inst.Type)
 		}
+	case *BasicType:
+		return typ.Kind == Bool
 	}
 	return false
 }
