@@ -1651,6 +1651,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 			}
 			lit.Parms[i].T = copyTypeWithLoc(f.Parms[i], lit.Parms[i].L)
 		}
+		lit.Ret = f.Ret
 		var fs []Error
 		lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, f.Ret)
 		if len(fs) > 0 {
@@ -1689,14 +1690,13 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 		}
 	}
 
-	var retType Type
 	if len(lit.Exprs) > 0 {
-		retType = lit.Exprs[len(lit.Exprs)-1].Type()
+		lit.Ret = lit.Exprs[len(lit.Exprs)-1].Type()
 	}
-	if retType == nil {
-		retType = &StructType{L: lit.L}
+	if lit.Ret == nil {
+		lit.Ret = &StructType{L: lit.L}
 	}
-	lit.T = refType(&FuncType{Parms: parmTypes, Ret: retType, L: lit.L})
+	lit.T = refType(&FuncType{Parms: parmTypes, Ret: lit.Ret, L: lit.L})
 	return deref(lit), errs
 }
 
