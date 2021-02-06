@@ -662,6 +662,11 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 			errs = append(errs, newError(l, "%s unused", l.Name))
 		}
 	}
+	if len(def.TypeParms) == 0 && len(def.Iface) == 0 {
+		// This is a not-parameterized function.
+		// Make sure we build an instance of it even if never called.
+		canonicalFuncInst(newFuncInst(def, nil, def.Loc()))
+	}
 	return errs
 }
 

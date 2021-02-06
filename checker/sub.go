@@ -116,6 +116,11 @@ func subFunc(bindings bindings, fun Func) Func {
 			Parms: subTypes(bindings.Types, fun.Parms),
 			Ret:   subType(bindings.Types, fun.Ret),
 		}
+	case *ExprFunc:
+		return &ExprFunc{
+			Expr:    fun.Expr.subExpr(bindings),
+			FuncType: subType(bindings.Types, fun.FuncType).(*FuncType),
+		}
 	default:
 		panic(fmt.Sprintf("bad Func type: %T", fun))
 	}
@@ -266,7 +271,7 @@ func (b *BlockLit) subExpr(bindings bindings) Expr {
 		})
 	}
 	for i := range b.Parms {
-		bindings.Parms[&parmsCopy[i]] = &b.Parms[i]
+		bindings.Parms[&b.Parms[i]] = &parmsCopy[i]
 	}
 	localsCopy := make([]*LocalDef, 0, len(b.Locals))
 	for _, local := range b.Locals {
