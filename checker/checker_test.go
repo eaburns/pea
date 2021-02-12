@@ -2313,7 +2313,7 @@ func TestOverloadResolution(t *testing.T) {
 			case test.err == "" && len(errs) == 0:
 				expr := findVarDef(t, "zz", mod).Expr
 				if test.ret == "" {
-					expr = expr.(*Convert).Expr.(*BlockLit).Exprs[0].(*Call).Args[1]
+					expr = expr.(*Convert).Expr.(*BlockLit).Exprs[0].(*Convert).Expr.(*Call).Args[1]
 				}
 				call := findCall(expr)
 				if call == nil {

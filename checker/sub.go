@@ -118,7 +118,7 @@ func subFunc(bindings bindings, fun Func) Func {
 		}
 	case *ExprFunc:
 		return &ExprFunc{
-			Expr:    fun.Expr.subExpr(bindings),
+			Expr:     fun.Expr.subExpr(bindings),
 			FuncType: subType(bindings.Types, fun.FuncType).(*FuncType),
 		}
 	default:

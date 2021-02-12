@@ -809,7 +809,7 @@ func isNewID(x scope, parserExpr parser.Expr) (parser.Ident, bool) {
 	return parserID, true
 }
 
-func newLocal(x scope, call *parser.Call, id parser.Ident) (*LocalDef, *Call, []Error) {
+func newLocal(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Expr, []Error) {
 	expr, errs := checkExpr(x, call.Args[1], nil)
 	if expr == nil {
 		return nil, nil, errs
@@ -819,18 +819,23 @@ func newLocal(x scope, call *parser.Call, id parser.Ident) (*LocalDef, *Call, []
 		errs = append(errs, newError(call.L, "local defined outside of a block"))
 		return nil, nil, errs
 	}
-	assign := &Call{
-		Func: &Builtin{
-			Op:    Assign,
-			Parms: []Type{refType(expr.Type()), expr.Type()},
-			Ret:   expr.Type(),
+	assign := &Convert{
+		Kind: Deref,
+		Expr: &Call{
+			Func: &Builtin{
+				Op:    Assign,
+				Parms: []Type{refType(expr.Type()), expr.Type()},
+				Ret:   expr.Type(),
+			},
+			Args: []Expr{
+				&Local{Def: local, T: refType(expr.Type()), L: id.L},
+				expr,
+			},
+			T: &RefType{Type: &StructType{L: id.L}, L: id.L},
+			L: call.L,
 		},
-		Args: []Expr{
-			&Local{Def: local, T: expr.Type(), L: id.L},
-			expr,
-		},
-		T: expr.Type(),
-		L: call.L,
+		T: &StructType{L: id.L},
+		L: id.L,
 	}
 	return local, assign, errs
 }
@@ -1351,7 +1356,7 @@ func idToExpr(id id, l loc.Loc) Expr {
 	}
 }
 
-func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
+func wrapCallInBlock(fun Func, l loc.Loc) Expr {
 	var parms []Type
 	for i := 0; i < fun.arity(); i++ {
 		p := fun.groundParm(i)
@@ -1365,7 +1370,7 @@ func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 		panic("impossible")
 	}
 	typ := &FuncType{Parms: parms, Ret: ret, L: l}
-	blk := &BlockLit{Ret: typ.Ret, T: typ, L: l}
+	blk := &BlockLit{Ret: typ.Ret, T: refType(typ), L: l}
 	call := &Call{Func: fun, T: &RefType{Type: typ.Ret, L: l}, L: l}
 	call.Args = make([]Expr, len(typ.Parms))
 	expr := deref(call)
@@ -1384,7 +1389,7 @@ func wrapCallInBlock(fun Func, l loc.Loc) *BlockLit {
 		blk.Parms[i].L = l
 		call.Args[i] = &Parm{Def: &blk.Parms[i], T: typ.Parms[i], L: l}
 	}
-	return blk
+	return deref(blk)
 }
 
 // checkConvert checks a type conversion.
