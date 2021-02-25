@@ -561,7 +561,7 @@ func TestNewLocalTypes(t *testing.T) {
 		{
 			src:  "var int_array [int]",
 			expr: "&&&int : int_array[0]",
-			err:  "cannot convert returned &int to &&&int",
+			err:  `cannot convert .* \(int\) to type &&&int`,
 		},
 		{
 			src:  "var int_ref_array [&int]",
@@ -586,7 +586,7 @@ func TestNewLocalTypes(t *testing.T) {
 		{
 			src:  "var int_ref_array [&int]",
 			expr: "&&&&int : int_ref_array[0]",
-			err:  "cannot convert returned &&int to &&&&int",
+			err:  `cannot convert .* \(int\) to type &&&&int`,
 		},
 		{
 			src:  "var int_array_ref &[int]",
@@ -615,7 +615,7 @@ func TestNewLocalTypes(t *testing.T) {
 				func make_point() point
 			`,
 			expr: "&&point : make_point()",
-			err:  "cannot convert returned point to &&point",
+			err: `cannot convert .* \(point\) to type &&point`,
 		},
 		{
 			src: `
@@ -647,7 +647,7 @@ func TestNewLocalTypes(t *testing.T) {
 				func make_point() point
 			`,
 			expr: "&&&int : make_point().x",
-			err:  "cannot convert returned &int to &&&int",
+			err:  `cannot convert .* \(int\) to type &&&int`,
 		},
 		{
 			src: `
@@ -671,7 +671,7 @@ func TestNewLocalTypes(t *testing.T) {
 				func make_point() point
 			`,
 			expr: "&&point : make_point()",
-			err:  "cannot convert returned point to &&point",
+			err:  `cannot convert .* \(point\) to type &&point`,
 		},
 		{
 			src: `
@@ -915,7 +915,7 @@ func TestArgumentConversions(t *testing.T) {
 			src:  "func x()int",
 			parm: "&&int",
 			expr: "x()",
-			err:  `cannot convert returned int to &&int`,
+			err:  `cannot convert .* \(int\) to type &&int`,
 		},
 		{
 			src: `
@@ -948,7 +948,7 @@ func TestArgumentConversions(t *testing.T) {
 			`,
 			parm: "&&&int",
 			expr: "make_point().x",
-			err:  "cannot convert returned &int to &&&int",
+			err:  `cannot convert .* \(int\) to type &&&int`,
 		},
 	}
 	for _, test := range tests {
@@ -1256,11 +1256,38 @@ func TestOverloadResolution(t *testing.T) {
 			err:  "not found",
 		},
 		{
-			name: "expected return type mismatch",
+			name: "expected return type mismatch, one candidate",
 			src:  "func x() int",
 			call: "x()",
 			ret:  "string",
-			err:  "not found",
+			err:  `cannot convert x\(\) \(int\) to type string`,
+		},
+		{
+			name: "expected return type mismatch, multiple candidates",
+			src:  `
+				func x() int
+				func x() int8
+			`,
+			call: "x()",
+			ret:  "string",
+			err:  `not found`,
+		},
+		{
+			name: "explicit conversion on return, OK with single candidate",
+			src:  "func x() [uint8]",
+			call: "string : x()",
+			ret:  "string",
+			want: "x()[uint8]",
+		},
+		{
+			name: "explicit conversion on return, fail with mult-candidate",
+			src:  `
+				func x() [uint8]
+				func x() [int]
+			`,
+			call: "string : x()",
+			ret:  "string",
+			err:  `not found`,
 		},
 		{
 			name: "argument type mismatch",
@@ -1473,7 +1500,7 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "point_var.y",
 			ret:  "string",
-			err:  "cannot convert returned &float64 to string",
+			err:  `cannot convert .* \(float64\) to type string`,
 		},
 		{
 			name: "built-in selector mismatches, but func def matches",
@@ -1654,7 +1681,7 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "make() ?a () {1} ",
 			ret:  "int",
-			err:  "cannot convert returned \\[\\.\\] to int",
+			err:  `cannot convert .* \(\[\.\]\) to type int`,
 		},
 		{
 			name: "built-in switch not a union type",
@@ -1810,20 +1837,20 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "type byte_array_ref &[int8]",
 			call: "new(5, 0)",
 			ret:  "byte_array_ref",
-			err:  "cannot convert returned \\[int\\] to byte_array_ref",
+			err:  `cannot convert .* \(\[int\]\) to type byte_array_ref`,
 		},
 		{
 			name: "built-in new array, expected non-array type",
 			call: "new(5, 0)",
 			ret:  "string",
-			err:  "cannot convert returned \\[int\\] to string",
+			err:  `cannot convert .* \(\[int\]\) to type string`,
 		},
 		{
 			name: "built-in new array, expected non-array def type",
 			src:  "type test_type [.x int]",
 			call: "new(5, 0)",
 			ret:  "test_type",
-			err:  "cannot convert returned \\[int\\] to test_type",
+			err:  `cannot convert .* \(\[int\]\) to type test_type`,
 		},
 		{
 			name: "built-in bit-wise not, expected type",
@@ -2073,7 +2100,7 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in array slice, expected type not an array",
 			call: "[5, 6, 7][1, 2]",
 			ret:  "int",
-			err:  "cannot convert returned \\[int\\] to int",
+			err:  `cannot convert .* \(\[int\]\) to type int`,
 		},
 		{
 			name: "built-in array slice, arg not an array",

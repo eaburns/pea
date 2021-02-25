@@ -1087,7 +1087,14 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 		if retType == nil {
 			continue
 		}
-		if !canConvertReturn(retType, want) {
+		// If there is only 1 function, don't bother checking conversion.
+		// If it cannot convert, it will fail upstream.
+		// The reason for this special case is that canConvertReturn
+		// only accepts implicit conversions.
+		// If the parent node is an explicit conversion,
+		// we want it to be accepted in the common case
+		// that there is only one function overload acceptable at this point.
+		if len(funcs) > 1 && !canConvertReturn(retType, want) {
 			notes = append(notes, newNote("%s: cannot convert returned %s to %s", f, retType, want).setLoc(f))
 			continue
 		}
