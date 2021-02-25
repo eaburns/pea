@@ -68,6 +68,15 @@ type ArrayType struct {
 func (*ArrayType) isEmpty() bool { return false }
 func (*ArrayType) isSmall() bool { return true }
 
+type FrameType struct{}
+
+func (*FrameType) isEmpty() bool { return false }
+func (*FrameType) isSmall() bool { return true }
+func (*FrameType) eq(other Type) bool {
+	_, ok := other.(*FrameType)
+	return ok
+}
+
 func (t *ArrayType) eq(other Type) bool {
 	o, ok := other.(*ArrayType)
 	return ok && t.Elem.eq(o.Elem)
@@ -289,8 +298,10 @@ func (j *Jump) Loc() loc.Loc { return j.L }
 
 type Return struct {
 	instruction
-	Long bool
-	L    loc.Loc
+	// Frame is the long return frame value.
+	// If Frame is nil, it is not a long return.
+	Frame Value
+	L     loc.Loc
 }
 
 func (*Return) Uses() []Value  { return nil }
@@ -335,6 +346,15 @@ func (v *value) rmUser(user Instruction) {
 	}
 	v.users = v.users[:n]
 }
+
+type Frame struct {
+	value
+	L loc.Loc
+}
+
+func (*Frame) Uses() []Value  { return nil }
+func (f *Frame) Loc() loc.Loc { return f.L }
+func (*Frame) Type() Type     { return &FrameType{} }
 
 type Alloc struct {
 	value

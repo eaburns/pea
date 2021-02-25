@@ -10,6 +10,7 @@ func (t *IntType) String() string    { return t.buildString(new(strings.Builder)
 func (t *FloatType) String() string  { return t.buildString(new(strings.Builder)).String() }
 func (t *AddrType) String() string   { return t.buildString(new(strings.Builder)).String() }
 func (t *ArrayType) String() string  { return t.buildString(new(strings.Builder)).String() }
+func (t *FrameType) String() string  { return t.buildString(new(strings.Builder)).String() }
 func (t *StructType) String() string { return t.buildString(new(strings.Builder)).String() }
 func (t *UnionType) String() string  { return t.buildString(new(strings.Builder)).String() }
 func (t *FuncType) String() string   { return t.buildString(new(strings.Builder)).String() }
@@ -23,6 +24,7 @@ func (r *Call) String() string       { return r.buildString(new(strings.Builder)
 func (r *If) String() string         { return r.buildString(new(strings.Builder)).String() }
 func (r *Jump) String() string       { return r.buildString(new(strings.Builder)).String() }
 func (r *Return) String() string     { return r.buildString(new(strings.Builder)).String() }
+func (v *Frame) String() string      { return v.buildString(new(strings.Builder)).String() }
 func (v *Alloc) String() string      { return v.buildString(new(strings.Builder)).String() }
 func (v *Load) String() string       { return v.buildString(new(strings.Builder)).String() }
 func (v *Func) String() string       { return v.buildString(new(strings.Builder)).String() }
@@ -97,6 +99,11 @@ func (t *AddrType) buildString(s *strings.Builder) *strings.Builder {
 func (t *ArrayType) buildString(s *strings.Builder) *strings.Builder {
 	s.WriteString("[]")
 	t.Elem.buildString(s)
+	return s
+}
+
+func (t *FrameType) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString("<frame>")
 	return s
 }
 
@@ -253,11 +260,16 @@ func (r *Jump) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (r *Return) buildString(s *strings.Builder) *strings.Builder {
-	if r.Long {
-		s.WriteString("long return")
+	if r.Frame != nil {
+		fmt.Fprintf(s, "return to x%d", r.Frame.Num())
 		return s
 	}
 	s.WriteString("return")
+	return s
+}
+
+func (v *Frame) buildString(s *strings.Builder) *strings.Builder {
+	fmt.Fprintf(s, "x%d := <frame>", v.Num())
 	return s
 }
 

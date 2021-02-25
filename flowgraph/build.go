@@ -47,6 +47,8 @@ type funcBuilder struct {
 	// blockType is only non-nil if this is a block literal.
 	blockType   *StructType
 	longRetType Type
+	returnField *FieldDef
+	frameField  *FieldDef
 }
 
 type blockBuilder struct {
@@ -267,7 +269,7 @@ func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *FuncDef {
 	return fb.FuncDef
 }
 
-func (mb *modBuilder) buildBlockLit(lit *checker.BlockLit, longRetType Type) *FuncDef {
+func (mb *modBuilder) buildBlockLit(lit *checker.BlockLit, longRetType Type) *funcBuilder {
 	parms := make([]*checker.ParmDef, len(lit.Parms))
 	for i := range lit.Parms {
 		parms[i] = &lit.Parms[i]
@@ -298,18 +300,24 @@ func (mb *modBuilder) buildBlockLit(lit *checker.BlockLit, longRetType Type) *Fu
 		fb.capField[cap] = field
 	}
 	if !longRetType.isEmpty() {
-		field := &FieldDef{
+		fb.returnField = &FieldDef{
 			Num:  len(fb.blockType.Fields),
 			Name: "<return>",
 			Type: &AddrType{Elem: longRetType},
 		}
-		fb.blockType.Fields = append(fb.blockType.Fields, field)
+		fb.blockType.Fields = append(fb.blockType.Fields, fb.returnField)
 	}
+	fb.frameField = &FieldDef{
+		Num:  len(fb.blockType.Fields),
+		Name: "<frame>",
+		Type: &FrameType{},
+	}
+	fb.blockType.Fields = append(fb.blockType.Fields, fb.frameField)
 
 	b0 := fb.buildBlock0(lit.Locals)
 	b1 := fb.buildBlocks(lit.Exprs)
 	b0.jump(b1)
-	return fb.FuncDef
+	return fb
 }
 
 func (fb *funcBuilder) newBlock() *blockBuilder {
@@ -787,14 +795,13 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 func (bb *blockBuilder) buildBranchCall(fun interface{}, arg, res Value, bDone *blockBuilder) {
 	var capsVal, funVal Value
 	if lit, ok := fun.(*checker.BlockLit); ok {
-		f := bb.fun.mod.buildBlockLit(lit, bb.fun.longRetType)
-		capsType := f.Parms[0].Type.(*AddrType).Elem.(*StructType)
-		capsVal = bb.blockCaps(capsType, lit)
-		funVal = bb.Func(f)
+		fb := bb.fun.mod.buildBlockLit(lit, bb.fun.longRetType)
+		capsVal = bb.blockCaps(fb.blockType, lit)
+		funVal = bb.Func(fb.FuncDef)
 	} else {
 		funcExpr := fun.(Value)
 		hdrType := funcExpr.Type().(*AddrType).Elem.(*StructType)
-		capsVal = bb.field(funcExpr, hdrType.Fields[1])
+		capsVal = bb.load(bb.field(funcExpr, hdrType.Fields[1]))
 		f := bb.field(funcExpr, hdrType.Fields[0])
 		funVal = bb.load(f)
 	}
@@ -944,13 +951,16 @@ func (bb *blockBuilder) buildLength(call *checker.Call) (*blockBuilder, Value) {
 func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 	bb, v := bb.expr(call.Args[0])
 	if v == nil {
-		bb.Return().Long = bb.fun.blockType != nil
+		var frame Value
+		if bb.fun.blockType != nil {
+			frame = bb.frame()
+		}
+		bb.Return().Frame = frame
 		return bb, nil
 	}
 	if bb.fun.blockType != nil {
 		block := bb.load(bb.parm(bb.fun.Parms[0]))
-		fields := bb.fun.blockType.Fields
-		field := bb.field(block, fields[len(fields)-1])
+		field := bb.field(block, bb.fun.returnField)
 		if bb.fun.longRetType.isSmall() {
 			bb.store(bb.load(field), v)
 		} else {
@@ -964,7 +974,11 @@ func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 			bb.copy(bb.load(parm), v)
 		}
 	}
-	bb.Return().Long = bb.fun.blockType != nil
+	var frame Value
+	if bb.fun.blockType != nil {
+		frame = bb.frame()
+	}
+	bb.Return().Frame = frame
 	return bb, nil
 }
 
@@ -1117,28 +1131,28 @@ func caseNum(u *checker.UnionType, cas *checker.CaseDef) int {
 func (bb *blockBuilder) blockLit(lit *checker.BlockLit) (*blockBuilder, Value) {
 	headerType := bb.buildType(lit.Type()).(*AddrType).Elem.(*StructType)
 	a := bb.alloc(headerType)
-	fun := bb.fun.mod.buildBlockLit(lit, bb.fun.longRetType)
-	funcVal := bb.Func(fun)
+	fb := bb.fun.mod.buildBlockLit(lit, bb.fun.longRetType)
+	funcVal := bb.Func(fb.FuncDef)
 	funcField := bb.field(a, headerType.Fields[0])
 	bb.store(funcField, funcVal)
 
-	capsType := fun.Parms[0].Type.(*AddrType).Elem.(*StructType)
-	caps := bb.blockCaps(capsType, lit)
+	caps := bb.blockCaps(fb.blockType, lit)
 
 	if !bb.fun.longRetType.isEmpty() {
-		var retLoc Value
+		var returnLoc Value
 		if bb.fun.blockType != nil {
 			parentBlock := bb.load(bb.parm(bb.fun.Parms[0]))
-			fields := bb.fun.blockType.Fields
-			retField := bb.field(parentBlock, fields[len(fields)-1])
-			retLoc = bb.load(retField)
+			returnField := bb.field(parentBlock, bb.fun.returnField)
+			returnLoc = bb.load(returnField)
 		} else {
-			retParm := bb.parm(bb.fun.Parms[len(bb.fun.Parms)-1])
-			retLoc = bb.load(retParm)
+			returnParm := bb.parm(bb.fun.Parms[len(bb.fun.Parms)-1])
+			returnLoc = bb.load(returnParm)
 		}
-		retField := bb.field(caps, capsType.Fields[len(capsType.Fields)-1])
-		bb.store(retField, retLoc)
+		bb.store(bb.field(caps, fb.returnField), returnLoc)
 	}
+
+	frame := bb.frame()
+	bb.store(bb.field(caps, fb.frameField), frame)
 
 	dataVal := caps
 	dataField := bb.field(a, headerType.Fields[1])
@@ -1280,6 +1294,28 @@ func (bb *blockBuilder) Return() *Return {
 	bb.addInstr(r)
 	bb.done = true
 	return r
+}
+
+func (bb *blockBuilder) frame() Value {
+	if bb.fun.blockType != nil {
+		block := bb.load(bb.parm(bb.fun.Parms[0]))
+		blockType := bb.fun.Parms[0].Type.(*AddrType).Elem.(*StructType)
+		frameField := blockType.Fields[len(blockType.Fields)-1]
+		return bb.load(bb.field(block, frameField))
+	}
+	if len(bb.fun.b0.Instrs) > 0 {
+		if frame, ok := bb.fun.b0.Instrs[0].(*Frame); ok {
+			return frame
+		}
+	}
+	v := &Frame{}
+	bb.fun.next++
+	v.setNum(bb.fun.next - 1)
+	for _, use := range v.Uses() {
+		use.addUser(v)
+	}
+	bb.fun.b0.Instrs = append([]Instruction{v}, bb.fun.b0.Instrs...)
+	return v
 }
 
 func (bb *blockBuilder) alloc(typ Type) *Alloc {
@@ -1462,9 +1498,13 @@ func (bb *blockBuilder) addAlloc(v *Alloc) {
 	// so insert this just before the first non-alloc.
 	var i int
 	for i = range bb.Instrs {
-		if _, ok := bb.Instrs[i].(*Alloc); !ok {
-			break
+		if _, ok := bb.Instrs[i].(*Frame); ok {
+			continue
 		}
+		if _, ok := bb.Instrs[i].(*Alloc); ok {
+			continue
+		}
+		break
 	}
 	bb.Instrs = append(bb.Instrs, nil)
 	copy(bb.Instrs[i+1:], bb.Instrs[i:])
