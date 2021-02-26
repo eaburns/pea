@@ -212,14 +212,27 @@ func TestExpr(t *testing.T) {
 		},
 
 		{
-			`int : foo`,
+			`int :: foo + bar`,
+			&Convert{
+				Expr: &Call{
+					Fun: Ident{Name: "+"},
+					Args: []Expr{
+						Ident{Name: "foo"},
+						Ident{Name: "bar"},
+					},
+				},
+				Type: &NamedType{Name: Ident{Name: "int"}},
+			},
+		},
+		{
+			`int :: foo`,
 			&Convert{
 				Expr: Ident{Name: "foo"},
 				Type: &NamedType{Name: Ident{Name: "int"}},
 			},
 		},
 		{
-			`[.x int] : foo`,
+			`[.x int] :: foo`,
 			&Convert{
 				Expr: Ident{Name: "foo"},
 				Type: &StructType{

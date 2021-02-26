@@ -39,86 +39,87 @@ const (
 	_AsgnOp                     int = 33
 	_KwCall                     int = 34
 	_KwArg                      int = 35
-	_Switch                     int = 36
-	_SwitchArg                  int = 37
-	_Bin5                       int = 38
-	_Bin5Arg                    int = 39
-	_Bin5Op                     int = 40
-	_Bin4                       int = 41
-	_Bin4Arg                    int = 42
-	_Bin4Op                     int = 43
-	_Bin3                       int = 44
-	_Bin3Arg                    int = 45
-	_Bin3Op                     int = 46
-	_Bin2                       int = 47
-	_Bin2Arg                    int = 48
-	_Bin2Op                     int = 49
-	_Bin1                       int = 50
-	_Bin1Arg                    int = 51
-	_Bin1Op                     int = 52
-	_Cvt                        int = 53
-	_Un                         int = 54
-	_Op                         int = 55
-	_UnArg                      int = 56
-	_Pri                        int = 57
-	_Sel                        int = 58
-	_Call                       int = 59
-	_Idx                        int = 60
-	_PriArg                     int = 61
-	_SubExpr                    int = 62
-	_ModSel                     int = 63
-	_FuncName                   int = 64
-	_IdxOp                      int = 65
-	_Cases                      int = 66
-	_Kwds                       int = 67
-	_Kwd                        int = 68
-	_ArrayLit                   int = 69
-	_StructLit                  int = 70
-	_FieldVals                  int = 71
-	_FieldVal                   int = 72
-	_FieldId                    int = 73
-	_UnionLit                   int = 74
-	_CaseVal                    int = 75
-	_CaseId                     int = 76
-	_BlkLit                     int = 77
-	_BlkParm                    int = 78
-	_BlkParms                   int = 79
-	_CharLit                    int = 80
-	_StrLit                     int = 81
-	_InterpStr                  int = 82
-	_Esc                        int = 83
-	_RawStr                     int = 84
-	_NumLit                     int = 85
-	_DecLit                     int = 86
-	_HexLit                     int = 87
-	_FloatLit                   int = 88
-	_Id                         int = 89
-	_TypeVar                    int = 90
-	_Reserved                   int = 91
-	_D                          int = 92
-	_X                          int = 93
-	_L                          int = 94
-	_O                          int = 95
-	__                          int = 96
-	_Space                      int = 97
-	_Cmnt                       int = 98
-	_Eof                        int = 99
-	_Bin__AsgnOp__AsgnArg       int = 100
-	_NameArg__Kwd__KwArg        int = 101
-	_NameArg__CaseId__SwitchArg int = 102
-	_Bin__Bin5Op__Bin5Arg       int = 103
-	_Bin__Bin4Op__Bin4Arg       int = 104
-	_Bin__Bin3Op__Bin3Arg       int = 105
-	_Bin__Bin2Op__Bin2Arg       int = 106
-	_Bin__Bin1Op__Bin1Arg       int = 107
-	_BinTail__AsgnOp__AsgnArg   int = 108
-	_BinTail__Bin5Op__Bin5Arg   int = 109
-	_BinTail__Bin4Op__Bin4Arg   int = 110
-	_BinTail__Bin3Op__Bin3Arg   int = 111
-	_BinTail__Bin2Op__Bin2Arg   int = 112
-	_BinTail__Bin1Op__Bin1Arg   int = 113
+	_Cvt                        int = 36
+	_CvtArg                     int = 37
+	_Switch                     int = 38
+	_SwitchArg                  int = 39
+	_Bin5                       int = 40
+	_Bin5Arg                    int = 41
+	_Bin5Op                     int = 42
+	_Bin4                       int = 43
+	_Bin4Arg                    int = 44
+	_Bin4Op                     int = 45
+	_Bin3                       int = 46
+	_Bin3Arg                    int = 47
+	_Bin3Op                     int = 48
+	_Bin2                       int = 49
+	_Bin2Arg                    int = 50
+	_Bin2Op                     int = 51
+	_Bin1                       int = 52
+	_Bin1Arg                    int = 53
+	_Bin1Op                     int = 54
+	_Un                         int = 55
+	_Op                         int = 56
+	_UnArg                      int = 57
+	_Pri                        int = 58
+	_Sel                        int = 59
+	_Call                       int = 60
+	_Idx                        int = 61
+	_PriArg                     int = 62
+	_SubExpr                    int = 63
+	_ModSel                     int = 64
+	_FuncName                   int = 65
+	_IdxOp                      int = 66
+	_Cases                      int = 67
+	_Kwds                       int = 68
+	_Kwd                        int = 69
+	_ArrayLit                   int = 70
+	_StructLit                  int = 71
+	_FieldVals                  int = 72
+	_FieldVal                   int = 73
+	_FieldId                    int = 74
+	_UnionLit                   int = 75
+	_CaseVal                    int = 76
+	_CaseId                     int = 77
+	_BlkLit                     int = 78
+	_BlkParm                    int = 79
+	_BlkParms                   int = 80
+	_CharLit                    int = 81
+	_StrLit                     int = 82
+	_InterpStr                  int = 83
+	_Esc                        int = 84
+	_RawStr                     int = 85
+	_NumLit                     int = 86
+	_DecLit                     int = 87
+	_HexLit                     int = 88
+	_FloatLit                   int = 89
+	_Id                         int = 90
+	_TypeVar                    int = 91
+	_Reserved                   int = 92
+	_D                          int = 93
+	_X                          int = 94
+	_L                          int = 95
+	_O                          int = 96
+	__                          int = 97
+	_Space                      int = 98
+	_Cmnt                       int = 99
+	_Eof                        int = 100
+	_Bin__AsgnOp__AsgnArg       int = 101
+	_NameArg__Kwd__KwArg        int = 102
+	_NameArg__CaseId__SwitchArg int = 103
+	_Bin__Bin5Op__Bin5Arg       int = 104
+	_Bin__Bin4Op__Bin4Arg       int = 105
+	_Bin__Bin3Op__Bin3Arg       int = 106
+	_Bin__Bin2Op__Bin2Arg       int = 107
+	_Bin__Bin1Op__Bin1Arg       int = 108
+	_BinTail__AsgnOp__AsgnArg   int = 109
+	_BinTail__Bin5Op__Bin5Arg   int = 110
+	_BinTail__Bin4Op__Bin4Arg   int = 111
+	_BinTail__Bin3Op__Bin3Arg   int = 112
+	_BinTail__Bin2Op__Bin2Arg   int = 113
+	_BinTail__Bin1Op__Bin1Arg   int = 114
 
-	_N int = 114
+	_N int = 115
 )
 
 type _Parser struct {
@@ -8531,22 +8532,29 @@ func _AsgnArgAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// KwCall/KwArg
+	// Cvt/KwCall/KwArg
 	{
 		pos3 := pos
-		// KwCall
-		if !_accept(parser, _KwCallAccepts, &pos, &perr) {
+		// Cvt
+		if !_accept(parser, _CvtAccepts, &pos, &perr) {
 			goto fail4
 		}
 		goto ok0
 	fail4:
 		pos = pos3
-		// KwArg
-		if !_accept(parser, _KwArgAccepts, &pos, &perr) {
+		// KwCall
+		if !_accept(parser, _KwCallAccepts, &pos, &perr) {
 			goto fail5
 		}
 		goto ok0
 	fail5:
+		pos = pos3
+		// KwArg
+		if !_accept(parser, _KwArgAccepts, &pos, &perr) {
+			goto fail6
+		}
+		goto ok0
+	fail6:
 		pos = pos3
 		goto fail
 	ok0:
@@ -8566,22 +8574,29 @@ func _AsgnArgFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _AsgnArg}
-	// KwCall/KwArg
+	// Cvt/KwCall/KwArg
 	{
 		pos3 := pos
-		// KwCall
-		if !_fail(parser, _KwCallFail, errPos, failure, &pos) {
+		// Cvt
+		if !_fail(parser, _CvtFail, errPos, failure, &pos) {
 			goto fail4
 		}
 		goto ok0
 	fail4:
 		pos = pos3
-		// KwArg
-		if !_fail(parser, _KwArgFail, errPos, failure, &pos) {
+		// KwCall
+		if !_fail(parser, _KwCallFail, errPos, failure, &pos) {
 			goto fail5
 		}
 		goto ok0
 	fail5:
+		pos = pos3
+		// KwArg
+		if !_fail(parser, _KwArgFail, errPos, failure, &pos) {
+			goto fail6
+		}
+		goto ok0
+	fail6:
 		pos = pos3
 		goto fail
 	ok0:
@@ -8606,12 +8621,12 @@ func _AsgnArgAction(parser *_Parser, start int) (int, *Expr) {
 	}
 	var node Expr
 	pos := start
-	// KwCall/KwArg
+	// Cvt/KwCall/KwArg
 	{
 		pos3 := pos
 		var node2 Expr
-		// KwCall
-		if p, n := _KwCallAction(parser, pos); n == nil {
+		// Cvt
+		if p, n := _CvtAction(parser, pos); n == nil {
 			goto fail4
 		} else {
 			node = *n
@@ -8621,8 +8636,8 @@ func _AsgnArgAction(parser *_Parser, start int) (int, *Expr) {
 	fail4:
 		node = node2
 		pos = pos3
-		// KwArg
-		if p, n := _KwArgAction(parser, pos); n == nil {
+		// KwCall
+		if p, n := _KwCallAction(parser, pos); n == nil {
 			goto fail5
 		} else {
 			node = *n
@@ -8630,6 +8645,17 @@ func _AsgnArgAction(parser *_Parser, start int) (int, *Expr) {
 		}
 		goto ok0
 	fail5:
+		node = node2
+		pos = pos3
+		// KwArg
+		if p, n := _KwArgAction(parser, pos); n == nil {
+			goto fail6
+		} else {
+			node = *n
+			pos = p
+		}
+		goto ok0
+	fail6:
 		node = node2
 		pos = pos3
 		goto fail
@@ -8908,18 +8934,18 @@ func _KwArgAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// Switch/SwitchArg
+	// Cvt/CvtArg
 	{
 		pos3 := pos
-		// Switch
-		if !_accept(parser, _SwitchAccepts, &pos, &perr) {
+		// Cvt
+		if !_accept(parser, _CvtAccepts, &pos, &perr) {
 			goto fail4
 		}
 		goto ok0
 	fail4:
 		pos = pos3
-		// SwitchArg
-		if !_accept(parser, _SwitchArgAccepts, &pos, &perr) {
+		// CvtArg
+		if !_accept(parser, _CvtArgAccepts, &pos, &perr) {
 			goto fail5
 		}
 		goto ok0
@@ -8943,6 +8969,285 @@ func _KwArgFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _KwArg}
+	// Cvt/CvtArg
+	{
+		pos3 := pos
+		// Cvt
+		if !_fail(parser, _CvtFail, errPos, failure, &pos) {
+			goto fail4
+		}
+		goto ok0
+	fail4:
+		pos = pos3
+		// CvtArg
+		if !_fail(parser, _CvtArgFail, errPos, failure, &pos) {
+			goto fail5
+		}
+		goto ok0
+	fail5:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _KwArgAction(parser *_Parser, start int) (int, *Expr) {
+	dp := parser.deltaPos[start][_KwArg]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _KwArg}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Expr)
+		return start + int(dp-1), &n
+	}
+	var node Expr
+	pos := start
+	// Cvt/CvtArg
+	{
+		pos3 := pos
+		var node2 Expr
+		// Cvt
+		if p, n := _CvtAction(parser, pos); n == nil {
+			goto fail4
+		} else {
+			node = *n
+			pos = p
+		}
+		goto ok0
+	fail4:
+		node = node2
+		pos = pos3
+		// CvtArg
+		if p, n := _CvtArgAction(parser, pos); n == nil {
+			goto fail5
+		} else {
+			node = *n
+			pos = p
+		}
+		goto ok0
+	fail5:
+		node = node2
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _CvtAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [2]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _Cvt, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// typ:Type _ "::" expr:CvtArg
+	// typ:Type
+	{
+		pos1 := pos
+		// Type
+		if !_accept(parser, _TypeAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// "::"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "::" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos += 2
+	// expr:CvtArg
+	{
+		pos2 := pos
+		// CvtArg
+		if !_accept(parser, _CvtArgAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[1] = parser.text[pos2:pos]
+	}
+	return _memoize(parser, _Cvt, start, pos, perr)
+fail:
+	return _memoize(parser, _Cvt, start, -1, perr)
+}
+
+func _CvtFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [2]string
+	use(labels)
+	pos, failure := _failMemo(parser, _Cvt, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "Cvt",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _Cvt}
+	// action
+	// typ:Type _ "::" expr:CvtArg
+	// typ:Type
+	{
+		pos1 := pos
+		// Type
+		if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// "::"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "::" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\"::\"",
+			})
+		}
+		goto fail
+	}
+	pos += 2
+	// expr:CvtArg
+	{
+		pos2 := pos
+		// CvtArg
+		if !_fail(parser, _CvtArgFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[1] = parser.text[pos2:pos]
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _CvtAction(parser *_Parser, start int) (int, *Expr) {
+	var labels [2]string
+	use(labels)
+	var label0 Type
+	var label1 Expr
+	dp := parser.deltaPos[start][_Cvt]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _Cvt}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Expr)
+		return start + int(dp-1), &n
+	}
+	var node Expr
+	pos := start
+	// action
+	{
+		start0 := pos
+		// typ:Type _ "::" expr:CvtArg
+		// typ:Type
+		{
+			pos2 := pos
+			// Type
+			if p, n := _TypeAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label0 = *n
+				pos = p
+			}
+			labels[0] = parser.text[pos2:pos]
+		}
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// "::"
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "::" {
+			goto fail
+		}
+		pos += 2
+		// expr:CvtArg
+		{
+			pos3 := pos
+			// CvtArg
+			if p, n := _CvtArgAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label1 = *n
+				pos = p
+			}
+			labels[1] = parser.text[pos3:pos]
+		}
+		node = func(
+			start, end int, expr Expr, typ Type) Expr {
+			return Expr(&Convert{Expr: expr, Type: typ, L: l(parser, start, end)})
+		}(
+			start0, pos, label1, label0)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _CvtArgAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, _CvtArg, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// Switch/SwitchArg
+	{
+		pos3 := pos
+		// Switch
+		if !_accept(parser, _SwitchAccepts, &pos, &perr) {
+			goto fail4
+		}
+		goto ok0
+	fail4:
+		pos = pos3
+		// SwitchArg
+		if !_accept(parser, _SwitchArgAccepts, &pos, &perr) {
+			goto fail5
+		}
+		goto ok0
+	fail5:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	return _memoize(parser, _CvtArg, start, pos, perr)
+fail:
+	return _memoize(parser, _CvtArg, start, -1, perr)
+}
+
+func _CvtArgFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, _CvtArg, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "CvtArg",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _CvtArg}
 	// Switch/SwitchArg
 	{
 		pos3 := pos
@@ -8970,12 +9275,12 @@ fail:
 	return -1, failure
 }
 
-func _KwArgAction(parser *_Parser, start int) (int, *Expr) {
-	dp := parser.deltaPos[start][_KwArg]
+func _CvtArgAction(parser *_Parser, start int) (int, *Expr) {
+	dp := parser.deltaPos[start][_CvtArg]
 	if dp < 0 {
 		return -1, nil
 	}
-	key := _key{start: start, rule: _KwArg}
+	key := _key{start: start, rule: _CvtArg}
 	n := parser.act[key]
 	if n != nil {
 		n := n.(Expr)
@@ -10784,25 +11089,9 @@ func _Bin1ArgAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// Cvt/UnArg
-	{
-		pos3 := pos
-		// Cvt
-		if !_accept(parser, _CvtAccepts, &pos, &perr) {
-			goto fail4
-		}
-		goto ok0
-	fail4:
-		pos = pos3
-		// UnArg
-		if !_accept(parser, _UnArgAccepts, &pos, &perr) {
-			goto fail5
-		}
-		goto ok0
-	fail5:
-		pos = pos3
+	// UnArg
+	if !_accept(parser, _UnArgAccepts, &pos, &perr) {
 		goto fail
-	ok0:
 	}
 	return _memoize(parser, _Bin1Arg, start, pos, perr)
 fail:
@@ -10819,25 +11108,9 @@ func _Bin1ArgFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _Bin1Arg}
-	// Cvt/UnArg
-	{
-		pos3 := pos
-		// Cvt
-		if !_fail(parser, _CvtFail, errPos, failure, &pos) {
-			goto fail4
-		}
-		goto ok0
-	fail4:
-		pos = pos3
-		// UnArg
-		if !_fail(parser, _UnArgFail, errPos, failure, &pos) {
-			goto fail5
-		}
-		goto ok0
-	fail5:
-		pos = pos3
+	// UnArg
+	if !_fail(parser, _UnArgFail, errPos, failure, &pos) {
 		goto fail
-	ok0:
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -10859,34 +11132,12 @@ func _Bin1ArgAction(parser *_Parser, start int) (int, *Expr) {
 	}
 	var node Expr
 	pos := start
-	// Cvt/UnArg
-	{
-		pos3 := pos
-		var node2 Expr
-		// Cvt
-		if p, n := _CvtAction(parser, pos); n == nil {
-			goto fail4
-		} else {
-			node = *n
-			pos = p
-		}
-		goto ok0
-	fail4:
-		node = node2
-		pos = pos3
-		// UnArg
-		if p, n := _UnArgAction(parser, pos); n == nil {
-			goto fail5
-		} else {
-			node = *n
-			pos = p
-		}
-		goto ok0
-	fail5:
-		node = node2
-		pos = pos3
+	// UnArg
+	if p, n := _UnArgAction(parser, pos); n == nil {
 		goto fail
-	ok0:
+	} else {
+		node = *n
+		pos = p
 	}
 	parser.act[key] = node
 	return pos, &node
@@ -11065,290 +11316,6 @@ func _Bin1OpAction(parser *_Parser, start int) (int, *Ident) {
 			return Ident{Name: name, L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
-	}
-	parser.act[key] = node
-	return pos, &node
-fail:
-	return -1, nil
-}
-
-func _CvtAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [2]string
-	use(labels)
-	if dp, de, ok := _memo(parser, _Cvt, start); ok {
-		return dp, de
-	}
-	pos, perr := start, -1
-	// action
-	// typ:Type (Space/Cmnt) ":" (Space/Cmnt) expr:UnArg
-	// typ:Type
-	{
-		pos1 := pos
-		// Type
-		if !_accept(parser, _TypeAccepts, &pos, &perr) {
-			goto fail
-		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// (Space/Cmnt)
-	// Space/Cmnt
-	{
-		pos5 := pos
-		// Space
-		if !_accept(parser, _SpaceAccepts, &pos, &perr) {
-			goto fail6
-		}
-		goto ok2
-	fail6:
-		pos = pos5
-		// Cmnt
-		if !_accept(parser, _CmntAccepts, &pos, &perr) {
-			goto fail7
-		}
-		goto ok2
-	fail7:
-		pos = pos5
-		goto fail
-	ok2:
-	}
-	// ":"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
-		perr = _max(perr, pos)
-		goto fail
-	}
-	pos++
-	// (Space/Cmnt)
-	// Space/Cmnt
-	{
-		pos11 := pos
-		// Space
-		if !_accept(parser, _SpaceAccepts, &pos, &perr) {
-			goto fail12
-		}
-		goto ok8
-	fail12:
-		pos = pos11
-		// Cmnt
-		if !_accept(parser, _CmntAccepts, &pos, &perr) {
-			goto fail13
-		}
-		goto ok8
-	fail13:
-		pos = pos11
-		goto fail
-	ok8:
-	}
-	// expr:UnArg
-	{
-		pos14 := pos
-		// UnArg
-		if !_accept(parser, _UnArgAccepts, &pos, &perr) {
-			goto fail
-		}
-		labels[1] = parser.text[pos14:pos]
-	}
-	return _memoize(parser, _Cvt, start, pos, perr)
-fail:
-	return _memoize(parser, _Cvt, start, -1, perr)
-}
-
-func _CvtFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [2]string
-	use(labels)
-	pos, failure := _failMemo(parser, _Cvt, start, errPos)
-	if failure != nil {
-		return pos, failure
-	}
-	failure = &peg.Fail{
-		Name: "Cvt",
-		Pos:  int(start),
-	}
-	key := _key{start: start, rule: _Cvt}
-	// action
-	// typ:Type (Space/Cmnt) ":" (Space/Cmnt) expr:UnArg
-	// typ:Type
-	{
-		pos1 := pos
-		// Type
-		if !_fail(parser, _TypeFail, errPos, failure, &pos) {
-			goto fail
-		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// (Space/Cmnt)
-	// Space/Cmnt
-	{
-		pos5 := pos
-		// Space
-		if !_fail(parser, _SpaceFail, errPos, failure, &pos) {
-			goto fail6
-		}
-		goto ok2
-	fail6:
-		pos = pos5
-		// Cmnt
-		if !_fail(parser, _CmntFail, errPos, failure, &pos) {
-			goto fail7
-		}
-		goto ok2
-	fail7:
-		pos = pos5
-		goto fail
-	ok2:
-	}
-	// ":"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "\":\"",
-			})
-		}
-		goto fail
-	}
-	pos++
-	// (Space/Cmnt)
-	// Space/Cmnt
-	{
-		pos11 := pos
-		// Space
-		if !_fail(parser, _SpaceFail, errPos, failure, &pos) {
-			goto fail12
-		}
-		goto ok8
-	fail12:
-		pos = pos11
-		// Cmnt
-		if !_fail(parser, _CmntFail, errPos, failure, &pos) {
-			goto fail13
-		}
-		goto ok8
-	fail13:
-		pos = pos11
-		goto fail
-	ok8:
-	}
-	// expr:UnArg
-	{
-		pos14 := pos
-		// UnArg
-		if !_fail(parser, _UnArgFail, errPos, failure, &pos) {
-			goto fail
-		}
-		labels[1] = parser.text[pos14:pos]
-	}
-	parser.fail[key] = failure
-	return pos, failure
-fail:
-	parser.fail[key] = failure
-	return -1, failure
-}
-
-func _CvtAction(parser *_Parser, start int) (int, *Expr) {
-	var labels [2]string
-	use(labels)
-	var label0 Type
-	var label1 Expr
-	dp := parser.deltaPos[start][_Cvt]
-	if dp < 0 {
-		return -1, nil
-	}
-	key := _key{start: start, rule: _Cvt}
-	n := parser.act[key]
-	if n != nil {
-		n := n.(Expr)
-		return start + int(dp-1), &n
-	}
-	var node Expr
-	pos := start
-	// action
-	{
-		start0 := pos
-		// typ:Type (Space/Cmnt) ":" (Space/Cmnt) expr:UnArg
-		// typ:Type
-		{
-			pos2 := pos
-			// Type
-			if p, n := _TypeAction(parser, pos); n == nil {
-				goto fail
-			} else {
-				label0 = *n
-				pos = p
-			}
-			labels[0] = parser.text[pos2:pos]
-		}
-		// (Space/Cmnt)
-		// Space/Cmnt
-		{
-			pos6 := pos
-			// Space
-			if p, n := _SpaceAction(parser, pos); n == nil {
-				goto fail7
-			} else {
-				pos = p
-			}
-			goto ok3
-		fail7:
-			pos = pos6
-			// Cmnt
-			if p, n := _CmntAction(parser, pos); n == nil {
-				goto fail8
-			} else {
-				pos = p
-			}
-			goto ok3
-		fail8:
-			pos = pos6
-			goto fail
-		ok3:
-		}
-		// ":"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
-			goto fail
-		}
-		pos++
-		// (Space/Cmnt)
-		// Space/Cmnt
-		{
-			pos12 := pos
-			// Space
-			if p, n := _SpaceAction(parser, pos); n == nil {
-				goto fail13
-			} else {
-				pos = p
-			}
-			goto ok9
-		fail13:
-			pos = pos12
-			// Cmnt
-			if p, n := _CmntAction(parser, pos); n == nil {
-				goto fail14
-			} else {
-				pos = p
-			}
-			goto ok9
-		fail14:
-			pos = pos12
-			goto fail
-		ok9:
-		}
-		// expr:UnArg
-		{
-			pos15 := pos
-			// UnArg
-			if p, n := _UnArgAction(parser, pos); n == nil {
-				goto fail
-			} else {
-				label1 = *n
-				pos = p
-			}
-			labels[1] = parser.text[pos15:pos]
-		}
-		node = func(
-			start, end int, expr Expr, typ Type) Expr {
-			return Expr(&Convert{Expr: expr, Type: typ, L: l(parser, start, end)})
-		}(
-			start0, pos, label1, label0)
 	}
 	parser.act[key] = node
 	return pos, &node

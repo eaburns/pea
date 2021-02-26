@@ -179,7 +179,7 @@ Exprs <- e0:Expr es:(_ "," e1:Expr { return Expr(e1) })* (_ ",")? {
 }
 
 Asgn <- Bin<AsgnOp, AsgnArg>
-AsgnArg <- KwCall / KwArg
+AsgnArg <- Cvt / KwCall / KwArg
 AsgnOp "assignment operator" <- _ name:":=" {
 	return Ident{Name: name, L: l(parser, start, end)}
 }
@@ -187,7 +187,12 @@ AsgnOp "assignment operator" <- _ name:":=" {
 KwCall <- nameArgs:NameArg<Kwd, KwArg>+ {
 	return Expr(nary(l(parser, start, end), nameArgs))
 }
-KwArg <- Switch / SwitchArg
+KwArg <- Cvt / CvtArg
+
+Cvt <- typ:Type _ "::" expr:CvtArg {
+	return Expr(&Convert{Expr: expr, Type: typ, L: l(parser, start, end)})
+}
+CvtArg <- Switch / SwitchArg
 
 Switch <- arg0:SwitchArg nameArgs:NameArg<CaseId, SwitchArg>+ {
 	call := nary(l(parser, start, end), nameArgs)
@@ -226,7 +231,7 @@ Bin2Op "operator" <- _ name:([+\-^] O*) {
 
 # TODO: what precedence are [~?@$]?
 Bin1 <- Bin<Bin1Op, Bin1Arg>
-Bin1Arg <- Cvt / UnArg
+Bin1Arg <- UnArg
 Bin1Op "operator" <- _ name:([*/%] O*) {
 	return Ident{Name: name, L: l(parser, start, end)}
 }
@@ -240,13 +245,6 @@ BinTail<O, A> <- name:O arg1:A {
 		Args: []Expr{nil, arg1},
 		L: l(parser, start, end),
 	}
-}
-
-# TODO: The required Space/Cmnt here fixes an ambiguity
-# between a keyword call and a convert.
-# We need a new syntax for convert, without such an issue.
-Cvt <- typ:Type (Space / Cmnt) ":" (Space / Cmnt) expr:UnArg {
-	return Expr(&Convert{Expr: expr, Type: typ, L: l(parser, start, end)})
 }
 
 # Signed numeric literals are a primary, not a Un.
