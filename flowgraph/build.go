@@ -15,14 +15,32 @@ func Build(mod *checker.Mod) *Mod {
 	mod.Imported = true
 
 	mb := newModBuilder(mod.Path)
+	var varInits []checker.Expr
 	for _, d := range mod.Defs {
-		f, ok := d.(*checker.FuncDef)
-		if !ok {
-			continue
+		if d, ok := d.(*checker.VarDef); ok {
+			v := &VarDef{
+				Mod:  mb.Mod,
+				Name: d.Name,
+				Type: mb.buildType(d.T),
+			}
+			mb.Vars = append(mb.Vars, v)
+			varInits = append(varInits, d.Expr)
+			mb.varDef[d] = v
 		}
-		for _, n := range f.Insts {
-			mb.buildFuncInst(n)
+	}
+	for _, d := range mod.Defs {
+		if d, ok := d.(*checker.FuncDef); ok {
+			for _, n := range d.Insts {
+				mb.buildFuncInst(n)
+			}
 		}
+	}
+	if len(varInits) > 0 {
+		fb := mb.newFuncBuilder(mod.Path, "<init>", nil, &checker.StructType{}, loc.Loc{})
+		b0 := fb.buildBlock0(nil)
+		b1 := fb.buildBlocks(varInits)
+		b0.jump(b1)
+		mb.Init = fb.FuncDef
 	}
 	return mb.Mod
 }

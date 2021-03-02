@@ -178,7 +178,13 @@ func (interp *Interp) step() {
 		}
 		frame.vals[instr] = Array{Elems: &ary}
 	case *flowgraph.Var:
-		frame.vals[instr] = interp.vars[instr.Def]
+		v, ok := interp.vars[instr.Def]
+		if !ok {
+			x := newObj(instr.Def.Type)
+			v = Pointer{Elem: &x}
+			interp.vars[instr.Def] = v
+		}
+		frame.vals[instr] = v
 	case *flowgraph.Parm:
 		frame.vals[instr] = Pointer{Elem: frame.args[instr.Def]}
 	case *flowgraph.Field:

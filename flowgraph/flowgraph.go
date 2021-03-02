@@ -14,6 +14,11 @@ type Mod struct {
 	Vars    []*VarDef
 	Funcs   []*FuncDef
 	Tests   []*FuncDef
+	// Init points to a FuncDef in the Funcs slice
+	// that has initialization for the module.
+	// It must be called before any defs of the module are used
+	// (funcs called, vars/consts read/stored, or tests called).
+	Init *FuncDef
 }
 
 type Type interface {
@@ -420,7 +425,7 @@ type Var struct {
 
 func (*Var) Uses() []Value  { return nil }
 func (v *Var) Loc() loc.Loc { return v.L }
-func (v *Var) Type() Type   { return v.Def.Type }
+func (v *Var) Type() Type   { return &AddrType{Elem: v.Def.Type} }
 
 type Parm struct {
 	value

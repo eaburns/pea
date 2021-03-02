@@ -479,7 +479,7 @@ func TestBlockNewLocal(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	block := findVarDef(t, "testVar", mod).Expr.(*Convert).Expr.(*BlockLit)
+	block := findVarDef(t, "testVar", mod).Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit)
 	want := []*LocalDef{
 		{Name: "x", T: &BasicType{Kind: Int}},
 		{Name: "y", T: &BasicType{Kind: String}},
@@ -701,7 +701,7 @@ func TestNewLocalTypes(t *testing.T) {
 			switch mod, errs := check("test", []string{src}, nil); {
 			case test.err == "" && len(errs) == 0:
 				xxx := findVarDef(t, "xxx", mod)
-				got := xxx.Expr.(*Convert).Expr.(*BlockLit).Locals[0].Type()
+				got := xxx.Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit).Locals[0].Type()
 				want := findVarDef(t, "want", mod).Type()
 				if !eqType(got, want) {
 					t.Errorf("got %s, want %s", got, want)
@@ -2338,7 +2338,7 @@ func TestOverloadResolution(t *testing.T) {
 			mod, errs := check("test", []string{src}, []testMod{test.otherMod})
 			switch {
 			case test.err == "" && len(errs) == 0:
-				expr := findVarDef(t, "zz", mod).Expr
+				expr := findVarDef(t, "zz", mod).Expr.(*Call).Args[1]
 				if test.ret == "" {
 					expr = expr.(*Convert).Expr.(*BlockLit).Exprs[0].(*Convert).Expr.(*Call).Args[1]
 				}
@@ -2425,7 +2425,7 @@ func TestCaptureParm(t *testing.T) {
 	}
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
-	bOuter := x.Expr.(*Convert).Expr.(*BlockLit)
+	bOuter := x.Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit)
 	bInner := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))
@@ -2447,7 +2447,7 @@ func TestCaptureCapture(t *testing.T) {
 	}
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
-	bOuter := x.Expr.(*Convert).Expr.(*BlockLit)
+	bOuter := x.Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit)
 	bMid := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bMid.Caps) != 1 {
 		t.Fatalf("got %d mid caps, expected 1", len(bMid.Caps))
@@ -2477,7 +2477,7 @@ func TestCaptureOnCall(t *testing.T) {
 	}
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
-	bOuter := x.Expr.(*Convert).Expr.(*BlockLit)
+	bOuter := x.Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit)
 	bInner := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))

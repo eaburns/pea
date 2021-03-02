@@ -54,5 +54,9 @@ func main() {
 	}
 	r := interp.New()
 	r.Trace = *trace
+	if g.Init != nil {
+		fmt.Println("init")
+		r.Eval(g.Init)
+	}
 	r.Eval(main)
 }

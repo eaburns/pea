@@ -529,7 +529,16 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
-		def.Expr = expr
+		def.Expr = &Call{
+			Func: &Builtin{
+				Op:    Assign,
+				Parms: []Type{refType(def.T), expr.Type()},
+				Ret:   expr.Type(),
+			},
+			Args: []Expr{&Var{Def: def, T: refType(def.T), L: def.L}, expr},
+			T:    expr.Type(),
+			L:    def.L,
+		}
 	}
 	if def.T == nil && def.Expr != nil {
 		def.T = def.Expr.Type()
