@@ -1,0 +1,18 @@
+// Hello, World!
+// Goodbye, All!
+func main() {
+	true ?true {
+		print("Hello, World!")
+	} ?false {
+		print("fail")
+	},
+	print("\n"),
+	false ?true {
+		print("fail")
+	} ?false {
+		print("Goodbye, All!")
+	}
+}
+
+const true bool := [?true]
+const false bool := [?false]

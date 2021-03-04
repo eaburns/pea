@@ -1,0 +1,17 @@
+// <None>
+// Hello, World!
+func main() {
+	print(string_pointer :: [?none]),
+	print("\n"),
+	print(string_pointer :: [?some "Hello, World!"])
+}
+
+func print(x string_pointer) {
+	x ?none {
+		print("<None>")
+	} ?some (s &string) {
+		print(s)
+	}
+}
+
+type string_pointer [?none, ?some &string]

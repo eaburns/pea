@@ -1403,7 +1403,11 @@ func wrapCallInBlock(fun Func, l loc.Loc) Expr {
 		blk.Parms[i].Name = fmt.Sprintf("x%d", i)
 		blk.Parms[i].T = typ.Parms[i]
 		blk.Parms[i].L = l
-		call.Args[i] = &Parm{Def: &blk.Parms[i], T: typ.Parms[i], L: l}
+		call.Args[i] = deref(&Parm{
+			Def: &blk.Parms[i],
+			T:   refType(typ.Parms[i]),
+			L:   l,
+		})
 	}
 	return deref(blk)
 }

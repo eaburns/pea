@@ -67,7 +67,12 @@ func newObj(typ flowgraph.Type) Obj {
 		}
 		return Struct{Fields: fields}
 	case *flowgraph.UnionType:
-		return Union{}
+		cases := make([]Case, len(typ.Cases))
+		for i := range typ.Cases {
+			cases[i].Name = typ.Cases[i].Name
+			cases[i].Val = newObj(typ.Cases[i].Type)
+		}
+		return Union{Cases: cases}
 	case *flowgraph.FuncType:
 		return Func{}
 	default:
@@ -93,7 +98,11 @@ type Field struct {
 	Name string
 	Val  Obj
 }
-type Union struct{ Case Obj }
+type Union struct{ Cases []Case }
+type Case struct {
+	Name string
+	Val  Obj
+}
 
 func (o Int8) String() string    { return fmt.Sprintf("%d", o) }
 func (o Int16) String() string   { return fmt.Sprintf("%d", o) }
@@ -116,6 +125,9 @@ func (o Func) String() string {
 func (o Pointer) String() string {
 	if o.Elem == nil {
 		return "null"
+	}
+	if *o.Elem == nil {
+		panic("impossible")
 	}
 	return fmt.Sprintf("&%s", *o.Elem)
 }
@@ -143,7 +155,14 @@ func (o Array) String() string {
 func (o Union) String() string {
 	var s strings.Builder
 	s.WriteRune('{')
-	s.WriteString(o.Case.String())
+	for i, f := range o.Cases {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		s.WriteString(f.Name)
+		s.WriteString(": ")
+		s.WriteString(f.Val.String())
+	}
 	s.WriteRune('}')
 	return s.String()
 }

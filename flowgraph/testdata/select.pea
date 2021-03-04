@@ -1,0 +1,4 @@
+// 123
+func main() { print_int([.x 1, .y 123].y) }
+
+func print_int(_ int)

@@ -1,0 +1,3 @@
+// Hello, World!
+func main() { foo("Hello, World!") }
+func foo(s string) { print(s) }

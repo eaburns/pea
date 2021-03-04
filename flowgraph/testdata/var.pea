@@ -1,0 +1,3 @@
+// Hello, World!
+func main() { print(str) }
+var str string := "Hello, World!"

@@ -1,0 +1,3 @@
+// 123
+func main() { print_int(int :: (float64 :: 123.0)) }
+func print_int(_ int)

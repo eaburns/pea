@@ -1,0 +1,19 @@
+// 111222333444555666777
+func main() {
+	print(u :: [?one]),
+	print(u :: [?two]),
+	print(u :: [?three]),
+	print(u :: [?four]),
+	print(u :: [?five]),
+	print(u :: [?six]),
+	print(u :: [?seven]),
+}
+
+type u [?one, ?two, ?three, ?four, ?five, ?six, ?seven]
+func print(u u) {
+	print_int(u ?one {1} ?two {2} ?three {3} ?four {4} ?five {5} ?six {6} ?seven {7}),
+	print_int(u ?seven {7} ?six {6} ?five {5} ?four {4} ?three {3} ?two {2} ?one {1}),
+	print_int(u ?three {3} ?four {4} ?one {1} ?two {2} ?seven {7} ?five {5} ?six {6})
+}
+
+func print_int(_ int)

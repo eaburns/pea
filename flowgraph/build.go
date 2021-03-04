@@ -167,7 +167,11 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 		funcType := &FuncType{Parms: make([]Type, len(typ.Parms)+1)}
 		funcType.Parms[0] = &AddrType{Elem: &StructType{}} // closure
 		for i, p := range typ.Parms {
-			funcType.Parms[i+1] = mb.buildType(p)
+			t := mb.buildType(p)
+			if !t.isSmall() {
+				t = &AddrType{Elem: t}
+			}
+			funcType.Parms[i+1] = t
 		}
 		funcType.Ret = mb.buildType(typ.Ret)
 		return &StructType{
@@ -638,7 +642,7 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 		tag = bb.load(base)
 	} else {
 		unionHeaderType := typ.(*StructType)
-		tag = bb.field(base, unionHeaderType.Fields[0])
+		tag = bb.load(bb.field(base, unionHeaderType.Fields[0]))
 		unionBase = bb.field(base, unionHeaderType.Fields[1])
 	}
 
@@ -753,10 +757,13 @@ func (bb *blockBuilder) buildCases(min, max int, tag, res Value, cases []switchC
 func (bb *blockBuilder) buildCaseCall(cas switchCase, res Value, bDone *blockBuilder) {
 	if cas.base == nil {
 		bb.buildBranchCall(cas.fun, nil, res, bDone)
-	} else {
-		val := bb.Case(cas.base, cas.def)
-		bb.buildBranchCall(cas.fun, val, res, bDone)
+		return
 	}
+	var val Value = bb.Case(cas.base, cas.def)
+	if cas.def.Type.isSmall() {
+		val = bb.load(val)
+	}
+	bb.buildBranchCall(cas.fun, val, res, bDone)
 }
 
 func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Call) (*blockBuilder, Value) {
@@ -1124,7 +1131,7 @@ func (bb *blockBuilder) unionLit(lit *checker.UnionLit) (*blockBuilder, Value) {
 			break
 		}
 		data := bb.field(a, t.Fields[1])
-		c := t.Fields[1].Type.(*UnionType).Cases[n]
+		c := unionCase(t.Fields[1].Type.(*UnionType), lit.Case)
 		cas := bb.Case(data, c)
 		if c.Type.isSmall() {
 			bb.store(cas, v)
@@ -1141,6 +1148,16 @@ func caseNum(u *checker.UnionType, cas *checker.CaseDef) int {
 	for i := range u.Cases {
 		if &u.Cases[i] == cas {
 			return i
+		}
+	}
+	panic("no such case")
+}
+
+func unionCase(u *UnionType, cas *checker.CaseDef) *CaseDef {
+	name := strings.TrimPrefix(cas.Name, "?")
+	for _, c := range u.Cases {
+		if c.Name == name {
+			return c
 		}
 	}
 	panic("no such case")

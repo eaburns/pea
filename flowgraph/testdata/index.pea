@@ -1,0 +1,3 @@
+// 123
+func main() {print_int([1, 2, 123, 4][2])}
+func print_int(_ int)

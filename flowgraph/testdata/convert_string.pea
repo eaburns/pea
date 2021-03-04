@@ -1,0 +1,4 @@
+// Hello, World!
+func main() {
+	print(string :: ([uint8] :: ['H', 'e', 'l', 'l', 'o', ',', ' ', 'W', 'o', 'r', 'l', 'd', '!']))
+}

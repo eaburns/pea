@@ -1,0 +1,25 @@
+// Hello, World!
+// 123
+// 123
+func main() {
+	foo(print),
+	print("\n"),
+	foo(print_int),
+	print("\n"),
+	foo(print_byte)
+}
+
+func foo(f (string){}) {
+	f("Hello, World!")
+}
+
+func foo(f (int){}) {
+	f(123)
+}
+
+func foo(f (uint8){}) {
+	f(123)
+}
+
+func print_byte(b uint8) { print_int(int :: b) }
+func print_int(_ int)

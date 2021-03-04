@@ -63,7 +63,7 @@ func (*AddrType) isSmall() bool { return true }
 
 func (t *AddrType) eq(other Type) bool {
 	o, ok := other.(*AddrType)
-	return ok && t.Elem.isEmpty() || o.Elem.isEmpty() || t.Elem.eq(o.Elem)
+	return ok && (t.Elem.isEmpty() || o.Elem.isEmpty() || t.Elem.eq(o.Elem))
 }
 
 type ArrayType struct {

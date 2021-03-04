@@ -1,0 +1,24 @@
+// 1
+// 2
+// 3
+func main() {
+	print(one_two_three :: [?one]),
+	print("\n"),
+	print(one_two_three :: [?two]),
+	print("\n"),
+	print(one_two_three :: [?three])
+}
+
+type one_two_three [?one, ?two, ?three]
+
+func print(x one_two_three) {
+	x ?one {
+		print_int(1)
+	} ?two {
+		print_int(2)
+	} ?three {
+		print_int(3)
+	}
+}
+
+func print_int(_ int)

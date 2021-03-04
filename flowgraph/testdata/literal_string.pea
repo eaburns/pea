@@ -1,0 +1,4 @@
+// Tests a simple string printing.
+
+// Hello, World!
+func main() { print("Hello, World!") }

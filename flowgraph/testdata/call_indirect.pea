@@ -1,0 +1,9 @@
+// Hello, World!
+func main() {
+	f := bar,
+	f := foo,
+	f()
+}
+
+func bar() {print("fail")}
+func foo() {print("Hello, World!")}

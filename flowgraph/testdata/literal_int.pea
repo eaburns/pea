@@ -1,0 +1,6 @@
+// Test simple printing of an integer using the interpreter's builtin print_int function.
+
+func print_int(_ int)
+
+// 123
+func main() { print_int(123) }

@@ -98,7 +98,7 @@ func (interp *Interp) step() {
 	case *flowgraph.Call:
 		fun := frame.vals[instr.Func].(Func)
 		if len(fun.Def.Blocks) == 0 && fun.Def.Name == "print_int" {
-			fmt.Printf("%d\n", frame.vals[instr.Args[0]].(SignedInt).Int64())
+			fmt.Fprintf(interp.Out, "%d", frame.vals[instr.Args[0]].(SignedInt).Int64())
 			break
 		}
 		args := make([]Obj, len(instr.Args))
@@ -186,14 +186,31 @@ func (interp *Interp) step() {
 		}
 		frame.vals[instr] = v
 	case *flowgraph.Parm:
-		frame.vals[instr] = Pointer{Elem: frame.args[instr.Def]}
+		p, ok := frame.args[instr.Def]
+		if !ok {
+			panic(fmt.Sprintf("no parameter %s", instr.Def.Name))
+		}
+		if *p == nil {
+			panic(fmt.Sprintf("nil parameter %s", instr.Def.Name))
+		}
+		frame.vals[instr] = Pointer{Elem: p}
 	case *flowgraph.Field:
 		base := (*frame.vals[instr.Base].(Pointer).Elem).(Struct)
 		field := &base.Fields[instr.Def.Num].Val
 		frame.vals[instr] = Pointer{Elem: field}
 	case *flowgraph.Case:
 		base := (*frame.vals[instr.Base].(Pointer).Elem).(Union)
-		frame.vals[instr] = base.Case
+		var c *Case
+		for i := range base.Cases {
+			if base.Cases[i].Name == instr.Def.Name {
+				c = &base.Cases[i]
+				break
+			}
+		}
+		if c == nil {
+			panic("no case")
+		}
+		frame.vals[instr] = Pointer{Elem: &c.Val}
 	case *flowgraph.Index:
 		ary := *frame.vals[instr.Base].(Array).Elems
 		i := frame.vals[instr.Index].(SignedInt).Int64()
@@ -245,6 +262,8 @@ func (interp *Interp) step() {
 			panic(fmt.Sprintf("bad float size: %d", instr.T.Size))
 		}
 		frame.vals[instr] = x
+	case *flowgraph.Null:
+		frame.vals[instr] = Pointer{}
 	case *flowgraph.Op:
 		switch instr.Op {
 		case flowgraph.BitNot, flowgraph.Negate:
@@ -276,7 +295,9 @@ func (interp *Interp) step() {
 func goString(o Obj) string {
 	str := (*o.(Pointer).Elem).(Struct)
 	var s strings.Builder
-	for _, o := range *str.Fields[1].Val.(Array).Elems {
+	n := int(str.Fields[0].Val.(SignedInt).Int64())
+	for i := 0; i < n; i++ {
+		o := (*str.Fields[1].Val.(Array).Elems)[i]
 		s.WriteByte(uint8(o.(Uint8)))
 	}
 	return s.String()

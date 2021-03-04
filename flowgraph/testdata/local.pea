@@ -1,0 +1,5 @@
+// Hello, World!
+func main() {
+	str := "Hello, World!",
+	print(str)
+}
