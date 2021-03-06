@@ -17,29 +17,23 @@ Import <- _ reserved:("import" / "Import") id:Id? path:StrLit {
 	}
 }
 
-Def <- ConstDef / VarDef / TypeDef / FuncDef / TestDef
+Def <- VarDef / TypeDef / FuncDef / TestDef
 
-ConstDef <- _ reserved:("const" / "Const") name:Id typ:Type (_ ":=" expr:Expr)? {
-	return Def(&VarDef{
-		Exp: reserved == "Const",
-		Const: true,
-		Name: name,
-		Type: typ,
-		Expr: expr,
-		L: l(parser, start, end),
-	})
+VarDef <- _ reserved:("var" / "Var" / "const" / "Const") name:Id v:VarBody {
+	v.Exp = reserved == "Var" || reserved == "Const"
+	v.Const = reserved == "const" || reserved == "Const"
+	v.Name = name
+	v.L = l(parser, start, end)
+	return Def(&v)
 }
 
-VarDef <- _ reserved:("var" / "Var") name:Id typ:Type (_ ":=" expr:Expr)? {
-	return Def(&VarDef{
-		Exp: reserved == "Var",
-		Const: false,
-		Name: name,
-		Type: typ,
-		Expr: expr,
-		L: l(parser, start, end),
-	})
-}
+VarBody <-
+	typ0:Type {
+		return VarDef{Type: typ0}
+	} /
+	_ ":=" typ1:Type _ "::" expr:Expr {
+		return VarDef{Type: typ1, Expr: expr}
+	}
 
 TypeDef <- _ reserved:("type" / "Type") ps:TypeVars? name:Id alias:(_ ":=")? t:Type? {
 	var parms []TypeVar; if ps != nil { parms = *ps }

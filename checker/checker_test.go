@@ -142,12 +142,12 @@ func TestRedef(t *testing.T) {
 	}{
 		{
 			name: "var redef",
-			src: "var a int := 1		var a itn := 1",
+			src: "var a := int :: 1		var a := int :: 1",
 			err: "redefined",
 		},
 		{
 			name: "var _ not redef",
-			src: "var _ int := 1		var _ int := 1",
+			src: "var _ := int :: 1		var _ := int :: 1",
 			err: "",
 		},
 		{
@@ -187,13 +187,13 @@ func TestVarCycle(t *testing.T) {
 	}{
 		{
 			name: "self cycle",
-			src:  "var a int := a",
+			src:  "var a := int :: a",
 			err:  "cyclic initialization",
 		},
 		{
 			name: "simple funcall cycle",
 			src: `
-				var a int := foo()
+				var a := int :: foo()
 				func foo() int {return: a}
 			`,
 			err: "cyclic initialization",
@@ -201,21 +201,21 @@ func TestVarCycle(t *testing.T) {
 		{
 			name: "multi-var cycle",
 			src: `
-				var a int := b
-				var b int := c
-				var c int := d
-				var d int := a
+				var a := int :: b
+				var b := int :: c
+				var c := int :: d
+				var d := int :: a
 			`,
 			err: "cyclic initialization",
 		},
 		{
 			name: "multi-var-and-call cycle",
 			src: `
-				var a int := foo()
+				var a := int :: foo()
 				func foo() int { return: b }
-				var b int := bar()
+				var b := int :: bar()
 				func bar() int { return: c }
-				var c int := baz()
+				var c := int :: baz()
 				func baz() int { return: a }
 			`,
 			err: "cyclic initialization",
@@ -223,7 +223,7 @@ func TestVarCycle(t *testing.T) {
 		{
 			name: "ident fun cycle",
 			src: `
-				var a int := foo()
+				var a := int :: foo()
 				func foo() int { x := bar, return: x() }
 				func bar() int { return: a }
 			`,
@@ -232,7 +232,7 @@ func TestVarCycle(t *testing.T) {
 		{
 			name: "iface call cycle",
 			src: `
-				var a int := foo(5)
+				var a := int :: foo(5)
 				func foo(t T) T : bar(T)T { return: bar(t) }
 				func bar(i int)int { return: i + a }
 			`,
@@ -259,10 +259,10 @@ func TestVarCycle(t *testing.T) {
 
 func TestVarSorting(t *testing.T) {
 	const src = `
-		var x int := foo(z) + y
-		var xx int := z
-		var y int := 1
-		var z int := 2
+		var x := int :: foo(z) + y
+		var xx := int :: z
+		var y := int :: 1
+		var z := int :: 2
 		func foo(t T) T : bar(T)T {return: bar(t)}
 		func bar(_ int) int
 	`
@@ -295,7 +295,7 @@ func TestVarSorting(t *testing.T) {
 func TestRecursiveTypeParmFuncOK(t *testing.T) {
 	const src = `
 		func loop(t T) T {return: loop(t)}
-		var i int := loop(1)
+		var i := int :: loop(1)
 	`
 	if _, errs := check("test", []string{src}, nil); len(errs) != 0 {
 		t.Fatalf("expected 0 errors, got: %s", errs[0])
@@ -311,7 +311,7 @@ func TestTooMuchSubstitution(t *testing.T) {
 		func next5(t T) T : +(T, T)T, one() T { return: next6(t) }
 		func next6(t T) T : +(T, T)T, one() T { return: t + one() }
 		func one()int { return: 1 }
-		var i int := next1(1)
+		var i := int :: next1(1)
 	`
 	_, errs := check("test", []string{src}, nil)
 	if len(errs) != 1 {
@@ -324,7 +324,7 @@ func TestTooMuchSubstitution(t *testing.T) {
 
 func TestSubFuncInst(t *testing.T) {
 	const src = `
-		var v string := "abc"
+		var v := string :: "abc"
 		func f(p T) T : string(T)string {
 			{ print(string(p)) },
 			print(v),
@@ -332,7 +332,7 @@ func TestSubFuncInst(t *testing.T) {
 			return: l
 		}
 		func string(_ int) string
-		var _ int := f(5)
+		var _ := int :: f(5)
 	`
 	mod, errs := check("test", []string{src}, nil)
 	if len(errs) > 0 {
@@ -383,7 +383,7 @@ func TestFuncNewLocal(t *testing.T) {
 		// x and y are locals of the func.
 		// z is a local of the block.
 		// All other variables are not locals.
-		var a int := 1
+		var a := int :: 1
 		func testFunc(b int){
 			x := 1,
 			{z := x, use(z)},
@@ -423,7 +423,7 @@ func TestTestNewLocal(t *testing.T) {
 		// x and y are locals of the test.
 		// z is a local of the block.
 		// All other variables are not locals.
-		var a int := 1
+		var a := int :: 1
 		test testDef {
 			x := 1,
 			{z := x, use(z)},
@@ -462,8 +462,8 @@ func TestBlockNewLocal(t *testing.T) {
 		// x and y are locals of the outer block.
 		// z is a local of the inner block.
 		// All other variables are not locals.
-		var a int := 1
-		var testVar (int){} := (b int){
+		var a := int :: 1
+		var testVar := (int){} :: (b int){
 			x := 1,
 			{z := x, use(z)},
 			y := "hello",
@@ -499,7 +499,7 @@ func TestBlockNewLocal(t *testing.T) {
 
 func TestNoNewLocalInNestedExpr(t *testing.T) {
 	const src = `
-		var testVar int := 1 + (x := 2)
+		var testVar := int :: 1 + (x := 2)
 	`
 	switch _, errs := check("test", []string{src}, nil); {
 	case len(errs) != 1:
@@ -511,7 +511,7 @@ func TestNoNewLocalInNestedExpr(t *testing.T) {
 
 func TestNoNewLocalInArrayExprs(t *testing.T) {
 	const src = `
-		var testVar [int] := [1, x := 2]
+		var testVar := [int] :: [1, x := 2]
 	`
 	switch _, errs := check("test", []string{src}, nil); {
 	case len(errs) != 1:
@@ -693,7 +693,7 @@ func TestNewLocalTypes(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.expr, func(t *testing.T) {
-			src := fmt.Sprintf("%s\nvar xxx (){} := {got := %s}\n", test.src, test.expr)
+			src := fmt.Sprintf("%s\nvar xxx := (){} :: {got := %s}\n", test.src, test.expr)
 			if test.want != "" {
 				src += fmt.Sprintf("var want %s\n", test.want)
 			}
@@ -954,7 +954,7 @@ func TestArgumentConversions(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.parm+" : "+test.expr, func(t *testing.T) {
-			src := fmt.Sprintf("%s\nfunc fff(_ %s)\nvar _ (){} := {fff(%s)}",
+			src := fmt.Sprintf("%s\nfunc fff(_ %s)\nvar _ := (){} :: {fff(%s)}",
 				test.src, test.parm, test.expr)
 			t.Log(src)
 			switch _, errs := check("test", []string{src}, nil); {
@@ -1567,7 +1567,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in switch on bool",
-			src:  "const true bool := [?true]",
+			src:  "const true := bool :: [?true]",
 			call: "true ?true (){} ?false (){}",
 			want: "built-in ?true?false(&bool, (){}, (){})",
 		},
@@ -1791,33 +1791,33 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in assign",
-			src:  "var a int := 1",
+			src:  "var a := int :: 1",
 			call: "a := 6",
 			want: "built-in :=(&int, int)int",
 		},
 		{
 			name: "built-in assign, ref lhs",
-			src:  "var a int := 1",
+			src:  "var a := int :: 1",
 			call: "(&int :: a) := 6",
 			want: "built-in :=(&int, int)int",
 		},
 		{
 			name: "built-in assign, expected, lhs mismatch",
-			src:  "var a string := \"\"",
+			src:  "var a := string :: \"\"",
 			call: "a := 6",
 			ret:  "int",
 			err:  `cannot convert 6 \(int\) to type string`,
 		},
 		{
 			name: "built-in assign, expected, rhs mismatch",
-			src:  "var a int := 1",
+			src:  "var a := int :: 1",
 			call: "a := \"\"",
 			ret:  "int",
 			err:  `cannot convert "" \(string\) to type int`,
 		},
 		{
 			name: "built-in assign, lhs/rhs mismatch",
-			src:  "var a int := 1",
+			src:  "var a := int :: 1",
 			call: "a := \"\"",
 			err:  `cannot convert "" \(string\) to type int`,
 		},
@@ -2330,9 +2330,9 @@ func TestOverloadResolution(t *testing.T) {
 			}
 			var src string
 			if test.ret != "" {
-				src = fmt.Sprintf("%s\nvar zz %s := %s\n", test.src, test.ret, test.call)
+				src = fmt.Sprintf("%s\nvar zz := %s :: %s\n", test.src, test.ret, test.call)
 			} else {
-				src = fmt.Sprintf("%s\nvar zz (){} := { _ := (%s) }\n", test.src, test.call)
+				src = fmt.Sprintf("%s\nvar zz := (){} :: { _ := (%s) }\n", test.src, test.call)
 			}
 			t.Log(src)
 			mod, errs := check("test", []string{src}, []testMod{test.otherMod})
@@ -2396,16 +2396,16 @@ func TestChurch(t *testing.T) {
 func TestSwitchReturnTypes(t *testing.T) {
 	const src = `
 		type a_or_b [?a, ?b]
-		var _ (){} := {
+		var _ := (){} :: {
 			m() ?a {1} ?b {1},
 			//m() ?a {"hello"} ?b {1},
 			m() ?a {1},
 			m() ?b {1},
 		}
-		var _ int := m() ?a {1} ?b {1}
-		//var _ [.] := m() ?a {1} ?b {1}
-		var _ [.] := m() ?a {1}
-		var _ [.] := m() ?a {} ?b {}
+		var _ := int :: m() ?a {1} ?b {1}
+		//var _ := [.] :: m() ?a {1} ?b {1}
+		var _ := [.] :: m() ?a {1}
+		var _ := [.] :: m() ?a {} ?b {}
 		func m() a_or_b
 	`
 	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
@@ -2415,7 +2415,7 @@ func TestSwitchReturnTypes(t *testing.T) {
 
 func TestCaptureParm(t *testing.T) {
 	const src = `
-		var x (int){} := (i int){
+		var x := (int){} :: (i int){
 			{i + i + i}
 		}
 	`
@@ -2437,7 +2437,7 @@ func TestCaptureParm(t *testing.T) {
 
 func TestCaptureCapture(t *testing.T) {
 	const src = `
-		var x (int){} := (i int){
+		var x := (int){} :: (i int){
 			{{i + i + i}}
 		}
 	`
@@ -2467,7 +2467,7 @@ func TestCaptureCapture(t *testing.T) {
 
 func TestCaptureOnCall(t *testing.T) {
 	const src = `
-		var x ((){}){} := (f (){}){
+		var x := ((){}){} :: (f (){}){
 			{f()}
 		}
 	`
@@ -2493,51 +2493,51 @@ func TestNumLiteralErrors(t *testing.T) {
 		err  string
 		mods []testMod
 	}{
-		{src: "var x int8 := -128", err: ""},
-		{src: "var x int8 := -129", err: "underflow"},
-		{src: "var x int8 := 127", err: ""},
-		{src: "var x int8 := 128", err: "overflow"},
-		{src: "var x int16 := -32768", err: ""},
-		{src: "var x int16 := -327690", err: "underflow"},
-		{src: "var x int16 := 32767", err: ""},
-		{src: "var x int16 := 32768", err: "overflow"},
-		{src: "var x int32 := -2147483648", err: ""},
-		{src: "var x int32 := -2147483649", err: "underflow"},
-		{src: "var x int32 := 2147483647", err: ""},
-		{src: "var x int32 := 2147483648", err: "overflow"},
-		{src: "var x int64 := -9223372036854775808", err: ""},
-		{src: "var x int64 := -9223372036854775809", err: "underflow"},
-		{src: "var x int64 := 9223372036854775807", err: ""},
-		{src: "var x int64 := 9223372036854775808", err: "overflow"},
-		{src: "var x uint8 := 0", err: ""},
-		{src: "var x uint8 := -1", err: "underflow"},
-		{src: "var x uint8 := 255", err: ""},
-		{src: "var x uint8 := 256", err: "overflow"},
-		{src: "var x uint16 := 0", err: ""},
-		{src: "var x uint16 := -1", err: "underflow"},
-		{src: "var x uint16 := 65535", err: ""},
-		{src: "var x uint16 := 65536", err: "overflow"},
-		{src: "var x uint32 := 0", err: ""},
-		{src: "var x uint32 := -1", err: "underflow"},
-		{src: "var x uint32 := 4294967295", err: ""},
-		{src: "var x uint32 := 4294967296", err: "overflow"},
-		{src: "var x uint64 := 0", err: ""},
-		{src: "var x uint64 := -1", err: "underflow"},
-		{src: "var x uint64 := 18446744073709551615", err: ""},
-		{src: "var x uint64 := 18446744073709551616", err: "overflow"},
-		{src: "var x int := 1.00", err: ""},
-		{src: "var x int := 1.01", err: "truncates"},
-		{src: "var x float32 := 0.0", err: ""},
-		{src: "var x float32 := 3.1415926535", err: ""},
-		{src: "var x float32 := 123", err: ""},
-		{src: "var x float64 := 0.0", err: ""},
-		{src: "var x float64 := 3.1415926535", err: ""},
-		{src: "var x float64 := 123", err: ""},
-		{src: "type t int var x t := 1", err: ""},
-		{src: "type t int var x t := 1.00", err: ""},
-		{src: "type t uint8 var x t := 256", err: "overflow"},
-		{src: "type t float32 var x t := 3.14", err: ""},
-		{src: "type t float32 var x t := 123", err: ""},
+		{src: "var x := int8 :: -128", err: ""},
+		{src: "var x := int8 :: -129", err: "underflow"},
+		{src: "var x := int8 :: 127", err: ""},
+		{src: "var x := int8 :: 128", err: "overflow"},
+		{src: "var x := int16 :: -32768", err: ""},
+		{src: "var x := int16 :: -327690", err: "underflow"},
+		{src: "var x := int16 :: 32767", err: ""},
+		{src: "var x := int16 :: 32768", err: "overflow"},
+		{src: "var x := int32 :: -2147483648", err: ""},
+		{src: "var x := int32 :: -2147483649", err: "underflow"},
+		{src: "var x := int32 :: 2147483647", err: ""},
+		{src: "var x := int32 :: 2147483648", err: "overflow"},
+		{src: "var x := int64 :: -9223372036854775808", err: ""},
+		{src: "var x := int64 :: -9223372036854775809", err: "underflow"},
+		{src: "var x := int64 :: 9223372036854775807", err: ""},
+		{src: "var x := int64 :: 9223372036854775808", err: "overflow"},
+		{src: "var x := uint8 :: 0", err: ""},
+		{src: "var x := uint8 :: -1", err: "underflow"},
+		{src: "var x := uint8 :: 255", err: ""},
+		{src: "var x := uint8 :: 256", err: "overflow"},
+		{src: "var x := uint16 :: 0", err: ""},
+		{src: "var x := uint16 :: -1", err: "underflow"},
+		{src: "var x := uint16 :: 65535", err: ""},
+		{src: "var x := uint16 :: 65536", err: "overflow"},
+		{src: "var x := uint32 :: 0", err: ""},
+		{src: "var x := uint32 :: -1", err: "underflow"},
+		{src: "var x := uint32 :: 4294967295", err: ""},
+		{src: "var x := uint32 :: 4294967296", err: "overflow"},
+		{src: "var x := uint64 :: 0", err: ""},
+		{src: "var x := uint64 :: -1", err: "underflow"},
+		{src: "var x := uint64 :: 18446744073709551615", err: ""},
+		{src: "var x := uint64 :: 18446744073709551616", err: "overflow"},
+		{src: "var x := int :: 1.00", err: ""},
+		{src: "var x := int :: 1.01", err: "truncates"},
+		{src: "var x := float32 :: 0.0", err: ""},
+		{src: "var x := float32 :: 3.1415926535", err: ""},
+		{src: "var x := float32 :: 123", err: ""},
+		{src: "var x := float64 :: 0.0", err: ""},
+		{src: "var x := float64 :: 3.1415926535", err: ""},
+		{src: "var x := float64 :: 123", err: ""},
+		{src: "type t int var x := t :: 1", err: ""},
+		{src: "type t int var x := t :: 1.00", err: ""},
+		{src: "type t uint8 var x := t :: 256", err: "overflow"},
+		{src: "type t float32 var x := t :: 3.14", err: ""},
+		{src: "type t float32 var x := t :: 123", err: ""},
 	}
 	for _, test := range tests {
 		test := test

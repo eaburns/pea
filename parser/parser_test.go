@@ -438,7 +438,7 @@ func TestExpr(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.expr, func(t *testing.T) {
-			src := fmt.Sprintf("var _ (){} := {%s}", test.expr)
+			src := fmt.Sprintf("var _ := (){} :: {%s}", test.expr)
 			p := New()
 			if err := p.Parse("", strings.NewReader(src)); err != nil {
 				t.Log(src)
