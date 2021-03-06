@@ -1,0 +1,18 @@
+// false
+// true
+func main() {
+	print(string(!true)),
+	print("\n"),
+	print(string(!false))
+}
+
+const true := bool :: [?true]
+const false := bool :: [?false]
+
+func !(b bool) bool {
+	return: b ?true { false } ?false { true }
+}
+
+func string(b bool) string {
+	return: b ?true { "true" } ?false { "false" }
+}

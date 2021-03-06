@@ -1,0 +1,11 @@
+// Hello, World!
+func main() {
+	print(foo())
+}
+
+func foo() string {
+	true ?true { return: "Hello, World!" },
+	return: "fail"
+}
+
+const true := bool :: [?true]

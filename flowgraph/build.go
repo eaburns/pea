@@ -821,7 +821,7 @@ func (bb *blockBuilder) buildBranchCall(fun interface{}, arg, res Value, bDone *
 	var capsVal, funVal Value
 	if lit, ok := fun.(*checker.BlockLit); ok {
 		fb := bb.fun.mod.buildBlockLit(lit, bb.fun.longRetType)
-		capsVal = bb.blockCaps(fb.blockType, lit)
+		capsVal = bb.blockCaps(fb, lit)
 		funVal = bb.Func(fb.FuncDef)
 	} else {
 		funcExpr := fun.(Value)
@@ -1171,31 +1171,14 @@ func (bb *blockBuilder) blockLit(lit *checker.BlockLit) (*blockBuilder, Value) {
 	funcField := bb.field(a, headerType.Fields[0])
 	bb.store(funcField, funcVal)
 
-	caps := bb.blockCaps(fb.blockType, lit)
-
-	if !bb.fun.longRetType.isEmpty() {
-		var returnLoc Value
-		if bb.fun.blockType != nil {
-			parentBlock := bb.load(bb.parm(bb.fun.Parms[0]))
-			returnField := bb.field(parentBlock, bb.fun.returnField)
-			returnLoc = bb.load(returnField)
-		} else {
-			returnParm := bb.parm(bb.fun.Parms[len(bb.fun.Parms)-1])
-			returnLoc = bb.load(returnParm)
-		}
-		bb.store(bb.field(caps, fb.returnField), returnLoc)
-	}
-
-	frame := bb.frame()
-	bb.store(bb.field(caps, fb.frameField), frame)
-
-	dataVal := caps
+	dataVal := bb.blockCaps(fb, lit)
 	dataField := bb.field(a, headerType.Fields[1])
 	bb.store(dataField, dataVal)
 	return bb, a
 }
 
-func (bb *blockBuilder) blockCaps(capsType *StructType, blockLit *checker.BlockLit) Value {
+func (bb *blockBuilder) blockCaps(fb *funcBuilder, blockLit *checker.BlockLit) Value {
+	capsType := fb.blockType
 	if capsType.isEmpty() {
 		return bb.null(&AddrType{Elem: capsType})
 	}
@@ -1219,6 +1202,22 @@ func (bb *blockBuilder) blockCaps(capsType *StructType, blockLit *checker.BlockL
 		bb.store(bb.field(caps, capsType.Fields[i]), v)
 	}
 	bb.L = oldLoc
+
+	if !bb.fun.longRetType.isEmpty() {
+		var returnLoc Value
+		if bb.fun.blockType != nil {
+			parentBlock := bb.load(bb.parm(bb.fun.Parms[0]))
+			returnField := bb.field(parentBlock, bb.fun.returnField)
+			returnLoc = bb.load(returnField)
+		} else {
+			returnParm := bb.parm(bb.fun.Parms[len(bb.fun.Parms)-1])
+			returnLoc = bb.load(returnParm)
+		}
+		bb.store(bb.field(caps, fb.returnField), returnLoc)
+	}
+
+	frame := bb.frame()
+	bb.store(bb.field(caps, fb.frameField), frame)
 	return caps
 }
 

@@ -1,0 +1,9 @@
+// Hello, World!
+func main() {
+	print(foo())
+}
+
+func foo() string {
+	{ return: "Hello, World!" }(),
+	return: "fail"
+}
