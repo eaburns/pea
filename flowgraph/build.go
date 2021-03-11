@@ -1510,15 +1510,15 @@ func (bb *blockBuilder) addInstr(r Instruction) {
 		panic("adding to a complete block")
 	}
 	bb.Instrs = append(bb.Instrs, r)
+	for _, use := range r.Uses() {
+		use.addUser(r)
+	}
 }
 
 func (bb *blockBuilder) addValue(v Value) {
 	bb.addInstr(v)
 	bb.fun.next++
 	v.setNum(bb.fun.next - 1)
-	for _, use := range v.Uses() {
-		use.addUser(v)
-	}
 }
 
 func (bb *blockBuilder) addAlloc(v *Alloc) {
