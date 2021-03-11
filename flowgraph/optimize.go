@@ -355,10 +355,10 @@ func subParms(sub map[*ParmDef]Value, bs []*BasicBlock) {
 			}
 			p.delete()
 
-			s := make(map[interface{}]interface{})
+			s := make(map[Value]Value)
 			s[l] = v
 			for _, u := range l.UsedBy() {
-				u.sub(s)
+				u.subValues(s)
 				l.rmUser(u)
 				v.addUser(u)
 			}
@@ -387,10 +387,10 @@ func subCaps(sub map[*FieldDef]Value, bs []*BasicBlock) {
 				panic("impossible")
 			}
 			f.delete()
-			s := make(map[interface{}]interface{})
+			s := make(map[Value]Value)
 			s[l] = v
 			for _, u := range l.UsedBy() {
-				u.sub(s)
+				u.subValues(s)
 				l.rmUser(u)
 				v.addUser(u)
 			}
@@ -418,43 +418,38 @@ func subReturn(dst *BasicBlock, bs []*BasicBlock) {
 
 func copyBlocks(destFunc *FuncDef, bs []*BasicBlock) []*BasicBlock {
 	copy := make([]*BasicBlock, len(bs))
-	sub := make(map[interface{}]interface{})
+	subBlocks := make(map[*BasicBlock]*BasicBlock)
 	for i := range copy {
 		c := *bs[i]
 		c.In = append([]*BasicBlock{}, bs[i].In...)
 		c.Func = destFunc
 		c.Instrs = append([]Instruction{}, c.Instrs...)
 		copy[i] = &c
-		sub[bs[i]] = &c
+		subBlocks[bs[i]] = &c
 	}
-	newInstrs := make(map[Instruction]bool)
+	subValues := make(map[Value]Value)
+	subInstrs := make(map[Instruction]Instruction)
 	for _, b := range copy {
 		for i := range b.In {
-			b.In[i] = subBlock(b.In[i], sub)
+			b.In[i] = subBlock(b.In[i], subBlocks)
 		}
 		for i := range b.Instrs {
 			c := b.Instrs[i].shallowCopy()
-			sub[b.Instrs[i]] = c
-			newInstrs[c] = true
+			subInstrs[b.Instrs[i]] = c
+			if v, ok := b.Instrs[i].(Value); ok {
+				subValues[v] = c.(Value)
+			}
 			b.Instrs[i] = c
 		}
 	}
 	for _, b := range copy {
 		for i := range b.Instrs {
-			b.Instrs[i].sub(sub)
-
-			// Sanity checks.
-			for _, u := range b.Instrs[i].Uses() {
-				if !newInstrs[u] {
-					panic("impossible")
-				}
-			}
+			b.Instrs[i].subValues(subValues)
 			if v, ok := b.Instrs[i].(Value); ok {
-				for _, u := range v.UsedBy() {
-					if !newInstrs[u] {
-						panic("impossible")
-					}
-				}
+				v.subUsers(subInstrs)
+			}
+			if t, ok := b.Instrs[i].(Terminal); ok {
+				t.subBlocks(subBlocks)
 			}
 		}
 	}
@@ -533,137 +528,117 @@ func shallowCopyUsedBy(v *value) {
 	v.users = append([]Instruction{}, v.users...)
 }
 
-func (o *Store) sub(sub map[interface{}]interface{}) {
+func (o *If) subBlocks(sub map[*BasicBlock]*BasicBlock) {
+	o.Yes = subBlock(o.Yes, sub)
+	o.No = subBlock(o.No, sub)
+}
+
+func (o *Jump) subBlocks(sub map[*BasicBlock]*BasicBlock) {
+	o.Dst = subBlock(o.Dst, sub)
+}
+
+func (o *Return) subBlocks(sub map[*BasicBlock]*BasicBlock) {}
+
+func subBlock(old *BasicBlock, sub map[*BasicBlock]*BasicBlock) *BasicBlock {
+	if new, ok := sub[old]; ok {
+		return new
+	}
+	panic("no substitution")
+}
+
+func (o *Store) subValues(sub map[Value]Value) {
 	o.Dst = subValue(o.Dst, sub)
 	o.Src = subValue(o.Src, sub)
 }
 
-func (o *Copy) sub(sub map[interface{}]interface{}) {
+func (o *Copy) subValues(sub map[Value]Value) {
 	o.Dst = subValue(o.Dst, sub)
 	o.Src = subValue(o.Src, sub)
 }
 
-func (o *Call) sub(sub map[interface{}]interface{}) {
+func (o *Call) subValues(sub map[Value]Value) {
 	o.Func = subValue(o.Func, sub)
 	for i := range o.Args {
 		o.Args[i] = subValue(o.Args[i], sub)
 	}
 }
 
-func (o *If) sub(sub map[interface{}]interface{}) {
+func (o *If) subValues(sub map[Value]Value) {
 	o.Value = subValue(o.Value, sub)
-	o.Yes = subBlock(o.Yes, sub)
-	o.No = subBlock(o.No, sub)
 }
 
-func (o *Jump) sub(sub map[interface{}]interface{}) {
-	o.Dst = subBlock(o.Dst, sub)
-}
+func (o *Jump) subValues(sub map[Value]Value) {}
 
-func (o *Return) sub(sub map[interface{}]interface{}) {
+func (o *Return) subValues(sub map[Value]Value) {
 	o.Frame = subValue(o.Frame, sub)
 }
 
-func (v *value) subUsers(sub map[interface{}]interface{}) {
-	for i := range v.users {
-		u := v.users[i]
-		if _, ok := sub[u]; ok {
-			v.users[i] = subInstr(u, sub)
-		}
-	}
-}
+func (o *Frame) subValues(sub map[Value]Value) {}
 
-func (o *Frame) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
-}
-
-func (o *Alloc) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
+func (o *Alloc) subValues(sub map[Value]Value) {
 	o.Count = subValue(o.Count, sub)
 }
 
-func (o *Load) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
+func (o *Load) subValues(sub map[Value]Value) {
 	o.Addr = subValue(o.Addr, sub)
 }
 
-func (o *Func) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
-}
+func (o *Func) subValues(sub map[Value]Value) {}
 
-func (o *String) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
-}
+func (o *String) subValues(sub map[Value]Value) {}
 
-func (o *Var) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
-}
+func (o *Var) subValues(sub map[Value]Value) {}
 
-func (o *Parm) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
-}
+func (o *Parm) subValues(sub map[Value]Value) {}
 
-func (o *Field) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
+func (o *Field) subValues(sub map[Value]Value) {
 	o.Base = subValue(o.Base, sub)
 }
 
-func (o *Case) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
+func (o *Case) subValues(sub map[Value]Value) {
 	o.Base = subValue(o.Base, sub)
 }
 
-func (o *Index) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
+func (o *Index) subValues(sub map[Value]Value) {
 	o.Base = subValue(o.Base, sub)
 	o.Index = subValue(o.Index, sub)
 }
 
-func (o *Slice) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
+func (o *Slice) subValues(sub map[Value]Value) {
 	o.Base = subValue(o.Base, sub)
 	o.Index = subValue(o.Index, sub)
 }
 
-func (o *Int) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
-}
+func (o *Int) subValues(sub map[Value]Value) {}
 
-func (o *Float) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
-}
+func (o *Float) subValues(sub map[Value]Value) {}
 
-func (o *Null) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
-}
+func (o *Null) subValues(sub map[Value]Value) {}
 
-func (o *Op) sub(sub map[interface{}]interface{}) {
-	o.value.subUsers(sub)
+func (o *Op) subValues(sub map[Value]Value) {
 	for i := range o.Args {
 		o.Args[i] = subValue(o.Args[i], sub)
 	}
 }
 
-func subBlock(old *BasicBlock, sub map[interface{}]interface{}) *BasicBlock {
-	if new, ok := sub[old]; ok {
-		return new.(*BasicBlock)
-	}
-	panic("no substitution")
-}
-
-func subInstr(old Instruction, sub map[interface{}]interface{}) Instruction {
-	if new, ok := sub[old]; ok {
-		return new.(Instruction)
-	}
-	panic("no substitution")
-}
-
-func subValue(old Value, sub map[interface{}]interface{}) Value {
+func subValue(old Value, sub map[Value]Value) Value {
 	if old == nil {
 		return nil
 	}
 	if new, ok := sub[old]; ok {
-		return new.(Value)
+		return new
 	}
 	return old
+}
+
+func (v *value) subUsers(sub map[Instruction]Instruction) {
+	for i := range v.users {
+		u := v.users[i]
+		if _, ok := sub[u]; ok {
+			v.users[i], ok = sub[u]
+			if !ok {
+				panic("impossible")
+			}
+		}
+	}
 }

@@ -219,7 +219,7 @@ type BasicBlock struct {
 	Num    int
 	Func   *FuncDef
 	Instrs []Instruction
-	In []*BasicBlock
+	In     []*BasicBlock
 }
 
 func (b *BasicBlock) addIn(in *BasicBlock) {
@@ -259,10 +259,7 @@ type Instruction interface {
 	isDeleted() bool
 	buildString(*strings.Builder) *strings.Builder
 	shallowCopy() Instruction
-	// maps *BasicBlock -> *BasicBlock,
-	// Value -> Value, or
-	// Instruction -> Instruction
-	sub(map[interface{}]interface{})
+	subValues(map[Value]Value)
 }
 
 type instruction struct {
@@ -310,6 +307,7 @@ func (c *Call) Loc() loc.Loc  { return c.L }
 
 type Terminal interface {
 	Out() []*BasicBlock
+	subBlocks(map[*BasicBlock]*BasicBlock)
 }
 
 type If struct {
@@ -325,8 +323,8 @@ type If struct {
 	L   loc.Loc
 }
 
-func (r *If) Uses() []Value { return []Value{r.Value} }
-func (r *If) Loc() loc.Loc  { return r.L }
+func (r *If) Uses() []Value      { return []Value{r.Value} }
+func (r *If) Loc() loc.Loc       { return r.L }
 func (r *If) Out() []*BasicBlock { return []*BasicBlock{r.Yes, r.No} }
 
 type Jump struct {
@@ -335,8 +333,8 @@ type Jump struct {
 	L   loc.Loc
 }
 
-func (*Jump) Uses() []Value  { return nil }
-func (j *Jump) Loc() loc.Loc { return j.L }
+func (*Jump) Uses() []Value        { return nil }
+func (j *Jump) Loc() loc.Loc       { return j.L }
 func (r *Jump) Out() []*BasicBlock { return []*BasicBlock{r.Dst} }
 
 type Return struct {
@@ -347,14 +345,14 @@ type Return struct {
 	L     loc.Loc
 }
 
-func (r *Return) Uses() []Value  {
+func (r *Return) Uses() []Value {
 	if r.Frame == nil {
 		return nil
 	}
 	return []Value{r.Frame}
 }
 
-func (r *Return) Loc() loc.Loc { return r.L }
+func (r *Return) Loc() loc.Loc       { return r.L }
 func (r *Return) Out() []*BasicBlock { return nil }
 
 type Value interface {
@@ -365,6 +363,7 @@ type Value interface {
 	UsedBy() []Instruction
 	addUser(Instruction)
 	rmUser(Instruction)
+	subUsers(map[Instruction]Instruction)
 }
 
 type value struct {
@@ -605,5 +604,5 @@ func (o *Op) Uses() []Value {
 	return o.Args
 }
 
-func (o *Op) Loc() loc.Loc  { return o.L }
-func (o *Op) Type() Type    { return o.T }
+func (o *Op) Loc() loc.Loc { return o.L }
+func (o *Op) Type() Type   { return o.T }
