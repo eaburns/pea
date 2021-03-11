@@ -37,5 +37,7 @@ func main() {
 		}
 		os.Exit(1)
 	}
-	fmt.Println(flowgraph.Build(m).String())
+	g := flowgraph.Build(m)
+	flowgraph.Optimize(g)
+	fmt.Println(g.String())
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/eaburns/pea/parser"
 )
 
-func TestBuild(t *testing.T) {
+func TestOptimize(t *testing.T) {
 	const subDir = "testdata"
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -39,13 +39,22 @@ func TestBuild(t *testing.T) {
 			if err != nil {
 				t.Fatalf(err.Error())
 			}
-			got := runTest(flowgraph.Build(c))
-			want, err := expectedOutput(path)
-			if err != nil {
-				t.Fatalf(err.Error())
-			}
-			if got != want {
-				t.Errorf("%s\ngot:\n%q\nwant:\n%q", path, got, want)
+			graph := flowgraph.Build(c)
+			for _, opt := range flowgraph.Opts {
+				t.Run(fileInfo.Name()+" "+opt.Name, func(t *testing.T) {
+					for _, f := range graph.Funcs {
+						opt.Func(f)
+					}
+					checkInvariants(t, graph)
+					got := runTest(graph)
+					want, err := expectedOutput(path)
+					if err != nil {
+						t.Fatalf(err.Error())
+					}
+					if got != want {
+						t.Errorf("%s\ngot:\n%q\nwant:\n%q", path, got, want)
+					}
+				})
 			}
 		})
 	}
@@ -110,4 +119,60 @@ func expectedOutput(path string) (string, error) {
 		comment.WriteString(line)
 	}
 	return comment.String(), scanner.Err()
+}
+
+func checkInvariants(t *testing.T, m *flowgraph.Mod) {
+	for _, f := range m.Funcs {
+		t.Logf("checking func %s invariants", f.Name)
+		checkFuncInvariants(t, f)
+	}
+}
+
+func checkFuncInvariants(t *testing.T, f *flowgraph.FuncDef) {
+	instrs := make(map[flowgraph.Instruction]bool)
+	for _, b := range f.Blocks {
+		for _, r := range b.Instrs {
+			instrs[r] = true
+		}
+	}
+	uses := make(map[flowgraph.Value][]flowgraph.Instruction)
+	for _, b := range f.Blocks {
+		for _, r := range b.Instrs {
+			for _, v := range r.Uses() {
+				if !instrs[v] {
+					t.Errorf("use of non-function value x%d: %s", v.Num(), r)
+					continue
+				}
+				uses[v] = append(uses[v], r)
+			}
+		}
+	}
+	for _, b := range f.Blocks {
+		for _, r := range b.Instrs {
+			if v, ok := r.(flowgraph.Value); ok {
+				checkValueInvariants(t, uses[v], v)
+			}
+		}
+	}
+}
+
+func checkValueInvariants(t *testing.T, seenUses []flowgraph.Instruction, v flowgraph.Value) {
+	usedBy := v.UsedBy()
+	if len(usedBy) != len(seenUses) {
+		t.Errorf("%s\nseenUses=%s\nusedBy=%s", v, seenUses, usedBy)
+		return
+	}
+	for _, ub := range usedBy {
+		var found bool
+		for _, su := range seenUses {
+			if su == ub {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("%s\nseenUses=%s\nusedBy=%s", v, seenUses, usedBy)
+			return
+		}
+	}
 }

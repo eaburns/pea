@@ -1,0 +1,17 @@
+// Hello, World!
+func main() {
+	print(foo())
+}
+
+func foo() string {
+	bar({return: "Hello, World!"}),
+	return: "fail"
+}
+
+func bar(f (){}) {
+	baz(f)
+}
+
+func baz(f (){}) {
+	f()
+}

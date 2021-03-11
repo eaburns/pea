@@ -41,6 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 	g := flowgraph.Build(m)
+	flowgraph.Optimize(g)
 	var main *flowgraph.FuncDef
 	for _, f := range g.Funcs {
 		if f.Name == "main" && len(f.Parms) == 0 {

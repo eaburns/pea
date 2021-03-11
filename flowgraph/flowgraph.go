@@ -230,6 +230,11 @@ type Instruction interface {
 	delete()
 	isDeleted() bool
 	buildString(*strings.Builder) *strings.Builder
+	shallowCopy() Instruction
+	// maps *BasicBlock -> *BasicBlock,
+	// Value -> Value, or
+	// Instruction -> Instruction
+	sub(map[interface{}]interface{})
 }
 
 type instruction struct {
