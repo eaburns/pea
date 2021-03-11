@@ -218,7 +218,6 @@ type ParmDef struct {
 type BasicBlock struct {
 	Num    int
 	Func   *FuncDef
-	In     *[]BasicBlock
 	Instrs []Instruction
 }
 
