@@ -212,7 +212,21 @@ func (d *FuncDef) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (b *BasicBlock) buildString(s *strings.Builder) *strings.Builder {
-	fmt.Fprintf(s, "%d:", b.Num)
+	fmt.Fprintf(s, "%d:\tin=[", b.Num)
+	for i, in := range b.In {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		fmt.Fprintf(s, "%d", in.Num)
+	}
+	s.WriteString("], out=[")
+	for i, out := range b.Out() {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		fmt.Fprintf(s, "%d", out.Num)
+	}
+	s.WriteRune(']')
 	for _, instr := range b.Instrs {
 		if instr.Comment() != "" {
 			s.WriteString("\n    // ")

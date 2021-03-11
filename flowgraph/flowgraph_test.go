@@ -129,8 +129,10 @@ func checkInvariants(t *testing.T, m *flowgraph.Mod) {
 }
 
 func checkFuncInvariants(t *testing.T, f *flowgraph.FuncDef) {
+	blocks := make(map[*flowgraph.BasicBlock]bool)
 	instrs := make(map[flowgraph.Instruction]bool)
 	for _, b := range f.Blocks {
+		blocks[b] = true
 		for _, r := range b.Instrs {
 			instrs[r] = true
 		}
@@ -148,12 +150,38 @@ func checkFuncInvariants(t *testing.T, f *flowgraph.FuncDef) {
 		}
 	}
 	for _, b := range f.Blocks {
+		for _, in := range b.In {
+			if !blocks[in] {
+				t.Errorf("basic block %d's in set contains non-function block %d", b.Num, in.Num)
+			}
+			if !containsBlock(in.Out(), b) {
+				t.Errorf("basic block %d's in set contains %d, but %d's out set does not contain %d", b.Num, in.Num, in.Num, b.Num)
+			}
+		}
+		for _, out := range b.Out() {
+			if !blocks[out] {
+				t.Errorf("basic block %d's out set contains non-function block %d", b.Num, out.Num)
+			}
+			if !containsBlock(out.In, b) {
+				t.Errorf("basic block %d's out set contains %d, but %d's in set does not contain %d", b.Num, out.Num, out.Num, b.Num)
+			}
+		}
+
 		for _, r := range b.Instrs {
 			if v, ok := r.(flowgraph.Value); ok {
 				checkValueInvariants(t, uses[v], v)
 			}
 		}
 	}
+}
+
+func containsBlock(bs []*flowgraph.BasicBlock, b *flowgraph.BasicBlock) bool {
+	for _, x := range bs {
+		if x == b {
+			return true
+		}
+	}
+	return false
 }
 
 func checkValueInvariants(t *testing.T, seenUses []flowgraph.Instruction, v flowgraph.Value) {

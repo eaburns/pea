@@ -123,15 +123,22 @@ func inlineCalls(f *FuncDef) {
 				capsInit.delete()
 			}
 
-			copy := copyBlocks(f, def.Blocks)
-			moveAllocs(f.Blocks[0], copy[0])
-			subParms(parms, copy)
-			subCaps(caps, copy)
 			tail := &BasicBlock{Func: b.Func, Instrs: b.Instrs[j+1:]}
-			subReturn(tail, copy)
+			for _, o := range b.Out() {
+				o.rmIn(b)
+				o.addIn(tail)
+			}
 
-			b.Instrs = append(b.Instrs[:j+1:j+1], &Jump{Dst: copy[0], L: c.L})
-			todo = append(append(copy, tail), todo...)
+			inlined := copyBlocks(f, def.Blocks)
+			moveAllocs(f.Blocks[0], inlined[0])
+			subParms(parms, inlined)
+			subCaps(caps, inlined)
+			subReturn(tail, inlined) // sets tail.In if needed
+
+			b.Instrs = append(b.Instrs[:j+1:j+1], &Jump{Dst: inlined[0], L: c.L})
+			inlined[0].addIn(b)
+
+			todo = append(append(inlined, tail), todo...)
 			break
 		}
 		done = append(done, b)
@@ -400,6 +407,7 @@ func subReturn(dst *BasicBlock, bs []*BasicBlock) {
 			}
 			if r.Frame == nil {
 				b.Instrs[i] = &Jump{Dst: dst, L: r.L}
+				dst.addIn(b)
 			} else {
 				r.Frame.rmUser(r)
 				r.Frame = nil
@@ -413,30 +421,22 @@ func copyBlocks(destFunc *FuncDef, bs []*BasicBlock) []*BasicBlock {
 	sub := make(map[interface{}]interface{})
 	for i := range copy {
 		c := *bs[i]
+		c.In = append([]*BasicBlock{}, bs[i].In...)
 		c.Func = destFunc
 		c.Instrs = append([]Instruction{}, c.Instrs...)
 		copy[i] = &c
 		sub[bs[i]] = &c
 	}
-	var n int
-	for _, b := range destFunc.Blocks {
-		for _, r := range b.Instrs {
-			if v, ok := r.(Value); ok && v.Num() > n {
-				n = v.Num()
-			}
-		}
-	}
-	n = ((n / 10) + 1) * 1000
 	newInstrs := make(map[Instruction]bool)
 	for _, b := range copy {
+		for i := range b.In {
+			b.In[i] = subBlock(b.In[i], sub)
+		}
 		for i := range b.Instrs {
 			c := b.Instrs[i].shallowCopy()
 			sub[b.Instrs[i]] = c
 			newInstrs[c] = true
 			b.Instrs[i] = c
-			if v, ok := c.(Value); ok {
-				v.setNum(v.Num() + n)
-			}
 		}
 	}
 	for _, b := range copy {

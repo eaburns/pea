@@ -219,6 +219,34 @@ type BasicBlock struct {
 	Num    int
 	Func   *FuncDef
 	Instrs []Instruction
+	In []*BasicBlock
+}
+
+func (b *BasicBlock) addIn(in *BasicBlock) {
+	for _, x := range b.In {
+		if x == in {
+			return
+		}
+	}
+	b.In = append(b.In, in)
+}
+
+func (b *BasicBlock) rmIn(in *BasicBlock) {
+	var i int
+	for _, x := range b.In {
+		if x != in {
+			b.In[i] = x
+			i++
+		}
+	}
+	b.In = b.In[:i]
+}
+
+func (b *BasicBlock) Out() []*BasicBlock {
+	if t, ok := b.Instrs[len(b.Instrs)-1].(Terminal); ok {
+		return t.Out()
+	}
+	return nil
 }
 
 type Instruction interface {
@@ -280,6 +308,10 @@ type Call struct {
 func (c *Call) Uses() []Value { return append(c.Args, c.Func) }
 func (c *Call) Loc() loc.Loc  { return c.L }
 
+type Terminal interface {
+	Out() []*BasicBlock
+}
+
 type If struct {
 	instruction
 	// Value must be an integer type or an address type.
@@ -295,6 +327,7 @@ type If struct {
 
 func (r *If) Uses() []Value { return []Value{r.Value} }
 func (r *If) Loc() loc.Loc  { return r.L }
+func (r *If) Out() []*BasicBlock { return []*BasicBlock{r.Yes, r.No} }
 
 type Jump struct {
 	instruction
@@ -304,6 +337,7 @@ type Jump struct {
 
 func (*Jump) Uses() []Value  { return nil }
 func (j *Jump) Loc() loc.Loc { return j.L }
+func (r *Jump) Out() []*BasicBlock { return []*BasicBlock{r.Dst} }
 
 type Return struct {
 	instruction
@@ -321,6 +355,7 @@ func (r *Return) Uses() []Value  {
 }
 
 func (r *Return) Loc() loc.Loc { return r.L }
+func (r *Return) Out() []*BasicBlock { return nil }
 
 type Value interface {
 	Instruction

@@ -1282,7 +1282,6 @@ func (bb *blockBuilder) ifEq(v Value, x int, yes, no *blockBuilder) *If {
 		L:     bb.L,
 	}
 	bb.addInstr(r)
-	bb.done = true
 	return r
 }
 
@@ -1296,7 +1295,6 @@ func (bb *blockBuilder) ifLess(v Value, x int, yes, no *blockBuilder) *If {
 		L:     bb.L,
 	}
 	bb.addInstr(r)
-	bb.done = true
 	return r
 }
 
@@ -1312,21 +1310,18 @@ func (bb *blockBuilder) ifNull(v Value, yes, no *blockBuilder) *If {
 		L:     bb.L,
 	}
 	bb.addInstr(r)
-	bb.done = true
 	return r
 }
 
 func (bb *blockBuilder) jump(to *blockBuilder) *Jump {
 	r := &Jump{Dst: to.BasicBlock, L: bb.L}
 	bb.addInstr(r)
-	bb.done = true
 	return r
 }
 
 func (bb *blockBuilder) Return(frame Value) *Return {
 	r := &Return{Frame: frame, L: bb.L}
 	bb.addInstr(r)
-	bb.done = true
 	return r
 }
 
@@ -1512,6 +1507,12 @@ func (bb *blockBuilder) addInstr(r Instruction) {
 	bb.Instrs = append(bb.Instrs, r)
 	for _, use := range r.Uses() {
 		use.addUser(r)
+	}
+	if t, ok := r.(Terminal); ok {
+		bb.done = true
+		for _, o := range t.Out() {
+			o.addIn(bb.BasicBlock)
+		}
 	}
 }
 

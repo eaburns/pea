@@ -10,6 +10,8 @@ import (
 	"github.com/eaburns/pea/parser"
 )
 
+var opt = flag.Bool("opt", true, "whether to optimize")
+
 func main() {
 	flag.Parse()
 
@@ -38,6 +40,8 @@ func main() {
 		os.Exit(1)
 	}
 	g := flowgraph.Build(m)
-	flowgraph.Optimize(g)
+	if *opt {
+		flowgraph.Optimize(g)
+	}
 	fmt.Println(g.String())
 }
