@@ -272,7 +272,7 @@ type Call struct {
 	L    loc.Loc
 }
 
-func (c *Call) Uses() []Value { return c.Args }
+func (c *Call) Uses() []Value { return append(c.Args, c.Func) }
 func (c *Call) Loc() loc.Loc  { return c.L }
 
 type If struct {
@@ -308,7 +308,13 @@ type Return struct {
 	L     loc.Loc
 }
 
-func (*Return) Uses() []Value  { return nil }
+func (r *Return) Uses() []Value  {
+	if r.Frame == nil {
+		return nil
+	}
+	return []Value{r.Frame}
+}
+
 func (r *Return) Loc() loc.Loc { return r.L }
 
 type Value interface {
@@ -550,6 +556,14 @@ type Op struct {
 	L    loc.Loc
 }
 
-func (o *Op) Uses() []Value { return o.Args }
+func (o *Op) Uses() []Value {
+	// Print and Panic side-effect.
+	// This prevents them from being marked as disused.
+	if o.Op == Print || o.Op == Panic {
+		return append(o.Args, o)
+	}
+	return o.Args
+}
+
 func (o *Op) Loc() loc.Loc  { return o.L }
 func (o *Op) Type() Type    { return o.T }
