@@ -448,11 +448,11 @@ func (fb *funcBuilder) buildBlocks(exprs []checker.Expr) *blockBuilder {
 					bb.copy(bb.load(parm), v)
 				}
 			}
-			bb.Return()
+			bb.Return(nil)
 		}
 	}
 	if !bb.done {
-		bb.Return()
+		bb.Return(nil)
 	}
 	return b1
 }
@@ -980,7 +980,7 @@ func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 		if bb.fun.blockType != nil {
 			frame = bb.frame()
 		}
-		bb.Return().Frame = frame
+		bb.Return(frame)
 		return bb, nil
 	}
 	if bb.fun.blockType != nil {
@@ -1003,7 +1003,7 @@ func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 	if bb.fun.blockType != nil {
 		frame = bb.frame()
 	}
-	bb.Return().Frame = frame
+	bb.Return(frame)
 	return bb, nil
 }
 
@@ -1323,8 +1323,8 @@ func (bb *blockBuilder) jump(to *blockBuilder) *Jump {
 	return r
 }
 
-func (bb *blockBuilder) Return() *Return {
-	r := &Return{L: bb.L}
+func (bb *blockBuilder) Return(frame Value) *Return {
+	r := &Return{Frame: frame, L: bb.L}
 	bb.addInstr(r)
 	bb.done = true
 	return r
