@@ -1,0 +1,39 @@
+/*
+This is similar to box_type.pea, but uses an optional, where the boxed value can be "none". This is similar to a nullable pointer in C-like languages, but the null check is required.
+*/
+
+// 13579
+func main() {
+	zero := 0,
+	a := [(&int) opt] :: new(10, some(&int :: zero)),
+	for: 0 to: a.length - 1 do: (i) {
+		if: i % 2 = 0 then: {
+			a[i] := none()
+		} else: {
+			a[i] := some(&int :: i)
+		}
+	},
+	for: 0 to: a.length - 1 do: (i) {
+		if: a[i] some: (x) {
+			print_int(x)
+		}
+	}
+}
+
+Type T opt := [?none, ?some T]
+Func some(t T) T opt { return: [?some t] }
+Func none() T opt { return: [?none] }
+Func if:some:(c T opt, s (T){}) { c ?some s }
+Func if:some:none:(c T opt, s (T){}, n (){}) { c ?some s ?none n }
+Func if:none:(c T opt, n (){}) { c ?none n }
+
+Func if:then:else:(c bool, t (){}, f (){}) { c ?true t ?false f }
+
+Func for:to:do:(start int, end int, f (int) {}) {
+	start <= end ?true {
+		f(start),
+		for: start + 1 to: end do: f
+	}
+}
+
+func print_int(_ int)
