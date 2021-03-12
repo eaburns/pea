@@ -1452,6 +1452,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	if err != nil {
 		errs = append(errs, err)
 	}
+	cvt.Expr = expr
 	cvt.Kind = Noop
 	return cvt, errs
 }
