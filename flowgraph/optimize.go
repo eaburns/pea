@@ -16,6 +16,7 @@ type Opt struct {
 var Opts = []Opt{
 	{"build", func(*FuncDef) {}},
 	{"inline calls", inlineCalls},
+	{"merge blocks", mergeBlocks},
 }
 
 func renumber(f *FuncDef) {
@@ -29,6 +30,42 @@ func renumber(f *FuncDef) {
 			}
 		}
 	}
+}
+
+func rmUnreach(f *FuncDef) {
+	if len(f.Blocks) == 0 {
+		return
+	}
+	seen := make(map[*BasicBlock]bool)
+	seen[f.Blocks[0]] = true
+	todo := []*BasicBlock{f.Blocks[0]}
+	for len(todo) > 0 {
+		b := todo[len(todo)-1]
+		todo = todo[:len(todo)-1]
+		for _, o := range b.Out() {
+			if !seen[o] {
+				seen[o] = true
+				todo = append(todo, o)
+			}
+		}
+	}
+	var i int
+	for _, b := range f.Blocks {
+		if seen[b] {
+			f.Blocks[i] = b
+			i++
+			continue
+		}
+		for _, o := range b.Out() {
+			o.rmIn(b)
+		}
+		for _, r := range b.Instrs {
+			for _, u := range r.Uses() {
+				u.rmUser(r)
+			}
+		}
+	}
+	f.Blocks = f.Blocks[:i]
 }
 
 func rmDeletes(f *FuncDef) {
@@ -81,6 +118,27 @@ func rmDeletes(f *FuncDef) {
 		}
 		b.Instrs = b.Instrs[:i]
 	}
+}
+
+func mergeBlocks(f *FuncDef) {
+	var done []*BasicBlock
+	for _, b := range f.Blocks {
+		if len(b.In) != 1 || len(b.In[0].Out()) != 1 {
+			done = append(done, b)
+			continue
+		}
+		in := b.In[0]
+		// We remove the last instruction of in here.
+		// Since it only goes out to one block, it must have been a Jump,
+		// and thus has no uses to update.
+		in.Instrs = append(in.Instrs[:len(in.Instrs)-1], b.Instrs...)
+		for _, o := range b.Out() {
+			o.rmIn(b)
+			o.addIn(in)
+		}
+	}
+	f.Blocks = done
+	renumber(f)
 }
 
 func inlineCalls(f *FuncDef) {
@@ -144,6 +202,7 @@ func inlineCalls(f *FuncDef) {
 		done = append(done, b)
 	}
 	f.Blocks = done
+	rmUnreach(f)
 	rmDeletes(f)
 	renumber(f)
 }
