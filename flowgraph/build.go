@@ -133,7 +133,11 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			if typ.isEmpty() {
 				continue
 			}
-			fs = append(fs, &FieldDef{Num: i, Name: f.Name[1:], Type: typ})
+			fs = append(fs, &FieldDef{
+				Num:  i,
+				Name: strings.TrimPrefix(f.Name, "."),
+				Type: typ,
+			})
 		}
 		return &StructType{Fields: fs}
 
@@ -147,7 +151,10 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			if typ.isEmpty() {
 				continue
 			}
-			cs = append(cs, &CaseDef{Name: c.Name[1:], Type: typ})
+			cs = append(cs, &CaseDef{
+				Name: strings.TrimSuffix(c.Name, "?"),
+				Type: typ,
+			})
 		}
 		switch {
 		case len(cs) == 0:
@@ -652,7 +659,7 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 		cases[i].num = caseNum(sw.Union, cas)
 		if cas.Type != nil {
 			union := unionBase.Type().(*AddrType).Elem.(*UnionType)
-			cases[i].def = caseDef(union, cas.Name[1:])
+			cases[i].def = caseDef(union, strings.TrimSuffix(cas.Name, "?"))
 			cases[i].base = unionBase
 		}
 		if cvt, ok := expr.(*checker.Convert); ok && cvt.Kind == checker.Deref {
@@ -1154,7 +1161,7 @@ func caseNum(u *checker.UnionType, cas *checker.CaseDef) int {
 }
 
 func unionCase(u *UnionType, cas *checker.CaseDef) *CaseDef {
-	name := strings.TrimPrefix(cas.Name, "?")
+	name := strings.TrimSuffix(cas.Name, "?")
 	for _, c := range u.Cases {
 		if c.Name == name {
 			return c

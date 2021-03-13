@@ -27,11 +27,11 @@ func TestBuildType(t *testing.T) {
 		{src: "type t [.nest [.x int]] type u [.x int]", want: "struct{nest struct{x int64}}"},
 		{src: "type t [.loop &t]", want: "struct{loop *test.t}"},
 		{src: "type t (int, float32){uint8}", want: "struct{func func(*struct{}, int64, float32)uint8; caps *struct{}}"},
-		{src: "type t [?one, ?two, ?three]", want: "int64"},
-		{src: "type t [?none, ?some &int]", want: "*int64"},
-		{src: "type t [?none, ?some int]", want: "struct{tag int64; data union{some int64}}"},
+		{src: "type t [one?, two?, three?]", want: "int64"},
+		{src: "type t [none?, some? &int]", want: "*int64"},
+		{src: "type t [none?, some? int]", want: "struct{tag int64; data union{some int64}}"},
 		{
-			src:  "type t [?a int, ?b float32, ?c string]",
+			src:  "type t [a? int, b? float32, c? string]",
 			want: "struct{tag int64; data union{a int64; b float32; c struct{length int64; data []uint8}}}",
 		},
 	}

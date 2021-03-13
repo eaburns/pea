@@ -183,7 +183,7 @@ func (m *Mod) find(name string) []id {
 			Field: &FieldDef{Name: name},
 		})
 	}
-	if strings.HasPrefix(name, "?") {
+	if strings.HasSuffix(name, "?") {
 		// Add two template switches to be filled with concrete types
 		// or rejected when their return or 0th parameter is unified.
 		caseNames := splitCaseNames(name)
@@ -254,15 +254,14 @@ func splitCaseNames(str string) []string {
 	var names []string
 	for i < len(str) {
 		r, w := utf8.DecodeRuneInString(str[i:])
-		if r == '?' && i > 0 {
+		i += w
+		if r == '?' {
 			names = append(names, str[:i])
 			str = str[i:]
-			i = w
-			continue
+			i = 0
 		}
-		i += w
 	}
-	return append(names, str)
+	return names
 }
 
 func (i *Import) find(name string) []id { return findInDefs(i.Defs, name) }

@@ -44,20 +44,20 @@ func TestString(t *testing.T) {
 			want: "[.x [.foo string], .y int]",
 		},
 		{
-			src:  "type t [?x int, ?y int]",
-			want: "[?x int, ?y int]",
+			src:  "type t [x? int, y? int]",
+			want: "[x? int, y? int]",
 		},
 		{
-			src:  "type t [?x, ?y int]",
-			want: "[?x, ?y int]",
+			src:  "type t [x?, y? int]",
+			want: "[x?, y? int]",
 		},
 		{
-			src:  "type t [?x, ?y]",
-			want: "[?x, ?y]",
+			src:  "type t [x?, y?]",
+			want: "[x?, y?]",
 		},
 		{
-			src:  "type t [?x]",
-			want: "[?x]",
+			src:  "type t [x?]",
+			want: "[x?]",
 		},
 		{
 			src:  "type t (){}",

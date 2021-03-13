@@ -362,8 +362,8 @@ CaseVal <- _ name:CaseId v:Expr? {
 	return CaseVal{Name: name, Val: val, L: l(parser, start, end)}
 }
 
-CaseId "case id" <- _ "?" id:Id {
-	return Ident{Name: "?" + id.Name, L: l(parser, start, end)}
+CaseId "case id" <- _ id:Id "?" {
+	return Ident{Name: id.Name + "?", L: l(parser, start, end)}
 }
 
 BlkLit <- (_ "(" ps:BlkParms? _ ")")? _ "{" es:Exprs? _ "}" {

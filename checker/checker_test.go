@@ -1567,145 +1567,145 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in switch on bool",
-			src:  "const true := bool :: [?true]",
-			call: "true ?true (){} ?false (){}",
-			want: "built-in ?true?false(&bool, (){}, (){})",
+			src:  "const true := bool :: [true?]",
+			call: "true true? (){} false? (){}",
+			want: "built-in true?false?(&bool, (){}, (){})",
 		},
 		{
 			name: "built-in switch literal type, not-typed case",
-			call: "[?a] ?a {}",
-			want: "built-in ?a(&[?a], (){})",
+			call: "[a?] a? {}",
+			want: "built-in a?(&[a?], (){})",
 		},
 		{
 			name: "built-in switch literal type, typed case",
-			call: "[?a 1] ?a (_ int) {}",
-			want: "built-in ?a(&[?a int], (int){})",
+			call: "[a? 1] a? (_ int) {}",
+			want: "built-in a?(&[a? int], (int){})",
 		},
 		{
 			name: "built-in switch ref literal type, typed case",
-			call: "(&[?a int] :: [?a 1]) ?a (_ int) {}",
-			want: "built-in ?a(&[?a int], (int){})",
+			call: "(&[a? int] :: [a? 1]) a? (_ int) {}",
+			want: "built-in a?(&[a? int], (int){})",
 		},
 		{
 			name: "built-in switch not-typed cases",
 			src: `
-				type a_or_b [?a, ?b]
+				type a_or_b [a?, b?]
 				func make() a_or_b
 			`,
-			call: "make() ?a {} ?b {}",
-			want: "built-in ?a?b(&a_or_b, (){}, (){})",
+			call: "make() a? {} b? {}",
+			want: "built-in a?b?(&a_or_b, (){}, (){})",
 		},
 		{
 			name: "built-in switch def union",
 			src: `
-				type a_or_b [?a, ?b]
+				type a_or_b [a?, b?]
 				var a_or_b_var a_or_b
 			`,
-			call: "a_or_b_var ?a {} ?b {}",
-			want: "built-in ?a?b(&a_or_b, (){}, (){})",
+			call: "a_or_b_var a? {} b? {}",
+			want: "built-in a?b?(&a_or_b, (){}, (){})",
 		},
 		{
 			name: "built-in switch def union ref",
 			src: `
-				type a_or_b &[?a, ?b]
+				type a_or_b &[a?, b?]
 				var a_or_b_var a_or_b
 			`,
-			call: "a_or_b_var ?a {} ?b {}",
-			want: "built-in ?a?b(a_or_b, (){}, (){})",
+			call: "a_or_b_var a? {} b? {}",
+			want: "built-in a?b?(a_or_b, (){}, (){})",
 		},
 		{
 			name: "built-in switch ref def union",
-			src:  "type a_or_b [?a, ?b]",
-			call: "(&a_or_b :: [?a]) ?a {} ?b {}",
-			want: "built-in ?a?b(&a_or_b, (){}, (){})",
+			src:  "type a_or_b [a?, b?]",
+			call: "(&a_or_b :: [a?]) a? {} b? {}",
+			want: "built-in a?b?(&a_or_b, (){}, (){})",
 		},
 		{
 			name: "built-in switch def union ref ref fails",
 			src: `
-				type a_or_b &&[?a, ?b]
+				type a_or_b &&[a?, b?]
 				var x a_or_b
 			`,
-			call: "(a_or_b :: x) ?a {} ?b {}",
+			call: "(a_or_b :: x) a? {} b? {}",
 			err:  "not a union type",
 		},
 		{
 			name: "built-in switch typed cases",
 			src: `
-				type a_or_b [?a string, ?b int]
+				type a_or_b [a? string, b? int]
 				func make() a_or_b
 			`,
-			call: "make() ?a (_ string) {1} ?b (_ int) {1}",
-			want: "built-in ?a?b(&a_or_b, (string){int}, (int){int})int",
+			call: "make() a? (_ string) {1} b? (_ int) {1}",
+			want: "built-in a?b?(&a_or_b, (string){int}, (int){int})int",
 		},
 		{
 			name: "built-in switch mixed typed and non-typed cases",
 			src: `
-				type a_or_b [?a, ?b int]
+				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
-			call: "make() ?a () {1} ?b (_ int) {1}",
-			want: "built-in ?a?b(&a_or_b, (){int}, (int){int})int",
+			call: "make() a? () {1} b? (_ int) {1}",
+			want: "built-in a?b?(&a_or_b, (){int}, (int){int})int",
 		},
 		{
 			name: "built-in switch cases re-ordered",
 			src: `
-				type a_or_b [?a, ?b int]
+				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
-			call: "make() ?b (_ int) {1} ?a () {1} ",
-			want: "built-in ?b?a(&a_or_b, (int){int}, (){int})int",
+			call: "make() b? (_ int) {1} a? () {1} ",
+			want: "built-in b?a?(&a_or_b, (int){int}, (){int})int",
 		},
 		{
 			name: "built-in switch not all cases, case not typed",
 			src: `
-				type a_or_b [?a, ?b int]
+				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
-			call: "make() ?a () {1} ",
-			want: "built-in ?a(&a_or_b, (){})",
+			call: "make() a? () {1} ",
+			want: "built-in a?(&a_or_b, (){})",
 		},
 		{
 			name: "built-in switch not all cases, case typed",
 			src: `
-				type a_or_b [?a, ?b int]
+				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
-			call: "make() ?b (_ int) {1} ",
-			want: "built-in ?b(&a_or_b, (int){})",
+			call: "make() b? (_ int) {1} ",
+			want: "built-in b?(&a_or_b, (int){})",
 		},
 		{
 			name: "built-in switch not all cases, does not convert return",
 			src: `
-				type a_or_b [?a, ?b int]
+				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
-			call: "make() ?a () {1} ",
+			call: "make() a? () {1} ",
 			ret:  "int",
 			err:  `cannot convert .* \(\[\.\]\) to type int`,
 		},
 		{
 			name: "built-in switch not a union type",
-			call: "1 ?b (_ int) {1} ",
+			call: "1 b? (_ int) {1} ",
 			err:  "not a union",
 		},
 		{
 			name: "built-in switch case name mismatch",
 			src: `
-				type a_or_b [?a, ?b int]
+				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
-			call: "make() ?c (_ int) {1} ",
-			err:  "no case \\?c",
+			call: "make() c? (_ int) {1} ",
+			err:  "no case c\\?",
 		},
 		{
 			name: "built-in switch return type inferred",
 			src: `
-				type a_or_b [?a, ?b]
+				type a_or_b [a?, b?]
 				func make() a_or_b
 			`,
-			call: "make() ?a () {uint8 :: 1} ?b () {2}",
+			call: "make() a? () {uint8 :: 1} b? () {2}",
 			ret:  "uint8",
-			want: "built-in ?a?b(&a_or_b, (){uint8}, (){uint8})uint8",
+			want: "built-in a?b?(&a_or_b, (){uint8}, (){uint8})uint8",
 		},
 		{
 			name: "built-in switch, other mod union",
@@ -1716,11 +1716,11 @@ func TestOverloadResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "other",
 				src: `
-					Type foo [?none, ?some int]
+					Type foo [none?, some? int]
 				`,
 			},
-			call: "make_foo() ?none {} ?some (i int) {}",
-			want: "built-in ?none?some(&other#foo, (){}, (int){})",
+			call: "make_foo() none? {} some? (i int) {}",
+			want: "built-in none?some?(&other#foo, (){}, (int){})",
 		},
 		{
 			name: "built-in switch, other mod opaque union fails",
@@ -1732,10 +1732,10 @@ func TestOverloadResolution(t *testing.T) {
 				path: "other",
 				src: `
 					Type foo := _foo
-					type _foo [?none, ?some int]
+					type _foo [none?, some? int]
 				`,
 			},
-			call: "make_foo() ?none {} ?some (i int) {}",
+			call: "make_foo() none? {} some? (i int) {}",
 			err:  `not a union type`,
 		},
 		{
@@ -2395,17 +2395,17 @@ func TestChurch(t *testing.T) {
 // Tests various switch return type inferences that should compile without error.
 func TestSwitchReturnTypes(t *testing.T) {
 	const src = `
-		type a_or_b [?a, ?b]
+		type a_or_b [a?, b?]
 		var _ := (){} :: {
-			m() ?a {1} ?b {1},
-			//m() ?a {"hello"} ?b {1},
-			m() ?a {1},
-			m() ?b {1},
+			m() a? {1} b? {1},
+			//m() a? {"hello"} b? {1},
+			m() a? {1},
+			m() b? {1},
 		}
-		var _ := int :: m() ?a {1} ?b {1}
-		//var _ := [.] :: m() ?a {1} ?b {1}
-		var _ := [.] :: m() ?a {1}
-		var _ := [.] :: m() ?a {} ?b {}
+		var _ := int :: m() a? {1} b? {1}
+		//var _ := [.] :: m() a? {1} b? {1}
+		var _ := [.] :: m() a? {1}
+		var _ := [.] :: m() a? {} b? {}
 		func m() a_or_b
 	`
 	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
@@ -2787,74 +2787,74 @@ func TestLiteralInference(t *testing.T) {
 			},
 		},
 
-		{expr: "[?true]", infer: "bool", want: "bool"},
-		{expr: "[?false]", infer: "bool", want: "bool"},
-		{expr: "[?true]", infer: "&bool", want: "&bool"},
-		{expr: "[?false]", infer: "&bool", want: "&bool"},
-		{expr: "[?none]", want: "[?none]"},
-		{expr: "[?none]", infer: "&&[?none]", want: "[?none]"},
-		{expr: "[?none]", infer: "&[?none]", want: "&[?none]"},
-		{expr: "[?none]", infer: "t", want: "t", src: "type t [?none, ?some int]"},
-		{expr: "[?none]", infer: "&t", want: "&t", src: "type t [?none, ?some int]"},
-		{expr: "[?none]", infer: "&&t", want: "[?none]", src: "type t [?none, ?some int]"},
-		{expr: "[?none]", infer: "t", want: "t", src: "type t &[?none, ?some int]"},
-		{expr: "[?none]", infer: "&t", want: "[?none]", src: "type t &[?none, ?some int]"},
-		{expr: "[?some 1]", want: "[?some int]"},
-		{expr: "[?some (i int){1.0}]", want: "[?some (int){float64}]"},
-		{expr: "[?a 1]", infer: "[?a int32]", want: "[?a int32]"},
-		{expr: "[?a 1]", infer: "&[?a int32]", want: "&[?a int32]"},
-		{expr: "[?a 1]", infer: "&&[?a int32]", want: "[?a int]"},
-		{expr: "[?a 1]", infer: "[?a int32, ?b, ?c int]", want: "[?a int32, ?b, ?c int]"},
-		{expr: "[?a 1]", infer: "[?b, ?a int32, ?c int]", want: "[?b, ?a int32, ?c int]"},
-		{expr: "[?a 1]", infer: "[?b, ?c int, ?a int32]", want: "[?b, ?c int, ?a int32]"},
-		{expr: "[?a 1]", infer: "&[?b, ?c int, ?a int32]", want: "&[?b, ?c int, ?a int32]"},
-		{expr: "[?a 1]", infer: "&&[?b, ?c int, ?a int32]", want: "[?a int]"},
-		{expr: "[?a 1]", infer: "[?b, ?c int]", want: "[?a int]"},
-		{expr: "[?a 1]", infer: "[?b, ?c int, ?a]", want: "[?a int]"},
-		{expr: "[?a 1]", infer: "[?b, ?c int, ?a string]", want: "[?b, ?c int, ?a string]"},
-		{expr: "[?a 1]", infer: "t", want: "t", src: "type t [?a int]"},
-		{expr: "[?a 1]", infer: "t", want: "t", src: "type t [?a int, ?b]"},
-		{expr: "[?a 1]", infer: "t", want: "t", src: "type t [?a int, ?b, ?c int]"},
-		{expr: "[?a 1]", infer: "t", want: "t", src: "type t [?b, ?a int, ?c int]"},
-		{expr: "[?a 1]", infer: "t", want: "t", src: "type t [?a int32, ?b]"},
-		{expr: "[?a 1]", infer: "&t", want: "&t", src: "type t [?a int, ?b]"},
-		{expr: "[?a 1]", infer: "&&t", want: "[?a int]", src: "type t [?a int, ?b]"},
-		{expr: "[?a 1]", infer: "t", want: "t", src: "type t &[?a int, ?b]"},
-		{expr: "[?a 1]", infer: "&t", want: "[?a int]", src: "type t &[?a int, ?b]"},
-		{expr: "[?a 1]", infer: "t", want: "[?a int]", src: "type t [?c int, ?b]"},
-		{expr: "[?a 1]", infer: "t", want: "[?a int]", src: "type t [?a, ?b]"},
-		{expr: "[?some 1]", infer: "int opt", want: "int opt", src: "type T opt [?none, ?some T]"},
-		{expr: "[?some 1]", infer: "int32 opt", want: "int32 opt", src: "type T opt [?none, ?some T]"},
-		{expr: "[?some 1]", infer: "&int32 opt", want: "&int32 opt", src: "type T opt [?none, ?some T]"},
-		{expr: "[?some 1]", infer: "&&int32 opt", want: "[?some int]", src: "type T opt [?none, ?some T]"},
-		{expr: "[?some 1]", infer: "string opt", want: "string opt", src: "type T opt [?none, ?some T]"},
-		{expr: "[?some]", infer: "int opt", want: "[?some]", src: "type T opt [?none, ?some T]"},
-		{expr: "[?none]", infer: "int opt", want: "int opt", src: "type T opt [?none, ?some T]"},
-		{expr: "[?none]", infer: "&int opt", want: "&int opt", src: "type T opt [?none, ?some T]"},
-		{expr: "[?none]", infer: "&&int opt", want: "[?none]", src: "type T opt [?none, ?some T]"},
+		{expr: "[true?]", infer: "bool", want: "bool"},
+		{expr: "[false?]", infer: "bool", want: "bool"},
+		{expr: "[true?]", infer: "&bool", want: "&bool"},
+		{expr: "[false?]", infer: "&bool", want: "&bool"},
+		{expr: "[none?]", want: "[none?]"},
+		{expr: "[none?]", infer: "&&[none?]", want: "[none?]"},
+		{expr: "[none?]", infer: "&[none?]", want: "&[none?]"},
+		{expr: "[none?]", infer: "t", want: "t", src: "type t [none?, some? int]"},
+		{expr: "[none?]", infer: "&t", want: "&t", src: "type t [none?, some? int]"},
+		{expr: "[none?]", infer: "&&t", want: "[none?]", src: "type t [none?, some? int]"},
+		{expr: "[none?]", infer: "t", want: "t", src: "type t &[none?, some? int]"},
+		{expr: "[none?]", infer: "&t", want: "[none?]", src: "type t &[none?, some? int]"},
+		{expr: "[some? 1]", want: "[some? int]"},
+		{expr: "[some? (i int){1.0}]", want: "[some? (int){float64}]"},
+		{expr: "[a? 1]", infer: "[a? int32]", want: "[a? int32]"},
+		{expr: "[a? 1]", infer: "&[a? int32]", want: "&[a? int32]"},
+		{expr: "[a? 1]", infer: "&&[a? int32]", want: "[a? int]"},
+		{expr: "[a? 1]", infer: "[a? int32, b?, c? int]", want: "[a? int32, b?, c? int]"},
+		{expr: "[a? 1]", infer: "[b?, a? int32, c? int]", want: "[b?, a? int32, c? int]"},
+		{expr: "[a? 1]", infer: "[b?, c? int, a? int32]", want: "[b?, c? int, a? int32]"},
+		{expr: "[a? 1]", infer: "&[b?, c? int, a? int32]", want: "&[b?, c? int, a? int32]"},
+		{expr: "[a? 1]", infer: "&&[b?, c? int, a? int32]", want: "[a? int]"},
+		{expr: "[a? 1]", infer: "[b?, c? int]", want: "[a? int]"},
+		{expr: "[a? 1]", infer: "[b?, c? int, a?]", want: "[a? int]"},
+		{expr: "[a? 1]", infer: "[b?, c? int, a? string]", want: "[b?, c? int, a? string]"},
+		{expr: "[a? 1]", infer: "t", want: "t", src: "type t [a? int]"},
+		{expr: "[a? 1]", infer: "t", want: "t", src: "type t [a? int, b?]"},
+		{expr: "[a? 1]", infer: "t", want: "t", src: "type t [a? int, b?, c? int]"},
+		{expr: "[a? 1]", infer: "t", want: "t", src: "type t [b?, a? int, c? int]"},
+		{expr: "[a? 1]", infer: "t", want: "t", src: "type t [a? int32, b?]"},
+		{expr: "[a? 1]", infer: "&t", want: "&t", src: "type t [a? int, b?]"},
+		{expr: "[a? 1]", infer: "&&t", want: "[a? int]", src: "type t [a? int, b?]"},
+		{expr: "[a? 1]", infer: "t", want: "t", src: "type t &[a? int, b?]"},
+		{expr: "[a? 1]", infer: "&t", want: "[a? int]", src: "type t &[a? int, b?]"},
+		{expr: "[a? 1]", infer: "t", want: "[a? int]", src: "type t [c? int, b?]"},
+		{expr: "[a? 1]", infer: "t", want: "[a? int]", src: "type t [a?, b?]"},
+		{expr: "[some? 1]", infer: "int opt", want: "int opt", src: "type T opt [none?, some? T]"},
+		{expr: "[some? 1]", infer: "int32 opt", want: "int32 opt", src: "type T opt [none?, some? T]"},
+		{expr: "[some? 1]", infer: "&int32 opt", want: "&int32 opt", src: "type T opt [none?, some? T]"},
+		{expr: "[some? 1]", infer: "&&int32 opt", want: "[some? int]", src: "type T opt [none?, some? T]"},
+		{expr: "[some? 1]", infer: "string opt", want: "string opt", src: "type T opt [none?, some? T]"},
+		{expr: "[some?]", infer: "int opt", want: "[some?]", src: "type T opt [none?, some? T]"},
+		{expr: "[none?]", infer: "int opt", want: "int opt", src: "type T opt [none?, some? T]"},
+		{expr: "[none?]", infer: "&int opt", want: "&int opt", src: "type T opt [none?, some? T]"},
+		{expr: "[none?]", infer: "&&int opt", want: "[none?]", src: "type T opt [none?, some? T]"},
 		{
-			expr:  `[?none]`,
+			expr:  `[none?]`,
 			infer: "other#foo",
 			want:  "other#foo",
 			src:   `import "other"`,
 			otherMod: testMod{
 				path: "other",
 				src: `
-					Type foo [?none, ?some int]
+					Type foo [none?, some? int]
 				`,
 			},
 		},
 		{
-			expr:  `[?none]`,
+			expr:  `[none?]`,
 			infer: "other#foo",
 			// Fails to use type other#foo, as it's opaque, not exported.
-			want: "[?none]",
+			want: "[none?]",
 			src:  `import "other"`,
 			otherMod: testMod{
 				path: "other",
 				src: `
 					Type foo := _foo
-					type _foo [?none, ?some int]
+					type _foo [none?, some? int]
 				`,
 			},
 		},
@@ -2998,7 +2998,7 @@ func TestLiteralType(t *testing.T) {
 		{typ: "int", lit: "int"},
 		{typ: "[int]", lit: "[int]"},
 		{typ: "[.x int]", lit: "[.x int]"},
-		{typ: "[?x int]", lit: "[?x int]"},
+		{typ: "[x? int]", lit: "[x? int]"},
 		{typ: "(int){int}", lit: "(int){int}"},
 		{typ: "&int", lit: "&int"},
 		{typ: "&&int", lit: "&&int"},
@@ -3041,7 +3041,7 @@ func TestEq(t *testing.T) {
 				"int32",
 				"float32",
 				"[.x int, .y int]",
-				"[?none, ?some int]",
+				"[none?, some? int]",
 				"(int){float32}",
 			},
 		},
@@ -3054,7 +3054,7 @@ func TestEq(t *testing.T) {
 				"int32",
 				"float32",
 				"[.x int, .y int]",
-				"[?none, ?some int]",
+				"[none?, some? int]",
 				"(int){float32}",
 			},
 		},
@@ -3090,7 +3090,7 @@ func TestEq(t *testing.T) {
 				"int32",
 				"float32",
 				"[.x int, .y int]",
-				"[?none, ?some int]",
+				"[none?, some? int]",
 				"(int){float32}",
 			},
 		},
@@ -3098,7 +3098,7 @@ func TestEq(t *testing.T) {
 			Typ:  "[int]",
 			Same: []string{"[int]"},
 			Diff: []string{
-				"[?int]",
+				"[int?]",
 				"&[int]",
 				"[float32]",
 				"[.y int]",
@@ -3115,7 +3115,7 @@ func TestEq(t *testing.T) {
 				"int32",
 				"float32",
 				"[.x int, .y int]",
-				"[?none, ?some int]",
+				"[none?, some? int]",
 				"(int){float32}",
 			},
 		},
@@ -3125,12 +3125,12 @@ func TestEq(t *testing.T) {
 			Diff: []string{"[.y int, .x int]"},
 		},
 		{
-			Typ:  "[?none, ?some int]",
-			Same: []string{"[?none, ?some int]"},
+			Typ:  "[none?, some? int]",
+			Same: []string{"[none?, some? int]"},
 			Diff: []string{
-				"&[?none, ?some int]",
-				"[?none int, ?some]",
-				"[?some int, ?none]",
+				"&[none?, some? int]",
+				"[none? int, some?]",
+				"[some? int, none?]",
 				"[.none int, .some int]",
 				"[.y int]",
 				"int32",
@@ -3140,7 +3140,7 @@ func TestEq(t *testing.T) {
 			},
 		},
 		{
-			Typ:  "[?a int, ?b int]",
+			Typ:  "[a? int, b? int]",
 			Diff: []string{"[.a int, .b int]"},
 		},
 		{

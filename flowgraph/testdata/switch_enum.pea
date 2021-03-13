@@ -2,21 +2,21 @@
 // 2
 // 3
 func main() {
-	print(one_two_three :: [?one]),
+	print(one_two_three :: [one?]),
 	print("\n"),
-	print(one_two_three :: [?two]),
+	print(one_two_three :: [two?]),
 	print("\n"),
-	print(one_two_three :: [?three])
+	print(one_two_three :: [three?])
 }
 
-type one_two_three [?one, ?two, ?three]
+type one_two_three [one?, two?, three?]
 
 func print(x one_two_three) {
-	x ?one {
+	x one? {
 		print_int(1)
-	} ?two {
+	} two? {
 		print_int(2)
-	} ?three {
+	} three? {
 		print_int(3)
 	}
 }

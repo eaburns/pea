@@ -1,18 +1,18 @@
 // Hello, World!
 // Goodbye, All!
 func main() {
-	true ?true {
+	true true? {
 		print("Hello, World!")
-	} ?false {
+	} false? {
 		print("fail")
 	},
 	print("\n"),
-	false ?true {
+	false true? {
 		print("fail")
-	} ?false {
+	} false? {
 		print("Goodbye, All!")
 	}
 }
 
-const true := bool :: [?true]
-const false := bool :: [?false]
+const true := bool :: [true?]
+const false := bool :: [false?]

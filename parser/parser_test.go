@@ -89,16 +89,16 @@ func TestExpr(t *testing.T) {
 		},
 
 		{
-			`[?none]`,
+			`[none?]`,
 			&UnionLit{
-				CaseVal: CaseVal{Name: Ident{Name: "?none"}},
+				CaseVal: CaseVal{Name: Ident{Name: "none?"}},
 			},
 		},
 		{
-			`[?some 5]`,
+			`[some? 5]`,
 			&UnionLit{
 				CaseVal: CaseVal{
-					Name: Ident{Name: "?some"},
+					Name: Ident{Name: "some?"},
 					Val:  &IntLit{Text: "5"},
 				},
 			},
@@ -153,11 +153,11 @@ func TestExpr(t *testing.T) {
 			},
 		},
 		{
-			`[x ?foo 6]`,
+			`[x foo? 6]`,
 			&ArrayLit{
 				Exprs: []Expr{
 					&Call{
-						Fun: Ident{Name: "?foo"},
+						Fun: Ident{Name: "foo?"},
 						Args: []Expr{
 							Ident{Name: "x"},
 							&IntLit{Text: "6"},
@@ -280,9 +280,9 @@ func TestExpr(t *testing.T) {
 		},
 
 		{
-			`x ?foo y`,
+			`x foo? y`,
 			&Call{
-				Fun: Ident{Name: "?foo"},
+				Fun: Ident{Name: "foo?"},
 				Args: []Expr{
 					Ident{Name: "x"},
 					Ident{Name: "y"},
@@ -290,9 +290,9 @@ func TestExpr(t *testing.T) {
 			},
 		},
 		{
-			`x ?foo y ?bar z ?baz a`,
+			`x foo? y bar? z baz? a`,
 			&Call{
-				Fun: Ident{Name: "?foo?bar?baz"},
+				Fun: Ident{Name: "foo?bar?baz?"},
 				Args: []Expr{
 					Ident{Name: "x"},
 					Ident{Name: "y"},
@@ -302,9 +302,9 @@ func TestExpr(t *testing.T) {
 			},
 		},
 		{
-			`x() ?foo y`,
+			`x() foo? y`,
 			&Call{
-				Fun: Ident{Name: "?foo"},
+				Fun: Ident{Name: "foo?"},
 				Args: []Expr{
 					&Call{Fun: Ident{Name: "x"}},
 					Ident{Name: "y"},

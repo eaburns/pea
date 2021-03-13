@@ -16051,17 +16051,11 @@ func _CaseIdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ "?" id:Id
+	// _ id:Id "?"
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
 	}
-	// "?"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
-		perr = _max(perr, pos)
-		goto fail
-	}
-	pos++
 	// id:Id
 	{
 		pos1 := pos
@@ -16071,6 +16065,12 @@ func _CaseIdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[0] = parser.text[pos1:pos]
 	}
+	// "?"
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos++
 	perr = start
 	return _memoize(parser, _CaseId, start, pos, perr)
 fail:
@@ -16090,10 +16090,19 @@ func _CaseIdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _CaseId}
 	// action
-	// _ "?" id:Id
+	// _ id:Id "?"
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
+	}
+	// id:Id
+	{
+		pos1 := pos
+		// Id
+		if !_fail(parser, _IdFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
 	}
 	// "?"
 	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
@@ -16106,15 +16115,6 @@ func _CaseIdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto fail
 	}
 	pos++
-	// id:Id
-	{
-		pos1 := pos
-		// Id
-		if !_fail(parser, _IdFail, errPos, failure, &pos) {
-			goto fail
-		}
-		labels[0] = parser.text[pos1:pos]
-	}
 	failure.Kids = nil
 	parser.fail[key] = failure
 	return pos, failure
@@ -16144,18 +16144,13 @@ func _CaseIdAction(parser *_Parser, start int) (int, *Ident) {
 	// action
 	{
 		start0 := pos
-		// _ "?" id:Id
+		// _ id:Id "?"
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
 		} else {
 			pos = p
 		}
-		// "?"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
-			goto fail
-		}
-		pos++
 		// id:Id
 		{
 			pos2 := pos
@@ -16168,9 +16163,14 @@ func _CaseIdAction(parser *_Parser, start int) (int, *Ident) {
 			}
 			labels[0] = parser.text[pos2:pos]
 		}
+		// "?"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
+			goto fail
+		}
+		pos++
 		node = func(
 			start, end int, id Ident) Ident {
-			return Ident{Name: "?" + id.Name, L: l(parser, start, end)}
+			return Ident{Name: id.Name + "?", L: l(parser, start, end)}
 		}(
 			start0, pos, label0)
 	}

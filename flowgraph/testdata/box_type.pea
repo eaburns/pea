@@ -42,7 +42,7 @@ Func &(t &T) T box { return: [.val t]}
 Func *(t T box) &T { return: t.val }
 
 Func for:to:do:(start int, end int, f (int) {}) {
-	start <= end ?true {
+	start <= end true? {
 		f(start),
 		for: start + 1 to: end do: f
 	}

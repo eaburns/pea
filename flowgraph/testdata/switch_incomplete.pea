@@ -1,40 +1,40 @@
 // 111222333444555666777
 func main() {
-	print(u :: [?one]),
-	print(u :: [?two]),
-	print(u :: [?three]),
-	print(u :: [?four]),
-	print(u :: [?five]),
-	print(u :: [?six]),
-	print(u :: [?seven]),
+	print(u :: [one?]),
+	print(u :: [two?]),
+	print(u :: [three?]),
+	print(u :: [four?]),
+	print(u :: [five?]),
+	print(u :: [six?]),
+	print(u :: [seven?]),
 }
 
-type u [?one, ?two, ?three, ?four, ?five, ?six, ?seven, ?eight]
+type u [one?, two?, three?, four?, five?, six?, seven?, eight?]
 func print(u u) {
 	u
-	?one {print_int(1)}
-	?two {print_int(2)}
-	?three {print_int(3)}
-	?four {print_int(4)}
-	?five {print_int(5)}
-	?six {print_int(6)}
-	?seven {print_int(7)},
+	one? {print_int(1)}
+	two? {print_int(2)}
+	three? {print_int(3)}
+	four? {print_int(4)}
+	five? {print_int(5)}
+	six? {print_int(6)}
+	seven? {print_int(7)},
 	u
-	?seven {print_int(7)}
-	?six {print_int(6)}
-	?five {print_int(5)}
-	?four {print_int(4)}
-	?three {print_int(3)}
-	?two {print_int(2)}
-	?one {print_int(1)},
+	seven? {print_int(7)}
+	six? {print_int(6)}
+	five? {print_int(5)}
+	four? {print_int(4)}
+	three? {print_int(3)}
+	two? {print_int(2)}
+	one? {print_int(1)},
 	u
-	?three {print_int(3)}
-	?four {print_int(4)}
-	?one {print_int(1)}
-	?two {print_int(2)}
-	?seven {print_int(7)}
-	?five {print_int(5)}
-	?six {print_int(6)}
+	three? {print_int(3)}
+	four? {print_int(4)}
+	one? {print_int(1)}
+	two? {print_int(2)}
+	seven? {print_int(7)}
+	five? {print_int(5)}
+	six? {print_int(6)}
 }
 
 func print_int(_ int)
