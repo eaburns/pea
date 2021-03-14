@@ -1359,7 +1359,7 @@ func (bb *blockBuilder) alloc(typ Type) *Alloc {
 		panic("bad alloc of an empty type")
 	}
 	v := &Alloc{CountImm: -1, T: &AddrType{Elem: typ}, L: bb.L}
-	bb.fun.b0.addAlloc(v)
+	bb.addValue(v)
 	return v
 }
 
@@ -1368,7 +1368,7 @@ func (bb *blockBuilder) allocNImm(n int, typ Type) *Alloc {
 		panic("bad alloc of an empty type")
 	}
 	v := &Alloc{CountImm: n, T: &ArrayType{Elem: typ}, L: bb.L}
-	bb.fun.b0.addAlloc(v)
+	bb.addValue(v)
 	return v
 }
 
@@ -1527,28 +1527,4 @@ func (bb *blockBuilder) addValue(v Value) {
 	bb.addInstr(v)
 	bb.fun.next++
 	v.setNum(bb.fun.next - 1)
-}
-
-func (bb *blockBuilder) addAlloc(v *Alloc) {
-	bb.fun.next++
-	v.setNum(bb.fun.next - 1)
-	for _, use := range v.Uses() {
-		use.addUser(v)
-	}
-
-	// All allocs go at the beginning of the block,
-	// so insert this just before the first non-alloc.
-	var i int
-	for i = range bb.Instrs {
-		if _, ok := bb.Instrs[i].(*Frame); ok {
-			continue
-		}
-		if _, ok := bb.Instrs[i].(*Alloc); ok {
-			continue
-		}
-		break
-	}
-	bb.Instrs = append(bb.Instrs, nil)
-	copy(bb.Instrs[i+1:], bb.Instrs[i:])
-	bb.Instrs[i] = v
 }

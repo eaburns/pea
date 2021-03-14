@@ -188,7 +188,6 @@ func inlineCalls(f *FuncDef) {
 			}
 
 			inlined := copyBlocks(f, def.Blocks)
-			moveAllocs(f.Blocks[0], inlined[0])
 			subParms(parms, inlined)
 			subCaps(caps, inlined)
 			subReturn(tail, inlined) // sets tail.In if needed
@@ -205,29 +204,6 @@ func inlineCalls(f *FuncDef) {
 	rmUnreach(f)
 	rmDeletes(f)
 	renumber(f)
-}
-
-func moveAllocs(dst, src *BasicBlock) {
-	instrs := make([]Instruction, 0, len(dst.Instrs)+len(src.Instrs))
-	for _, r := range dst.Instrs {
-		if _, ok := r.(*Alloc); ok {
-			instrs = append(instrs, r)
-		}
-	}
-	for i, r := range src.Instrs {
-		if _, ok := r.(*Alloc); ok {
-			instrs = append(instrs, r)
-		} else {
-			src.Instrs = src.Instrs[i:]
-			break
-		}
-	}
-	for _, r := range dst.Instrs {
-		if _, ok := r.(*Alloc); !ok {
-			instrs = append(instrs, r)
-		}
-	}
-	dst.Instrs = instrs
 }
 
 // staticFunc returns the *FuncDef of the call
