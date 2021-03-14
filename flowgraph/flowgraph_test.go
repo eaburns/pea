@@ -39,23 +39,26 @@ func TestOptimize(t *testing.T) {
 			if err != nil {
 				t.Fatalf(err.Error())
 			}
-			graph := flowgraph.Build(c)
-			for _, opt := range flowgraph.Opts {
-				t.Run(fileInfo.Name()+" "+opt.Name, func(t *testing.T) {
-					for _, f := range graph.Funcs {
-						opt.Func(f)
-					}
-					checkInvariants(t, graph)
-					got := runTest(graph)
-					want, err := expectedOutput(path)
-					if err != nil {
-						t.Fatalf(err.Error())
-					}
-					if got != want {
-						t.Errorf("%s\ngot:\n%q\nwant:\n%q", path, got, want)
-					}
-				})
+			want, err := expectedOutput(path)
+			if err != nil {
+				t.Fatalf(err.Error())
 			}
+			graph := flowgraph.Build(c)
+			t.Run("build", func(t *testing.T) {
+				checkInvariants(t, graph)
+				got := runTest(graph)
+				if got != want {
+					t.Errorf("%s\ngot:\n%q\nwant:\n%q", path, got, want)
+				}
+			})
+			t.Run("opt", func(t *testing.T) {
+				flowgraph.Optimize(graph)
+				checkInvariants(t, graph)
+				got := runTest(graph)
+				if got != want {
+					t.Errorf("%s\ngot:\n%q\nwant:\n%q", path, got, want)
+				}
+			})
 		})
 	}
 }

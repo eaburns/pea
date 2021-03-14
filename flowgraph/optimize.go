@@ -1,24 +1,14 @@
 package flowgraph
 
-import "strings"
+import (
+	"strings"
+)
 
 func Optimize(m *Mod) {
 	for _, f := range m.Funcs {
-		for _, opt := range Opts {
-			opt.Func(f)
-		}
+		inlineCalls(f)
+		mergeBlocks(f)
 	}
-}
-
-type Opt struct {
-	Name string
-	Func func(*FuncDef)
-}
-
-var Opts = []Opt{
-	{"build", func(*FuncDef) {}},
-	{"inline calls", inlineCalls},
-	{"merge blocks", mergeBlocks},
 }
 
 func renumber(f *FuncDef) {
@@ -143,9 +133,29 @@ func mergeBlocks(f *FuncDef) {
 	renumber(f)
 }
 
+func canInline(f *FuncDef) bool {
+	if len(f.Blocks) == 0 {
+		return false
+	}
+	for _, b := range f.Blocks {
+		for _, r := range b.Instrs {
+			switch r := r.(type) {
+			case *Frame:
+				return false
+			case *Func:
+				if !strings.HasPrefix(r.Def.Name, "<block") {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
 func inlineCalls(f *FuncDef) {
 	todo := f.Blocks
 	var done []*BasicBlock
+blocks:
 	for len(todo) > 0 {
 		b := todo[0]
 		todo = todo[1:]
@@ -155,12 +165,11 @@ func inlineCalls(f *FuncDef) {
 				continue
 			}
 			def := staticFunc(c)
-			if def == nil {
+			if def == nil || def == f {
 				continue
 			}
 			caps := blockCaps(c)
-			if caps == nil {
-				// For now, we just inline static block calls.
+			if caps == nil && !canInline(def) {
 				continue
 			}
 			parms := make(map[*ParmDef]Value)
@@ -197,8 +206,9 @@ func inlineCalls(f *FuncDef) {
 			b.Instrs = append(b.Instrs[:j+1:j+1], &Jump{Dst: inlined[0], L: c.L})
 			inlined[0].addIn(b)
 
-			todo = append(append(inlined, tail), todo...)
-			break
+			done = append(append(done, b), inlined...)
+			todo = append([]*BasicBlock{tail}, todo...)
+			continue blocks
 		}
 		done = append(done, b)
 	}
