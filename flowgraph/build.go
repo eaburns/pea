@@ -72,6 +72,8 @@ func topoSortFuncs(funcs []*FuncDef) []*FuncDef {
 
 type modBuilder struct {
 	*Mod
+	nextInstr int
+	nextBlock int
 	typeDef map[*checker.TypeInst]*StructType
 	varDef  map[*checker.VarDef]*VarDef
 	funcDef map[*checker.FuncInst]*FuncDef
@@ -85,7 +87,6 @@ type funcBuilder struct {
 	parmAlloc  map[*ParmDef]*Alloc
 	localAlloc map[*checker.LocalDef]*Alloc
 	capField   map[*checker.BlockCap]*FieldDef
-	next       int
 
 	// blockType is only non-nil if this is a block literal.
 	blockType   *StructType
@@ -375,7 +376,8 @@ func (mb *modBuilder) buildBlockLit(lit *checker.BlockLit, longRetType Type) *fu
 }
 
 func (fb *funcBuilder) newBlock() *blockBuilder {
-	block := &BasicBlock{Num: len(fb.Blocks), Func: fb.FuncDef}
+	fb.mod.nextBlock++
+	block := &BasicBlock{Num: fb.mod.nextBlock-1, Func: fb.FuncDef}
 	fb.Blocks = append(fb.Blocks, block)
 	return &blockBuilder{fun: fb, BasicBlock: block}
 }
@@ -708,7 +710,8 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 	sort.Slice(cases, func(i, j int) bool { return cases[i].num < cases[j].num })
 	bb.buildCases(0, len(sw.Union.Cases), tag, res, cases, bDone)
 
-	bDone.Num = len(bb.fun.Blocks)
+	bb.fun.mod.nextBlock++
+	bDone.Num = bb.fun.mod.nextBlock-1
 	bb.fun.Blocks = append(bb.fun.Blocks, bDone.BasicBlock)
 	return bDone, res
 }
@@ -842,7 +845,8 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 		}
 	}
 
-	bDone.Num = len(bb.fun.Blocks)
+	bb.fun.mod.nextBlock++
+	bDone.Num = bb.fun.mod.nextBlock - 1
 	bb.fun.Blocks = append(bb.fun.Blocks, bDone.BasicBlock)
 
 	return bDone, res
@@ -1370,8 +1374,8 @@ func (bb *blockBuilder) frame() Value {
 		}
 	}
 	v := &Frame{}
-	bb.fun.next++
-	v.setNum(bb.fun.next - 1)
+	bb.fun.mod.nextInstr++
+	v.setNum(bb.fun.mod.nextInstr - 1)
 	for _, use := range v.Uses() {
 		use.addUser(v)
 	}
@@ -1550,6 +1554,6 @@ func (bb *blockBuilder) addInstr(r Instruction) {
 
 func (bb *blockBuilder) addValue(v Value) {
 	bb.addInstr(v)
-	bb.fun.next++
-	v.setNum(bb.fun.next - 1)
+	bb.fun.mod.nextInstr++
+	v.setNum(bb.fun.mod.nextInstr - 1)
 }

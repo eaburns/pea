@@ -12,19 +12,6 @@ func Optimize(m *Mod) {
 	}
 }
 
-func renumber(f *FuncDef) {
-	var valueNum int
-	for blockNum, b := range f.Blocks {
-		b.Num = blockNum
-		for _, r := range b.Instrs {
-			if v, ok := r.(Value); ok {
-				v.setNum(valueNum)
-				valueNum++
-			}
-		}
-	}
-}
-
 func rmUnreach(f *FuncDef) {
 	if len(f.Blocks) == 0 {
 		return
@@ -131,7 +118,6 @@ func mergeBlocks(f *FuncDef) {
 		}
 	}
 	f.Blocks = done
-	renumber(f)
 }
 
 func canInline(f *FuncDef) bool {
@@ -156,7 +142,6 @@ func canInline(f *FuncDef) bool {
 func inlineCalls(f *FuncDef) {
 	todo := f.Blocks
 	var done []*BasicBlock
-blocks:
 	for len(todo) > 0 {
 		b := todo[0]
 		todo = todo[1:]
@@ -169,7 +154,7 @@ blocks:
 			if def == nil || def == f {
 				continue
 			}
-			caps := blockCaps(c)
+			caps := blockCaps(f, c)
 			if caps == nil && !canInline(def) {
 				continue
 			}
@@ -187,7 +172,14 @@ blocks:
 				// If the called function is a function expression;
 				// delete the function struct and caps initialization.
 				funcBase := l.Addr.(*Field).Base
-				funcBase.delete()
+				for {
+					funcBase.delete()
+					init := singleInit(funcBase)
+					if init == nil {
+						break
+					}
+					funcBase = init
+				}
 				funcType := funcBase.Type().(*AddrType).Elem.(*StructType)
 				capsInit := singleFieldInit(funcBase, funcType.Fields[1])
 				capsInit.delete()
@@ -207,16 +199,14 @@ blocks:
 			b.Instrs = append(b.Instrs[:j+1:j+1], &Jump{Dst: inlined[0], L: c.L})
 			inlined[0].addIn(b)
 
-			done = append(append(done, b), inlined...)
-			todo = append([]*BasicBlock{tail}, todo...)
-			continue blocks
+			todo = append(append(inlined, tail), todo...)
+			break
 		}
 		done = append(done, b)
 	}
 	f.Blocks = done
 	rmUnreach(f)
 	rmDeletes(f)
-	renumber(f)
 }
 
 func rmSelfTailCalls(f *FuncDef) {
@@ -295,7 +285,6 @@ func rmSelfTailCalls(f *FuncDef) {
 	}
 	rmUnreach(f)
 	rmDeletes(f)
-	renumber(f)
 }
 
 func returns(b *BasicBlock) bool {
@@ -328,14 +317,6 @@ func staticFunc(call *Call) *FuncDef {
 		return f.Def
 	}
 
-	// Here we are checking if the call is of the func field
-	// of a function struct that is initialized only a single time.
-	// * Call.Func is a *Load of a *Field,
-	// * The *Field.Base is a struct that is only used as the Base of *Fields,
-	// * The "func" field of *Field.Base is only initialized once, and
-	// * the single init of the field is a *Func;
-	// that *Func is our static function.
-
 	load, ok := call.Func.(*Load)
 	if !ok {
 		return nil
@@ -345,13 +326,29 @@ func staticFunc(call *Call) *FuncDef {
 		return nil
 	}
 	funcBase := field.Base
-	// This is only a block literal call if the function struct base
-	// is only used by having its fields accessed.
-	// (For example, it must not be the Dst of a Copy.)
-	for _, user := range funcBase.UsedBy() {
-		if _, ok := user.(*Field); !ok {
-			return nil
+
+	for {
+		init := singleInit(funcBase)
+		if init == nil {
+			break
 		}
+		funcBase = init
+	}
+
+	// The base is only accessed as either the src of a Copy or Fields.
+	for _, user := range funcBase.UsedBy() {
+		if user.isDeleted() {
+			continue
+		}
+		switch user := user.(type) {
+		case *Field:
+			continue
+		case *Copy:
+			if user.Src == funcBase {
+				continue
+			}
+		}
+		return nil
 	}
 	funcType := funcBase.Type().(*AddrType).Elem.(*StructType)
 	f, ok := singleFieldInit(funcBase, funcType.Fields[0]).(*Func)
@@ -361,7 +358,7 @@ func staticFunc(call *Call) *FuncDef {
 	return f.Def
 }
 
-func blockCaps(call *Call) map[*FieldDef]Value {
+func blockCaps(f *FuncDef, call *Call) map[*FieldDef]Value {
 	if len(call.Args) < 1 {
 		return nil
 	}
@@ -387,7 +384,15 @@ func blockCaps(call *Call) map[*FieldDef]Value {
 		// To verify that it's a capture field, it must have a single init,
 		// and the init must be a caps struct.
 		funcBase := capsField.Base
-		capsInit := singleFieldInit(funcBase, capsField.Def)
+		for {
+			init := singleInit(funcBase)
+			if init == nil {
+				break
+			}
+			funcBase = init
+		}
+		funcType := funcBase.Type().(*AddrType).Elem.(*StructType)
+		capsInit := singleFieldInit(funcBase, funcType.Fields[1])
 		if capsInit == nil || !isCapsStruct(capsInit) {
 			return nil
 		}
@@ -425,25 +430,21 @@ func isCapsStruct(v Value) bool {
 	return false
 }
 
-// singleFieldInit returns the single initialization for a field of a given base value,
-// or nil if the field is never initialized or initialized more than once.
 func singleFieldInit(base Value, def *FieldDef) Value {
 	var init Value
-	for _, r := range base.UsedBy() {
-		f, ok := r.(*Field)
-		if !ok || f.Base != base || f.Def != def || isReadOnly(f) {
+	for _, user := range base.UsedBy() {
+		f, ok := user.(*Field)
+		if !ok || f.Def != def || isReadOnly(f) {
 			continue
 		}
-		i := singleInit(f)
-		if i == nil || init != nil {
+		if init != nil {
 			return nil
 		}
-		init = i
+		init = singleInit(f)
 	}
 	return init
 }
 
-// isReadOnly returns whether the value is only read.
 func isReadOnly(v Value) bool {
 	for _, user := range v.UsedBy() {
 		if _, ok := user.(*Load); !ok {
@@ -455,8 +456,7 @@ func isReadOnly(v Value) bool {
 
 // singleInit returns the single Value stored or copied into v;
 // or nil if there is not exactly one Store or Copy into v,
-// or if v is used by anything other than
-// the destination of a Copy or Store or as a Load.
+// or if v used by any instructions other than Field.
 func singleInit(v Value) Value {
 	var init Value
 	for _, user := range v.UsedBy() {
@@ -464,15 +464,23 @@ func singleInit(v Value) Value {
 		case *Load:
 			continue
 		case *Store:
-			if init != nil || user.Src == v {
+			if user.Src == v {
+				continue
+			}
+			if init != nil {
 				return nil
 			}
 			init = user.Src
 		case *Copy:
-			if init != nil || user.Src == v {
+			if user.Src == v {
+				continue
+			}
+			if init != nil {
 				return nil
 			}
 			init = user.Src
+		case *Field:
+			continue
 		default:
 			return nil
 		}
