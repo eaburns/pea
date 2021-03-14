@@ -303,7 +303,7 @@ func (mb *modBuilder) buildBlockLit(lit *checker.BlockLit, longRetType Type) *fu
 	for i := range lit.Parms {
 		parms[i] = &lit.Parms[i]
 	}
-	name := fmt.Sprintf("block%d", len(mb.Funcs))
+	name := fmt.Sprintf("<block%d>", len(mb.Funcs))
 	fb := mb.newFuncBuilder(mb.Path, name, parms, lit.Ret, lit.Loc())
 	fb.blockType = &StructType{}
 	fb.longRetType = longRetType

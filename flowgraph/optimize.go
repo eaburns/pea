@@ -1,5 +1,7 @@
 package flowgraph
 
+import "strings"
+
 func Optimize(m *Mod) {
 	for _, f := range m.Funcs {
 		for _, opt := range Opts {
@@ -190,7 +192,7 @@ func inlineCalls(f *FuncDef) {
 			inlined := copyBlocks(f, def.Blocks)
 			subParms(parms, inlined)
 			subCaps(caps, inlined)
-			subReturn(tail, inlined) // sets tail.In if needed
+			subReturn(tail, inlined, strings.HasPrefix(f.Name, "<block"))
 
 			b.Instrs = append(b.Instrs[:j+1:j+1], &Jump{Dst: inlined[0], L: c.L})
 			inlined[0].addIn(b)
@@ -433,7 +435,7 @@ func subCaps(sub map[*FieldDef]Value, bs []*BasicBlock) {
 	}
 }
 
-func subReturn(dst *BasicBlock, bs []*BasicBlock) {
+func subReturn(dst *BasicBlock, bs []*BasicBlock, isBlock bool) {
 	for _, b := range bs {
 		for i := range b.Instrs {
 			r, ok := b.Instrs[i].(*Return)
@@ -443,7 +445,7 @@ func subReturn(dst *BasicBlock, bs []*BasicBlock) {
 			if r.Frame == nil {
 				b.Instrs[i] = &Jump{Dst: dst, L: r.L}
 				dst.addIn(b)
-			} else {
+			} else if !isBlock {
 				r.Frame.rmUser(r)
 				r.Frame = nil
 			}
