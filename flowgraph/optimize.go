@@ -7,6 +7,7 @@ import (
 func Optimize(m *Mod) {
 	for _, f := range m.Funcs {
 		inlineCalls(f)
+		rmSelfTailCalls(f)
 		mergeBlocks(f)
 	}
 }
@@ -216,6 +217,106 @@ blocks:
 	rmUnreach(f)
 	rmDeletes(f)
 	renumber(f)
+}
+
+func rmSelfTailCalls(f *FuncDef) {
+	for _, b := range f.Blocks {
+		if len(b.Instrs) < 2 {
+			continue
+		}
+		if !returns(b) {
+			continue
+		}
+		call, ok := b.Instrs[len(b.Instrs)-2].(*Call)
+		if !ok || staticFunc(call) != f {
+			continue
+		}
+		for _, o := range b.Out() {
+			o.rmIn(b)
+		}
+		b.Instrs[len(b.Instrs)-2].delete()
+		b.Instrs[len(b.Instrs)-1].delete()
+		for i := range call.Args {
+			// Each parameter has an alloc that it is copied into in block0.
+			// We need to find the allocs and store the args into them.
+			var alloc *Alloc
+			for _, r := range f.Blocks[0].Instrs {
+				p, ok := r.(*Parm)
+				if !ok || p.Def != f.Parms[i] {
+					continue
+				}
+				if p == nil {
+					panic("impossible")
+				}
+				if len(p.UsedBy()) != 1 {
+					panic("impossible")
+				}
+				ld, ok := p.UsedBy()[0].(*Load)
+				if !ok {
+					panic("impossible")
+				}
+				if len(ld.UsedBy()) != 1 {
+					panic("impossible")
+				}
+				var dst Value
+				switch init := ld.UsedBy()[0].(type) {
+				case *Store:
+					dst = init.Dst
+				case *Copy:
+					dst = init.Dst
+				default:
+					panic("impossible")
+				}
+				alloc, ok = dst.(*Alloc)
+				if !ok {
+					panic("impossible")
+				}
+				break
+			}
+			if alloc == nil {
+				panic("impossible")
+			}
+			arg := call.Args[i]
+			if arg == alloc {
+				continue
+			}
+			var storeCopy Instruction
+			if f.Parms[i].ByValue {
+				storeCopy = &Copy{Dst: alloc, Src: arg, L: call.L}
+			} else {
+				storeCopy = &Store{Dst: alloc, Src: arg, L: call.L}
+			}
+			arg.addUser(storeCopy)
+			alloc.addUser(storeCopy)
+			b.Instrs = append(b.Instrs, storeCopy)
+		}
+		b.Instrs = append(b.Instrs, &Jump{Dst: f.Blocks[1], L: call.L})
+		f.Blocks[1].addIn(b)
+	}
+	rmUnreach(f)
+	rmDeletes(f)
+	renumber(f)
+}
+
+func returns(b *BasicBlock) bool {
+	seen := make(map[*BasicBlock]bool)
+	for {
+		if seen[b] {
+			return false
+		}
+		seen[b] = true
+		switch tail := b.Instrs[len(b.Instrs)-1].(type) {
+		case *Return:
+			return true
+		case *Jump:
+			if len(tail.Dst.Instrs) > 1 {
+				return false
+			}
+			b = tail.Dst
+		default:
+			return false
+		}
+	}
 }
 
 // staticFunc returns the *FuncDef of the call
