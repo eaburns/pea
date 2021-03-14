@@ -267,13 +267,18 @@ func rmSelfTailCalls(f *FuncDef) {
 				panic("impossible")
 			}
 			arg := call.Args[i]
-			if arg == alloc {
-				continue
-			}
 			var storeCopy Instruction
 			if f.Parms[i].ByValue {
+				if arg == alloc {
+					continue
+				}
 				storeCopy = &Copy{Dst: alloc, Src: arg, L: call.L}
 			} else {
+				// We can elide the store if it is storing a
+				// singly initialized value back into itself.
+				if ld, ok := arg.(*Load); ok && ld.Addr == alloc && singleInit(alloc) != nil {
+					continue
+				}
 				storeCopy = &Store{Dst: alloc, Src: arg, L: call.L}
 			}
 			arg.addUser(storeCopy)
