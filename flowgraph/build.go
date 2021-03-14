@@ -42,7 +42,32 @@ func Build(mod *checker.Mod) *Mod {
 		b0.jump(b1)
 		mb.Init = fb.FuncDef
 	}
+	mb.Mod.Funcs = topoSortFuncs(mb.Mod.Funcs)
 	return mb.Mod
+}
+
+func topoSortFuncs(funcs []*FuncDef) []*FuncDef {
+	var sorted []*FuncDef
+	done := make(map[*FuncDef]bool)
+	var sort func(*FuncDef)
+	sort = func(f *FuncDef) {
+		if done[f] {
+			return
+		}
+		done[f] = true
+		for _, b := range f.Blocks {
+			for _, r := range b.Instrs {
+				if g, ok := r.(*Func); ok {
+					sort(g.Def)
+				}
+			}
+		}
+		sorted = append(sorted, f)
+	}
+	for _, f := range funcs {
+		sort(f)
+	}
+	return sorted
 }
 
 type modBuilder struct {
