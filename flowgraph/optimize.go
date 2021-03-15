@@ -10,6 +10,20 @@ func Optimize(m *Mod) {
 		rmSelfTailCalls(f)
 		rmAllocs(f)
 		mergeBlocks(f)
+		renumber(f)
+	}
+}
+
+func renumber(f *FuncDef) {
+	var valueNum int
+	for blockNum, b := range f.Blocks {
+		b.Num = blockNum
+		for _, r := range b.Instrs {
+			if v, ok := r.(Value); ok {
+				v.setNum(valueNum)
+				valueNum++
+			}
+		}
 	}
 }
 
