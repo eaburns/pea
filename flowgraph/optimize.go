@@ -61,7 +61,7 @@ func rmDeletes(f *FuncDef) {
 				seen[r] = true
 				continue
 			}
-			if v, ok := r.(Value); ok && len(v.UsedBy()) == 0 {
+			if v, ok := r.(Value); ok && (len(v.UsedBy()) == 0 || isWriteOnlyAlloc(v)) {
 				todo = append(todo, r)
 				seen[r] = true
 				continue
@@ -82,7 +82,7 @@ func rmDeletes(f *FuncDef) {
 		r.delete()
 		for _, u := range r.Uses() {
 			u.rmUser(r)
-			if !seen[u] && len(u.UsedBy()) == 0 {
+			if !seen[u] && len(u.UsedBy()) == 0 || isWriteOnlyAlloc(u) {
 				todo = append(todo, u)
 				seen[u] = true
 			}
@@ -98,6 +98,33 @@ func rmDeletes(f *FuncDef) {
 		}
 		b.Instrs = b.Instrs[:i]
 	}
+}
+
+func isWriteOnlyAlloc(v Value) bool {
+	_, ok := v.(*Alloc)
+	return ok && isWriteOnly(v)
+}
+
+func isWriteOnly(v Value) bool {
+	for _, u := range v.UsedBy() {
+		switch u := u.(type) {
+		case *Copy:
+			if u.Dst != v {
+				return false
+			}
+		case *Store:
+			if u.Dst != v {
+				return false
+			}
+		case *Field:
+			if !isWriteOnly(u) {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func mergeBlocks(f *FuncDef) {
@@ -162,40 +189,16 @@ func inlineCalls(f *FuncDef) {
 			for i := range def.Parms {
 				parms[def.Parms[i]] = c.Args[i]
 			}
-
 			c.delete()
-			if caps != nil {
-				// If there is a capture block, delete it.
-				c.Args[0].delete()
-			}
-			if l, ok := c.Func.(*Load); ok {
-				// If the called function is a function expression;
-				// delete the function struct and caps initialization.
-				funcBase := l.Addr.(*Field).Base
-				for {
-					funcBase.delete()
-					init := singleInit(funcBase)
-					if init == nil {
-						break
-					}
-					funcBase = init
-				}
-				funcType := funcBase.Type().(*AddrType).Elem.(*StructType)
-				capsInit := singleFieldInit(funcBase, funcType.Fields[1])
-				capsInit.delete()
-			}
-
 			tail := &BasicBlock{Func: b.Func, Instrs: b.Instrs[j+1:]}
 			for _, o := range b.Out() {
 				o.rmIn(b)
 				o.addIn(tail)
 			}
-
 			inlined := copyBlocks(f, def.Blocks)
 			subParms(parms, inlined)
 			subCaps(caps, inlined)
 			subReturn(tail, inlined, strings.HasPrefix(f.Name, "<block"))
-
 			b.Instrs = append(b.Instrs[:j+1:j+1], &Jump{Dst: inlined[0], L: c.L})
 			inlined[0].addIn(b)
 
