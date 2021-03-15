@@ -243,6 +243,9 @@ func (b *BasicBlock) rmIn(in *BasicBlock) {
 }
 
 func (b *BasicBlock) Out() []*BasicBlock {
+	if len(b.Instrs) == 0 {
+		return nil
+	}
 	if t, ok := b.Instrs[len(b.Instrs)-1].(Terminal); ok {
 		return t.Out()
 	}

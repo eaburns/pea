@@ -8,6 +8,7 @@ func Optimize(m *Mod) {
 	for _, f := range m.Funcs {
 		inlineCalls(f)
 		rmSelfTailCalls(f)
+		rmAllocs(f)
 		mergeBlocks(f)
 	}
 }
@@ -125,6 +126,50 @@ func isWriteOnly(v Value) bool {
 		}
 	}
 	return true
+}
+
+func rmAllocs(f *FuncDef) {
+	subValues := make(map[Value]Value)
+	for _, b := range f.Blocks {
+	nextInstr:
+		for _, r := range b.Instrs {
+			alloc, ok := r.(*Alloc)
+			if !ok || !alloc.Type().isSmall() {
+				continue
+			}
+			var store *Store
+			for _, u := range alloc.UsedBy() {
+				switch u := u.(type) {
+				case *Load:
+					// OK
+				case *Store:
+					if store != nil || u.Dst != alloc {
+						continue nextInstr
+					}
+					store = u
+				default:
+					continue nextInstr
+				}
+			}
+			if store == nil {
+				continue
+			}
+			alloc.delete()
+			store.delete()
+			for _, u := range alloc.UsedBy() {
+				if ld, ok := u.(*Load); ok {
+					ld.delete()
+					subValues[ld] = store.Src
+				}
+			}
+		}
+	}
+	for _, b := range f.Blocks {
+		for _, r := range b.Instrs {
+			r.subValues(subValues)
+		}
+	}
+	rmDeletes(f)
 }
 
 func mergeBlocks(f *FuncDef) {
@@ -711,40 +756,40 @@ func subBlock(old *BasicBlock, sub map[*BasicBlock]*BasicBlock) *BasicBlock {
 }
 
 func (o *Store) subValues(sub map[Value]Value) {
-	o.Dst = subValue(o.Dst, sub)
-	o.Src = subValue(o.Src, sub)
+	subValue(sub, o, &o.Dst)
+	subValue(sub, o, &o.Src)
 }
 
 func (o *Copy) subValues(sub map[Value]Value) {
-	o.Dst = subValue(o.Dst, sub)
-	o.Src = subValue(o.Src, sub)
+	subValue(sub, o, &o.Dst)
+	subValue(sub, o, &o.Src)
 }
 
 func (o *Call) subValues(sub map[Value]Value) {
-	o.Func = subValue(o.Func, sub)
+	subValue(sub, o, &o.Func)
 	for i := range o.Args {
-		o.Args[i] = subValue(o.Args[i], sub)
+		subValue(sub, o, &o.Args[i])
 	}
 }
 
 func (o *If) subValues(sub map[Value]Value) {
-	o.Value = subValue(o.Value, sub)
+	subValue(sub, o, &o.Value)
 }
 
 func (o *Jump) subValues(sub map[Value]Value) {}
 
 func (o *Return) subValues(sub map[Value]Value) {
-	o.Frame = subValue(o.Frame, sub)
+	subValue(sub, o, &o.Frame)
 }
 
 func (o *Frame) subValues(sub map[Value]Value) {}
 
 func (o *Alloc) subValues(sub map[Value]Value) {
-	o.Count = subValue(o.Count, sub)
+	subValue(sub, o, &o.Count)
 }
 
 func (o *Load) subValues(sub map[Value]Value) {
-	o.Addr = subValue(o.Addr, sub)
+	subValue(sub, o, &o.Addr)
 }
 
 func (o *Func) subValues(sub map[Value]Value) {}
@@ -756,21 +801,21 @@ func (o *Var) subValues(sub map[Value]Value) {}
 func (o *Parm) subValues(sub map[Value]Value) {}
 
 func (o *Field) subValues(sub map[Value]Value) {
-	o.Base = subValue(o.Base, sub)
+	subValue(sub, o, &o.Base)
 }
 
 func (o *Case) subValues(sub map[Value]Value) {
-	o.Base = subValue(o.Base, sub)
+	subValue(sub, o, &o.Base)
 }
 
 func (o *Index) subValues(sub map[Value]Value) {
-	o.Base = subValue(o.Base, sub)
-	o.Index = subValue(o.Index, sub)
+	subValue(sub, o, &o.Base)
+	subValue(sub, o, &o.Index)
 }
 
 func (o *Slice) subValues(sub map[Value]Value) {
-	o.Base = subValue(o.Base, sub)
-	o.Index = subValue(o.Index, sub)
+	subValue(sub, o, &o.Base)
+	subValue(sub, o, &o.Index)
 }
 
 func (o *Int) subValues(sub map[Value]Value) {}
@@ -781,18 +826,23 @@ func (o *Null) subValues(sub map[Value]Value) {}
 
 func (o *Op) subValues(sub map[Value]Value) {
 	for i := range o.Args {
-		o.Args[i] = subValue(o.Args[i], sub)
+		subValue(sub, o, &o.Args[i])
 	}
 }
 
-func subValue(old Value, sub map[Value]Value) Value {
-	if old == nil {
-		return nil
+func subValue(sub map[Value]Value, r Instruction, v *Value) {
+	if *v == nil {
+		return
 	}
-	if new, ok := sub[old]; ok {
-		return new
+	(*v).rmUser(r)
+	for {
+		new, ok := sub[*v]
+		if !ok {
+			break
+		}
+		*v = new
 	}
-	return old
+	(*v).addUser(r)
 }
 
 func (v *value) subUsers(sub map[Instruction]Instruction) {
