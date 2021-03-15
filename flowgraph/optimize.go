@@ -235,9 +235,6 @@ func rmSelfTailCalls(f *FuncDef) {
 				if !ok || p.Def != f.Parms[i] {
 					continue
 				}
-				if p == nil {
-					panic("impossible")
-				}
 				if len(p.UsedBy()) != 1 {
 					panic("impossible")
 				}
