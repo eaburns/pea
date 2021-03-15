@@ -458,12 +458,17 @@ func isReadOnly(v Value) bool {
 
 // singleInit returns the single Value stored or copied into v;
 // or nil if there is not exactly one Store or Copy into v,
-// or if v used by any instructions other than Field.
+// or if v used by any instructions that may modify it's value.
 func singleInit(v Value) Value {
 	var init Value
 	for _, user := range v.UsedBy() {
 		switch user := user.(type) {
 		case *Load:
+			continue
+		case *Field:
+			if !isReadOnly(user) {
+				return nil
+			}
 			continue
 		case *Store:
 			if user.Src == v {
@@ -481,8 +486,6 @@ func singleInit(v Value) Value {
 				return nil
 			}
 			init = user.Src
-		case *Field:
-			continue
 		default:
 			return nil
 		}
