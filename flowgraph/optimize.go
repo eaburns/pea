@@ -582,8 +582,6 @@ func subParms(sub map[*ParmDef]Value, bs []*BasicBlock) {
 			s[l] = v
 			for _, u := range l.UsedBy() {
 				u.subValues(s)
-				l.rmUser(u)
-				v.addUser(u)
 			}
 		}
 	}
@@ -614,8 +612,6 @@ func subCaps(sub map[*FieldDef]Value, bs []*BasicBlock) {
 			s[l] = v
 			for _, u := range l.UsedBy() {
 				u.subValues(s)
-				l.rmUser(u)
-				v.addUser(u)
 			}
 		}
 	}
