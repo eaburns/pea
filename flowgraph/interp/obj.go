@@ -8,12 +8,41 @@ import (
 	"github.com/eaburns/pea/flowgraph"
 )
 
-type Obj interface {
-	String() string
-	ShallowCopy() Obj
+type Obj struct {
+	val Val
 }
 
-func newObj(typ flowgraph.Type) Obj {
+func newObj(typ flowgraph.Type) *Obj {
+	return &Obj{val: newVal(typ)}
+}
+
+func (o Obj) String() string {
+	if o.val == nil {
+		return "<empty>"
+	}
+	return o.val.String()
+}
+
+func (o *Obj) Val() Val {
+	if o.val == nil {
+		panic("reading uninitialized object")
+	}
+	return o.val
+}
+
+func (o *Obj) SetVal(v Val) {
+	if o.val != nil && reflect.TypeOf(o.val) != reflect.TypeOf(v) {
+		panic(fmt.Sprintf("want type %T, got %T", o.val, v))
+	}
+	o.val = v
+}
+
+type Val interface {
+	String() string
+	ShallowCopy() Val
+}
+
+func newVal(typ flowgraph.Type) Val {
 	switch typ := typ.(type) {
 	case *flowgraph.IntType:
 		switch typ.Size {
@@ -63,14 +92,14 @@ func newObj(typ flowgraph.Type) Obj {
 		fields := make([]Field, len(typ.Fields))
 		for i := range typ.Fields {
 			fields[i].Name = typ.Fields[i].Name
-			fields[i].Val = newObj(typ.Fields[i].Type)
+			fields[i].Obj = newObj(typ.Fields[i].Type)
 		}
 		return Struct{Fields: fields}
 	case *flowgraph.UnionType:
 		cases := make([]Case, len(typ.Cases))
 		for i := range typ.Cases {
 			cases[i].Name = typ.Cases[i].Name
-			cases[i].Val = newObj(typ.Cases[i].Type)
+			cases[i].Obj = newObj(typ.Cases[i].Type)
 		}
 		return Union{Cases: cases}
 	case *flowgraph.FuncType:
@@ -92,16 +121,16 @@ type Float32 float32
 type Float64 float64
 type Func struct{ Def *flowgraph.FuncDef }
 type Pointer struct{ Elem *Obj }
-type Array struct{ Elems *[]Obj }
+type Array struct{ Elems []*Obj }
 type Struct struct{ Fields []Field }
 type Field struct {
 	Name string
-	Val  Obj
+	Obj  *Obj
 }
 type Union struct{ Cases []Case }
 type Case struct {
 	Name string
-	Val  Obj
+	Obj  *Obj
 }
 
 func (o Int8) String() string    { return fmt.Sprintf("%d", o) }
@@ -126,19 +155,13 @@ func (o Pointer) String() string {
 	if o.Elem == nil {
 		return "null"
 	}
-	if *o.Elem == nil {
-		panic("impossible")
-	}
-	return fmt.Sprintf("&%s", *o.Elem)
+	return fmt.Sprintf("&%s", o.Elem.String())
 }
 
 func (o Array) String() string {
-	if o.Elems == nil {
-		return "[]"
-	}
 	var s strings.Builder
 	s.WriteRune('[')
-	for i, e := range *o.Elems {
+	for i, e := range o.Elems {
 		if i > 0 {
 			s.WriteString(", ")
 		}
@@ -161,7 +184,7 @@ func (o Union) String() string {
 		}
 		s.WriteString(f.Name)
 		s.WriteString(": ")
-		s.WriteString(f.Val.String())
+		s.WriteString(f.Obj.String())
 	}
 	s.WriteRune('}')
 	return s.String()
@@ -176,28 +199,28 @@ func (o Struct) String() string {
 		}
 		s.WriteString(f.Name)
 		s.WriteString(": ")
-		s.WriteString(f.Val.String())
+		s.WriteString(f.Obj.String())
 	}
 	s.WriteRune('}')
 	return s.String()
 }
 
-func (o Int8) ShallowCopy() Obj    { return o }
-func (o Int16) ShallowCopy() Obj   { return o }
-func (o Int32) ShallowCopy() Obj   { return o }
-func (o Int64) ShallowCopy() Obj   { return o }
-func (o Uint8) ShallowCopy() Obj   { return o }
-func (o Uint16) ShallowCopy() Obj  { return o }
-func (o Uint32) ShallowCopy() Obj  { return o }
-func (o Uint64) ShallowCopy() Obj  { return o }
-func (o Float32) ShallowCopy() Obj { return o }
-func (o Float64) ShallowCopy() Obj { return o }
-func (o Func) ShallowCopy() Obj    { return o }
-func (o Pointer) ShallowCopy() Obj { return o }
-func (o Array) ShallowCopy() Obj   { return o }
-func (o Union) ShallowCopy() Obj   { return o }
+func (o Int8) ShallowCopy() Val    { return o }
+func (o Int16) ShallowCopy() Val   { return o }
+func (o Int32) ShallowCopy() Val   { return o }
+func (o Int64) ShallowCopy() Val   { return o }
+func (o Uint8) ShallowCopy() Val   { return o }
+func (o Uint16) ShallowCopy() Val  { return o }
+func (o Uint32) ShallowCopy() Val  { return o }
+func (o Uint64) ShallowCopy() Val  { return o }
+func (o Float32) ShallowCopy() Val { return o }
+func (o Float64) ShallowCopy() Val { return o }
+func (o Func) ShallowCopy() Val    { return o }
+func (o Pointer) ShallowCopy() Val { return o }
+func (o Array) ShallowCopy() Val   { return o }
+func (o Union) ShallowCopy() Val   { return o }
 
-func (o Struct) ShallowCopy() Obj {
+func (o Struct) ShallowCopy() Val {
 	fields := make([]Field, len(o.Fields))
 	for i := range o.Fields {
 		fields[i] = o.Fields[i]
@@ -224,7 +247,7 @@ func (o Uint32) Uint64() uint64 { return uint64(o) }
 func (o Uint64) Uint64() uint64 { return uint64(o) }
 
 type Number interface {
-	Obj
+	Val
 	Un(flowgraph.OpKind) Number
 	Bin(flowgraph.OpKind, Number) Number
 }
@@ -437,7 +460,7 @@ func Bool(b bool) Number {
 	return Int64(0)
 }
 
-func convert(obj Obj, typ flowgraph.Type) Obj {
+func convert(obj Val, typ flowgraph.Type) Val {
 	switch typ := typ.(type) {
 	case *flowgraph.IntType:
 		switch {
