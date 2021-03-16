@@ -109,7 +109,11 @@ func (t *FrameType) buildString(s *strings.Builder) *strings.Builder {
 
 func (t *StructType) buildString(s *strings.Builder) *strings.Builder {
 	if t.Name != "" {
-		fmt.Fprintf(s, "%s.%s", t.Mod, t.Name)
+		if t.Mod != "" {
+			s.WriteString(t.Mod)
+			s.WriteRune('.')
+		}
+		s.WriteString(t.Name)
 		if len(t.Args) > 0 {
 			s.WriteRune('<')
 			for i, a := range t.Args {
@@ -120,12 +124,6 @@ func (t *StructType) buildString(s *strings.Builder) *strings.Builder {
 			}
 			s.WriteRune('>')
 		}
-	}
-	switch {
-	case t.Mod != "":
-		return s
-	case t.Name != "":
-		s.WriteString(t.Name)
 		return s
 	}
 	s.WriteString("struct{")

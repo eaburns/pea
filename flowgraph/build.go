@@ -145,6 +145,8 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 	case *checker.ArrayType:
 		elem := mb.buildType(typ.ElemType)
 		return &StructType{
+			Name: "array",
+			Args: []Type{elem},
 			Fields: []*FieldDef{
 				{Num: 0, Name: "length", Type: mb.intType()},
 				{Num: 1, Name: "data", Type: &ArrayType{Elem: elem}},
@@ -199,14 +201,12 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 		funcType := &FuncType{Parms: make([]Type, len(typ.Parms)+1)}
 		funcType.Parms[0] = &AddrType{Elem: &StructType{}} // closure
 		for i, p := range typ.Parms {
-			t := mb.buildType(p)
-			if !t.isSmall() {
-				t = &AddrType{Elem: t}
-			}
-			funcType.Parms[i+1] = t
+			funcType.Parms[i+1] = mb.buildType(p)
 		}
 		funcType.Ret = mb.buildType(typ.Ret)
 		return &StructType{
+			Name: "block",
+			Args: []Type{funcType},
 			Fields: []*FieldDef{
 				{Num: 0, Name: "func", Type: funcType},
 				{Num: 1, Name: "caps", Type: funcType.Parms[0]},
@@ -245,6 +245,7 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			return mb.intType()
 		case checker.String:
 			return &StructType{
+				Name: "string",
 				Fields: []*FieldDef{
 					{Num: 0, Name: "length", Type: mb.intType()},
 					{Num: 1, Name: "data", Type: &ArrayType{
@@ -328,9 +329,10 @@ func (mb *modBuilder) buildBlockLit(lit *checker.BlockLit, longRetType Type) *fu
 	for i := range lit.Parms {
 		parms[i] = &lit.Parms[i]
 	}
-	name := fmt.Sprintf("<block%d>", len(mb.Funcs))
-	fb := mb.newFuncBuilder(mb.Path, name, parms, lit.Ret, lit.Loc())
-	fb.blockType = &StructType{}
+	funcName := fmt.Sprintf("<block%d>", len(mb.Funcs))
+	capsName := fmt.Sprintf("caps%d", len(mb.Funcs))
+	fb := mb.newFuncBuilder(mb.Path, funcName, parms, lit.Ret, lit.Loc())
+	fb.blockType = &StructType{Name: capsName}
 	fb.longRetType = longRetType
 
 	blockData := &ParmDef{
@@ -400,6 +402,8 @@ func (mb *modBuilder) newFuncBuilder(path, name string, parms []*checker.ParmDef
 		if t.isEmpty() {
 			continue
 		}
+		fun.Type.Parms = append(fun.Type.Parms, t)
+
 		var byValue bool
 		if !t.isSmall() {
 			t = &AddrType{Elem: t}
@@ -413,7 +417,6 @@ func (mb *modBuilder) newFuncBuilder(path, name string, parms []*checker.ParmDef
 		}
 		fb.parmDef[p] = pd
 		fun.Parms = append(fun.Parms, pd)
-		fun.Type.Parms = append(fun.Type.Parms, t)
 	}
 	fun.Type.Ret = mb.buildType(ret)
 	if !fun.Type.Ret.isEmpty() {
