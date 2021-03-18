@@ -1,0 +1,32 @@
+// <None>
+// 123
+// Hello, World!
+//
+func main() {
+	us := [u] :: [[none?], [int? 123], [string? "Hello, World!"]],
+	for: 0 to: us.length - 1 do: (i) {
+		print(us[i]),
+		print("\n")
+	}
+}
+
+func for:to:do:(start int, end int, f (int){}) {
+	start <= end true? {
+		f(start),
+		for: start + 1 to: end do: f
+	}
+}
+
+type u [none?, int? int, string? string]
+
+func print(x u) {
+	x none? {
+		print("<None>")
+	} int? (i int) {
+		print_int(i)
+	} string? (s string) {
+		print(s)
+	}
+}
+
+func print_int(_ int)

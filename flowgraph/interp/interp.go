@@ -215,7 +215,7 @@ func (interp *Interp) step() {
 		field := base.Fields[instr.Def.Num].Obj
 		frame.vals[instr] = &Obj{val: Pointer{Elem: field}}
 	case *flowgraph.Case:
-		base := frame.vals[instr.Base].Val().(Pointer).Elem.Val().(Union)
+		base := frame.vals[instr.Base].Val().(Pointer).Elem.Val().(*Union)
 		var c *Case
 		for i := range base.Cases {
 			if base.Cases[i].Name == instr.Def.Name {
@@ -226,7 +226,14 @@ func (interp *Interp) step() {
 		if c == nil {
 			panic("no case")
 		}
-		frame.vals[instr] = &Obj{val: Pointer{Elem: c.Obj}}
+		if c != base.Current {
+			base.Current = c
+			if base.Obj != nil {
+				base.Obj.delete()
+			}
+			base.Obj = newObj(c.Type)
+		}
+		frame.vals[instr] = &Obj{val: Pointer{Elem: base.Obj}}
 	case *flowgraph.Index:
 		ary := frame.vals[instr.Base].Val().(Array).Elems
 		i := frame.vals[instr.Index].Val().(SignedInt).Int64()

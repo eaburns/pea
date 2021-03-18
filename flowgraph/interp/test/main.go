@@ -11,7 +11,10 @@ import (
 	"github.com/eaburns/pea/parser"
 )
 
-var trace = flag.Bool("t", false, "Enable instruction tracing")
+var (
+	opt   = flag.Bool("opt", true, "Enable optimizations")
+	trace = flag.Bool("trace", false, "Enable instruction tracing")
+)
 
 func main() {
 	flag.Parse()
@@ -41,7 +44,9 @@ func main() {
 		os.Exit(1)
 	}
 	g := flowgraph.Build(m)
-	flowgraph.Optimize(g)
+	if *opt {
+		flowgraph.Optimize(g)
+	}
 	var main *flowgraph.FuncDef
 	for _, f := range g.Funcs {
 		if f.Name == "main" && len(f.Parms) == 0 {

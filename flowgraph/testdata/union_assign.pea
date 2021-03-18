@@ -1,0 +1,31 @@
+/*
+Test assigning different values to a union variable.
+*/
+
+// <None>
+// 123
+// Hello, World!
+func main() {
+	x := u :: [none?],
+	print(x),
+	print("\n"),
+	x := u :: [int? 123],
+	print(x),
+	print("\n"),
+	x := u :: [string? "Hello, World!"],
+	print(x)
+}
+
+type u [none?, int? int, string? string]
+
+func print(x u) {
+	x none? {
+		print("<None>")
+	} int? (i int) {
+		print_int(i)
+	} string? (s string) {
+		print(s)
+	}
+}
+
+func print_int(_ int)

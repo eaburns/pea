@@ -9,21 +9,41 @@ import (
 )
 
 type Obj struct {
-	val Val
+	deleted bool
+	val     Val
 }
 
 func newObj(typ flowgraph.Type) *Obj {
 	return &Obj{val: newVal(typ)}
 }
 
-func (o Obj) String() string {
-	if o.val == nil {
-		return "<empty>"
+func (o *Obj) delete() {
+	if o.deleted {
+		panic("deleting deleted object")
 	}
-	return o.val.String()
+	o.deleted = true
+	if o.val != nil {
+		o.val.delete()
+	}
+}
+
+func (o Obj) String() string {
+	var s strings.Builder
+	if o.deleted {
+		s.WriteString("deleted ")
+	}
+	if o.val == nil {
+		s.WriteString("<empty>")
+	} else {
+		s.WriteString(o.val.String())
+	}
+	return s.String()
 }
 
 func (o *Obj) Val() Val {
+	if o.deleted {
+		panic("reading deleted object")
+	}
 	if o.val == nil {
 		panic("reading uninitialized object")
 	}
@@ -31,6 +51,9 @@ func (o *Obj) Val() Val {
 }
 
 func (o *Obj) SetVal(v Val) {
+	if o.deleted {
+		panic("writing deleted object")
+	}
 	if o.val != nil && reflect.TypeOf(o.val) != reflect.TypeOf(v) {
 		panic(fmt.Sprintf("want type %T, got %T", o.val, v))
 	}
@@ -40,6 +63,7 @@ func (o *Obj) SetVal(v Val) {
 type Val interface {
 	String() string
 	ShallowCopy() Val
+	delete()
 }
 
 func newVal(typ flowgraph.Type) Val {
@@ -99,9 +123,9 @@ func newVal(typ flowgraph.Type) Val {
 		cases := make([]Case, len(typ.Cases))
 		for i := range typ.Cases {
 			cases[i].Name = typ.Cases[i].Name
-			cases[i].Obj = newObj(typ.Cases[i].Type)
+			cases[i].Type = typ.Cases[i].Type
 		}
-		return Union{Cases: cases}
+		return &Union{Cases: cases}
 	case *flowgraph.FuncType:
 		return Func{}
 	default:
@@ -127,10 +151,14 @@ type Field struct {
 	Name string
 	Obj  *Obj
 }
-type Union struct{ Cases []Case }
+type Union struct {
+	Cases   []Case
+	Current *Case
+	Obj     *Obj
+}
 type Case struct {
 	Name string
-	Obj  *Obj
+	Type flowgraph.Type
 }
 
 func (o Int8) String() string    { return fmt.Sprintf("%d", o) }
@@ -175,17 +203,15 @@ func (o Array) String() string {
 	return s.String()
 }
 
-func (o Union) String() string {
+func (o *Union) String() string {
+	if o.Current == nil {
+		return "{<uninitialized>}"
+	}
 	var s strings.Builder
 	s.WriteRune('{')
-	for i, f := range o.Cases {
-		if i > 0 {
-			s.WriteString(", ")
-		}
-		s.WriteString(f.Name)
-		s.WriteString(": ")
-		s.WriteString(f.Obj.String())
-	}
+	s.WriteString(o.Current.Name)
+	s.WriteString(": ")
+	s.WriteString(o.Obj.String())
 	s.WriteRune('}')
 	return s.String()
 }
@@ -218,7 +244,7 @@ func (o Float64) ShallowCopy() Val { return o }
 func (o Func) ShallowCopy() Val    { return o }
 func (o Pointer) ShallowCopy() Val { return o }
 func (o Array) ShallowCopy() Val   { return o }
-func (o Union) ShallowCopy() Val   { return o }
+func (o Union) ShallowCopy() Val   { return &o }
 
 func (o Struct) ShallowCopy() Val {
 	fields := make([]Field, len(o.Fields))
@@ -226,6 +252,35 @@ func (o Struct) ShallowCopy() Val {
 		fields[i] = o.Fields[i]
 	}
 	return Struct{Fields: fields}
+}
+
+func (Int8) delete()    {}
+func (Int16) delete()   {}
+func (Int32) delete()   {}
+func (Int64) delete()   {}
+func (Uint8) delete()   {}
+func (Uint16) delete()  {}
+func (Uint32) delete()  {}
+func (Uint64) delete()  {}
+func (Float32) delete() {}
+func (Float64) delete() {}
+func (Func) delete()    {}
+func (Pointer) delete() {}
+
+func (o Array) delete() {
+	for _, e := range o.Elems {
+		e.delete()
+	}
+}
+
+func (o *Union) delete() {
+	o.Obj.delete()
+}
+
+func (o Struct) delete() {
+	for _, e := range o.Fields {
+		e.Obj.delete()
+	}
 }
 
 type SignedInt interface {
