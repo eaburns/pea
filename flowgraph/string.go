@@ -211,7 +211,7 @@ func (d *FuncDef) buildString(s *strings.Builder) *strings.Builder {
 
 func (b *BasicBlock) buildString(s *strings.Builder) *strings.Builder {
 	fmt.Fprintf(s, "%d:\tin=[", b.Num)
-	for i, in := range b.In {
+	for i, in := range b.In() {
 		if i > 0 {
 			s.WriteString(", ")
 		}

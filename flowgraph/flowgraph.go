@@ -219,27 +219,31 @@ type BasicBlock struct {
 	Num    int
 	Func   *FuncDef
 	Instrs []Instruction
-	In     []*BasicBlock
+	in     []*BasicBlock
 }
 
 func (b *BasicBlock) addIn(in *BasicBlock) {
-	for _, x := range b.In {
+	for _, x := range b.in {
 		if x == in {
 			return
 		}
 	}
-	b.In = append(b.In, in)
+	b.in = append(b.in, in)
 }
 
 func (b *BasicBlock) rmIn(in *BasicBlock) {
 	var i int
-	for _, x := range b.In {
+	for _, x := range b.in {
 		if x != in {
-			b.In[i] = x
+			b.in[i] = x
 			i++
 		}
 	}
-	b.In = b.In[:i]
+	b.in = b.in[:i]
+}
+
+func (b *BasicBlock) In() []*BasicBlock {
+	return append([]*BasicBlock{}, b.in...)
 }
 
 func (b *BasicBlock) Out() []*BasicBlock {
@@ -375,9 +379,13 @@ type value struct {
 	users []Instruction
 }
 
-func (v *value) Num() int              { return v.num }
-func (v *value) setNum(x int)          { v.num = x }
-func (v *value) UsedBy() []Instruction { return v.users }
+func (v *value) Num() int     { return v.num }
+func (v *value) setNum(x int) { v.num = x }
+
+func (v *value) UsedBy() []Instruction {
+	// Return a copy so users can be modified while iterating over UsedBy().
+	return append([]Instruction{}, v.users...)
+}
 
 func (v *value) addUser(user Instruction) {
 	for _, use := range v.users {

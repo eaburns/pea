@@ -1,0 +1,163 @@
+// 0x3de	990	01736	0b1111011110
+// 0x3df	991	01737	0b1111011111
+// 0x3e0	992	01740	0b1111100000
+// 0x3e1	993	01741	0b1111100001
+// 0x3e2	994	01742	0b1111100010
+// 0x3e3	995	01743	0b1111100011
+// 0x3e4	996	01744	0b1111100100
+// 0x3e5	997	01745	0b1111100101
+// 0x3e6	998	01746	0b1111100110
+// 0x3e7	999	01747	0b1111100111
+// -10	-16	-20	-10000
+// -f	-15	-17	-1111
+// -e	-14	-16	-1110
+// -d	-13	-15	-1101
+// -c	-12	-14	-1100
+// -b	-11	-13	-1011
+// -a	-10	-12	-1010
+// -9	-9	-11	-1001
+// -8	-8	-10	-1000
+// -7	-7	-7	-111
+// -6	-6	-6	-110
+// -5	-5	-5	-101
+// -4	-4	-4	-100
+// -3	-3	-3	-11
+// -2	-2	-2	-10
+// -1	-1	-1	-1
+// 0	0	0	0
+// 1	1	1	1
+// 2	2	2	10
+// 3	3	3	11
+// 4	4	4	100
+// 5	5	5	101
+// 6	6	6	110
+// 7	7	7	111
+// 8	8	10	1000
+// 9	9	11	1001
+// a	10	12	1010
+// b	11	13	1011
+// c	12	14	1100
+// d	13	15	1101
+// e	14	16	1110
+// f	15	17	1111
+// 10	16	20	10000
+//
+func main() {
+	u := uint64 :: 990,
+	while: { u < (uint64 :: 1000) } do: {
+		print("0x"), print(string(u, 16)),
+		print("\t"), print(string(u)),
+		print("\t0"), print(string(u, 8)),
+		print("\t0b"), print(string(u, 2)),
+		print("\n"),
+		u := u + 1,
+	},
+	i := -16,
+	while: { i <= 16 } do: {
+		print(string(i, 16)),
+		print("\t"), print(string(i)),
+		print("\t"), print(string(i, 8)),
+		print("\t"), print(string(i, 2)),
+		print("\n"),
+		i := i + 1,
+	}
+}
+
+Const true := bool :: [true?]
+Const false := bool :: [false?]
+
+Func !(b bool) bool {
+	return: b true? { false } false? { true }
+}
+
+Func if:then:(cond bool, t (){}) {
+	cond true? t false? {}
+}
+
+Func if:then:else:(cond bool, t (){}, f (){}) {
+	cond true? t false? f
+}
+
+Func &&(a bool, b bool) bool {
+	return: a true? {b} false? {false}
+}
+
+Func ||(a bool, b bool) bool {
+	return: a true? {a} false? {b}
+}
+
+Func for:to:do:(start int, end int, f (int){}) {
+	if: start < end then: {
+		f(start),
+		for: start + 1 to: end do: f
+	}
+}
+
+Func while:do:(cond (){bool}, f (){}) {
+	if: cond() then: {
+		f(),
+		while: cond do: f
+	}
+}
+
+Func zero() uint8 { return: 0 }
+
+Func new(n int) [T] : zero() T {
+	return: new(n, T :: zero())
+}
+
+Func string(bs [uint8]) string {
+	return: string :: bs
+}
+
+Func string(i int) string {
+	return: string(i, 10)
+}
+
+Func string(i int, base uint) string {
+	return: string(int64 :: i, base)
+}
+
+Func string(i int64) string {
+	return: string(i, 10)
+}
+
+Func string(i int64, base uint) string {
+	if: i < 0 then: {
+		return: string(uint64 :: -i, base, true),
+	},
+	return: string(uint64 :: i, base)
+}
+
+Func string(u uint64) string {
+	return: string(u, 10)
+}
+
+Func string(u uint64, base uint) string {
+	return: string(u, base, false)
+}
+
+// 64 bits for base 2, + 1 for negation.
+const max_int_string_bytes := int :: 65
+const digits := [uint8] :: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
+
+Func string(u uint64, base uint, neg bool) string {
+	if: base < 2 || base > 16 then: {
+		panic("bad base")
+	},
+	b := uint64 :: base,
+	bytes := [uint8] :: new(max_int_string_bytes),
+	i := bytes.length - 1,
+	while: { !(u < b) } do: {
+		u_next := u / b,
+		bytes[i] := digits[int :: u - u_next * b],
+		u := u_next,
+		i := i - 1,
+	},
+	bytes[i] := digits[int :: u],
+	if: neg then: {
+		i := i - 1,
+		bytes[i] := '-',
+	},
+	return: string(bytes[i, bytes.length])
+}

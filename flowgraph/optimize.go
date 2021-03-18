@@ -189,11 +189,12 @@ func rmAllocs(f *FuncDef) {
 func mergeBlocks(f *FuncDef) {
 	var done []*BasicBlock
 	for _, b := range f.Blocks {
-		if len(b.In) != 1 || len(b.In[0].Out()) != 1 {
+		ins := b.In()
+		if len(ins) != 1 || len(ins[0].Out()) != 1 {
 			done = append(done, b)
 			continue
 		}
-		in := b.In[0]
+		in := ins[0]
 		// We remove the last instruction of in here.
 		// Since it only goes out to one block, it must have been a Jump,
 		// and thus has no uses to update.
@@ -640,7 +641,7 @@ func copyBlocks(destFunc *FuncDef, bs []*BasicBlock) []*BasicBlock {
 	subBlocks := make(map[*BasicBlock]*BasicBlock)
 	for i := range copy {
 		c := *bs[i]
-		c.In = append([]*BasicBlock{}, bs[i].In...)
+		c.in = append([]*BasicBlock{}, bs[i].in...)
 		c.Func = destFunc
 		c.Instrs = append([]Instruction{}, c.Instrs...)
 		copy[i] = &c
@@ -649,8 +650,8 @@ func copyBlocks(destFunc *FuncDef, bs []*BasicBlock) []*BasicBlock {
 	subValues := make(map[Value]Value)
 	subInstrs := make(map[Instruction]Instruction)
 	for _, b := range copy {
-		for i := range b.In {
-			b.In[i] = subBlock(b.In[i], subBlocks)
+		for i := range b.in {
+			b.in[i] = subBlock(b.in[i], subBlocks)
 		}
 		for i := range b.Instrs {
 			c := b.Instrs[i].shallowCopy()
