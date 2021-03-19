@@ -23,8 +23,9 @@ type Interp struct {
 type frame struct {
 	id int
 
-	args map[*flowgraph.ParmDef]*Obj
-	vals map[flowgraph.Value]*Obj
+	args        map[*flowgraph.ParmDef]*Obj
+	vals        map[flowgraph.Value]*Obj
+	stackAllocs []*Obj
 	*flowgraph.FuncDef
 	*flowgraph.BasicBlock
 	n int
@@ -100,12 +101,12 @@ func (interp *Interp) step() {
 	switch instr := instr.(type) {
 	case *flowgraph.Store:
 		dst := frame.vals[instr.Dst].Val().(Pointer)
-		src := frame.vals[instr.Src].Val()
-		dst.Elem.SetVal(src.ShallowCopy())
+		src := frame.vals[instr.Src]
+		copyObj(dst.Elem, src)
 	case *flowgraph.Copy:
 		dst := frame.vals[instr.Dst].Val().(Pointer)
 		src := frame.vals[instr.Src].Val().(Pointer)
-		dst.Elem.SetVal(src.Elem.Val().ShallowCopy())
+		copyObj(dst.Elem, src.Elem)
 	case *flowgraph.Call:
 		fun := frame.vals[instr.Func].Val().(Func)
 		if len(fun.Def.Blocks) == 0 && fun.Def.Name == "print_int" {
@@ -147,15 +148,20 @@ func (interp *Interp) step() {
 		frame.n = 0
 		return
 	case *flowgraph.Return:
-		if instr.Frame == nil {
-			interp.stack = interp.stack[:len(interp.stack)-1]
-			return
+		if interp.Trace {
+			fmt.Printf("returning from %s\n", frame.Func.Name)
 		}
-		frameID := frame.vals[instr.Frame].Val().(Int64)
+		var frameID Val
+		if instr.Frame != nil {
+			frameID = frame.vals[instr.Frame].Val()
+		}
 		for {
 			popped := interp.stack[len(interp.stack)-1]
 			interp.stack = interp.stack[:len(interp.stack)-1]
-			if popped.id == int(frameID) {
+			for _, del := range popped.stackAllocs {
+				del.delete(interp.Trace)
+			}
+			if frameID == nil || popped.id == int(frameID.(Int64)) {
 				break
 			}
 			if len(interp.stack) == 0 {
@@ -166,6 +172,7 @@ func (interp *Interp) step() {
 	case *flowgraph.Frame:
 		frame.vals[instr] = &Obj{val: Int64(frame.id)}
 	case *flowgraph.Alloc:
+		var objs []*Obj
 		switch {
 		case instr.Count != nil:
 			n := frame.vals[instr.Count]
@@ -173,16 +180,22 @@ func (interp *Interp) step() {
 			for i := range ary {
 				ary[i] = newObj(instr.T.(*flowgraph.ArrayType).Elem)
 			}
+			objs = ary
 			frame.vals[instr] = &Obj{val: Array{Elems: ary}}
 		case instr.CountImm >= 0:
 			ary := make([]*Obj, instr.CountImm)
 			for i := range ary {
 				ary[i] = newObj(instr.T.(*flowgraph.ArrayType).Elem)
 			}
+			objs = ary
 			frame.vals[instr] = &Obj{val: Array{Elems: ary}}
 		default:
 			x := newObj(instr.T.(*flowgraph.AddrType).Elem)
+			objs = []*Obj{x}
 			frame.vals[instr] = &Obj{val: Pointer{Elem: x}}
+		}
+		if instr.Stack {
+			frame.stackAllocs = append(frame.stackAllocs, objs...)
 		}
 	case *flowgraph.Load:
 		frame.vals[instr] = frame.vals[instr.Addr].Val().(Pointer).Elem
@@ -215,25 +228,27 @@ func (interp *Interp) step() {
 		field := base.Fields[instr.Def.Num].Obj
 		frame.vals[instr] = &Obj{val: Pointer{Elem: field}}
 	case *flowgraph.Case:
-		base := frame.vals[instr.Base].Val().(Pointer).Elem.Val().(*Union)
-		var c *Case
+		base := frame.vals[instr.Base].Val().(Pointer).Elem.Val().(Union)
+		var found bool
 		for i := range base.Cases {
-			if base.Cases[i].Name == instr.Def.Name {
-				c = &base.Cases[i]
-				break
+			if base.Cases[i].Name != instr.Def.Name {
+				continue
 			}
+			found = true
+			if base.Current < 0 {
+				base.Current = i
+			}
+			if base.Current != i {
+				panic("accessing bad union case")
+			}
+			break
 		}
-		if c == nil {
+		if !found {
 			panic("no case")
 		}
-		if c != base.Current {
-			base.Current = c
-			if base.Obj != nil {
-				base.Obj.delete()
-			}
-			base.Obj = newObj(c.Type)
+		frame.vals[instr] = &Obj{
+			val: Pointer{Elem: base.Cases[base.Current].Obj},
 		}
-		frame.vals[instr] = &Obj{val: Pointer{Elem: base.Obj}}
 	case *flowgraph.Index:
 		ary := frame.vals[instr.Base].Val().(Array).Elems
 		i := frame.vals[instr.Index].Val().(SignedInt).Int64()

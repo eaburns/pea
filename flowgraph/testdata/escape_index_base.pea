@@ -1,0 +1,17 @@
+/* If an array escapes, allocs assigned to its indices must also escape. , */
+// 1
+func main() {
+	foo_no_inline(),
+	y := 0,
+	print_int(a[0])
+}
+
+func foo_no_inline() {
+	s := [&int] :: [1, 3],
+	&&[&int] :: a := s,
+}
+
+var a := &[&int] :: [y, y]
+var y := int :: 5
+
+func print_int(_ int)

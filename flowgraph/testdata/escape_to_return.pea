@@ -1,0 +1,10 @@
+// 1
+func main() {
+	print_int(foo_no_inline())
+}
+
+func foo_no_inline() &int {
+	return: 1
+}
+
+func print_int(_ int)

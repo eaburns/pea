@@ -1,0 +1,6 @@
+// Hello, World!
+func main() {
+	a := "xxxHello, World!xxx",
+	b := a[3, 16],
+	print(b),
+}

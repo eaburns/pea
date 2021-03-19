@@ -1,0 +1,17 @@
+/* A slice of the array escapes, so the entire array must be heap allocated.*/
+// 123
+func main() {
+	foo_no_inline(),
+	print_int(a[0]),
+	print_int(a[1]),
+	print_int(a[2]),
+}
+
+func foo_no_inline() {
+	s := [0, 0, 0, 1, 2, 3, 0, 0, 0],
+	a := s[3, 6],
+}
+
+var a := [int] :: [5, 5, 5]
+
+func print_int(_ int)

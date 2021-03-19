@@ -418,6 +418,9 @@ func (*Frame) Type() Type     { return &FrameType{} }
 
 type Alloc struct {
 	value
+	// Stack is whether the allocation is on the stack,
+	// otherwise the heap.
+	Stack bool
 	// Count and CountImm are mutualaly exclusive.
 	// If Count==nil and CountImm<0, then the alloc is for 1.
 	Count    Value

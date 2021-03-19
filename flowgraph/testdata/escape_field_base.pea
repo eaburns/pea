@@ -1,0 +1,18 @@
+/* If a struct escapes, allocs assigned to its field must also escape. , */
+// 1
+func main() {
+	foo_no_inline(),
+	y := 0,
+	print_int(p.a)
+}
+
+func foo_no_inline() {
+	s := point :: [.a 1, .b 3],
+	&&point :: p := s,
+}
+
+type point [.a &int, .b &int]
+var p := &point :: [.a y, .b 10]
+var y := int :: 5
+
+func print_int(_ int)

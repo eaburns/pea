@@ -6,10 +6,12 @@ import (
 
 func Optimize(m *Mod) {
 	for _, f := range m.Funcs {
+		moveAllocsToStack(f)
 		inlineCalls(f)
 		rmSelfTailCalls(f)
 		rmAllocs(f)
 		mergeBlocks(f)
+		moveStackAllocsToFront(f)
 		renumber(f)
 	}
 }
@@ -207,23 +209,203 @@ func mergeBlocks(f *FuncDef) {
 	f.Blocks = done
 }
 
-func canInline(f *FuncDef) bool {
-	if len(f.Blocks) == 0 {
-		return false
+func moveStackAllocsToFront(f *FuncDef) {
+	var front []Instruction
+	for _, b := range f.Blocks {
+		var i int
+		for _, r := range b.Instrs {
+			if a, ok := r.(*Alloc); ok && a.Stack {
+				front = append(front, a)
+			} else {
+				b.Instrs[i] = r
+				i++
+			}
+		}
+		b.Instrs = b.Instrs[:i]
 	}
+	if len(front) > 0 {
+		f.Blocks[0].Instrs = append(front, f.Blocks[0].Instrs...)
+	}
+}
+
+func moveAllocsToStack(f *FuncDef) {
+	leaks := findLeaks(f)
 	for _, b := range f.Blocks {
 		for _, r := range b.Instrs {
-			switch r := r.(type) {
-			case *Frame:
-				return false
-			case *Func:
-				if !strings.HasPrefix(r.Def.Name, "<block") {
-					return false
+			if a, ok := r.(*Alloc); ok && !a.Stack {
+				a.Stack = !escapes(leaks, a)
+			}
+		}
+	}
+}
+
+func escapes(leaks map[Value]bool, v Value) bool {
+	if a, ok := v.(*Alloc); ok && a.Count != nil {
+		return true
+	}
+	for _, u := range v.UsedBy() {
+		switch u := u.(type) {
+		case *Store:
+			if u.Src == v && leaks[u.Dst] {
+				return true
+			}
+		case *Field:
+			if escapes(leaks, u) {
+				return true
+			}
+		case *Case:
+			if escapes(leaks, u) {
+				return true
+			}
+		case *Index:
+			if escapes(leaks, u) {
+				return true
+			}
+		case *Slice:
+			if escapes(leaks, u) {
+				return true
+			}
+		case *Call:
+			funcType := u.Func.Type().(*FuncType)
+			var i int
+			if s, ok := u.Func.(*Func); !ok ||
+				len(s.Def.Parms) > 0 && s.Def.Parms[0].BlockData {
+				// This is a function expression call.
+				// The 0th argument is the captures data,
+				// which never escapes, so skip it.
+				i++
+			}
+			// funcType.Parms has fewer elements than u.Args
+			// in the case that the function has a return argument
+			// at the end. Since the return argument can never escape,
+			// we skip checking it here.
+			for ; i < len(funcType.Parms); i++ {
+				if _, ok := funcType.Parms[i].(*AddrType); ok && u.Args[i] == v {
+					return true
 				}
 			}
 		}
 	}
-	return true
+	return false
+}
+
+func findLeaks(f *FuncDef) map[Value]bool {
+	var todo []Value
+	leaks := make(map[Value]bool)
+	for _, b := range f.Blocks {
+		for _, r := range b.Instrs {
+			switch r := r.(type) {
+			case *Alloc:
+				if r.Count != nil {
+					leak(&todo, leaks, r, "array alloc")
+				}
+			case *Var:
+				leak(&todo, leaks, r, "var")
+			case *Parm:
+				leak(&todo, leaks, r, "parm")
+			case *Call:
+				// Iterate over funcType.Parms, not r.Args.
+				// The former  skips any return param.
+				// The return param cannot leak,
+				// since the call can only write into it.
+				funcType := r.Func.Type().(*FuncType)
+				for i := range funcType.Parms {
+					arg := r.Args[i]
+					_, isAddr := arg.Type().(*AddrType)
+					_, isArray := arg.Type().(*ArrayType)
+					if isAddr || isArray {
+						leak(&todo, leaks, arg, "arg %d of %s", i, r)
+					}
+				}
+			}
+		}
+	}
+	for len(todo) > 0 {
+		v := todo[len(todo)-1]
+		todo = todo[:len(todo)-1]
+		switch v := v.(type) {
+		case *Load:
+			_, isAddr := v.Type().(*AddrType)
+			_, isArray := v.Type().(*ArrayType)
+			if isAddr || isArray {
+				// v is an address-typed load and it leaks
+				// (probably stored into a leaky location).
+				// So the address it is holding must also leak.
+				leak(&todo, leaks, v.Addr, "loaded address leaks x%d", v.Num())
+			}
+		// If a Field, Case, Index, or Slice leak,
+		// the entire base needs is marked as a leak,
+		// becasue any Copy into the base
+		// stores into the leaked component.
+		//
+		// TODO: we could instead leaked components at the Copy level:
+		// If the Field.Base is the .Dst of a Copy, Copy.Src leaks,
+		// but Field.Base itself needn't leak.
+		// if Copy.Dst is UsedBy as the Base of a leaked field, Copy.Src leaks.
+		case *Field:
+			leak(&todo, leaks, v.Base, "base of leaked field x%d", v.Num())
+		case *Case:
+			leak(&todo, leaks, v.Base, "base of leaked case x%d", v.Num())
+		case *Index:
+			leak(&todo, leaks, v.Base, "base of leaked index x%d", v.Num())
+		case *Slice:
+			leak(&todo, leaks, v.Base, "base of leaked slice x%d", v.Num())
+		}
+
+		for _, u := range v.UsedBy() {
+			switch u := u.(type) {
+			case *Load:
+				_, isAddr := u.Type().(*AddrType)
+				_, isArray := u.Type().(*ArrayType)
+				if isArray || isAddr {
+					// v is an address-type location and the location leaks.
+					// Any address loaded from v must therefore leak,
+					// since the address is stored in leaky v.
+					leak(&todo, leaks, u, "load address from leaked x%d", v.Num())
+				}
+			case *Store:
+				if u.Dst == v {
+					// v leaks; anything stored into v is stored into a leak,
+					// so it itself is also a leak.
+					leak(&todo, leaks, u.Src, "stored into leak x%d", u.Dst.Num())
+					continue
+				}
+				// v leaks and is stored into u.Dst,
+				// any address loaded from u.Dst
+				// is therefore a leaky address
+				// (since it might be v).
+				for _, uu := range u.Dst.UsedBy() {
+					l, ok := uu.(*Load)
+					if !ok {
+						continue
+					}
+					leak(&todo, leaks, l, "load of stored leak x%d: %s",
+						u.Dst.Num(), u)
+				}
+			case *Copy:
+				if u.Dst == v {
+					leak(&todo, leaks, u.Src, "copied to leaked x%d", v.Num())
+				}
+			case *Field:
+				leak(&todo, leaks, u, "field of leaked base x%d", v.Num())
+			case *Case:
+				leak(&todo, leaks, u, "case of leaked base x%d", v.Num())
+			case *Index:
+				leak(&todo, leaks, u, "index of leaked base x%d", v.Num())
+			case *Slice:
+				leak(&todo, leaks, u, "slice of leaked base x%d", v.Num())
+			}
+		}
+	}
+	return leaks
+}
+
+func leak(todo *[]Value, leaks map[Value]bool, v Value, f string, xs ...interface{}) {
+	if leaks[v] {
+		return
+	}
+	leaks[v] = true
+	*todo = append(*todo, v)
 }
 
 func inlineCalls(f *FuncDef) {
@@ -238,7 +420,7 @@ func inlineCalls(f *FuncDef) {
 				continue
 			}
 			def := staticFunc(c)
-			if def == nil || def == f {
+			if def == nil || def == f || strings.HasSuffix(def.Name, "no_inline") {
 				continue
 			}
 			caps := blockCaps(f, c)
@@ -270,6 +452,25 @@ func inlineCalls(f *FuncDef) {
 	f.Blocks = done
 	rmUnreach(f)
 	rmDeletes(f)
+}
+
+func canInline(f *FuncDef) bool {
+	if len(f.Blocks) == 0 {
+		return false
+	}
+	for _, b := range f.Blocks {
+		for _, r := range b.Instrs {
+			switch r := r.(type) {
+			case *Frame:
+				return false
+			case *Func:
+				if !strings.HasPrefix(r.Def.Name, "<block") {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 func rmSelfTailCalls(f *FuncDef) {

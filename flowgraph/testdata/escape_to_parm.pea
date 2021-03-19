@@ -1,0 +1,15 @@
+// 1
+func main() {
+	y := int :: 1,
+	x := &int :: y,
+	foo_no_inline(x),
+	y := 0,
+	print_int(x)
+}
+
+func foo_no_inline(x &&int) {
+	i := 1,
+	&&int :: x := i,
+}
+
+func print_int(_ int)

@@ -286,15 +286,19 @@ func (v *Frame) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (v *Alloc) buildString(s *strings.Builder) *strings.Builder {
+	name := "alloc"
+	if v.Stack {
+		name = "aalloc"
+	}
 	switch t := v.Type().(type) {
 	case *AddrType:
-		fmt.Fprintf(s, "x%d := alloc(%s)", v.Num(), t.Elem)
+		fmt.Fprintf(s, "x%d := %s(%s)", v.Num(), name, t.Elem)
 	case *ArrayType:
 		switch {
 		case v.Count != nil:
-			fmt.Fprintf(s, "x%d := alloc(x%d, %s)", v.Num(), v.Count.Num(), t.Elem)
+			fmt.Fprintf(s, "x%d := %s(x%d, %s)", v.Num(), name, v.Count.Num(), t.Elem)
 		case v.CountImm >= 0:
-			fmt.Fprintf(s, "x%d := alloc(%d, %s)", v.Num(), v.CountImm, t.Elem)
+			fmt.Fprintf(s, "x%d := %s(%d, %s)", v.Num(), name, v.CountImm, t.Elem)
 		default:
 			panic("bad array alloc: no count")
 		}
