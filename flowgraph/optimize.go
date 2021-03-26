@@ -512,9 +512,18 @@ func canInline(fb *funcBuilder, def *FuncDef) bool {
 	parent := fb.parent == ref
 	empty := len(def.Blocks) == 0
 	noInline := strings.HasSuffix(def.Name, "no_inline")
+	var longRet bool
+	if len(def.Blocks) > 0 {
+		for _, r := range def.Blocks[0].Instrs {
+			if _, ok := r.(*Frame); ok {
+				longRet = true
+				break
+			}
+		}
+	}
 	onlyOneRef := len(ref.inRefs) == 1 && ref.inRefs[fb] == 1 && !ref.Exp
 	leafFun := len(ref.outRefs) == 0 && ref.inlineNonBlocks == 0
-	return !self && !parent && !empty && !noInline && (onlyOneRef || leafFun)
+	return !self && !parent && !empty && !noInline && !longRet && (onlyOneRef || leafFun)
 }
 
 func rmSelfTailCalls(fb *funcBuilder) {
