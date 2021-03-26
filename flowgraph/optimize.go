@@ -12,6 +12,7 @@ func (mb *modBuilder) optimize() {
 		rmSelfTailCalls(fb)
 		rmAllocs(fb.FuncDef)
 		mergeBlocks(fb.FuncDef)
+		finalMoveAllocsToStack(fb)
 	}
 	var i int
 	for _, fb := range mb.funcBuilders {
@@ -258,6 +259,78 @@ func mergeBlocks(f *FuncDef) {
 	f.Blocks = done
 }
 
+// finalMoveAllocsToStack is a very conservative escape analysis pass
+// that can run after inlining and tail-call optimization.
+// This pass cleans up allocs that, after inlining,
+// can be trivially proven not to escape.
+func finalMoveAllocsToStack(fb *funcBuilder) {
+	fb.mod.trace = fb.mod.traceEsc
+	defer func() { fb.mod.trace = false }()
+
+	fb.tr("---- final move allocs to stack:\n%s\n", fb.FuncDef)
+	change := true
+	for change {
+		change = false
+		for _, b := range fb.Blocks {
+			for _, r := range b.Instrs {
+				if a, ok := r.(*Alloc); ok && !a.Stack && !escapesConservative(fb, a) {
+					a.Stack = true
+					change = true
+				}
+			}
+		}
+	}
+}
+
+func escapesConservative(tr tracer, a *Alloc) bool {
+	if a.Count != nil {
+		tr.tr("x%d escapes: array alloc", a.Num())
+		return true
+	}
+	for _, u := range a.UsedBy() {
+		switch u := u.(type) {
+		case *Load:
+			continue
+		case *Store:
+			if u.Src != a {
+				continue
+			}
+			if d, ok := u.Dst.(*Alloc); ok && d.Stack {
+				continue
+			}
+			tr.tr("x%d escapes: stored into x%d", a.Num(), u.Dst.Num())
+			return true
+		case *Copy:
+			continue
+		case *Field:
+			if isReadOnly(u) {
+				continue
+			}
+			tr.tr("x%d escapes: non-read-only field x%d", a.Num(), u.Num())
+			return true
+		case *Case:
+			if isReadOnly(u) {
+				continue
+			}
+			tr.tr("x%d escapes: non-read-only case x%d", a.Num(), u.Num())
+			return true
+		case *Index:
+			if isReadOnly(u) {
+				continue
+			}
+			tr.tr("x%d escapes: non-read-only index x%d", a.Num(), u.Num())
+			return true
+		default:
+			tr.tr("x%d escapes: used by %s", a.Num(), u)
+			return true
+		}
+	}
+	tr.tr("x%d does not escape", a.Num())
+	return false
+}
+
+// moveAllocsToStack computes leaks and moves allocations to the stack
+// that can be proven not to leak.
 func moveAllocsToStack(fb *funcBuilder) {
 	fb.mod.trace = fb.mod.traceEsc
 	defer func() { fb.mod.trace = false }()
