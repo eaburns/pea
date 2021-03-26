@@ -10,7 +10,10 @@ import (
 	"github.com/eaburns/pea/parser"
 )
 
-var opt = flag.Bool("opt", true, "whether to optimize")
+var (
+	opt      = flag.Bool("opt", true, "whether to optimize")
+	traceEsc = flag.Bool("esc", false, "whether to trace escape analysis")
+)
 
 func main() {
 	flag.Parse()
@@ -42,6 +45,9 @@ func main() {
 	var options []flowgraph.Option
 	if !*opt {
 		options = append(options, flowgraph.NoOptimize)
+	}
+	if *traceEsc {
+		options = append(options, flowgraph.TraceEscape)
 	}
 	g := flowgraph.Build(m, options...)
 	fmt.Println(g.String())

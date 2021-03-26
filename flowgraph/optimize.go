@@ -7,7 +7,7 @@ import (
 
 func (mb *modBuilder) optimize() {
 	for _, fb := range mb.funcBuilders {
-		moveAllocsToStack(fb.FuncDef)
+		moveAllocsToStack(fb)
 		inlineCalls(fb)
 		rmSelfTailCalls(fb)
 		rmAllocs(fb.FuncDef)
@@ -24,6 +24,20 @@ func (mb *modBuilder) optimize() {
 		i++
 	}
 	mb.funcBuilders = mb.funcBuilders[:i]
+}
+
+type tracer interface {
+	tr(string, ...interface{})
+}
+
+func (mb *modBuilder) tr(f string, vs ...interface{}) {
+	if mb.trace {
+		fmt.Printf(f+"\n", vs...)
+	}
+}
+
+func (fb *funcBuilder) tr(f string, vs ...interface{}) {
+	fb.mod.tr(f, vs...)
 }
 
 func disused(fb *funcBuilder) bool {
@@ -244,93 +258,102 @@ func mergeBlocks(f *FuncDef) {
 	f.Blocks = done
 }
 
-func moveAllocsToStack(f *FuncDef) {
-	leaks := findLeaks(f)
-	for _, b := range f.Blocks {
+func moveAllocsToStack(fb *funcBuilder) {
+	fb.mod.trace = fb.mod.traceEsc
+	defer func() { fb.mod.trace = false }()
+
+	fb.tr("---- moving allocs to stack:\n%s\n", fb.FuncDef)
+	leaks := findLeaks(fb)
+	fb.tr("-")
+	for _, b := range fb.Blocks {
 		for _, r := range b.Instrs {
 			if a, ok := r.(*Alloc); ok && !a.Stack {
-				a.Stack = !escapes(leaks, a)
+				a.Stack = !escapes(fb.mod, leaks, a)
 			}
 		}
 	}
 }
 
-func escapes(leaks map[Value]bool, v Value) bool {
+func escapes(tr tracer, leaks map[Value]bool, v Value) bool {
 	if a, ok := v.(*Alloc); ok && a.Count != nil {
+		tr.tr("x%d escapes: array alloc", v.Num())
 		return true
 	}
 	for _, u := range v.UsedBy() {
 		switch u := u.(type) {
 		case *Store:
 			if u.Src == v && leaks[u.Dst] {
+				tr.tr("x%d escapes: stored to leak x%d", v.Num(), u.Dst.Num())
 				return true
 			}
 		case *Field:
-			if escapes(leaks, u) {
+			if escapes(tr, leaks, u) {
+				tr.tr("x%d escapes: field escapes x%d", v.Num(), u.Num())
 				return true
 			}
 		case *Case:
-			if escapes(leaks, u) {
+			if escapes(tr, leaks, u) {
+				tr.tr("x%d escapes: case escapes x%d", v.Num(), u.Num())
 				return true
 			}
 		case *Index:
-			if escapes(leaks, u) {
+			if escapes(tr, leaks, u) {
+				tr.tr("x%d escapes: index escapes x%d", v.Num(), u.Num())
 				return true
 			}
 		case *Slice:
-			if escapes(leaks, u) {
+			if escapes(tr, leaks, u) {
+				tr.tr("x%d escapes: slice escapes x%d", v.Num(), u.Num())
 				return true
 			}
 		case *Call:
-			funcType := u.Func.Type().(*FuncType)
-			var i int
-			if s, ok := u.Func.(*Func); !ok ||
-				len(s.Def.Parms) > 0 && s.Def.Parms[0].BlockData {
-				// This is a function expression call.
-				// The 0th argument is the captures data,
-				// which never escapes, so skip it.
-				i++
-			}
-			// funcType.Parms has fewer elements than u.Args
-			// in the case that the function has a return argument
-			// at the end. Since the return argument can never escape,
-			// we skip checking it here.
-			for ; i < len(funcType.Parms); i++ {
-				if _, ok := funcType.Parms[i].(*AddrType); ok && u.Args[i] == v {
+			s, ok := u.Func.(*Func)
+			for i, arg := range u.Args {
+				if arg != v {
+					continue
+				}
+				if i == 0 &&
+					(!ok || len(s.Def.Parms) > 0 && s.Def.Parms[0].BlockData) {
+					// Skip never-escaping block captures.
+					continue
+				}
+				_, isAddr := arg.Type().(*AddrType)
+				_, isArray := arg.Type().(*ArrayType)
+				if isAddr || isArray {
+					tr.tr("x%d escapes: arg %d of call %s", v.Num(), i, u)
 					return true
 				}
 			}
 		}
 	}
+	tr.tr("x%d does not escape", v.Num())
 	return false
 }
 
-func findLeaks(f *FuncDef) map[Value]bool {
+func findLeaks(fb *funcBuilder) map[Value]bool {
 	var todo []Value
 	leaks := make(map[Value]bool)
-	for _, b := range f.Blocks {
+	for _, b := range fb.Blocks {
 		for _, r := range b.Instrs {
 			switch r := r.(type) {
 			case *Alloc:
 				if r.Count != nil {
-					leak(&todo, leaks, r, "array alloc")
+					fb.tr("x%d leaks: array alloc", r.Num())
+					leak(&todo, leaks, r)
 				}
 			case *Var:
-				leak(&todo, leaks, r, "var")
+				fb.tr("x%d leaks: var", r.Num())
+				leak(&todo, leaks, r)
 			case *Parm:
-				leak(&todo, leaks, r, "parm")
+				fb.tr("x%d leaks: parm", r.Num())
+				leak(&todo, leaks, r)
 			case *Call:
-				// Iterate over funcType.Parms, not r.Args.
-				// The former  skips any return param.
-				// The return param cannot leak,
-				// since the call can only write into it.
-				funcType := r.Func.Type().(*FuncType)
-				for i := range funcType.Parms {
-					arg := r.Args[i]
+				for i, arg := range r.Args {
 					_, isAddr := arg.Type().(*AddrType)
 					_, isArray := arg.Type().(*ArrayType)
 					if isAddr || isArray {
-						leak(&todo, leaks, arg, "arg %d of %s", i, r)
+						fb.tr("x%d leaks: arg %d to call %s", arg.Num(), i, r)
+						leak(&todo, leaks, arg)
 					}
 				}
 			}
@@ -347,7 +370,8 @@ func findLeaks(f *FuncDef) map[Value]bool {
 				// v is an address-typed load and it leaks
 				// (probably stored into a leaky location).
 				// So the address it is holding must also leak.
-				leak(&todo, leaks, v.Addr, "loaded address leaks x%d", v.Num())
+				fb.tr("x%d leaks: loaded address leaks x%d", v.Addr.Num(), v.Num())
+				leak(&todo, leaks, v.Addr)
 			}
 		// If a Field, Case, Index, or Slice leak,
 		// the entire base needs is marked as a leak,
@@ -359,13 +383,17 @@ func findLeaks(f *FuncDef) map[Value]bool {
 		// but Field.Base itself needn't leak.
 		// if Copy.Dst is UsedBy as the Base of a leaked field, Copy.Src leaks.
 		case *Field:
-			leak(&todo, leaks, v.Base, "base of leaked field x%d", v.Num())
+			fb.tr("x%d leaks: base of leaked field x%d", v.Base.Num(), v.Num())
+			leak(&todo, leaks, v.Base)
 		case *Case:
-			leak(&todo, leaks, v.Base, "base of leaked case x%d", v.Num())
+			fb.tr("x%d leaks: base of leaked case x%d", v.Base.Num(), v.Num())
+			leak(&todo, leaks, v.Base)
 		case *Index:
-			leak(&todo, leaks, v.Base, "base of leaked index x%d", v.Num())
+			fb.tr("x%d leaks: base of leaked index x%d", v.Base.Num(), v.Num())
+			leak(&todo, leaks, v.Base)
 		case *Slice:
-			leak(&todo, leaks, v.Base, "base of leaked slice x%d", v.Num())
+			fb.tr("x%d leaks: base of leaked slice x%d", v.Base.Num(), v.Num())
+			leak(&todo, leaks, v.Base)
 		}
 
 		for _, u := range v.UsedBy() {
@@ -377,13 +405,15 @@ func findLeaks(f *FuncDef) map[Value]bool {
 					// v is an address-type location and the location leaks.
 					// Any address loaded from v must therefore leak,
 					// since the address is stored in leaky v.
-					leak(&todo, leaks, u, "load address from leaked x%d", v.Num())
+					fb.tr("x%d leaks: load address from leaked x%d", u.Num(), v.Num())
+					leak(&todo, leaks, u)
 				}
 			case *Store:
 				if u.Dst == v {
 					// v leaks; anything stored into v is stored into a leak,
 					// so it itself is also a leak.
-					leak(&todo, leaks, u.Src, "stored into leak x%d", u.Dst.Num())
+					fb.tr("x%d leaks: stored into leaked x%d", u.Src.Num(), u.Dst.Num())
+					leak(&todo, leaks, u.Src)
 					continue
 				}
 				// v leaks and is stored into u.Dst,
@@ -395,28 +425,33 @@ func findLeaks(f *FuncDef) map[Value]bool {
 					if !ok {
 						continue
 					}
-					leak(&todo, leaks, l, "load of stored leak x%d: %s",
-						u.Dst.Num(), u)
+					fb.tr("x%d leaks: load of stored leak x%d", l.Num(), u.Dst.Num())
+					leak(&todo, leaks, l)
 				}
 			case *Copy:
 				if u.Dst == v {
-					leak(&todo, leaks, u.Src, "copied to leaked x%d", v.Num())
+					fb.tr("x%d leaks: copied into leaked x%d", u.Src.Num(), v.Num())
+					leak(&todo, leaks, u.Src)
 				}
 			case *Field:
-				leak(&todo, leaks, u, "field of leaked base x%d", v.Num())
+				fb.tr("x%d leaks: field of leaked base x%d", u.Num(), v.Num())
+				leak(&todo, leaks, u)
 			case *Case:
-				leak(&todo, leaks, u, "case of leaked base x%d", v.Num())
+				fb.tr("x%d leaks: case of leaked base x%d", u.Num(), v.Num())
+				leak(&todo, leaks, u)
 			case *Index:
-				leak(&todo, leaks, u, "index of leaked base x%d", v.Num())
+				fb.tr("x%d leaks: index of leaked base x%d", u.Num(), v.Num())
+				leak(&todo, leaks, u)
 			case *Slice:
-				leak(&todo, leaks, u, "slice of leaked base x%d", v.Num())
+				fb.tr("x%d leaks: slice of leaked base x%d", u.Num(), v.Num())
+				leak(&todo, leaks, u)
 			}
 		}
 	}
 	return leaks
 }
 
-func leak(todo *[]Value, leaks map[Value]bool, v Value, f string, xs ...interface{}) {
+func leak(todo *[]Value, leaks map[Value]bool, v Value) {
 	if leaks[v] {
 		return
 	}
