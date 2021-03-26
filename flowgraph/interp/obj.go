@@ -272,18 +272,18 @@ func (o Struct) String() string {
 	return s.String()
 }
 
-func (Int8) delete(bool)    {}
-func (Int16) delete(bool)   {}
-func (Int32) delete(bool)   {}
-func (Int64) delete(bool)   {}
-func (Uint8) delete(bool)   {}
-func (Uint16) delete(bool)  {}
-func (Uint32) delete(bool)  {}
-func (Uint64) delete(bool)  {}
-func (Float32) delete(bool) {}
-func (Float64) delete(bool) {}
-func (Func) delete(bool)    {}
-func (Pointer) delete(bool) {}
+func (Int8) delete(bool)        {}
+func (Int16) delete(bool)       {}
+func (Int32) delete(bool)       {}
+func (Int64) delete(bool)       {}
+func (Uint8) delete(bool)       {}
+func (Uint16) delete(bool)      {}
+func (Uint32) delete(bool)      {}
+func (Uint64) delete(bool)      {}
+func (Float32) delete(bool)     {}
+func (Float64) delete(bool)     {}
+func (Func) delete(bool)        {}
+func (Pointer) delete(bool)     {}
 func (Array) delete(trace bool) {}
 
 func (o Union) delete(trace bool) {

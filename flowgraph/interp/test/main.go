@@ -43,10 +43,11 @@ func main() {
 		}
 		os.Exit(1)
 	}
-	g := flowgraph.Build(m)
-	if *opt {
-		flowgraph.Optimize(g)
+	var options []flowgraph.Option
+	if !*opt {
+		options = append(options, flowgraph.NoOptimize)
 	}
+	g := flowgraph.Build(m, options...)
 	var main *flowgraph.FuncDef
 	for _, f := range g.Funcs {
 		if f.Name == "main" && len(f.Parms) == 0 {

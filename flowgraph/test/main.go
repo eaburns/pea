@@ -39,9 +39,10 @@ func main() {
 		}
 		os.Exit(1)
 	}
-	g := flowgraph.Build(m)
-	if *opt {
-		flowgraph.Optimize(g)
+	var options []flowgraph.Option
+	if !*opt {
+		options = append(options, flowgraph.NoOptimize)
 	}
+	g := flowgraph.Build(m, options...)
 	fmt.Println(g.String())
 }

@@ -43,8 +43,8 @@ func TestOptimize(t *testing.T) {
 			if err != nil {
 				t.Fatalf(err.Error())
 			}
-			graph := flowgraph.Build(c)
 			t.Run("build", func(t *testing.T) {
+				graph := flowgraph.Build(c, flowgraph.NoOptimize)
 				checkInvariants(t, graph)
 				got := runTest(graph)
 				if got != want {
@@ -52,7 +52,7 @@ func TestOptimize(t *testing.T) {
 				}
 			})
 			t.Run("opt", func(t *testing.T) {
-				flowgraph.Optimize(graph)
+				graph := flowgraph.Build(c)
 				checkInvariants(t, graph)
 				got := runTest(graph)
 				if got != want {

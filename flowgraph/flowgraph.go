@@ -182,6 +182,7 @@ type FuncDef struct {
 	Comment string
 	Mod     string
 	Name    string
+	Exp     bool
 	Parms   []*ParmDef
 	Type    *FuncType
 	Blocks  []*BasicBlock
@@ -425,7 +426,7 @@ type Alloc struct {
 	// If Count==nil and CountImm<0, then the alloc is for 1.
 	Count    Value
 	CountImm int
-	T        Type // the value type allocated
+	T        Type
 	L        loc.Loc
 }
 

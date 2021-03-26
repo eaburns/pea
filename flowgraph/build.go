@@ -10,11 +10,77 @@ import (
 	"github.com/eaburns/pea/loc"
 )
 
-func Build(mod *checker.Mod) *Mod {
+type Option func(*modBuilder)
+
+var (
+	// NoOptimize disables all optimization passes.
+	NoOptimize Option = func(mb *modBuilder) { mb.noOptimize = true }
+)
+
+func Build(mod *checker.Mod, opts ...Option) *Mod {
+	mb := newModBuilder(mod.Path)
+	for _, o := range opts {
+		o(mb)
+	}
 	// Set the Imported bit so .String() methods add the path.
 	mod.Imported = true
+	mb.buildDefs(mod)
+	mb.topoSortFuncs()
+	if !mb.noOptimize {
+		mb.optimize()
+	}
+	for _, fb := range mb.funcBuilders {
+		mb.Funcs = append(mb.Funcs, fb.FuncDef)
+	}
+	return mb.Mod
+}
 
-	mb := newModBuilder(mod.Path)
+type modBuilder struct {
+	*Mod
+	typeDef      map[*checker.TypeInst]*StructType
+	varDef       map[*checker.VarDef]*VarDef
+	funcDef      map[*checker.FuncInst]*funcBuilder
+	funcBuilders []*funcBuilder
+
+	nextInstr int
+	nextBlock int
+
+	noOptimize bool
+}
+
+type funcBuilder struct {
+	mod *modBuilder
+	*FuncDef
+	b0 *blockBuilder
+
+	// functions referenced by this function
+	// and functions referencing this function.
+	outRefs map[*funcBuilder]int
+	inRefs  map[*funcBuilder]int
+	// inlineNonBlocks is the number
+	// of non-block-literal functions inlined.
+	inlineNonBlocks int
+
+	parmDef    map[*checker.ParmDef]*ParmDef
+	parmAlloc  map[*ParmDef]*Alloc
+	localAlloc map[*checker.LocalDef]*Alloc
+	capField   map[*checker.BlockCap]*FieldDef
+
+	// fields set for block literals.
+	parent      *funcBuilder
+	blockType   *StructType
+	returnField *FieldDef
+	frameField  *FieldDef
+}
+
+type blockBuilder struct {
+	fun *funcBuilder
+	*BasicBlock
+	L    loc.Loc
+	done bool
+}
+
+func (mb *modBuilder) buildDefs(mod *checker.Mod) {
 	var varInits []checker.Expr
 	for _, d := range mod.Defs {
 		if d, ok := d.(*checker.VarDef); ok {
@@ -42,63 +108,32 @@ func Build(mod *checker.Mod) *Mod {
 		b0.jump(b1)
 		mb.Init = fb.FuncDef
 	}
-	mb.Mod.Funcs = topoSortFuncs(mb.Mod.Funcs)
-	return mb.Mod
 }
 
-func topoSortFuncs(funcs []*FuncDef) []*FuncDef {
-	var sorted []*FuncDef
-	done := make(map[*FuncDef]bool)
-	var sort func(*FuncDef)
-	sort = func(f *FuncDef) {
-		if done[f] {
+func (mb *modBuilder) topoSortFuncs() {
+	var sorted []*funcBuilder
+	done := make(map[*funcBuilder]bool)
+	var refs []*funcBuilder
+	var sortFunc func(*funcBuilder)
+	sortFunc = func(fb *funcBuilder) {
+		if done[fb] {
 			return
 		}
-		done[f] = true
-		for _, b := range f.Blocks {
-			for _, r := range b.Instrs {
-				if g, ok := r.(*Func); ok {
-					sort(g.Def)
-				}
-			}
+		done[fb] = true
+		refs := refs[:0]
+		for f := range fb.outRefs {
+			refs = append(refs, f)
 		}
-		sorted = append(sorted, f)
+		sort.Slice(refs, func(i, j int) bool { return refs[i].Name < refs[j].Name })
+		for _, f := range refs {
+			sortFunc(f)
+		}
+		sorted = append(sorted, fb)
 	}
-	for _, f := range funcs {
-		sort(f)
+	for _, f := range mb.funcBuilders {
+		sortFunc(f)
 	}
-	return sorted
-}
-
-type modBuilder struct {
-	*Mod
-	typeDef map[*checker.TypeInst]*StructType
-	varDef  map[*checker.VarDef]*VarDef
-	funcDef map[*checker.FuncInst]*FuncDef
-}
-
-type funcBuilder struct {
-	mod *modBuilder
-	*FuncDef
-	b0         *blockBuilder
-	nextInstr  int
-	parmDef    map[*checker.ParmDef]*ParmDef
-	parmAlloc  map[*ParmDef]*Alloc
-	localAlloc map[*checker.LocalDef]*Alloc
-	capField   map[*checker.BlockCap]*FieldDef
-
-	// blockType is only non-nil if this is a block literal.
-	blockType   *StructType
-	longRetType Type
-	returnField *FieldDef
-	frameField  *FieldDef
-}
-
-type blockBuilder struct {
-	fun *funcBuilder
-	*BasicBlock
-	L    loc.Loc
-	done bool
+	mb.funcBuilders = sorted
 }
 
 func newModBuilder(path string) *modBuilder {
@@ -106,7 +141,7 @@ func newModBuilder(path string) *modBuilder {
 		Mod:     &Mod{Path: path},
 		typeDef: make(map[*checker.TypeInst]*StructType),
 		varDef:  make(map[*checker.VarDef]*VarDef),
-		funcDef: make(map[*checker.FuncInst]*FuncDef),
+		funcDef: make(map[*checker.FuncInst]*funcBuilder),
 	}
 }
 
@@ -279,12 +314,12 @@ func isPointer(typ *checker.UnionType) bool {
 		(isRef(typ.Cases[0].Type) || isRef(typ.Cases[1].Type))
 }
 
-func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *FuncDef {
+func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *funcBuilder {
 	if funcDef, ok := mb.funcDef[inst]; ok {
 		return funcDef
 	}
 	fb := mb.newFuncBuilder(inst.Def.Mod, inst.Def.Name, inst.Parms, inst.T.Ret, inst.Loc())
-	fb.longRetType = fb.Type.Ret
+	fb.Exp = inst.Def.Exp
 
 	var cmnt strings.Builder
 	cmnt.WriteString(inst.String())
@@ -315,25 +350,29 @@ func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *FuncDef {
 	}
 	fb.Comment = cmnt.String()
 
-	mb.funcDef[inst] = fb.FuncDef
+	mb.funcDef[inst] = fb
 	if inst.Def.Exprs != nil {
 		b0 := fb.buildBlock0(inst.Locals)
 		b1 := fb.buildBlocks(inst.Exprs)
 		b0.jump(b1)
 	}
-	return fb.FuncDef
+	return fb
 }
 
-func (mb *modBuilder) buildBlockLit(lit *checker.BlockLit, longRetType Type) *funcBuilder {
+func (mb *modBuilder) buildBlockLit(parent *funcBuilder, lit *checker.BlockLit) *funcBuilder {
 	parms := make([]*checker.ParmDef, len(lit.Parms))
 	for i := range lit.Parms {
 		parms[i] = &lit.Parms[i]
 	}
-	funcName := fmt.Sprintf("<block%d>", len(mb.Funcs))
-	capsName := fmt.Sprintf("caps%d", len(mb.Funcs))
+	n := len(mb.funcBuilders)
+	funcName := fmt.Sprintf("<block%d>", n)
+	capsName := fmt.Sprintf("caps%d", n)
 	fb := mb.newFuncBuilder(mb.Path, funcName, parms, lit.Ret, lit.Loc())
+	fb.parent = parent
+	for fb.parent.parent != nil {
+		fb.parent = fb.parent.parent
+	}
 	fb.blockType = &StructType{Name: capsName}
-	fb.longRetType = longRetType
 
 	blockData := &ParmDef{
 		Name:      "<block>",
@@ -355,11 +394,11 @@ func (mb *modBuilder) buildBlockLit(lit *checker.BlockLit, longRetType Type) *fu
 		fb.blockType.Fields = append(fb.blockType.Fields, field)
 		fb.capField[cap] = field
 	}
-	if !longRetType.isEmpty() {
+	if !fb.parent.Type.Ret.isEmpty() {
 		fb.returnField = &FieldDef{
 			Num:  len(fb.blockType.Fields),
 			Name: "<return>",
-			Type: &AddrType{Elem: longRetType},
+			Type: &AddrType{Elem: fb.parent.Type.Ret},
 		}
 		fb.blockType.Fields = append(fb.blockType.Fields, fb.returnField)
 	}
@@ -377,7 +416,8 @@ func (mb *modBuilder) buildBlockLit(lit *checker.BlockLit, longRetType Type) *fu
 }
 
 func (fb *funcBuilder) newBlock() *blockBuilder {
-	block := &BasicBlock{Num: len(fb.Blocks), Func: fb.FuncDef}
+	fb.mod.nextBlock++
+	block := &BasicBlock{Num: fb.mod.nextBlock - 1, Func: fb.FuncDef}
 	fb.Blocks = append(fb.Blocks, block)
 	return &blockBuilder{fun: fb, BasicBlock: block}
 }
@@ -392,6 +432,8 @@ func (mb *modBuilder) newFuncBuilder(path, name string, parms []*checker.ParmDef
 	fb := &funcBuilder{
 		mod:        mb,
 		FuncDef:    fun,
+		outRefs:    make(map[*funcBuilder]int),
+		inRefs:     make(map[*funcBuilder]int),
 		parmDef:    make(map[*checker.ParmDef]*ParmDef),
 		parmAlloc:  make(map[*ParmDef]*Alloc),
 		localAlloc: make(map[*checker.LocalDef]*Alloc),
@@ -428,7 +470,7 @@ func (mb *modBuilder) newFuncBuilder(path, name string, parms []*checker.ParmDef
 			L:        ret.Loc(),
 		})
 	}
-	mb.Funcs = append(mb.Funcs, fun)
+	mb.funcBuilders = append(mb.funcBuilders, fb)
 	return fb
 }
 
@@ -601,11 +643,11 @@ func (bb *blockBuilder) buildStaticCall(call *checker.Call) (*blockBuilder, Valu
 			args = append(args, arg)
 		}
 	}
-	funcDef := bb.fun.mod.buildFuncInst(fun)
-	funcVal := bb.Func(funcDef)
+	funcBuilder := bb.fun.mod.buildFuncInst(fun)
+	funcVal := bb.Func(funcBuilder)
 	var ret Value
-	if !funcDef.Type.Ret.isEmpty() {
-		ret = bb.alloc(funcDef.Type.Ret)
+	if !funcBuilder.Type.Ret.isEmpty() {
+		ret = bb.alloc(funcBuilder.Type.Ret)
 		args = append(args, ret)
 	}
 	bb.call(funcVal, args)
@@ -711,7 +753,8 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 	sort.Slice(cases, func(i, j int) bool { return cases[i].num < cases[j].num })
 	bb.buildCases(0, len(sw.Union.Cases), tag, res, cases, bDone)
 
-	bDone.Num = len(bb.fun.Blocks)
+	bb.fun.mod.nextBlock++
+	bDone.Num = bb.fun.mod.nextBlock - 1
 	bb.fun.Blocks = append(bb.fun.Blocks, bDone.BasicBlock)
 	return bDone, res
 }
@@ -845,7 +888,8 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 		}
 	}
 
-	bDone.Num = len(bb.fun.Blocks)
+	bb.fun.mod.nextBlock++
+	bDone.Num = bb.fun.mod.nextBlock - 1
 	bb.fun.Blocks = append(bb.fun.Blocks, bDone.BasicBlock)
 
 	return bDone, res
@@ -855,9 +899,9 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 func (bb *blockBuilder) buildBranchCall(fun interface{}, arg, res Value, bDone *blockBuilder) {
 	var capsVal, funVal Value
 	if lit, ok := fun.(*checker.BlockLit); ok {
-		fb := bb.fun.mod.buildBlockLit(lit, bb.fun.longRetType)
+		fb := bb.fun.mod.buildBlockLit(bb.fun, lit)
 		capsVal = bb.blockCaps(fb, lit)
-		funVal = bb.Func(fb.FuncDef)
+		funVal = bb.Func(fb)
 	} else {
 		funcExpr := fun.(Value)
 		hdrType := funcExpr.Type().(*AddrType).Elem.(*StructType)
@@ -1021,7 +1065,7 @@ func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 	if bb.fun.blockType != nil {
 		block := bb.load(bb.parm(bb.fun.Parms[0]))
 		field := bb.field(block, bb.fun.returnField)
-		if bb.fun.longRetType.isSmall() {
+		if bb.fun.parent.Type.Ret.isSmall() {
 			bb.store(bb.load(field), v)
 		} else {
 			bb.copy(bb.load(field), v)
@@ -1201,8 +1245,8 @@ func unionCase(u *UnionType, cas *checker.CaseDef) *CaseDef {
 func (bb *blockBuilder) blockLit(lit *checker.BlockLit) (*blockBuilder, Value) {
 	headerType := bb.buildType(lit.Type()).(*AddrType).Elem.(*StructType)
 	a := bb.alloc(headerType)
-	fb := bb.fun.mod.buildBlockLit(lit, bb.fun.longRetType)
-	funcVal := bb.Func(fb.FuncDef)
+	fb := bb.fun.mod.buildBlockLit(bb.fun, lit)
+	funcVal := bb.Func(fb)
 	funcField := bb.field(a, headerType.Fields[0])
 	bb.store(funcField, funcVal)
 
@@ -1238,7 +1282,13 @@ func (bb *blockBuilder) blockCaps(fb *funcBuilder, blockLit *checker.BlockLit) V
 	}
 	bb.L = oldLoc
 
-	if !bb.fun.longRetType.isEmpty() {
+	var longRetType Type
+	if bb.fun.parent == nil {
+		longRetType = bb.fun.Type.Ret
+	} else {
+		longRetType = bb.fun.parent.Type.Ret
+	}
+	if !longRetType.isEmpty() {
 		var returnLoc Value
 		if bb.fun.blockType != nil {
 			parentBlock := bb.load(bb.parm(bb.fun.Parms[0]))
@@ -1373,8 +1423,8 @@ func (bb *blockBuilder) frame() Value {
 		}
 	}
 	v := &Frame{}
-	bb.fun.nextInstr++
-	v.setNum(bb.fun.nextInstr - 1)
+	bb.fun.mod.nextInstr++
+	v.setNum(bb.fun.mod.nextInstr - 1)
 	for _, use := range v.Uses() {
 		use.addUser(v)
 	}
@@ -1418,8 +1468,10 @@ func (bb *blockBuilder) load(addr Value) *Load {
 	return v
 }
 
-func (bb *blockBuilder) Func(f *FuncDef) *Func {
-	v := &Func{Def: f, L: bb.L}
+func (bb *blockBuilder) Func(fb *funcBuilder) *Func {
+	bb.fun.outRefs[fb]++
+	fb.inRefs[bb.fun]++
+	v := &Func{Def: fb.FuncDef, L: bb.L}
 	bb.addValue(v)
 	return v
 }
@@ -1553,6 +1605,6 @@ func (bb *blockBuilder) addInstr(r Instruction) {
 
 func (bb *blockBuilder) addValue(v Value) {
 	bb.addInstr(v)
-	bb.fun.nextInstr++
-	v.setNum(bb.fun.nextInstr - 1)
+	bb.fun.mod.nextInstr++
+	v.setNum(bb.fun.mod.nextInstr - 1)
 }

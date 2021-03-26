@@ -1,18 +1,51 @@
 package flowgraph
 
 import (
+	"fmt"
 	"strings"
 )
 
-func Optimize(m *Mod) {
-	for _, f := range m.Funcs {
-		moveAllocsToStack(f)
-		inlineCalls(f)
-		rmSelfTailCalls(f)
-		rmAllocs(f)
-		mergeBlocks(f)
-		moveStackAllocsToFront(f)
-		renumber(f)
+func (mb *modBuilder) optimize() {
+	for _, fb := range mb.funcBuilders {
+		moveAllocsToStack(fb.FuncDef)
+		inlineCalls(fb)
+		rmSelfTailCalls(fb)
+		rmAllocs(fb.FuncDef)
+		mergeBlocks(fb.FuncDef)
+	}
+	var i int
+	for _, fb := range mb.funcBuilders {
+		if disused(fb) {
+			continue
+		}
+		moveStackAllocsToFront(fb.FuncDef)
+		renumber(fb.FuncDef)
+		mb.funcBuilders[i] = fb
+		i++
+	}
+	mb.funcBuilders = mb.funcBuilders[:i]
+}
+
+func disused(fb *funcBuilder) bool {
+	return !fb.Exp && len(fb.inRefs) == 0 && (fb.Mod != "main" || fb.Name != "main")
+}
+
+func moveStackAllocsToFront(f *FuncDef) {
+	var front []Instruction
+	for _, b := range f.Blocks {
+		var i int
+		for _, r := range b.Instrs {
+			if a, ok := r.(*Alloc); ok && a.Stack {
+				front = append(front, a)
+			} else {
+				b.Instrs[i] = r
+				i++
+			}
+		}
+		b.Instrs = b.Instrs[:i]
+	}
+	if len(front) > 0 {
+		f.Blocks[0].Instrs = append(front, f.Blocks[0].Instrs...)
 	}
 }
 
@@ -209,25 +242,6 @@ func mergeBlocks(f *FuncDef) {
 	f.Blocks = done
 }
 
-func moveStackAllocsToFront(f *FuncDef) {
-	var front []Instruction
-	for _, b := range f.Blocks {
-		var i int
-		for _, r := range b.Instrs {
-			if a, ok := r.(*Alloc); ok && a.Stack {
-				front = append(front, a)
-			} else {
-				b.Instrs[i] = r
-				i++
-			}
-		}
-		b.Instrs = b.Instrs[:i]
-	}
-	if len(front) > 0 {
-		f.Blocks[0].Instrs = append(front, f.Blocks[0].Instrs...)
-	}
-}
-
 func moveAllocsToStack(f *FuncDef) {
 	leaks := findLeaks(f)
 	for _, b := range f.Blocks {
@@ -408,8 +422,8 @@ func leak(todo *[]Value, leaks map[Value]bool, v Value, f string, xs ...interfac
 	*todo = append(*todo, v)
 }
 
-func inlineCalls(f *FuncDef) {
-	todo := f.Blocks
+func inlineCalls(fb *funcBuilder) {
+	todo := fb.Blocks
 	var done []*BasicBlock
 	for len(todo) > 0 {
 		b := todo[0]
@@ -420,13 +434,10 @@ func inlineCalls(f *FuncDef) {
 				continue
 			}
 			def := staticFunc(c)
-			if def == nil || def == f || strings.HasSuffix(def.Name, "no_inline") {
+			if def == nil || !canInline(fb, def) {
 				continue
 			}
-			caps := blockCaps(f, c)
-			if caps == nil && !canInline(def) {
-				continue
-			}
+			updateRefs(fb, def)
 			parms := make(map[*ParmDef]Value)
 			for i := range def.Parms {
 				parms[def.Parms[i]] = c.Args[i]
@@ -437,10 +448,10 @@ func inlineCalls(f *FuncDef) {
 				o.rmIn(b)
 				o.addIn(tail)
 			}
-			inlined := copyBlocks(f, def.Blocks)
+			inlined := copyBlocks(fb, def.Blocks)
 			subParms(parms, inlined)
-			subCaps(caps, inlined)
-			subReturn(tail, inlined, strings.HasPrefix(f.Name, "<block"))
+			subCaps(blockCaps(fb.FuncDef, c), inlined)
+			subReturn(tail, inlined, strings.HasPrefix(fb.Name, "<block"))
 			b.Instrs = append(b.Instrs[:j+1:j+1], &Jump{Dst: inlined[0], L: c.L})
 			inlined[0].addIn(b)
 
@@ -449,32 +460,63 @@ func inlineCalls(f *FuncDef) {
 		}
 		done = append(done, b)
 	}
-	f.Blocks = done
-	rmUnreach(f)
-	rmDeletes(f)
+	fb.Blocks = done
+	rmUnreach(fb.FuncDef)
+	rmDeletes(fb.FuncDef)
 }
 
-func canInline(f *FuncDef) bool {
-	if len(f.Blocks) == 0 {
-		return false
-	}
-	for _, b := range f.Blocks {
-		for _, r := range b.Instrs {
-			switch r := r.(type) {
-			case *Frame:
-				return false
-			case *Func:
-				if !strings.HasPrefix(r.Def.Name, "<block") {
-					return false
-				}
+func updateRefs(fb *funcBuilder, ref *FuncDef) {
+	for r := range fb.outRefs {
+		if r.FuncDef == ref {
+			fb.outRefs[r]--
+			if fb.outRefs[r] == 0 {
+				delete(fb.outRefs, r)
 			}
+			if fb.outRefs[r] < 0 {
+				panic("impossible")
+			}
+			r.inRefs[fb]--
+			if r.inRefs[fb] == 0 {
+				delete(r.inRefs, fb)
+			}
+			if r.inRefs[fb] < 0 {
+				panic("impossible")
+			}
+			if !strings.Contains(ref.Name, "<block") && fb.FuncDef != ref {
+				fb.inlineNonBlocks++
+			}
+			for o := range r.outRefs {
+				fb.outRefs[o]++
+				o.inRefs[fb]++
+			}
+			return
 		}
 	}
-	return true
+	panic(fmt.Sprintf("impossible: %s does not call %s", fb.Name, ref.Name))
 }
 
-func rmSelfTailCalls(f *FuncDef) {
-	for _, b := range f.Blocks {
+func canInline(fb *funcBuilder, def *FuncDef) bool {
+	var ref *funcBuilder
+	for r := range fb.outRefs {
+		if r.FuncDef == def {
+			ref = r
+			break
+		}
+	}
+	if ref == nil {
+		panic(fmt.Sprintf("impossible: %s does not call %s", fb.Name, def.Name))
+	}
+	self := fb.FuncDef == def
+	parent := fb.parent == ref
+	empty := len(def.Blocks) == 0
+	noInline := strings.HasSuffix(def.Name, "no_inline")
+	onlyOneRef := len(ref.inRefs) == 1 && ref.inRefs[fb] == 1 && !ref.Exp
+	leafFun := len(ref.outRefs) == 0 && ref.inlineNonBlocks == 0
+	return !self && !parent && !empty && !noInline && (onlyOneRef || leafFun)
+}
+
+func rmSelfTailCalls(fb *funcBuilder) {
+	for _, b := range fb.Blocks {
 		if len(b.Instrs) < 2 {
 			continue
 		}
@@ -482,9 +524,10 @@ func rmSelfTailCalls(f *FuncDef) {
 			continue
 		}
 		call, ok := b.Instrs[len(b.Instrs)-2].(*Call)
-		if !ok || staticFunc(call) != f {
+		if !ok || staticFunc(call) != fb.FuncDef {
 			continue
 		}
+		updateRefs(fb, fb.FuncDef)
 		for _, o := range b.Out() {
 			o.rmIn(b)
 		}
@@ -494,9 +537,9 @@ func rmSelfTailCalls(f *FuncDef) {
 			// Each parameter has an alloc that it is copied into in block0.
 			// We need to find the allocs and store the args into them.
 			var alloc *Alloc
-			for _, r := range f.Blocks[0].Instrs {
+			for _, r := range fb.Blocks[0].Instrs {
 				p, ok := r.(*Parm)
-				if !ok || p.Def != f.Parms[i] {
+				if !ok || p.Def != fb.Parms[i] {
 					continue
 				}
 				if len(p.UsedBy()) != 1 {
@@ -529,7 +572,7 @@ func rmSelfTailCalls(f *FuncDef) {
 			}
 			arg := call.Args[i]
 			var storeCopy Instruction
-			if f.Parms[i].ByValue {
+			if fb.Parms[i].ByValue {
 				if arg == alloc {
 					continue
 				}
@@ -546,11 +589,11 @@ func rmSelfTailCalls(f *FuncDef) {
 			alloc.addUser(storeCopy)
 			b.Instrs = append(b.Instrs, storeCopy)
 		}
-		b.Instrs = append(b.Instrs, &Jump{Dst: f.Blocks[1], L: call.L})
-		f.Blocks[1].addIn(b)
+		b.Instrs = append(b.Instrs, &Jump{Dst: fb.Blocks[1], L: call.L})
+		fb.Blocks[1].addIn(b)
 	}
-	rmUnreach(f)
-	rmDeletes(f)
+	rmUnreach(fb.FuncDef)
+	rmDeletes(fb.FuncDef)
 }
 
 func returns(b *BasicBlock) bool {
@@ -837,13 +880,15 @@ func subReturn(dst *BasicBlock, bs []*BasicBlock, isBlock bool) {
 	}
 }
 
-func copyBlocks(destFunc *FuncDef, bs []*BasicBlock) []*BasicBlock {
+func copyBlocks(fb *funcBuilder, bs []*BasicBlock) []*BasicBlock {
 	copy := make([]*BasicBlock, len(bs))
 	subBlocks := make(map[*BasicBlock]*BasicBlock)
 	for i := range copy {
 		c := *bs[i]
+		fb.mod.nextBlock++
+		c.Num = fb.mod.nextBlock - 1
 		c.in = append([]*BasicBlock{}, bs[i].in...)
-		c.Func = destFunc
+		c.Func = fb.FuncDef
 		c.Instrs = append([]Instruction{}, c.Instrs...)
 		copy[i] = &c
 		subBlocks[bs[i]] = &c
@@ -858,6 +903,8 @@ func copyBlocks(destFunc *FuncDef, bs []*BasicBlock) []*BasicBlock {
 			c := b.Instrs[i].shallowCopy()
 			subInstrs[b.Instrs[i]] = c
 			if v, ok := b.Instrs[i].(Value); ok {
+				fb.mod.nextInstr++
+				c.(Value).setNum(fb.mod.nextInstr - 1)
 				subValues[v] = c.(Value)
 			}
 			b.Instrs[i] = c
