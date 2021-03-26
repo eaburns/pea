@@ -27,7 +27,9 @@ func (mb *modBuilder) optimize() {
 }
 
 func disused(fb *funcBuilder) bool {
-	return !fb.Exp && len(fb.inRefs) == 0 && (fb.Mod != "main" || fb.Name != "main")
+	return !fb.Exp && len(fb.inRefs) == 0 &&
+		(fb.Mod != "main" || fb.Name != "main") &&
+		!strings.Contains(fb.Name, "<init>")
 }
 
 func moveStackAllocsToFront(f *FuncDef) {
