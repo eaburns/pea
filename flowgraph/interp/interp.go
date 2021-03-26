@@ -195,6 +195,11 @@ func (interp *Interp) step() {
 			frame.vals[instr] = &Obj{val: Pointer{Elem: x}}
 		}
 		if instr.Stack {
+			if interp.Trace {
+				for _, o := range objs {
+					fmt.Printf("allocating %p on the stack\n", o)
+				}
+			}
 			frame.stackAllocs = append(frame.stackAllocs, objs...)
 		}
 	case *flowgraph.Load:

@@ -64,7 +64,10 @@ func (o *Obj) SetVal(v Val) {
 }
 
 func copyObj(dst, src *Obj) {
-	switch dstVal := dst.val.(type) {
+	if dst.deleted {
+		panic("writing deleted object")
+	}
+	switch dstVal := dst.Val().(type) {
 	case Int8:
 		dst.val = src.Val().(Int8)
 	case Int16:
