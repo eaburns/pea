@@ -1,0 +1,13 @@
+// Hello, World!
+func main() {
+	f := f_no_inline(),
+	f(),
+	print(x)
+}
+
+func f_no_inline() (){}{
+	str := "Hello, World!",
+	return: {&&string :: x := str}
+}
+
+var x := &string :: "fail"
