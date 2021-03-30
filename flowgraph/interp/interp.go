@@ -227,7 +227,7 @@ func (interp *Interp) step() {
 		if p == nil {
 			panic(fmt.Sprintf("nil parameter %s", instr.Def.Name))
 		}
-		frame.vals[instr] = &Obj{val: Pointer{Elem: p}}
+		frame.vals[instr] = p
 	case *flowgraph.Field:
 		base := frame.vals[instr.Base].Val().(Pointer).Elem.Val().(Struct)
 		field := base.Fields[instr.Def.Num].Obj

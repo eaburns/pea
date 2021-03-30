@@ -1,0 +1,9 @@
+// Hello, World!
+func main() {
+	f := g_no_inline(),
+	print(f())
+}
+
+func g_no_inline() (){string} {
+	return: {"Hello, World!"}
+}

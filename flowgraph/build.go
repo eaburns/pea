@@ -505,9 +505,9 @@ func (fb *funcBuilder) buildBlock0(locals []*checker.LocalDef) *blockBuilder {
 		}
 		fb.b0.L = p.L
 		if p.ByValue {
-			fb.b0.copy(fb.parmAlloc[p], fb.b0.load(fb.b0.parm(p)))
+			fb.b0.copy(fb.parmAlloc[p], fb.b0.parm(p))
 		} else {
-			fb.b0.store(fb.parmAlloc[p], fb.b0.load(fb.b0.parm(p)))
+			fb.b0.store(fb.parmAlloc[p], fb.b0.parm(p))
 		}
 	}
 	return fb.b0
@@ -525,9 +525,9 @@ func (fb *funcBuilder) buildBlocks(exprs []checker.Expr) *blockBuilder {
 			if !bb.fun.Type.Ret.isEmpty() {
 				parm := bb.parm(bb.fun.Parms[len(bb.fun.Parms)-1])
 				if bb.fun.Type.Ret.isSmall() {
-					bb.store(bb.load(parm), v)
+					bb.store(parm, v)
 				} else {
-					bb.copy(bb.load(parm), v)
+					bb.copy(parm, v)
 				}
 			}
 			bb.Return(nil)
@@ -572,7 +572,7 @@ func (bb *blockBuilder) expr(expr checker.Expr) (*blockBuilder, Value) {
 		if !ok {
 			return bb, nil
 		}
-		block := bb.load(bb.parm(bb.fun.Parms[0]))
+		block := bb.parm(bb.fun.Parms[0])
 		field := bb.field(block, f)
 		return bb, bb.load(field)
 	case *checker.ArrayLit:
@@ -1068,7 +1068,7 @@ func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 		return bb, nil
 	}
 	if bb.fun.blockType != nil {
-		block := bb.load(bb.parm(bb.fun.Parms[0]))
+		block := bb.parm(bb.fun.Parms[0])
 		field := bb.field(block, bb.fun.returnField)
 		if bb.fun.parent.Type.Ret.isSmall() {
 			bb.store(bb.load(field), v)
@@ -1078,9 +1078,9 @@ func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 	} else {
 		parm := bb.parm(bb.fun.Parms[len(bb.fun.Parms)-1])
 		if bb.fun.Type.Ret.isSmall() {
-			bb.store(bb.load(parm), v)
+			bb.store(parm, v)
 		} else {
-			bb.copy(bb.load(parm), v)
+			bb.copy(parm, v)
 		}
 	}
 	var frame Value
@@ -1277,7 +1277,7 @@ func (bb *blockBuilder) blockCaps(fb *funcBuilder, blockLit *checker.BlockLit) V
 		case cap.Local != nil:
 			v = bb.fun.localAlloc[cap.Local]
 		case cap.Cap != nil:
-			parentBlock := bb.load(bb.parm(bb.fun.Parms[0]))
+			parentBlock := bb.parm(bb.fun.Parms[0])
 			field := bb.field(parentBlock, bb.fun.capField[cap.Cap])
 			v = bb.load(field)
 		default:
@@ -1296,12 +1296,11 @@ func (bb *blockBuilder) blockCaps(fb *funcBuilder, blockLit *checker.BlockLit) V
 	if !longRetType.isEmpty() {
 		var returnLoc Value
 		if bb.fun.blockType != nil {
-			parentBlock := bb.load(bb.parm(bb.fun.Parms[0]))
+			parentBlock := bb.parm(bb.fun.Parms[0])
 			returnField := bb.field(parentBlock, bb.fun.returnField)
 			returnLoc = bb.load(returnField)
 		} else {
-			returnParm := bb.parm(bb.fun.Parms[len(bb.fun.Parms)-1])
-			returnLoc = bb.load(returnParm)
+			returnLoc = bb.parm(bb.fun.Parms[len(bb.fun.Parms)-1])
 		}
 		bb.store(bb.field(caps, fb.returnField), returnLoc)
 	}
@@ -1417,7 +1416,7 @@ func (bb *blockBuilder) Return(frame Value) *Return {
 
 func (bb *blockBuilder) frame() Value {
 	if bb.fun.blockType != nil {
-		block := bb.load(bb.parm(bb.fun.Parms[0]))
+		block := bb.parm(bb.fun.Parms[0])
 		blockType := bb.fun.Parms[0].Type.(*AddrType).Elem.(*StructType)
 		frameField := blockType.Fields[len(blockType.Fields)-1]
 		return bb.load(bb.field(block, frameField))
@@ -1494,6 +1493,9 @@ func (bb *blockBuilder) Var(x *VarDef) *Var {
 }
 
 func (bb *blockBuilder) parm(p *ParmDef) *Parm {
+	if !p.Type.isSmall() {
+		panic(fmt.Sprintf("bad, non-small parameter type: %s", p.Type))
+	}
 	v := &Parm{Def: p, L: bb.L}
 	bb.addValue(v)
 	return v

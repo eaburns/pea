@@ -664,15 +664,8 @@ func rmSelfTailCalls(fb *funcBuilder) {
 				if len(p.UsedBy()) != 1 {
 					panic("impossible")
 				}
-				ld, ok := p.UsedBy()[0].(*Load)
-				if !ok {
-					panic("impossible")
-				}
-				if len(ld.UsedBy()) != 1 {
-					panic("impossible")
-				}
 				var dst Value
-				switch init := ld.UsedBy()[0].(type) {
+				switch init := p.UsedBy()[0].(type) {
 				case *Store:
 					dst = init.Dst
 				case *Copy:
@@ -930,21 +923,9 @@ func subParms(sub map[*ParmDef]Value, bs []*BasicBlock) {
 			if !ok {
 				panic("impossible")
 			}
-
-			// The parm is always loaded;
-			// it's that load that we need to substitute.
-			if len(p.UsedBy()) != 1 {
-				panic("impossible")
-			}
-			l, ok := p.UsedBy()[0].(*Load)
-			if !ok {
-				panic("impossible")
-			}
-			p.delete()
-
 			s := make(map[Value]Value)
-			s[l] = v
-			for _, u := range l.UsedBy() {
+			s[p] = v
+			for _, u := range p.UsedBy() {
 				u.subValues(s)
 			}
 		}

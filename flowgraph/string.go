@@ -333,7 +333,7 @@ func (v *Var) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (v *Parm) buildString(s *strings.Builder) *strings.Builder {
-	col := newCol(s, "x%d := &%s", v.Num(), v.Def.Name)
+	col := newCol(s, "x%d := %s", v.Num(), v.Def.Name)
 	col.addCol("// %s", v.Type())
 	return s
 }

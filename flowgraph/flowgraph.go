@@ -494,7 +494,7 @@ type Parm struct {
 
 func (*Parm) Uses() []Value  { return nil }
 func (p *Parm) Loc() loc.Loc { return p.L }
-func (p *Parm) Type() Type   { return &AddrType{Elem: p.Def.Type} }
+func (p *Parm) Type() Type   { return p.Def.Type }
 
 type Field struct {
 	value
