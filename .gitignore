@@ -1,0 +1,10 @@
+libpea/libpea.o
+libpea/vendor/gc-8.0.4/*.o
+libpea/vendor/gc-8.0.4/1
+libpea/vendor/gc-8.0.4/base_lib
+libpea/vendor/gc-8.0.4/gc.a
+libpea/vendor/gc-8.0.4/gctest
+libpea/vendor/gc-8.0.4/if_mach
+libpea/vendor/gc-8.0.4/if_not_there
+libpea/vendor/gc-8.0.4/tests/test.o
+libpea/vendor/gc-8.0.4/threadlibs
