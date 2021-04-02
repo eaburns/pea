@@ -115,6 +115,7 @@ void pea_print(struct pea_string* pstr) {
 // pea_panic prints a sting and stack trace to standard output
 // and aborts the program.
 void pea_panic(struct pea_string* pstr) {
+	printf("panic: ");
 	pea_print(pstr);
 	pea_print_stack();
 	abort();
