@@ -182,12 +182,7 @@ func (d *VarDef) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (d *FuncDef) buildString(s *strings.Builder) *strings.Builder {
-	if d.Comment != "" {
-		s.WriteString("// ")
-		s.WriteString(strings.Replace(d.Comment, "\n", "\n// ", -1))
-		s.WriteRune('\n')
-	}
-	fmt.Fprintf(s, "func %s.%s(", d.Mod, d.Name)
+	fmt.Fprintf(s, "func \"%s\"(", d.SourceName)
 	for i, p := range d.Parms {
 		if i > 0 {
 			s.WriteString(", ")
@@ -315,7 +310,7 @@ func (v *Load) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (v *Func) buildString(s *strings.Builder) *strings.Builder {
-	col := newCol(s, "x%d := &%s.%s", v.Num(), v.Def.Mod, v.Def.Name)
+	col := newCol(s, "x%d := &\"%s\"", v.Num(), v.Def.SourceName)
 	col.addCol("// %s", v.Type())
 	return s
 }

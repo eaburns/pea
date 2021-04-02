@@ -179,32 +179,17 @@ type VarDef struct {
 }
 
 type FuncDef struct {
-	Comment string
-	Mod     string
-	Name    string
-	Exp     bool
-	Parms   []*ParmDef
-	Type    *FuncType
-	Blocks  []*BasicBlock
-	L       loc.Loc
-
-	// Iface is the set of iface function arguments.
-	// Iface, along with Mod, Name, and Parms
-	// form the unique signatuer of the function.
-	Iface []IfaceArg
-}
-
-type IfaceArg struct {
-	// Mod and Name are the module path (or empty for built-in)
-	// and name of the interface argument function.
-	//
-	// For a given, grounded function,
-	// the parameter types of an iface arg are fixed.
-	// So the only information needed
-	// to uniquily determine the function
-	// is the Mod and Name.
-	Mod  string
-	Name string
+	// SourceName is a unique name for this function
+	// using the syntax of the source language.
+	// It may be show to users,for example in stack traces.
+	SourceName string
+	Mod        string
+	Name       string
+	Exp        bool
+	Parms      []*ParmDef
+	Type       *FuncType
+	Blocks     []*BasicBlock
+	L          loc.Loc
 }
 
 type ParmDef struct {

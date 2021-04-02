@@ -108,6 +108,7 @@ func (mb *modBuilder) buildDefs(mod *checker.Mod) {
 	}
 	if len(varInits) > 0 {
 		fb := mb.newFuncBuilder(mod.Path, "<init>", nil, &checker.StructType{}, loc.Loc{})
+		fb.SourceName = mod.Path + " <init>"
 		b0 := fb.buildBlock0(nil)
 		b1 := fb.buildBlocks(varInits)
 		b0.jump(b1)
@@ -326,34 +327,20 @@ func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *funcBuilder {
 	fb := mb.newFuncBuilder(inst.Def.Mod, inst.Def.Name, inst.Parms, inst.T.Ret, inst.Loc())
 	fb.Exp = inst.Def.Exp
 
-	var cmnt strings.Builder
-	cmnt.WriteString(inst.String())
+	var sourceName strings.Builder
+	sourceName.WriteString(inst.String())
 	if len(inst.IfaceArgs) > 0 {
-		cmnt.WriteString("\n\twith:")
+		sourceName.WriteString(" : ")
 	}
 	for i, d := range inst.IfaceArgs {
-		switch d := d.(type) {
-		case *checker.FuncInst:
-			fb.Iface = append(fb.Iface, IfaceArg{Mod: d.Def.Mod, Name: d.Def.Name})
-		case *checker.Select:
-			fb.Iface = append(fb.Iface, IfaceArg{Name: d.Field.Name})
-		case *checker.Switch:
-			name := ""
-			for _, c := range d.Cases {
-				name += c.Name
-			}
-			fb.Iface = append(fb.Iface, IfaceArg{Name: name})
-		case *checker.Builtin:
-			fb.Iface = append(fb.Iface, IfaceArg{Name: d.Op.String()})
-		default:
-			panic(fmt.Sprintf("bad iface arg type: %T", d))
+		if i > 0 {
+			sourceName.WriteString(", ")
 		}
-		cmnt.WriteString("\n\t")
-		cmnt.WriteString(inst.Def.Iface[i].String())
-		cmnt.WriteString(" := ")
-		cmnt.WriteString(d.String())
+		sourceName.WriteRune('(')
+		sourceName.WriteString(d.String())
+		sourceName.WriteRune(')')
 	}
-	fb.Comment = cmnt.String()
+	fb.SourceName = sourceName.String()
 
 	mb.funcDef[inst] = fb
 	if inst.Def.Exprs != nil {
@@ -373,6 +360,7 @@ func (mb *modBuilder) buildBlockLit(parent *funcBuilder, lit *checker.BlockLit) 
 	funcName := fmt.Sprintf("<block%d>", n)
 	capsName := fmt.Sprintf("caps%d", n)
 	fb := mb.newFuncBuilder(mb.Path, funcName, parms, lit.Ret, lit.Loc())
+	fb.SourceName = mb.Path + " " + funcName
 	fb.parent = parent
 	for fb.parent.parent != nil {
 		fb.parent = fb.parent.parent
