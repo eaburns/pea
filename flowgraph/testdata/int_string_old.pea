@@ -1,3 +1,6 @@
+/*
+This was the original version. The difference between this and the new one is that this one uses if:then: to implement while:do:. At the time of this writing, the call inside of while:do: whould prevent the flowgraph optimizer from inlining the loop. This exposed a bug in the llvm backend where it was allocating 0 bytes for non-immediate count arrays, smashing the heap.
+*/
 // 0x3de	990	01736	0b1111011110
 // 0x3df	991	01737	0b1111011111
 // 0x3e0	992	01740	0b1111100000
@@ -94,7 +97,7 @@ Func for:to:do:(start int, end int, f (int){}) {
 }
 
 Func while:do:(cond (){bool}, f (){}) {
-	cond() true? {
+	if: cond() then: {
 		f(),
 		while: cond do: f
 	}

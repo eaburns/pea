@@ -18,8 +18,20 @@ jobs:
       with:
         go-version: 1.15
 
-    - name: Build
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "11.0"
+        directory: ${{ runner.temp }}/llvm
+
+    - name: Install libunwind
+      run: sudo apt install libunwind-dev
+
+    - name: Build compiler
       run: go build -v ./...
+
+    - name: Build runtime
+      run: /bin/sh ./libpea/build.sh
 
     - name: Test
       run: go test -v ./...
