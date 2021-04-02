@@ -120,3 +120,9 @@ void pea_panic(struct pea_string* pstr) {
 	pea_print_stack();
 	abort();
 }
+
+// pea_print_int prints an int to standand output.
+// This is a temporary debugging function.
+void pea_print_int(int64_t i) {
+	printf("%ld", (long) i);
+}
