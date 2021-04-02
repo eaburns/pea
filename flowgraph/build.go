@@ -1094,6 +1094,9 @@ func (bb *blockBuilder) convert(cvt *checker.Convert) (*blockBuilder, Value) {
 	case checker.NumConvert:
 		bb, v := bb.expr(cvt.Expr)
 		dstType := bb.buildType(cvt.Type())
+		if v.Type().eq(dstType) {
+			return bb, v
+		}
 		return bb, bb.op(NumConvert, dstType, v)
 	default:
 		panic(fmt.Sprintf("impossible checker.Convert.Kind: %d", cvt.Kind))
