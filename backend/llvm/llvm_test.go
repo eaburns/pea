@@ -3,7 +3,6 @@ package llvm_test
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -78,9 +77,10 @@ func runTest(t *testing.T, f *flowgraph.Mod) string {
 	}
 	runtimeLibs :=
 		"-pthread " +
-			"-L/usr/local/lib -lunwind " +
 			filepath.Join(wd, "/../../libpea/libpea.o") + " " +
-			filepath.Join(wd, "/../../libpea/vendor/gc-8.0.4/gc.a")
+			filepath.Join(wd, "/../../libpea/vendor/gc-8.0.4/gc.a") + " " +
+			"-ldl " + // needed for libunwind
+			filepath.Join(wd, "/../../libpea/vendor/libunwind-11.0.0.src/lib/libunwind.a")
 	cmd := exec.Command(
 		"/bin/sh", "-c",
 		"cd "+dir+"; "+
@@ -95,11 +95,6 @@ func runTest(t *testing.T, f *flowgraph.Mod) string {
 	if err := cmd.Run(); err != nil {
 		t.Log(stdout.String())
 		t.Log(stderr.String())
-		bs, err1 := ioutil.ReadFile(filepath.Join(dir, "t.opt.s"))
-		if err1 != nil {
-			panic(fmt.Sprintf("failed to log t.ll: %s", err1))
-		}
-		t.Log(string(bs) + "\n")
 		t.Fatalf("error running the command: %s", err)
 	}
 	return stdout.String()
