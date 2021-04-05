@@ -13,7 +13,6 @@ type Mod struct {
 	Strings []*StrDef
 	Vars    []*VarDef
 	Funcs   []*FuncDef
-	Tests   []*FuncDef
 	// Init points to a FuncDef in the Funcs slice
 	// that has initialization for the module.
 	// It must be called before any defs of the module are used
@@ -179,6 +178,8 @@ type VarDef struct {
 }
 
 type FuncDef struct {
+	// Test indicates whether this is a test definition.
+	Test bool
 	// SourceName is a unique name for this function
 	// using the syntax of the source language.
 	// It may be show to users,for example in stack traces.

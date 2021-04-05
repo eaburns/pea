@@ -100,10 +100,13 @@ func (mb *modBuilder) buildDefs(mod *checker.Mod) {
 		}
 	}
 	for _, d := range mod.Defs {
-		if d, ok := d.(*checker.FuncDef); ok {
+		switch d := d.(type) {
+		case *checker.FuncDef:
 			for _, n := range d.Insts {
 				mb.buildFuncInst(n)
 			}
+		case *checker.TestDef:
+			mb.buildTestDef(d)
 		}
 	}
 	if len(varInits) > 0 {
@@ -348,6 +351,17 @@ func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *funcBuilder {
 		b1 := fb.buildBlocks(inst.Exprs)
 		b0.jump(b1)
 	}
+	return fb
+}
+
+func (mb *modBuilder) buildTestDef(def *checker.TestDef) *funcBuilder {
+	empty := &checker.StructType{}
+	fb := mb.newFuncBuilder(def.Mod, def.Name, nil, empty, def.L)
+	fb.Test = true
+	fb.SourceName = def.Mod + " test " + def.Name
+	b0 := fb.buildBlock0(def.Locals)
+	b1 := fb.buildBlocks(def.Exprs)
+	b0.jump(b1)
 	return fb
 }
 

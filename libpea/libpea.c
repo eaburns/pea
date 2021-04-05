@@ -1,4 +1,5 @@
 #define UNW_LOCAL_ONLY
+#include <fcntl.h>
 #include <gc.h>
 #include <libunwind.h>
 #include <pthread.h>
@@ -7,6 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/errno.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 // pea_malloc returns a pointer to a new object of the given number of bytes.
 void* pea_malloc(int bytes) {
@@ -31,6 +35,18 @@ void pea_print_stack() {
 	}
 }
 
+static void die(const char *msg, int err) {
+	char buf[256];
+	int n = strerror_r(err, buf, 256);
+	if (n != 0) {
+		puts(msg);
+	} else {
+		printf("%s: %s\n", msg, buf);
+	}
+	pea_print_stack();
+	abort();
+}
+
 struct frame {
 	jmp_buf jmp;
 	struct frame* next;
@@ -40,19 +56,11 @@ static pthread_key_t frame_stack_key;
 static pthread_once_t frame_stack_once = PTHREAD_ONCE_INIT;
 
 static void create_frame_stack() {
-	int errno = pthread_key_create(&frame_stack_key, NULL);
-	if (errno == 0) {
+	int err = pthread_key_create(&frame_stack_key, NULL);
+	if (err == 0) {
 		return;
 	}
-	char buf[256];
-	int n = strerror_r(errno, buf, 256);
-	if (n != 0) {
-		puts("failed to create frame stack key");
-	} else {
-		printf("failed to create frame stack key: %s\n", buf);
-	}
-	pea_print_stack();
-	abort();
+	die("failed to create frame stack key", err);
 }
 
 // pea_new_frame returns a new frame used for long returning.
@@ -112,11 +120,25 @@ void pea_print(struct pea_string* pstr) {
 	}
 }
 
+// test_panic_fd, if non-negative, as a file descriptor
+// to copy panic messages to in implementation of test failure output.
+static int test_panic_fd = -1;
+
 // pea_panic prints a sting and stack trace to standard output
 // and aborts the program.
 void pea_panic(struct pea_string* pstr) {
+	if (test_panic_fd >= 0) {
+		for (int i = 0; i < pstr->length; ) {
+			ssize_t n = write(test_panic_fd, &pstr->data[i], pstr->length - i);
+			if (n < 0 && errno != EAGAIN) {
+				break;
+			}
+			i += n;
+		}
+	}
 	printf("panic: ");
 	pea_print(pstr);
+	putchar('\n');
 	pea_print_stack();
 	abort();
 }
@@ -125,4 +147,98 @@ void pea_panic(struct pea_string* pstr) {
 // This is a temporary debugging function.
 void pea_print_int(int64_t i) {
 	printf("%ld", (long) i);
+}
+
+static void print_test_output(int fd) {
+	putchar('\t');
+	char buf[512];
+	int nl = 0;
+	for (; ;) {
+		ssize_t n = read(fd, buf, 512);
+		if (n < 0 && errno != EAGAIN) {
+			die("failed to read", errno);
+		}
+		if (n == 0) {
+			break;
+		}
+		for (int i = 0; i < n; i++) {
+			if (nl) {
+				putchar('\t');
+			}
+			putchar(buf[i]);
+			nl = buf[i] == '\n';
+		}
+	}
+}
+
+// pea_run_test runs a test and returns 0 on pass and 1 on failure.
+int32_t pea_run_test(void(*test)(), const char* name) {
+	printf("Test %s... ", name);
+	// fflush stdout so the buffer is empty for the child process.
+	fflush(stdout);
+
+	char out_file[] = "/tmp/pea.out.XXXXXX";
+	int out = mkstemp(out_file);
+	if (out < 0) {
+		die("failed to create the test output file", errno);
+	}
+	char panic_file[] = "/tmp/pea.panic.XXXXXX";
+	int panic_out = mkstemp(panic_file);
+	if (panic_out < 0) {
+		die("failed to create the test panic output file", errno);
+	}
+
+	pid_t kid = fork();
+	if (kid < 0) {
+		die("fork failed", errno);
+	}
+	if (kid == 0) {
+		int in = open("/dev/null", O_RDONLY);
+		if (in < 0) {
+			die("failed to open /dev/null for reading", errno);
+		}
+		dup2(in, STDIN_FILENO);
+		dup2(out, STDOUT_FILENO);
+		dup2(out, STDERR_FILENO);
+		test_panic_fd = panic_out;
+		test();
+		exit(0);
+	}
+
+	// Close the temporary files; they will be written by the child.
+	// We re-open them after the child has exited.
+	close(out);
+	close(panic_out);
+
+	int status = 0;
+	if (waitpid(kid, &status, 0) < 0) {
+		puts("wait failed");
+		abort();
+	}
+	if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+		puts("ok");
+		unlink(panic_file);
+		unlink(out_file);
+		return 0;
+	}
+
+	puts("FAILED");
+	panic_out = open(panic_file, O_RDONLY);
+	if (panic_out < 0) {
+		die("failed to open the test output file", errno);
+	}
+	print_test_output(panic_out);
+	close(panic_out);
+	unlink(panic_file);
+
+	printf("\n---- output:\n");
+	close(out);
+	out = open(out_file, O_RDONLY);
+	if (out < 0) {
+		die("failed to open the test output file", errno);
+	}
+	print_test_output(out);
+	close(out);
+	unlink(out_file);
+	return 1;
 }

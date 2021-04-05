@@ -11,7 +11,10 @@ import (
 	"github.com/eaburns/pea/parser"
 )
 
-var opt = flag.Bool("opt", true, "whether to optimize")
+var (
+	opt  = flag.Bool("opt", true, "whether to optimize")
+	test = flag.Bool("test", false, "whether to generate a test binary")
+)
 
 func main() {
 	flag.Parse()
@@ -45,7 +48,13 @@ func main() {
 		options = append(options, flowgraph.NoOptimize)
 	}
 	g := flowgraph.Build(m, options...)
-	if err := llvm.Generate(os.Stdout, g); err != nil {
+	var err error
+	if *test {
+		err = llvm.GenerateTest(os.Stdout, g)
+	} else {
+		err = llvm.Generate(os.Stdout, g)
+	}
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

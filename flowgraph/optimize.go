@@ -42,7 +42,8 @@ func (fb *funcBuilder) tr(f string, vs ...interface{}) {
 }
 
 func disused(fb *funcBuilder) bool {
-	return !fb.Exp && len(fb.inRefs) == 0 &&
+	return !fb.Test &&
+		!fb.Exp && len(fb.inRefs) == 0 &&
 		(fb.Mod != "main" || fb.Name != "main") &&
 		!strings.Contains(fb.Name, "<init>")
 }

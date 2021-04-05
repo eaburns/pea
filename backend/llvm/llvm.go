@@ -9,7 +9,15 @@ import (
 	"github.com/eaburns/pea/flowgraph"
 )
 
-func Generate(w io.Writer, mod *flowgraph.Mod) (err error) {
+func Generate(w io.Writer, mod *flowgraph.Mod) error {
+	return generate(w, mod, false)
+}
+
+func GenerateTest(w io.Writer, mod *flowgraph.Mod) error {
+	return generate(w, mod, true)
+}
+
+func generate(w io.Writer, mod *flowgraph.Mod, test bool) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if ioErr, ok := r.(ioError); ok {
@@ -53,32 +61,23 @@ func Generate(w io.Writer, mod *flowgraph.Mod) (err error) {
 			g.write("declare void ", f, "(", f.Parms, ")\n")
 			continue
 		}
-		if strings.HasSuffix(f.Name, "no_inline") {
-			g.write("define linkonce_odr void ", f, "(", f.Parms, ") noinline {\n")
-		} else {
-			g.write("define linkonce_odr void ", f, "(", f.Parms, ") {\n")
-		}
-		for _, b := range f.Blocks {
-			g.write(b.Num, ":\n")
-			for _, r := range b.Instrs {
-				g.writeInstr(f, r)
-			}
-		}
-		g.write("}\n")
-	}
-	for _, f := range mod.Funcs {
-		if f.Mod != "main" || f.Name != "main" || len(f.Parms) != 0 {
+		if f.Test {
 			continue
 		}
-		g.write("define i32 @main() {\n")
-		if mod.Init != nil {
-			g.write("	call void ", mod.Init, "()\n")
-		}
-		g.write(
-			"	call void ", f, "()\n",
-			"	ret i32 0\n",
-			"}\n")
+		g.writeFuncDef(f)
 	}
+	if test {
+		g.writeTestMain(mod)
+		return nil
+	}
+	var main *flowgraph.FuncDef
+	for _, f := range mod.Funcs {
+		if f.Mod == "main" && f.Name == "main" && len(f.Parms) == 0 {
+			main = f
+			break
+		}
+	}
+	g.writeMain(mod, main)
 	return nil
 }
 
@@ -104,6 +103,85 @@ func (g *gen) int() intType  { return intType(g.intBits) }
 func (g *gen) bool() intType { return intType(g.boolBits) }
 
 type typeVal struct{ Value flowgraph.Value }
+
+func (g *gen) writeMain(mod *flowgraph.Mod, main *flowgraph.FuncDef) {
+	if main != nil {
+		g.write("define i32 @main() {\n")
+		if mod.Init != nil {
+			g.write("	call void ", mod.Init, "()\n")
+		}
+		g.write(
+			"	call void ", main, "()\n",
+			"	ret i32 0\n",
+			"}\n")
+	}
+}
+
+func (g *gen) writeTestMain(mod *flowgraph.Mod) {
+	for _, t := range mod.Funcs {
+		if !t.Test {
+			continue
+		}
+		name := t.Name + "\x00"
+		g.write("@test.", t.Name, " = private unnamed_addr constant [", len(name), " x i8] c", quote(name), "\n")
+		g.writeFuncDef(t)
+	}
+	g.write(
+		"@fail_str = private unnamed_addr constant [5 x i8] c\"FAIL\\00\"\n",
+		"declare i32 @puts(i8* nocapture)\n",
+		"declare i32 @pea_run_test(void()* nocapture, i8* nocapture)\n",
+		"define i32 @main() {\n")
+	if mod.Init != nil {
+		g.write("	call void ", mod.Init, "()\n")
+	}
+	var fail tmp
+	first := true
+	for _, t := range mod.Funcs {
+		if !t.Test {
+			continue
+		}
+		s := g.tmp()
+		n := len(t.Name) + 1
+		g.line(s, " = getelementptr [", n, " x i8], [", n, " x i8]* @test.", t.Name, ", i64 0, i64 0")
+		r := g.tmp()
+		g.line(r, " = call i32 @pea_run_test(void()* ", t, ", i8* ", s, ")")
+		if first {
+			fail = r
+			first = false
+		} else {
+			failNext := g.tmp()
+			g.line(failNext, " = or i32 ", fail, ", ", r)
+			fail = failNext
+		}
+	}
+	cond := g.tmp()
+	str := g.tmp()
+	g.write(
+		"	", cond, " = trunc i32 ", fail, " to i1\n",
+		"	br i1 ", cond, ", label %fail, label %pass\n",
+		"fail:\n",
+		"	", str, " = getelementptr [5 x i8], [5 x i8]* @fail_str, i64 0, i64 0\n",
+		"	", g.tmp(), " = call i32 @puts(i8* ", str, ")\n",
+		"	ret i32 0\n",
+		"pass:\n",
+		"	ret i32 1\n",
+		"}\n")
+}
+
+func (g *gen) writeFuncDef(f *flowgraph.FuncDef) {
+	if strings.HasSuffix(f.Name, "no_inline") {
+		g.write("define linkonce_odr void ", f, "(", f.Parms, ") noinline {\n")
+	} else {
+		g.write("define linkonce_odr void ", f, "(", f.Parms, ") {\n")
+	}
+	for _, b := range f.Blocks {
+		g.write(b.Num, ":\n")
+		for _, r := range b.Instrs {
+			g.writeInstr(f, r)
+		}
+	}
+	g.write("}\n")
+}
 
 func (g *gen) write(vs ...interface{}) {
 	for _, v := range vs {
