@@ -353,10 +353,10 @@ func TestSubFuncInst(t *testing.T) {
 	if diff := cmp.Diff(&FuncType{Parms: []Type{intType}, Ret: intType}, inst.T, diffOpts...); diff != "" {
 		t.Errorf("inst.T: %s", diff)
 	}
-	if diff := cmp.Diff([]*ParmDef{&ParmDef{Name: "p", T: intType}}, inst.Parms, diffOpts...); diff != "" {
+	if diff := cmp.Diff([]*ParmDef{{Name: "p", T: intType}}, inst.Parms, diffOpts...); diff != "" {
 		t.Errorf("inst.Parms: %s", diff)
 	}
-	if diff := cmp.Diff([]*LocalDef{&LocalDef{Name: "l", T: intType}}, inst.Locals, diffOpts...); diff != "" {
+	if diff := cmp.Diff([]*LocalDef{{Name: "l", T: intType}}, inst.Locals, diffOpts...); diff != "" {
 		t.Errorf("inst.Locals: %s", diff)
 	}
 }

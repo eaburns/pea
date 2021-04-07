@@ -35,8 +35,8 @@ func trim1Ref(typ Type) Type {
 
 var boolUnion = &UnionType{
 	Cases: []CaseDef{
-		CaseDef{Name: "false?"},
-		CaseDef{Name: "true?"},
+		{Name: "false?"},
+		{Name: "true?"},
 	},
 }
 

@@ -26,7 +26,7 @@ func Generate(w io.Writer, mod *flowgraph.Mod, opts ...Option) error {
 		intBits:  64,
 		boolBits: 64,
 		panicNum: make(map[*flowgraph.Op]int),
-		callNum: make(map[*flowgraph.Call]int),
+		callNum:  make(map[*flowgraph.Call]int),
 	}
 	for _, o := range opts {
 		o(g)
@@ -111,7 +111,7 @@ type gen struct {
 	intBits  int
 	boolBits int
 	panicNum map[*flowgraph.Op]int
-	callNum map[*flowgraph.Call]int
+	callNum  map[*flowgraph.Call]int
 	next     int
 }
 
