@@ -632,7 +632,7 @@ func canInline(fb *funcBuilder, def *FuncDef) bool {
 	}
 	onlyOneRef := len(ref.inRefs) == 1 && ref.inRefs[fb] == 1 && !ref.Exp
 	leafFun := len(ref.outRefs) == 0 && ref.inlineNonBlocks == 0
-	return !self && !parent && !empty && !noInline && !longRet && (onlyOneRef || leafFun)
+	return !fb.Test && !self && !parent && !empty && !noInline && !longRet && (onlyOneRef || leafFun)
 }
 
 func rmSelfTailCalls(fb *funcBuilder) {

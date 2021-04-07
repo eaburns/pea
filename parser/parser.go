@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode"
@@ -35,6 +36,10 @@ func NewWithOffset(offs int) *Parser {
 // Parse parses a file from an io.Reader.
 // The first argument is the file path or "" if unspecified.
 func (p *Parser) Parse(path string, r io.Reader) error {
+	var err error
+	if path, err = filepath.Abs(path); err != nil {
+		return err
+	}
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
@@ -59,6 +64,10 @@ func (p *Parser) Parse(path string, r io.Reader) error {
 
 // ParseFile parses the source from a file path.
 func (p *Parser) ParseFile(path string) error {
+	var err error
+	if path, err = filepath.Abs(path); err != nil {
+		return err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return err

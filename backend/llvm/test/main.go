@@ -36,25 +36,24 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	m, _, errs := checker.Check("main", p.Files, nil)
+	m, locFiles, errs := checker.Check("main", p.Files, nil)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			fmt.Println(err)
 		}
 		os.Exit(1)
 	}
-	var options []flowgraph.Option
+	var flowgraphOpts []flowgraph.Option
 	if !*opt {
-		options = append(options, flowgraph.NoOptimize)
+		flowgraphOpts = append(flowgraphOpts, flowgraph.NoOptimize)
 	}
-	g := flowgraph.Build(m, options...)
-	var err error
+	g := flowgraph.Build(m, flowgraphOpts...)
+
+	llvmOpts := []llvm.Option{llvm.LocFiles(locFiles)}
 	if *test {
-		err = llvm.GenerateTest(os.Stdout, g)
-	} else {
-		err = llvm.Generate(os.Stdout, g)
+		llvmOpts = append(llvmOpts, llvm.TestMain)
 	}
-	if err != nil {
+	if err := llvm.Generate(os.Stdout, g, llvmOpts...); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

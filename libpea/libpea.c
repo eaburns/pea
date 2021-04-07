@@ -30,7 +30,7 @@ void pea_print_stack() {
 		if (unw_get_proc_name(&cursor, buf, 512, &offs) < 0) {
 			break;
 		}
-		printf("\t%3d: %s+0x%lx\n", i, buf, (unsigned long) offs);
+		printf("%3d: %s+0x%lx\n", i, buf, (unsigned long) offs);
 		i++;
 	}
 }
@@ -122,23 +122,54 @@ void pea_print(struct pea_string* pstr) {
 
 // test_panic_fd, if non-negative, as a file descriptor
 // to copy panic messages to in implementation of test failure output.
+// This is non-negative if executing a test.
 static int test_panic_fd = -1;
+
+// test_file_name is the file name of the current test definition.
+// This is non-NULL if locations were enabled at compilation time
+// and if currently executing a function called from a test body.
+static const char *test_file_name = NULL;
+
+// test_file_line is just like test_file_name, but it contains the line number.
+static int32_t test_file_line = 0;
+
+// pea_set_test_call_loc sets the location of a function call made by a test.
+// This is used to implement test failure messages.
+// The failure should print the line of the test definition that eventually panicked.
+// Since we currently don't have support for finding file/line location
+// during stack unwinding, we implement it by annotating each call
+// made from a test definition with its file name and line.
+// This function sets the annotation for the call made immediately after it.
+// When a panic happens in a test, the file/line set by this function
+// can be used to generate the error message.
+//
+// TODO: remove the pea_set_test_call_loc mechanism
+// once unwinding is source-location aware.
+void pea_set_test_call_loc(const char* file, int32_t line) {
+	test_file_name = file;
+	test_file_line = line;
+}
 
 // pea_panic prints a sting and stack trace to standard output
 // and aborts the program.
-void pea_panic(struct pea_string* pstr) {
+void pea_panic(struct pea_string* pstr, const char* file, int32_t line) {
 	if (test_panic_fd >= 0) {
-		for (int i = 0; i < pstr->length; ) {
-			ssize_t n = write(test_panic_fd, &pstr->data[i], pstr->length - i);
-			if (n < 0 && errno != EAGAIN) {
-				break;
-			}
-			i += n;
+		FILE* test_panic_file = fdopen(test_panic_fd, "w");
+		if (test_panic_file == NULL) {
+			die("failed to open the test panic filedescr", errno);
 		}
+		if (test_file_name != NULL) {
+			fprintf(test_panic_file, "%s:%d\n", test_file_name, test_file_line);
+		}
+		fwrite(&pstr->data[0], 1, pstr->length, test_panic_file);
 	}
-	printf("panic: ");
+	printf("Panic: ");
 	pea_print(pstr);
 	putchar('\n');
+	if (file != NULL) {
+		printf("%s:%d\n", file, line);
+	}
+	puts("Stack:");
 	pea_print_stack();
 	abort();
 }
@@ -231,7 +262,7 @@ int32_t pea_run_test(void(*test)(), const char* name) {
 	close(panic_out);
 	unlink(panic_file);
 
-	printf("\n---- output:\n");
+	printf("\n\t---- output ----\n");
 	close(out);
 	out = open(out_file, O_RDONLY);
 	if (out < 0) {

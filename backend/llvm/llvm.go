@@ -7,17 +7,34 @@ import (
 	"strings"
 
 	"github.com/eaburns/pea/flowgraph"
+	"github.com/eaburns/pea/loc"
 )
 
-func Generate(w io.Writer, mod *flowgraph.Mod) error {
-	return generate(w, mod, false)
+type Option func(*gen)
+
+// TestMain generates a test binary instead of a normal object file.
+var TestMain Option = func(g *gen) { g.test = true }
+
+// LocFiles specifies the source files for location information.
+func LocFiles(files loc.Files) Option {
+	return func(g *gen) { g.files = files }
 }
 
-func GenerateTest(w io.Writer, mod *flowgraph.Mod) error {
-	return generate(w, mod, true)
+func Generate(w io.Writer, mod *flowgraph.Mod, opts ...Option) error {
+	g := &gen{
+		w:        w,
+		intBits:  64,
+		boolBits: 64,
+		panicNum: make(map[*flowgraph.Op]int),
+		callNum: make(map[*flowgraph.Call]int),
+	}
+	for _, o := range opts {
+		o(g)
+	}
+	return g.generate(w, mod)
 }
 
-func generate(w io.Writer, mod *flowgraph.Mod, test bool) (err error) {
+func (g *gen) generate(w io.Writer, mod *flowgraph.Mod) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if ioErr, ok := r.(ioError); ok {
@@ -27,14 +44,20 @@ func generate(w io.Writer, mod *flowgraph.Mod, test bool) (err error) {
 			}
 		}
 	}()
-	g := gen{w: w, intBits: 64, boolBits: 64}
+	if g.files != nil {
+		g.declarePanicLocStrings(mod)
+		if g.test {
+			g.declareTestCallLocStrings(mod)
+		}
+	}
 	g.write(
 		"%string = type {", g.int(), ", i8*}\n",
 		"declare i8* @pea_malloc(", g.int(), ")\n",
 		"declare i8* @pea_new_frame()\n",
 		"declare void @pea_finish_frame(i8* nocapture)\n",
 		"declare void @pea_long_return(i8* nocapture) noreturn\n",
-		"declare void @pea_panic(%string* nocapture) readonly noreturn\n",
+		"declare void @pea_set_test_call_loc(i8*, i32)\n",
+		"declare void @pea_panic(%string* nocapture, i8* nocapture, i32) readonly noreturn\n",
 		"declare void @pea_print(%string* nocapture) readonly\n",
 		"declare void @pea_print_int(i64)\n",
 		"declare void @llvm.memcpy.p0i8.p0i8.", g.int(), "(i8*, i8*, ", g.int(), ", i1)\n",
@@ -66,7 +89,7 @@ func generate(w io.Writer, mod *flowgraph.Mod, test bool) (err error) {
 		}
 		g.writeFuncDef(f)
 	}
-	if test {
+	if g.test {
 		g.writeTestMain(mod)
 		return nil
 	}
@@ -83,8 +106,12 @@ func generate(w io.Writer, mod *flowgraph.Mod, test bool) (err error) {
 
 type gen struct {
 	w        io.Writer
+	test     bool
+	files    loc.Files
 	intBits  int
 	boolBits int
+	panicNum map[*flowgraph.Op]int
+	callNum map[*flowgraph.Call]int
 	next     int
 }
 
@@ -166,6 +193,53 @@ func (g *gen) writeTestMain(mod *flowgraph.Mod) {
 		"pass:\n",
 		"	ret i32 1\n",
 		"}\n")
+}
+
+func (g *gen) declarePanicLocStrings(mod *flowgraph.Mod) {
+	var panics []*flowgraph.Op
+	for _, f := range mod.Funcs {
+		for _, b := range f.Blocks {
+			for _, r := range b.Instrs {
+				p, ok := r.(*flowgraph.Op)
+				if !ok || p.Op != flowgraph.Panic {
+					continue
+				}
+				g.panicNum[p] = len(panics)
+				panics = append(panics, p)
+			}
+		}
+	}
+	for _, p := range panics {
+		i := g.panicNum[p]
+		l := g.files.Location(p.L)
+		n := len(l.Path) + 1
+		g.write("@panic_file", i, " = private unnamed_addr constant [", n, " x i8] c", quote(l.Path+"\x00"), "\n")
+	}
+}
+
+func (g *gen) declareTestCallLocStrings(mod *flowgraph.Mod) {
+	var calls []*flowgraph.Call
+	for _, f := range mod.Funcs {
+		if !f.Test {
+			continue
+		}
+		for _, b := range f.Blocks {
+			for _, r := range b.Instrs {
+				c, ok := r.(*flowgraph.Call)
+				if !ok {
+					continue
+				}
+				g.callNum[c] = len(calls)
+				calls = append(calls, c)
+			}
+		}
+	}
+	for _, c := range calls {
+		i := g.callNum[c]
+		l := g.files.Location(c.L)
+		n := len(l.Path) + 1
+		g.write("@call_file", i, " = private unnamed_addr constant [", n, " x i8] c", quote(l.Path+"\x00"), "\n")
+	}
 }
 
 func (g *gen) writeFuncDef(f *flowgraph.FuncDef) {
@@ -250,6 +324,13 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 		l := g.sizeOf(elemType(r.Dst.Type()))
 		g.line("call void @llvm.memcpy.p0i8.p0i8.", g.int(), "(i8* ", d, ", i8* ", s, ", ", g.int(), " ", l, ", i1 0)")
 	case *flowgraph.Call:
+		if i, ok := g.callNum[r]; ok {
+			l := g.files.Location(r.L)
+			n := len(l.Path) + 1
+			p := g.tmp()
+			g.line(p, " = getelementptr [", n, " x i8], [", n, " x i8]* @call_file", i, ", i64 0, i64 0")
+			g.line("call void @pea_set_test_call_loc(i8* ", p, ", i32 ", l.Line[0], ")")
+		}
 		if fun, ok := r.Func.(*flowgraph.Func); ok {
 			if fun.Def.Mod == "main" && fun.Def.Name == "print_int" {
 				g.line("call void @pea_print_int(", r.Args, ")")
@@ -504,7 +585,19 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			}
 			g.line(r, " = ", op, " ", typeVal{r.Args[0]}, " to ", r.Type())
 		case flowgraph.Panic:
-			g.line("call void @pea_panic(", typeVal{r.Args[0]}, ")")
+			if g.files != nil {
+				i := g.panicNum[r]
+				l := g.files.Location(r.L)
+				n := len(l.Path) + 1
+				p := g.tmp()
+				g.line(p, " = getelementptr [", n, " x i8], [", n, " x i8]* @panic_file", i, ", i64 0, i64 0")
+				if f.Test {
+					g.line("call void @pea_set_test_call_loc(i8* ", p, ", i32 ", l.Line[0], ")")
+				}
+				g.line("call void @pea_panic(", typeVal{r.Args[0]}, ", i8* ", p, ", i32 ", l.Line[0], ")")
+			} else {
+				g.line("call void @pea_panic(", typeVal{r.Args[0]}, ", i8* null, i32 0)")
+			}
 		case flowgraph.Print:
 			g.line("call void @pea_print(", typeVal{r.Args[0]}, ")")
 		default:
