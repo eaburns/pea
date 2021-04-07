@@ -189,9 +189,9 @@ func (g *gen) writeTestMain(mod *flowgraph.Mod) {
 		"fail:\n",
 		"	", str, " = getelementptr [5 x i8], [5 x i8]* @fail_str, i64 0, i64 0\n",
 		"	", g.tmp(), " = call i32 @puts(i8* ", str, ")\n",
-		"	ret i32 0\n",
-		"pass:\n",
 		"	ret i32 1\n",
+		"pass:\n",
+		"	ret i32 0\n",
 		"}\n")
 }
 
