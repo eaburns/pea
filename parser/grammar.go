@@ -3,123 +3,124 @@ package parser
 import "github.com/eaburns/peggy/peg"
 
 const (
-	_File                       int = 0
-	_Import                     int = 1
-	_Def                        int = 2
-	_VarDef                     int = 3
-	_VarBody                    int = 4
-	_TypeDef                    int = 5
-	_TypeVars                   int = 6
-	_Type                       int = 7
-	_Types                      int = 8
-	_RefType                    int = 9
-	_NamedType                  int = 10
-	_ModName                    int = 11
-	_TypeArgs                   int = 12
-	_TypeLit                    int = 13
-	_ArrayType                  int = 14
-	_StructType                 int = 15
-	_FieldDef                   int = 16
-	_FieldDefs                  int = 17
-	_UnionType                  int = 18
-	_CaseDef                    int = 19
-	_CaseDefs                   int = 20
-	_FuncType                   int = 21
-	_FuncDef                    int = 22
-	_FuncBody                   int = 23
-	_FuncParms                  int = 24
-	_FuncParm                   int = 25
-	_FuncDecl                   int = 26
-	_FuncDecls                  int = 27
-	_TestDef                    int = 28
-	_Expr                       int = 29
-	_Exprs                      int = 30
-	_Asgn                       int = 31
-	_AsgnArg                    int = 32
-	_AsgnOp                     int = 33
-	_KwCall                     int = 34
-	_KwArg                      int = 35
-	_Cvt                        int = 36
-	_CvtArg                     int = 37
-	_Switch                     int = 38
-	_SwitchArg                  int = 39
-	_Bin5                       int = 40
-	_Bin5Arg                    int = 41
-	_Bin5Op                     int = 42
-	_Bin4                       int = 43
-	_Bin4Arg                    int = 44
-	_Bin4Op                     int = 45
-	_Bin3                       int = 46
-	_Bin3Arg                    int = 47
-	_Bin3Op                     int = 48
-	_Bin2                       int = 49
-	_Bin2Arg                    int = 50
-	_Bin2Op                     int = 51
-	_Bin1                       int = 52
-	_Bin1Arg                    int = 53
-	_Bin1Op                     int = 54
-	_Un                         int = 55
-	_Op                         int = 56
-	_UnArg                      int = 57
-	_Pri                        int = 58
-	_Sel                        int = 59
-	_Call                       int = 60
-	_Idx                        int = 61
-	_PriArg                     int = 62
-	_SubExpr                    int = 63
-	_ModSel                     int = 64
-	_FuncName                   int = 65
-	_IdxOp                      int = 66
-	_Cases                      int = 67
-	_Kwds                       int = 68
-	_Kwd                        int = 69
-	_ArrayLit                   int = 70
-	_StructLit                  int = 71
-	_FieldVals                  int = 72
-	_FieldVal                   int = 73
-	_FieldId                    int = 74
-	_UnionLit                   int = 75
-	_CaseVal                    int = 76
-	_CaseId                     int = 77
-	_BlkLit                     int = 78
-	_BlkParm                    int = 79
-	_BlkParms                   int = 80
-	_CharLit                    int = 81
-	_StrLit                     int = 82
-	_InterpStr                  int = 83
-	_Esc                        int = 84
-	_RawStr                     int = 85
-	_NumLit                     int = 86
-	_DecLit                     int = 87
-	_HexLit                     int = 88
-	_FloatLit                   int = 89
-	_Id                         int = 90
-	_TypeVar                    int = 91
-	_Reserved                   int = 92
-	_D                          int = 93
-	_X                          int = 94
-	_L                          int = 95
-	_O                          int = 96
-	__                          int = 97
-	_Space                      int = 98
-	_Cmnt                       int = 99
-	_Eof                        int = 100
-	_Bin__AsgnOp__AsgnArg       int = 101
-	_NameArg__Kwd__KwArg        int = 102
-	_NameArg__CaseId__SwitchArg int = 103
-	_Bin__Bin5Op__Bin5Arg       int = 104
-	_Bin__Bin4Op__Bin4Arg       int = 105
-	_Bin__Bin3Op__Bin3Arg       int = 106
-	_Bin__Bin2Op__Bin2Arg       int = 107
-	_Bin__Bin1Op__Bin1Arg       int = 108
-	_BinTail__AsgnOp__AsgnArg   int = 109
-	_BinTail__Bin5Op__Bin5Arg   int = 110
-	_BinTail__Bin4Op__Bin4Arg   int = 111
-	_BinTail__Bin3Op__Bin3Arg   int = 112
-	_BinTail__Bin2Op__Bin2Arg   int = 113
-	_BinTail__Bin1Op__Bin1Arg   int = 114
+	_ImportsOnly                int = 0
+	_File                       int = 1
+	_Import                     int = 2
+	_Def                        int = 3
+	_VarDef                     int = 4
+	_VarBody                    int = 5
+	_TypeDef                    int = 6
+	_TypeVars                   int = 7
+	_Type                       int = 8
+	_Types                      int = 9
+	_RefType                    int = 10
+	_NamedType                  int = 11
+	_ModName                    int = 12
+	_TypeArgs                   int = 13
+	_TypeLit                    int = 14
+	_ArrayType                  int = 15
+	_StructType                 int = 16
+	_FieldDef                   int = 17
+	_FieldDefs                  int = 18
+	_UnionType                  int = 19
+	_CaseDef                    int = 20
+	_CaseDefs                   int = 21
+	_FuncType                   int = 22
+	_FuncDef                    int = 23
+	_FuncBody                   int = 24
+	_FuncParms                  int = 25
+	_FuncParm                   int = 26
+	_FuncDecl                   int = 27
+	_FuncDecls                  int = 28
+	_TestDef                    int = 29
+	_Expr                       int = 30
+	_Exprs                      int = 31
+	_Asgn                       int = 32
+	_AsgnArg                    int = 33
+	_AsgnOp                     int = 34
+	_KwCall                     int = 35
+	_KwArg                      int = 36
+	_Cvt                        int = 37
+	_CvtArg                     int = 38
+	_Switch                     int = 39
+	_SwitchArg                  int = 40
+	_Bin5                       int = 41
+	_Bin5Arg                    int = 42
+	_Bin5Op                     int = 43
+	_Bin4                       int = 44
+	_Bin4Arg                    int = 45
+	_Bin4Op                     int = 46
+	_Bin3                       int = 47
+	_Bin3Arg                    int = 48
+	_Bin3Op                     int = 49
+	_Bin2                       int = 50
+	_Bin2Arg                    int = 51
+	_Bin2Op                     int = 52
+	_Bin1                       int = 53
+	_Bin1Arg                    int = 54
+	_Bin1Op                     int = 55
+	_Un                         int = 56
+	_Op                         int = 57
+	_UnArg                      int = 58
+	_Pri                        int = 59
+	_Sel                        int = 60
+	_Call                       int = 61
+	_Idx                        int = 62
+	_PriArg                     int = 63
+	_SubExpr                    int = 64
+	_ModSel                     int = 65
+	_FuncName                   int = 66
+	_IdxOp                      int = 67
+	_Cases                      int = 68
+	_Kwds                       int = 69
+	_Kwd                        int = 70
+	_ArrayLit                   int = 71
+	_StructLit                  int = 72
+	_FieldVals                  int = 73
+	_FieldVal                   int = 74
+	_FieldId                    int = 75
+	_UnionLit                   int = 76
+	_CaseVal                    int = 77
+	_CaseId                     int = 78
+	_BlkLit                     int = 79
+	_BlkParm                    int = 80
+	_BlkParms                   int = 81
+	_CharLit                    int = 82
+	_StrLit                     int = 83
+	_InterpStr                  int = 84
+	_Esc                        int = 85
+	_RawStr                     int = 86
+	_NumLit                     int = 87
+	_DecLit                     int = 88
+	_HexLit                     int = 89
+	_FloatLit                   int = 90
+	_Id                         int = 91
+	_TypeVar                    int = 92
+	_Reserved                   int = 93
+	_D                          int = 94
+	_X                          int = 95
+	_L                          int = 96
+	_O                          int = 97
+	__                          int = 98
+	_Space                      int = 99
+	_Cmnt                       int = 100
+	_Eof                        int = 101
+	_Bin__AsgnOp__AsgnArg       int = 102
+	_NameArg__Kwd__KwArg        int = 103
+	_NameArg__CaseId__SwitchArg int = 104
+	_Bin__Bin5Op__Bin5Arg       int = 105
+	_Bin__Bin4Op__Bin4Arg       int = 106
+	_Bin__Bin3Op__Bin3Arg       int = 107
+	_Bin__Bin2Op__Bin2Arg       int = 108
+	_Bin__Bin1Op__Bin1Arg       int = 109
+	_BinTail__AsgnOp__AsgnArg   int = 110
+	_BinTail__Bin5Op__Bin5Arg   int = 111
+	_BinTail__Bin4Op__Bin4Arg   int = 112
+	_BinTail__Bin3Op__Bin3Arg   int = 113
+	_BinTail__Bin2Op__Bin2Arg   int = 114
+	_BinTail__Bin1Op__Bin1Arg   int = 115
 
-	_N int = 115
+	_N int = 116
 )
 
 type _Parser struct {
@@ -255,6 +256,242 @@ func _leaf(parser *_Parser, start, end int) *peg.Node {
 
 // A no-op function to mark a variable as used.
 func use(interface{}) {}
+
+func _ImportsOnlyAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [1]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _ImportsOnly, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// imports:Import* !Import .* Eof
+	// imports:Import*
+	{
+		pos1 := pos
+		// Import*
+		for {
+			pos3 := pos
+			// Import
+			if !_accept(parser, _ImportAccepts, &pos, &perr) {
+				goto fail5
+			}
+			continue
+		fail5:
+			pos = pos3
+			break
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// !Import
+	{
+		pos7 := pos
+		perr9 := perr
+		// Import
+		if !_accept(parser, _ImportAccepts, &pos, &perr) {
+			goto ok6
+		}
+		pos = pos7
+		perr = _max(perr9, pos)
+		goto fail
+	ok6:
+		pos = pos7
+		perr = perr9
+	}
+	// .*
+	for {
+		pos11 := pos
+		// .
+		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
+			perr = _max(perr, pos)
+			goto fail13
+		} else {
+			pos += w
+		}
+		continue
+	fail13:
+		pos = pos11
+		break
+	}
+	// Eof
+	if !_accept(parser, _EofAccepts, &pos, &perr) {
+		goto fail
+	}
+	return _memoize(parser, _ImportsOnly, start, pos, perr)
+fail:
+	return _memoize(parser, _ImportsOnly, start, -1, perr)
+}
+
+func _ImportsOnlyFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [1]string
+	use(labels)
+	pos, failure := _failMemo(parser, _ImportsOnly, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "ImportsOnly",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _ImportsOnly}
+	// action
+	// imports:Import* !Import .* Eof
+	// imports:Import*
+	{
+		pos1 := pos
+		// Import*
+		for {
+			pos3 := pos
+			// Import
+			if !_fail(parser, _ImportFail, errPos, failure, &pos) {
+				goto fail5
+			}
+			continue
+		fail5:
+			pos = pos3
+			break
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// !Import
+	{
+		pos7 := pos
+		nkids8 := len(failure.Kids)
+		// Import
+		if !_fail(parser, _ImportFail, errPos, failure, &pos) {
+			goto ok6
+		}
+		pos = pos7
+		failure.Kids = failure.Kids[:nkids8]
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "!Import",
+			})
+		}
+		goto fail
+	ok6:
+		pos = pos7
+		failure.Kids = failure.Kids[:nkids8]
+	}
+	// .*
+	for {
+		pos11 := pos
+		// .
+		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: ".",
+				})
+			}
+			goto fail13
+		} else {
+			pos += w
+		}
+		continue
+	fail13:
+		pos = pos11
+		break
+	}
+	// Eof
+	if !_fail(parser, _EofFail, errPos, failure, &pos) {
+		goto fail
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _ImportsOnlyAction(parser *_Parser, start int) (int, *[]*Import) {
+	var labels [1]string
+	use(labels)
+	var label0 []*Import
+	dp := parser.deltaPos[start][_ImportsOnly]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _ImportsOnly}
+	n := parser.act[key]
+	if n != nil {
+		n := n.([]*Import)
+		return start + int(dp-1), &n
+	}
+	var node []*Import
+	pos := start
+	// action
+	{
+		start0 := pos
+		// imports:Import* !Import .* Eof
+		// imports:Import*
+		{
+			pos2 := pos
+			// Import*
+			for {
+				pos4 := pos
+				var node5 *Import
+				// Import
+				if p, n := _ImportAction(parser, pos); n == nil {
+					goto fail6
+				} else {
+					node5 = *n
+					pos = p
+				}
+				label0 = append(label0, node5)
+				continue
+			fail6:
+				pos = pos4
+				break
+			}
+			labels[0] = parser.text[pos2:pos]
+		}
+		// !Import
+		{
+			pos8 := pos
+			// Import
+			if p, n := _ImportAction(parser, pos); n == nil {
+				goto ok7
+			} else {
+				pos = p
+			}
+			pos = pos8
+			goto fail
+		ok7:
+			pos = pos8
+		}
+		// .*
+		for {
+			pos12 := pos
+			// .
+			if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
+				goto fail14
+			} else {
+				pos += w
+			}
+			continue
+		fail14:
+			pos = pos12
+			break
+		}
+		// Eof
+		if p, n := _EofAction(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		node = func(
+			start, end int, imports []*Import) []*Import {
+			return []*Import(imports)
+		}(
+			start0, pos, label0)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
 
 func _FileAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	var labels [2]string

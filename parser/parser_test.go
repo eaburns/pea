@@ -2,6 +2,8 @@ package parser
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -453,6 +455,36 @@ func TestExpr(t *testing.T) {
 				t.Error(diff)
 			}
 		})
+	}
+}
+
+func TestImportsOnly_NoImports(t *testing.T) {
+	const src = `
+		func main() {}
+	`
+	got, err := importsOnly("test.pea", strings.NewReader(src))
+	if err != nil {
+		t.Errorf("got error %s, want no error", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("got %d imports, want 0:\n%v", len(got), got)
+	}
+}
+
+func TestImportsOnly(t *testing.T) {
+	const src = `
+		import "bar"
+		Import "baz"
+		import renamed "qux"
+		func main() {}
+	`
+	got, err := importsOnly("test.pea", strings.NewReader(src))
+	if err != nil {
+		t.Errorf("got error %s, want no error", err)
+	}
+	sort.Strings(got)
+	if !reflect.DeepEqual(got, []string{"bar", "baz", "qux"}) {
+		t.Errorf(`got imports %v, want {"bar", "baz", "qux"}`, got)
 	}
 }
 

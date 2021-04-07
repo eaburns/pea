@@ -4,6 +4,10 @@ package parser
 import "github.com/eaburns/peggy/peg"
 }
 
+ImportsOnly <- imports:Import* !Import .* Eof {
+	return []*Import(imports)
+}
+
 File <- imports:Import* defs:Def* Eof {
 	return File{Imports: imports, Defs: defs}
 }
@@ -77,7 +81,7 @@ TypeArgs <-
 	_ "(" arg:Type _ ")" { return []Type{arg} } /
 	_ "(" args: Types _ ")" { return []Type(args) }
 
-TypeLit <- 
+TypeLit <-
 	RefType /
 	FuncType /
 	ArrayType /
@@ -271,7 +275,7 @@ Idx <- _ "[" exprs:Exprs _ "]" {
 	return primary(idx{args: exprs, l: l(parser, start, end)})
 }
 
-PriArg <- 
+PriArg <-
 	BlkLit /
 	ArrayLit /
 	StructLit /

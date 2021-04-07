@@ -33,6 +33,37 @@ func NewWithOffset(offs int) *Parser {
 	return &Parser{offs: offs}
 }
 
+// ImportsOnly returns just the paths imported by a source file.
+// Imports only parses the imports and ignores the rest of the file;
+// syntax errors after import statements are not reported.
+func ImportsOnly(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return importsOnly(path, f)
+}
+
+func importsOnly(path string, r io.Reader) ([]string, error) {
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	_p := _NewParser(string(data))
+	_p.data = &Parser{offs: 1}
+	if pos, perr := _ImportsOnlyAccepts(_p, 0); pos < 0 {
+		_, t := _ImportsOnlyFail(_p, 0, perr)
+		return nil, parseError{path: path, loc: perr, text: _p.text, fail: t}
+	}
+	_, imports := _ImportsOnlyAction(_p, 0)
+	var paths []string
+	for _, imp := range *imports {
+		paths = append(paths, imp.Path)
+	}
+	return paths, nil
+}
+
 // Parse parses a file from an io.Reader.
 // The first argument is the file path or "" if unspecified.
 func (p *Parser) Parse(path string, r io.Reader) error {
