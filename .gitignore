@@ -8,3 +8,15 @@ libpea/vendor/gc-8.0.4/if_mach
 libpea/vendor/gc-8.0.4/if_not_there
 libpea/vendor/gc-8.0.4/tests/test.o
 libpea/vendor/gc-8.0.4/threadlibs
+libpea/vendor/libunwind-11.0.0.src/CMakeCache.txt
+libpea/vendor/libunwind-11.0.0.src/CMakeFiles/
+libpea/vendor/libunwind-11.0.0.src/Makefile
+libpea/vendor/libunwind-11.0.0.src/cmake_install.cmake
+libpea/vendor/libunwind-11.0.0.src/lib/
+libpea/vendor/libunwind-11.0.0.src/src/CMakeFiles/
+libpea/vendor/libunwind-11.0.0.src/src/Makefile
+libpea/vendor/libunwind-11.0.0.src/src/cmake_install.cmake
+libpea/vendor/libunwind-11.0.0.src/test/CMakeFiles/
+libpea/vendor/libunwind-11.0.0.src/test/Makefile
+libpea/vendor/libunwind-11.0.0.src/test/cmake_install.cmake
+libpea/vendor/libunwind-11.0.0.src/test/lit.site.cfg
