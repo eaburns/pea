@@ -4,7 +4,7 @@ clang=/usr/bin/clang
 echo "Building gc"
 (cd libpea/vendor/gc-8.0.4 && make -f Makefile.direct)
 echo "Building libunwind"
-(cd libpea/vendor/libunwind-11.0.0.src && cmake -Wno-dev . && make)
+(cd libpea/vendor/libunwind-11.0.0.src && cmake -Wno-dev . > /dev/null && make)
 echo "Building libpea.c"
 $clang -pthread \
 	-g \
