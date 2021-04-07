@@ -12,14 +12,14 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/eaburns/pea/backend/llvm"
 	"github.com/eaburns/pea/checker"
 	"github.com/eaburns/pea/flowgraph"
+	"github.com/eaburns/pea/llvm"
 	"github.com/eaburns/pea/parser"
 )
 
 func TestLLVM(t *testing.T) {
-	const subDir = "../../flowgraph/testdata"
+	const subDir = "../flowgraph/testdata"
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -77,7 +77,7 @@ func runTest(t *testing.T, f *flowgraph.Mod) string {
 	}
 
 	// ldl is needed for libunwind
-	runtimeLibs := "-pthread -ldl " + filepath.Join(wd, "/../../libpea/libpea.a")
+	runtimeLibs := "-pthread -ldl " + filepath.Join(wd, "/../libpea/libpea.a")
 	cmd := exec.Command(
 		"/bin/sh", "-c",
 		"cd "+dir+"; "+

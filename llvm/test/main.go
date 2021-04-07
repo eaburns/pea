@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/eaburns/pea/backend/llvm"
 	"github.com/eaburns/pea/checker"
 	"github.com/eaburns/pea/flowgraph"
+	"github.com/eaburns/pea/llvm"
 	"github.com/eaburns/pea/parser"
 )
 
