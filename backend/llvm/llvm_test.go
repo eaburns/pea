@@ -75,12 +75,9 @@ func runTest(t *testing.T, f *flowgraph.Mod) string {
 	if err != nil {
 		t.Fatalf("error getting wd: %s", err)
 	}
-	runtimeLibs :=
-		"-pthread " +
-			filepath.Join(wd, "/../../libpea/libpea.o") + " " +
-			filepath.Join(wd, "/../../libpea/vendor/gc-8.0.4/gc.a") + " " +
-			"-ldl " + // needed for libunwind
-			filepath.Join(wd, "/../../libpea/vendor/libunwind-11.0.0.src/lib/libunwind.a")
+
+	// ldl is needed for libunwind
+	runtimeLibs := "-pthread -ldl " + filepath.Join(wd, "/../../libpea/libpea.a")
 	cmd := exec.Command(
 		"/bin/sh", "-c",
 		"cd "+dir+"; "+

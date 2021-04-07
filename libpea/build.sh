@@ -1,14 +1,27 @@
 #!/bin/sh
-clang=/usr/bin/clang
+clang=clang
+ar=llvm-ar
 
 echo "Building gc"
-(cd libpea/vendor/gc-8.0.4 && make -f Makefile.direct)
+gc_path=vendor/gc-8.0.4
+(cd libpea/$gc_path && \
+	make -f Makefile.direct > /dev/null)
+
 echo "Building libunwind"
-(cd libpea/vendor/libunwind-11.0.0.src && cmake -Wno-dev . > /dev/null && make)
-echo "Building libpea.c"
+libunwind_path=vendor/libunwind-11.0.0.src
+(cd libpea/$libunwind_path && \
+	cmake -Wno-dev . > /dev/null && \
+	make > /dev/null)
+
+echo "Building libpea.a"
+rm -f libpea.a
 $clang -pthread \
 	-g \
-	-I libpea/vendor/libunwind-11.0.0.src/include \
-	-I libpea/vendor/gc-8.0.4/include \
+	-I libpea/$gc_path/include \
+	-I libpea/$libunwind_path/include \
 	-c libpea/libpea.c \
 	-o libpea/libpea.o
+$ar qcL libpea/libpea.a \
+	libpea/libpea.o \
+	libpea/$gc_path/gc.a \
+	libpea/$libunwind_path/lib/libunwind.a

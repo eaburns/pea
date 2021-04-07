@@ -17,7 +17,9 @@ jobs:
       run: go build -v ./...
 
     - name: Build runtime
-      run: /bin/sh ./libpea/build.sh
+      run: |
+        export PATH=$PATH:/usr/lib/llvm-11/bin
+        /bin/sh ./libpea/build.sh
 
     - name: Test
       run: |
