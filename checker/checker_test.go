@@ -1299,6 +1299,32 @@ func TestTypeResolution(t *testing.T) {
 			},
 			err: "type bar is ambiguous",
 		},
+		{
+			name: "upper-case Imported types no-conflict with mod name 1",
+			src: `
+				Import "foo"
+				Import "baz"
+				var t foo#bar
+			`,
+			otherMods: []testMod{
+				{path: "foo", src: "type bar [.x int]"},
+				{path: "baz", src: "type bar [.y string]"},
+			},
+			want: "foo#bar",
+		},
+		{
+			name: "upper-case Imported types no-conflict with mod name 2",
+			src: `
+				Import "foo"
+				Import "baz"
+				var t baz#bar
+			`,
+			otherMods: []testMod{
+				{path: "foo", src: "type bar [.x int]"},
+				{path: "baz", src: "type bar [.y string]"},
+			},
+			want: "baz#bar",
+		},
 	}
 	for _, test := range tests {
 		test := test
