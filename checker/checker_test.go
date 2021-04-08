@@ -36,6 +36,7 @@ type testImporter struct {
 	files  loc.Files
 	mods   []testMod
 	loaded map[string]*Mod
+	deps   []string
 }
 
 func newTestImporter(mods []testMod, files []*parser.File) *testImporter {
@@ -78,8 +79,11 @@ func (imp *testImporter) Load(path string) (*Mod, error) {
 	}
 	mod.Imported = true
 	imp.loaded[path] = mod
+	imp.deps = append(imp.deps, path)
 	return mod, nil
 }
+
+func (imp *testImporter) Deps() []string { return imp.deps }
 
 func check(path string, files []string, mods []testMod) (*Mod, []error) {
 	p := parser.New()
@@ -1539,6 +1543,21 @@ func TestOverloadResolution(t *testing.T) {
 			src: `
 				import "other"
 				func make_foo() other#foo
+			`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo [.x int, .y int]
+				`,
+			},
+			call: "make_foo().x",
+			want: "built-in .x(&other#foo)&int",
+		},
+		{
+			name: "built-in selector, other mod struct, capital Import",
+			src: `
+				Import "other"
+				func make_foo() foo
 			`,
 			otherMod: testMod{
 				path: "other",

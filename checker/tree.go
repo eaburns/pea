@@ -18,6 +18,10 @@ type Mod struct {
 	// on which they have initialization dependencies.
 	Defs []Def
 
+	// Deps containts module paths of all transitive dependencies
+	// in topological with dependencies appearing before their dependents.
+	Deps []string
+
 	toSub []*FuncInst
 }
 

@@ -73,7 +73,11 @@ func (g *gen) generate(w io.Writer, mod *flowgraph.Mod) (err error) {
 		g.write("@str", s.Num, " = private unnamed_addr constant [", len(s.Text), " x i8] c", quote(s.Text), "\n")
 	}
 	for _, v := range mod.Vars {
-		g.write("@\"", v.Mod.Path, " ", v.Name, "\" = global ", v.Type, " zeroinitializer\n")
+		if v.Mod == mod.Path {
+			g.write("@\"", v.Mod, " ", v.Name, "\" = global ", v.Type, " zeroinitializer\n")
+		} else {
+			g.write("@\"", v.Mod, " ", v.Name, "\" = external global ", v.Type, "\n")
+		}
 	}
 	for _, f := range mod.Funcs {
 		if f.Mod == "main" && f.Name == "print_int" {
@@ -132,16 +136,21 @@ func (g *gen) bool() intType { return intType(g.boolBits) }
 type typeVal struct{ Value flowgraph.Value }
 
 func (g *gen) writeMain(mod *flowgraph.Mod, main *flowgraph.FuncDef) {
-	if main != nil {
-		g.write("define i32 @main() {\n")
-		if mod.Init != nil {
-			g.write("	call void ", mod.Init, "()\n")
-		}
-		g.write(
-			"	call void ", main, "()\n",
-			"	ret i32 0\n",
-			"}\n")
+	if main == nil {
+		return
 	}
+	for _, dep := range mod.Deps {
+		g.write("declare void @\"", dep, " <init>\"()\n")
+	}
+	g.write("define i32 @main() {\n")
+	for _, dep := range mod.Deps {
+		g.write("	call void @\"", dep, " <init>\"()\n")
+	}
+	g.write("	call void ", mod.Init, "()\n")
+	g.write(
+		"	call void ", main, "()\n",
+		"	ret i32 0\n",
+		"}\n")
 }
 
 func (g *gen) writeTestMain(mod *flowgraph.Mod) {
@@ -156,11 +165,17 @@ func (g *gen) writeTestMain(mod *flowgraph.Mod) {
 	g.write(
 		"@fail_str = private unnamed_addr constant [5 x i8] c\"FAIL\\00\"\n",
 		"declare i32 @puts(i8* nocapture)\n",
-		"declare i32 @pea_run_test(void()* nocapture, i8* nocapture)\n",
-		"define i32 @main() {\n")
-	if mod.Init != nil {
-		g.write("	call void ", mod.Init, "()\n")
+		"declare i32 @pea_run_test(void()* nocapture, i8* nocapture)\n")
+
+	for _, dep := range mod.Deps {
+		g.write("declare void @\"", dep, " <init>\"()\n")
 	}
+	g.write("define i32 @main() {\n")
+	for _, dep := range mod.Deps {
+		g.write("	call void @\"", dep, " <init>\"()\n")
+	}
+	g.write("	call void ", mod.Init, "()\n")
+
 	var fail tmp
 	first := true
 	for _, t := range mod.Funcs {
@@ -709,7 +724,7 @@ func (g *gen) writeValue(v flowgraph.Value) {
 	case *flowgraph.Func:
 		g.write(v.Def)
 	case *flowgraph.Var:
-		g.write(`@"`, v.Def.Mod.Path, " ", v.Def.Name, `"`)
+		g.write(`@"`, v.Def.Mod, " ", v.Def.Name, `"`)
 	case *flowgraph.Parm:
 		g.write(`%"`, v.Def.Name, `"`)
 	case *flowgraph.Int:

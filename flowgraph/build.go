@@ -23,6 +23,7 @@ func Build(mod *checker.Mod, opts ...Option) *Mod {
 	for _, o := range opts {
 		o(mb)
 	}
+	mb.Deps = mod.Deps
 	// Set the Imported bit so .String() methods add the path.
 	mod.Imported = true
 	mb.buildDefs(mod)
@@ -90,7 +91,7 @@ func (mb *modBuilder) buildDefs(mod *checker.Mod) {
 	for _, d := range mod.Defs {
 		if d, ok := d.(*checker.VarDef); ok {
 			v := &VarDef{
-				Mod:  mb.Mod,
+				Mod:  mb.Mod.Path,
 				Name: d.Name,
 				Type: mb.buildType(d.T),
 			}
@@ -109,14 +110,19 @@ func (mb *modBuilder) buildDefs(mod *checker.Mod) {
 			mb.buildTestDef(d)
 		}
 	}
+
+	fb := mb.newFuncBuilder(mod.Path, "<init>", nil, &checker.StructType{}, loc.Loc{})
+	fb.SourceName = mod.Path + " <init>"
+	b0 := fb.buildBlock0(nil)
+	var b1 *blockBuilder
 	if len(varInits) > 0 {
-		fb := mb.newFuncBuilder(mod.Path, "<init>", nil, &checker.StructType{}, loc.Loc{})
-		fb.SourceName = mod.Path + " <init>"
-		b0 := fb.buildBlock0(nil)
-		b1 := fb.buildBlocks(varInits)
-		b0.jump(b1)
-		mb.Init = fb.FuncDef
+		b1 = fb.buildBlocks(varInits)
+	} else {
+		b1 = fb.newBlock()
+		b1.Return(nil)
 	}
+	b0.jump(b1)
+	mb.Init = fb.FuncDef
 }
 
 func (mb *modBuilder) topoSortFuncs() {
@@ -556,7 +562,17 @@ func (bb *blockBuilder) expr(expr checker.Expr) (*blockBuilder, Value) {
 	case *checker.Convert:
 		return bb.convert(expr)
 	case *checker.Var:
-		return bb, bb.Var(bb.fun.mod.varDef[expr.Def])
+		v := bb.fun.mod.varDef[expr.Def]
+		if v == nil {
+			v = &VarDef{
+				Mod:  expr.Def.Mod,
+				Name: expr.Def.Name,
+				Type: bb.buildType(expr.Def.T),
+			}
+			bb.fun.mod.Vars = append(bb.fun.mod.Vars, v)
+			bb.fun.mod.varDef[expr.Def] = v
+		}
+		return bb, bb.Var(v)
 	case *checker.Local:
 		a, ok := bb.fun.localAlloc[expr.Def]
 		if !ok {

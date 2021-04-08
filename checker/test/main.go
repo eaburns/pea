@@ -9,7 +9,10 @@ import (
 	"github.com/eaburns/pea/parser"
 )
 
-var dump = flag.Bool("d", false, "dump the check tree")
+var (
+	dump = flag.Bool("d", false, "dump the check tree")
+	root = flag.String("root", ".", "module root directory")
+)
 
 func main() {
 	flag.Parse()
@@ -31,7 +34,8 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	m, fs, errs := checker.Check("main", p.Files, nil)
+	imp := checker.NewImporter(*root, p.Files)
+	m, fs, errs := checker.Check("main", p.Files, imp)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			fmt.Println(err)

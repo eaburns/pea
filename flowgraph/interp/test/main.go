@@ -14,6 +14,7 @@ import (
 var (
 	opt   = flag.Bool("opt", true, "Enable optimizations")
 	trace = flag.Bool("trace", false, "Enable instruction tracing")
+	root  = flag.String("root", ".", "module root directory")
 )
 
 func main() {
@@ -36,7 +37,8 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	m, _, errs := checker.Check("main", p.Files, nil)
+	imp := checker.NewImporter(*root, p.Files)
+	m, _, errs := checker.Check("main", p.Files, imp)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			fmt.Println(err)

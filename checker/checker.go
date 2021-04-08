@@ -20,7 +20,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	typeNames := make(map[string]loc.Loc)
 	mod := &Mod{Path: modPath}
 	if importer == nil {
-		importer = newDefaultImporter(files)
+		importer = NewImporter(".", files)
 	}
 	for _, parserFile := range files {
 		var imports []*Import
@@ -242,6 +242,8 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 		// TODO: improve too much substitution error message
 		return nil, nil, []error{errors.New("too much substitution")}
 	}
+
+	mod.Deps = importer.Deps()
 
 	return mod, importer.Files(), nil
 }

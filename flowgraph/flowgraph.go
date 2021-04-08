@@ -18,6 +18,11 @@ type Mod struct {
 	// It must be called before any defs of the module are used
 	// (funcs called, vars/consts read/stored, or tests called).
 	Init *FuncDef
+	// Deps are module-paths that this Mod depends on.
+	// It is in topological order, with dependencies
+	// appearing before their dependents.
+	// This is intended to be used to call initialization routines.
+	Deps []string
 }
 
 type Type interface {
@@ -172,7 +177,7 @@ type StrDef struct {
 }
 
 type VarDef struct {
-	Mod  *Mod
+	Mod  string
 	Name string
 	Type Type
 }

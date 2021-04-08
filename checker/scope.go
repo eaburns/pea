@@ -111,7 +111,25 @@ func (i *Import) findType(args []Type, name string, l loc.Loc) Type {
 }
 
 func (f *File) findType(args []Type, name string, l loc.Loc) Type {
-	return f.Mod.findType(args, name, l)
+	var types []Type
+	typ := f.Mod.findType(args, name, l)
+	if typ != nil {
+		types = append(types, typ)
+	}
+	for _, imp := range f.Imports {
+		if !imp.Exp {
+			continue
+		}
+		typ := imp.findType(args, name, l)
+		if typ != nil {
+			types = append(types, typ)
+		}
+	}
+	if len(types) == 1 {
+		return types[0]
+	}
+	// TODO: ambiguous type error.
+	return nil
 }
 
 func (v *VarDef) findType(args []Type, name string, l loc.Loc) Type {
@@ -266,7 +284,15 @@ func splitCaseNames(str string) []string {
 
 func (i *Import) find(name string) []id { return findInDefs(i.Defs, name) }
 
-func (f *File) find(name string) []id { return f.Mod.find(name) }
+func (f *File) find(name string) []id {
+	ids := f.Mod.find(name)
+	for _, imp := range f.Imports {
+		if imp.Exp {
+			ids = append(ids, imp.find(name)...)
+		}
+	}
+	return ids
+}
 
 func (v *VarDef) find(name string) []id { return v.File.find(name) }
 
