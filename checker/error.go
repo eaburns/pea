@@ -33,6 +33,14 @@ func notFound(name string, locer loc.Locer) Error {
 	return newError(locer, "%s: not found", name)
 }
 
+func ambigType(name string, locer loc.Locer, types []Type) Error {
+	err := newError(locer, "type %s is ambiguous", name)
+	for _, t := range types {
+		err.note(t.String()).setLoc(t)
+	}
+	return err
+}
+
 func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 	err := newError(locer, "%s redefined", name)
 	err.note("previous").setLoc(prev)

@@ -302,8 +302,13 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 			x = imp
 		}
 		name := parserType.Name.Name
-		if typ = x.findType(args, name, parserType.L); typ == nil {
+		switch types := x.findType(args, name, parserType.L); {
+		case len(types) == 0:
 			errs = append(errs, notFound(name, parserType.L))
+		case len(types) > 1:
+			errs = append(errs, ambigType(name, parserType.L, types))
+		default:
+			typ = types[0]
 		}
 		if dt, ok := typ.(*DefType); ok && inst {
 			typ = instType(dt)
@@ -355,8 +360,13 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 		typ = &FuncType{Parms: parms, Ret: ret, L: parserType.L}
 	case parser.TypeVar:
 		name := parserType.Name
-		if typ = x.findType(nil, name, parserType.L); typ == nil {
+		switch types := x.findType(nil, name, parserType.L); {
+		case len(types) == 0:
 			errs = append(errs, notFound(name, parserType.L))
+		case len(types) > 1:
+			errs = append(errs, ambigType(name, parserType.L, types))
+		default:
+			typ = types[0]
 		}
 	default:
 		panic(fmt.Sprintf("unsupported Type type: %T", parserType))

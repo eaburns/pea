@@ -11,7 +11,7 @@ import (
 type scope interface {
 	find(name string) []id
 	findMod(name string) *Import
-	findType(args []Type, name string, l loc.Loc) Type
+	findType(args []Type, name string, l loc.Loc) []Type
 	capture(id) id
 	useVar(loc.Loc, *VarDef)
 	useFunc(loc.Loc, *FuncDef, *FuncDecl, *FuncDef)
@@ -96,73 +96,67 @@ func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 	return nil
 }
 
-func (m *Mod) findType(args []Type, name string, l loc.Loc) Type {
+func (m *Mod) findType(args []Type, name string, l loc.Loc) []Type {
 	if t := findTypeInDefs(m.Defs, args, name, l); t != nil {
-		return t
+		return []Type{t}
 	}
-	return findBuiltInType(args, name, l)
+	if t := findBuiltInType(args, name, l); t != nil {
+		return []Type{t}
+	}
+	return nil
 }
 
-func (i *Import) findType(args []Type, name string, l loc.Loc) Type {
+func (i *Import) findType(args []Type, name string, l loc.Loc) []Type {
 	if t := findTypeInDefs(i.Defs, args, name, l); t != nil {
+		return []Type{t}
+	}
+	return nil
+}
+
+func (f *File) findType(args []Type, name string, l loc.Loc) []Type {
+	if t := f.Mod.findType(args, name, l); len(t) > 0 {
 		return t
 	}
-	return nil
-}
-
-func (f *File) findType(args []Type, name string, l loc.Loc) Type {
 	var types []Type
-	typ := f.Mod.findType(args, name, l)
-	if typ != nil {
-		types = append(types, typ)
-	}
 	for _, imp := range f.Imports {
-		if !imp.Exp {
-			continue
-		}
-		typ := imp.findType(args, name, l)
-		if typ != nil {
-			types = append(types, typ)
+		if imp.Exp {
+			types = append(types, imp.findType(args, name, l)...)
 		}
 	}
-	if len(types) == 1 {
-		return types[0]
-	}
-	// TODO: ambiguous type error.
-	return nil
+	return types
 }
 
-func (v *VarDef) findType(args []Type, name string, l loc.Loc) Type {
+func (v *VarDef) findType(args []Type, name string, l loc.Loc) []Type {
 	return v.File.findType(args, name, l)
 }
 
-func (t *TypeDef) findType(args []Type, name string, l loc.Loc) Type {
+func (t *TypeDef) findType(args []Type, name string, l loc.Loc) []Type {
 	if typ := findTypeVar(t.Parms, args, name, l); typ != nil {
-		return typ
+		return []Type{typ}
 	}
 	return t.File.findType(args, name, l)
 }
 
-func (f *FuncDef) findType(args []Type, name string, l loc.Loc) Type {
+func (f *FuncDef) findType(args []Type, name string, l loc.Loc) []Type {
 	if typ := findTypeVar(f.TypeParms, args, name, l); typ != nil {
-		return typ
+		return []Type{typ}
 	}
 	return f.File.findType(args, name, l)
 }
 
-func (t *TestDef) findType(args []Type, name string, l loc.Loc) Type {
+func (t *TestDef) findType(args []Type, name string, l loc.Loc) []Type {
 	return t.File.findType(args, name, l)
 }
 
-func (b *blockLitScope) findType(args []Type, name string, l loc.Loc) Type {
+func (b *blockLitScope) findType(args []Type, name string, l loc.Loc) []Type {
 	return b.parent.findType(args, name, l)
 }
 
-func (e *excludeFunc) findType(args []Type, name string, l loc.Loc) Type {
+func (e *excludeFunc) findType(args []Type, name string, l loc.Loc) []Type {
 	return e.parent.findType(args, name, l)
 }
 
-func (o *localScope) findType(args []Type, name string, l loc.Loc) Type {
+func (o *localScope) findType(args []Type, name string, l loc.Loc) []Type {
 	return o.parent.findType(args, name, l)
 }
 

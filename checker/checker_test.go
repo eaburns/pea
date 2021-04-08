@@ -1231,6 +1231,99 @@ func TestConversions(t *testing.T) {
 	}
 }
 
+func TestTypeResolution(t *testing.T) {
+	tests := []struct {
+		name      string
+		src       string
+		want      string
+		err       string
+		otherMods []testMod
+	}{
+		{
+			name: "built-in type",
+			src:  "var t int",
+			want: "int",
+		},
+		{
+			name: "override built-in type",
+			src: `
+				type int string
+				var t int
+			`,
+			want: "int",
+		},
+		{
+			name: "lower-case imported type",
+			src: `
+				import "foo"
+				var t foo#bar
+			`,
+			otherMods: []testMod{
+				{path: "foo", src: "type bar [.x int]"},
+			},
+			want: "foo#bar",
+		},
+		{
+			name: "upper-case Imported type",
+			src: `
+				Import "foo"
+				var t bar
+			`,
+			otherMods: []testMod{
+				{path: "foo", src: "type bar [.x int]"},
+			},
+			want: "foo#bar",
+		},
+		{
+			name: "type overrides upper-case Imported type",
+			src: `
+				Import "foo"
+				type bar [.y string]
+				var t bar
+			`,
+			otherMods: []testMod{
+				{path: "foo", src: "type bar [.x int]"},
+			},
+			want: "bar",
+		},
+		{
+			name: "upper-case Imported types conflict",
+			src: `
+				Import "foo"
+				Import "baz"
+				var t bar
+			`,
+			otherMods: []testMod{
+				{path: "foo", src: "type bar [.x int]"},
+				{path: "baz", src: "type bar [.y string]"},
+			},
+			err: "type bar is ambiguous",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			if strings.HasPrefix(test.name, "SKIP") {
+				t.Skip()
+			}
+			mod, errs := check("test", []string{test.src}, test.otherMods)
+			switch {
+			case test.err == "" && len(errs) == 0:
+				got := findVarDef(t, "t", mod).T.String()
+				if got != test.want {
+					t.Errorf("got %s, want %s", got, test.want)
+				}
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
 func TestOverloadResolution(t *testing.T) {
 	tests := []struct {
 		name     string
