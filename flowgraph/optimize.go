@@ -617,7 +617,7 @@ func canInline(fb *funcBuilder, def *FuncDef) bool {
 	if ref == nil {
 		panic(fmt.Sprintf("impossible: %s does not call %s", fb.Name, def.Name))
 	}
-	if fb.Test && strings.Contains("<block", def.Name) {
+	if fb.Test && !strings.Contains("<block", def.Name) {
 		return false
 	}
 	self := fb.FuncDef == def
