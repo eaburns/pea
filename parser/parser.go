@@ -90,6 +90,7 @@ func (p *Parser) Parse(path string, r io.Reader) error {
 	}
 	file.Length = len(data)
 	p.Files = append(p.Files, file)
+	p.offs += len(data)
 	return nil
 }
 
