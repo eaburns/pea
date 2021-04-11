@@ -2459,6 +2459,12 @@ func TestOverloadResolution(t *testing.T) {
 			call: "f(x)",
 			want: "f(&&[.foo int])",
 		},
+		{
+			name: "unify iface",
+			src:  "func =(_ [T], _ [T]) bool : =(T, T) bool",
+			call: "[1] = [2]",
+			want: "=([int], [int])bool",
+		},
 	}
 	for _, test := range tests {
 		test := test

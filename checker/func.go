@@ -314,8 +314,12 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 	if !ok {
 		return nil
 	}
+	// Exclude notes: if instantiation fails,
+	// these notes explain functions excluded from the scope.
+	// But if instantiation is successful these should be ignored.
+	var excludeNotes []note
+	x = &excludeFunc{parent: x, def: f.Def, notes: &excludeNotes}
 	var notes []note
-	x = &excludeFunc{parent: x, def: f.Def, notes: &notes}
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
 		fun, note := findIfaceFunc(x, l, f.Def, f.IfaceArgs[i].(*FuncDecl))
@@ -326,6 +330,7 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 		}
 	}
 	if len(notes) > 0 {
+		notes = append(notes, excludeNotes...)
 		note := newNote("%s: failed to instantiate interface", fun).setLoc(fun)
 		note.setNotes(notes)
 		return note
