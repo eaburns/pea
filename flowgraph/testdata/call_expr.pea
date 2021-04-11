@@ -1,0 +1,7 @@
+// Hello, World!
+func main() {
+	f := (s string) { print(s) },
+	f("Hello"),
+	f(", "),
+	f("World!"),
+}
