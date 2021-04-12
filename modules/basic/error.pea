@@ -1,0 +1,55 @@
+Type error := _error
+
+type _error [.msg string]
+
+Func new(msg string) error {
+	return: [.msg msg]
+}
+
+Func +=(p printer, err error) printer {
+	return: p += err.msg,
+}
+
+Type T or_error [error? error, ok? T]
+
+Func ok(t T) T or_error {
+	return: [ok? t]
+}
+
+Func error(err error) T or_error {
+	return: [error? err]
+}
+
+Func error(msg string) T or_error {
+	return: [error? new(msg)]
+}
+
+Func if:ok:(o T or_error, k (T){}) {
+	o ok? k error? (_){}
+}
+
+Func if:error:(o T or_error, e (error){}) {
+	o ok? (_ T){} error? e
+}
+
+Func if:ok:error:(o T or_error, k (T){}, e (error){}) {
+	o ok? k error? e
+}
+
+Func if:error:ok:(o T or_error, e (error){}, k (T){}) {
+	o ok? k error? e
+}
+
+Func +=(p printer, t_or T or_error) printer : +=(printer, T)printer {
+	return: t_or ok? (t T) {
+		p += "ok(" += t += ")"
+	} error? (e) {
+		p += "error(" += e += ")"
+	}
+}
+
+test print_or_error {
+	assert: print_string(int or_error :: error("oops")) equals: "error(oops)",
+	assert: print_string(ok(1)) equals: "ok(1)",
+	assert: print_string(ok("Hello, World!")) equals: "ok(Hello, World!)",
+}

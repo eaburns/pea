@@ -1,0 +1,143 @@
+Const true := bool :: [true?]
+Const false := bool :: [false?]
+
+Func !(b bool) bool {
+	return: b true? { false } false? { true }
+}
+
+test not {
+	assert_false: !true,
+	assert_true: !false,
+}
+
+Func =(a bool, b bool) bool {
+	return: a true? {b} false? {!b}
+}
+
+test bool_equal {
+	assert_true: true = true,
+	assert_true: false = false,
+	assert_false: true = false,
+	assert_false: false = true,
+}
+
+Func !=(a bool, b bool) bool {
+	return: a true? {!b} false? {b}
+}
+
+test bool_not_equal {
+	assert_false: true != true,
+	assert_false: false != false,
+	assert_true: true != false,
+	assert_true: false != true,
+}
+
+Func &&(a bool, b bool) bool {
+	return: a true? {b} false? {false}
+}
+
+test and {
+	assert_false: false && false,
+	assert_false: false && true,
+	assert_false: true && false,
+	assert_true: true && true,
+}
+
+Func &&(a bool, b (){bool}) bool {
+	return: a true? {b()} false? {false}
+}
+
+test lazy_and {
+	assert_false: false && {false},
+	assert_false: false && {true},
+	assert_false: true && {false},
+	assert_true: true && {true},
+
+	assert_false: false && {panic("fail"), false},
+}
+
+Func ||(a bool, b bool) bool {
+	return: a true? {a} false? {b}
+}
+
+test or {
+	assert_false: false || false,
+	assert_true: false || true,
+	assert_true: true || false,
+	assert_true: true || true,
+}
+
+Func ||(a bool, b (){bool}) bool {
+	return: a true? {true} false? {b()}
+}
+
+test lazy_or {
+	assert_false: false || {false},
+	assert_true: false || {true},
+	assert_true: true || {false},
+	assert_true: true || {true},
+
+	assert_true: true || {panic("fail"), false},
+}
+
+Func if:then:(cond bool, t (){}) {
+	cond true? t false? {}
+}
+
+test if_then {
+	called := false,
+	if: true then: {called := true},
+	assert_true: called,
+
+	called := false,
+	if: false then: {called := true},
+	assert_false: called,
+}
+
+Func if:then:else:(cond bool, t (){}, f (){}) {
+	cond true? t false? f
+}
+
+test if_then_else {
+	thenCalled := false,
+	elseCalled := false,
+	if: true then: {thenCalled := true} else: {elseCalled := true},
+	assert_true: thenCalled,
+	assert_false: elseCalled,
+
+	thenCalled := false,
+	elseCalled := false,
+	if: false then: {thenCalled := true} else: {elseCalled := true},
+	assert_false: thenCalled,
+	assert_true: elseCalled,
+}
+
+Func while:do:(cond (){bool}, f (){}) {
+	cond() true? {
+		f(),
+		while: cond do: f
+	}
+}
+
+test while_do {
+	iters := 0,
+	while: {false} do: {++iters},
+	assert: iters equals: 0,
+
+	iters := 0,
+	while: {iters < 10} do: {++iters},
+	assert: iters equals: 10,
+}
+
+Func +=(p printer, b bool) printer {
+	return: b true? {
+		p += "true"
+	} false? {
+		p += "false"
+	},
+}
+
+test print_bool {
+	assert: print_string(true) equals: "true",
+	assert: print_string(false) equals: "false",
+}

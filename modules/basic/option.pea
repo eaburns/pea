@@ -1,0 +1,122 @@
+type T option [none?, some? T]
+
+Func some(t T) T option { return: [some? t] }
+
+Func none() T option { return: [none?] }
+
+Func =(a T option, b T option) bool : =(T, T)bool {
+	// TODO: for some?none?, why can't T be inferred?
+	a some? (a_val T) {
+		b some? (b_val) {
+			return: a_val = b_val
+		},
+	} none? {
+		b none? {
+			return: true
+		}
+	},
+	return: false
+}
+
+test option_equals {
+	assert_true: some(5) = some(5),
+	assert_true: (int option :: none()) = none(),
+	assert_true: some("Hello") = some("Hello"),
+	assert_true: (string option :: none()) = none(),
+	assert_false: some(5) = none(),
+	assert_false: (int option :: none()) = some(5),
+	assert_false: some(5) = some(6),
+	assert_false: some("Hello") = some("Good-bye"),
+}
+
+Func if:some:(o T option, s (T){}) {
+	o some? s none? {}
+}
+
+test if_some {
+	called := false,
+	if: some(5) some: (_){called := true},
+	assert_true: called,
+
+	called := false,
+	if: (int option :: none()) some: (_){called := true},
+	assert_false: called,
+}
+
+Func if:none:(o T option, n (){}) {
+	// TODO: for some?none?, why can't T be inferred?
+	o some? (_ T){} none? n
+}
+
+test if_none {
+	called := false,
+	if: some(5) none: {called := true},
+	assert_false: called,
+
+	called := false,
+	if: (int option :: none()) none: {called := true},
+	assert_true: called,
+}
+
+Func if:some:none:(o T option, s (T){}, n (){}) {
+	o some? s none? n
+}
+
+test if_some_none {
+	someCalled := false,
+	elseCalled := false,
+	if: some(5) some: (_){
+		someCalled := true
+	} none: {
+		elseCalled := true
+	},
+	assert_true: someCalled,
+	assert_false: elseCalled,
+
+	someCalled := false,
+	elseCalled := false,
+	if: (int option :: none()) some: (_){
+		someCalled := true
+	} none: {
+		elseCalled := true
+	},
+	assert_false: someCalled,
+	assert_true: elseCalled,
+}
+
+Func while:some:(cond (){T option}, f (T){}) {
+	cond() some? (t) {
+		f(t),
+		while: cond some: f
+	}
+}
+
+test while_some {
+	iters := 0,
+	while: {int option :: none()} some: (_){++iters},
+	assert: iters equals: 0,
+
+	iters := 0,
+	while: {iters < 10 true? {some(iters)} false? {none()}} some: (i){
+		assert: i equals: iters,
+		++iters
+	},
+	assert: iters equals: 10,
+}
+
+Func +=(p printer, o T option) printer : +=(printer, T)printer {
+	return: o some? (t T) {
+		p += "some(" += t += ")",
+	} none? {
+		p += "none()"
+	}
+}
+
+test print_option {
+	assert: print_string(some(5)) equals: "some(5)",
+	assert: print_string(some("Hello, World!")) equals: "some(Hello, World!)",
+	assert: print_string(some([1, 2, 3])) equals: "some([1, 2, 3])",
+	assert: print_string(int option :: none()) equals: "none()",
+	assert: print_string(string option :: none()) equals: "none()",
+	assert: print_string([int] option :: none()) equals: "none()",
+}

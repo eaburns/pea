@@ -1,0 +1,137 @@
+Const max_uint32 := uint32 :: 4294967295
+
+Func ++(n &int) { &int :: n := n + 1 }
+
+test int_inc {
+	n := -3,
+	++n,
+	assert: n equals: -2,
+	++n,
+	assert: n equals: -1,
+	++n,
+	assert: n equals: 0,
+	++n,
+	assert: n equals: 1,
+	++n,
+	assert: n equals: 2,
+	++n,
+	assert: n equals: 3,
+}
+
+Func --(n &int) { &int :: n := n - 1 }
+
+test int_dec {
+	n := 3,
+	--n,
+	assert: n equals: 2,
+	--n,
+	assert: n equals: 1,
+	--n,
+	assert: n equals: 0,
+	--n,
+	assert: n equals: -1,
+	--n,
+	assert: n equals: -2,
+	--n,
+	assert: n equals: -3,
+}
+
+Func for:to:do:(start int, end int, f (int){}) {
+	start <= end true? {
+		f(start),
+		for: start + 1 to: end do: f
+	}
+}
+
+test for_to_do {
+	iters := 0,
+	for: 0 to: -1 do: (_){++iters},
+	assert: iters equals: 0,
+
+	iters := 0,
+	for: 0 to: 0 do: (_){++iters},
+	assert: iters equals: 1,
+
+	iters := 0,
+	for: 0 to: 1 do: (_){++iters},
+	assert: iters equals: 2,
+
+	iters := 0,
+	for: -1 to: 1 do: (_){++iters},
+	assert: iters equals: 3,
+
+	iters := 0,
+	inds := [int] :: new(11, -100),
+	for: -5 to: 5 do: (i) {
+		inds[iters] := i,
+		++iters,
+	},
+	assert: iters equals: 11,
+	assert: inds[0] equals: -5,
+	assert: inds[1] equals: -4,
+	assert: inds[2] equals: -3,
+	assert: inds[3] equals: -2,
+	assert: inds[4] equals: -1,
+	assert: inds[5] equals: 0,
+	assert: inds[6] equals: 1,
+	assert: inds[7] equals: 2,
+	assert: inds[8] equals: 3,
+	assert: inds[9] equals: 4,
+	assert: inds[10] equals: 5,
+}
+
+Func +=(p printer, u uint) printer { return: add_uint64(p, uint64 :: u) }
+Func +=(p printer, u uint8) printer { return: add_uint64(p, uint64 :: u) }
+Func +=(p printer, u uint16) printer { return: add_uint64(p, uint64 :: u) }
+Func +=(p printer, u uint32) printer { return: add_uint64(p, uint64 :: u) }
+Func +=(p printer, u uint64) printer { return: add_uint64(p, u) }
+
+func add_uint64(p printer, u uint64) printer {
+	// 20 bytes is big enough for both base 10 uint64 and int64.
+	bs := [uint8] :: new(20, uint8 :: 0),
+	i := bs.length - 1,
+	while: { u >= 10 } do: {
+		u_next := u / 10,
+		bs[i] := uint8 :: u - u_next*10 + '0',
+		u := u_next,
+		--i,
+	},
+	bs[i] := uint8 :: u + '0',
+	add_bytes(p, bs[i, bs.length]),
+	return: p
+}
+
+test print_uint64 {
+	assert: print_string(uint64 :: 0) equals: "0",
+	assert: print_string(uint64 :: 1) equals: "1",
+	assert: print_string(uint64 :: 12345) equals: "12345",
+	assert: print_string(uint64 :: 18446744073709551615)
+		equals: "18446744073709551615",
+}
+
+Func +=(p printer, d int) printer { return: add_int64(p, int64 :: d) }
+Func +=(p printer, d int8) printer { return: add_int64(p, int64 :: d) }
+Func +=(p printer, d int16) printer { return: add_int64(p, int64 :: d) }
+Func +=(p printer, d int32) printer { return: add_int64(p, int64 :: d) }
+Func +=(p printer, d int64) printer { return: add_int64(p, d) }
+
+func add_int64(p printer, d int64) printer {
+	return: d < 0 true? {
+		p += "-",
+		add_uint64(p, uint64 :: -d)
+	} false? {
+		add_uint64(p, uint64 :: d)
+	}
+}
+
+test print_int64 {
+	assert: print_string(int64 :: 0) equals: "0",
+	assert: print_string(int64 :: 1) equals: "1",
+	assert: print_string(int64 :: -1) equals: "-1",
+	assert: print_string(int64 :: 12345) equals: "12345",
+	assert: print_string(int64 :: -12345) equals: "-12345",
+	assert: print_string(int64 :: 9223372036854775807)
+		equals: "9223372036854775807",
+	assert: print_string(int64 :: -9223372036854775808)
+		equals: "-9223372036854775808",
+}

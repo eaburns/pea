@@ -1,0 +1,20 @@
+Type T pointer := T _pointer
+
+type T _pointer [.val &T]
+
+Func &(t &T) T pointer {
+	return: [.val t]
+}
+
+Func *(t T pointer) &T {
+	return: t.val
+}
+
+Func +=(p printer, q T pointer) printer : +=(printer, T) printer {
+	return: p += q.val
+}
+
+test print_pointer {
+	assert: print_string(&1) equals: "1",
+	assert: print_string(&"hello") equals: "hello",
+}

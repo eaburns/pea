@@ -1,0 +1,17 @@
+Func assert_true:(cond bool) {
+	cond false? {
+		panic("got false, expected true")
+	}
+}
+
+Func assert_false:(cond bool) {
+	cond true? {
+		panic("got true, expected false")
+	}
+}
+
+Func assert:equals:(a T, b T) : =(T, T) bool, +=(printer, T)printer {
+	a = b false? {
+		panic(print_string(a, " != ", b, " expected equal"))
+	}
+}

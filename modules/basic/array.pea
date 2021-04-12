@@ -1,0 +1,190 @@
+Func new(n int, f (int){T}) [T] {
+	if: n < 0 then: {
+		panic("negative new array size")
+	},
+	if: n = 0 then: {
+		return: []
+	},
+	a := new(n, f(0)),
+	for: 1 to: n - 1 do: (i) {
+		a[i] := f(i)
+	},
+	return: a
+}
+
+test array_new_func {
+	a := [int] :: new(0, (_ int){1}),
+	assert: a.length equals: 0,
+
+	a := [int] :: new(1, (_ int){1}),
+	assert: a.length equals: 1,
+	assert: a[0] equals: 1,
+
+	a := [int] :: new(3, (_ int){1}),
+	assert: a.length equals: 3,
+	assert: a[0] equals: 1,
+	assert: a[1] equals: 1,
+	assert: a[2] equals: 1,
+
+	a := [int] :: new(3, (i int){i}),
+	assert: a.length equals: 3,
+	assert: a[0] equals: 0,
+	assert: a[1] equals: 1,
+	assert: a[2] equals: 2,
+
+	a := [int] :: new(3, (i int){-1-i}),
+	assert: a.length equals: 3,
+	assert: a[0] equals: -1,
+	assert: a[1] equals: -2,
+	assert: a[2] equals: -3,
+}
+
+Func =(a [T], b [T]) bool : =(T, T) bool {
+	if: a.length != b.length then: {
+		return: false
+	},
+	for: 0 to: a.length - 1 do: (i) {
+		a[i] = b[i] false? {
+			return: false
+		}
+	},
+	return: true
+}
+
+test array_equal {
+	empty := [int] :: [],
+	assert_true: empty = empty,
+	assert_true: [1] = [1],
+	assert_true: [1, 2, 3] = [1, 2, 3],
+
+	assert_false: empty = [1],
+	assert_false: [1] = empty,
+	assert_false: [1] = [1, 2],
+	assert_false: [1, 2] = [1],
+	assert_false: [1, 2, 3] = [4, 2, 3],
+	assert_false: [1, 2, 3] = [1, 4, 3],
+	assert_false: [1, 2, 3] = [1, 2, 4],
+}
+
+Func !=(a [T], b [T]) bool : =(T, T) bool {
+	return: !(a = b)
+}
+
+test array_not_equal {
+	empty := [int] :: [],
+	assert_false: empty != empty,
+	assert_false: [1] != [1],
+	assert_false: [1, 2, 3] != [1, 2, 3],
+
+	assert_true: empty != [1],
+	assert_true: [1] != empty,
+	assert_true: [1] != [1, 2],
+	assert_true: [1, 2] != [1],
+	assert_true: [1, 2, 3] != [4, 2, 3],
+	assert_true: [1, 2, 3] != [1, 4, 3],
+	assert_true: [1, 2, 3] != [1, 2, 4],
+}
+
+Func copy(a [T]) [T] {
+	if: a.length = 0 then: {
+		return: []
+	},
+	return: new(a.length, (i int) { a[i] })
+}
+
+test array_copy {
+	assert: copy([int] :: []) equals: [int] :: [],
+	assert: copy([1, 2, 3]) equals: [1, 2, 3],
+
+	// Check that modifying the original doesn't affect the copy.
+	a := [1, 2, 3],
+	c := copy(a),
+	a[0] := 0,
+	a[1] := 1,
+	a[2] := 2,
+	assert: c[0] equals: 1,
+	assert: c[1] equals: 2,
+	assert: c[2] equals: 3,
+
+	// Check that modifying the copy doesn't affect the original.
+	a := [1, 2, 3],
+	c := copy(a),
+	c[0] := 0,
+	c[1] := 1,
+	c[2] := 2,
+	assert: a[0] equals: 1,
+	assert: a[1] equals: 2,
+	assert: a[2] equals: 3,
+}
+
+Func +(a [T], b [T]) [T] {
+	if: a.length = 0 then: {
+		return: copy(b)
+	},
+	if: b.length = 0 then: {
+		return: copy(a)
+	},
+	c := [T] :: new(a.length + b.length, a[0]),
+	for: 1 to: a.length - 1 do: (i) {
+		c[i] := a[i],
+	},
+	j := a.length,
+	for: 0 to: b.length - 1 do: (i) {
+		c[j] := b[i],
+		j := j + 1,
+	},
+	return: c
+}
+
+test array_plus {
+	empty := [int] :: [],
+	assert: empty + empty equals: empty,
+	assert: empty + [1] equals: [1],
+	assert: [1] + empty equals: [1],
+	assert: [1] + [2] equals: [1, 2],
+	assert: [1, 2] + [3] equals: [1, 2, 3],
+	assert: [1] + [2, 3] equals: [1, 2, 3],
+	assert: [1, 2] + [3, 4] equals: [1, 2, 3, 4],
+}
+
+Func for:each:(a [T], f (&T){}) {
+	for: 0 to: a.length - 1 do: (i) {
+		f(a[i])
+	}
+}
+
+test array_for_each {
+	i := 0,
+	for: [int] :: [] each: (_) { ++i },
+	assert: i equals: 0,
+
+	i := 0,
+	array := ["Hello", ", ", "World", "!"],
+	for: array each: (elem) {
+		assert: string :: elem equals: array[i],
+		++i
+	},
+	assert: i equals: array.length,
+}
+
+Func +=(p printer, a [T]) printer : +=(printer, T)printer {
+	p += "[",
+	for: 0 to: a.length - 1 do: (i) {
+		if: i > 0 then: {
+			p += ", "
+		},
+		p += a[i]
+	},
+	return: p += "]",
+}
+
+test print_array {
+	assert: print_string([int] :: []) equals: "[]",
+	assert: print_string([1]) equals: "[1]",
+	assert: print_string([1, 2]) equals: "[1, 2]",
+	assert: print_string(["hello", "world"]) equals: "[hello, world]",
+	// TODO: recursive printer += should be OK, but is currently disallowed,
+	// because string([[int]]) would need to instantiate string([int]),
+	// which is excluded from the scope.
+	// assert: print_string([[1, 2, 3], [4, 5, 6]]) equals: "[[1, 2, 3], [4, 5, 6]]",
+}

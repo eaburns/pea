@@ -1,0 +1,178 @@
+const max_float64 := float64 :: 1.797693134862315708145274237317043567981e+308
+const max_pos_exp := float64 :: 1.0e7
+const max_neg_exp := float64 :: -1.0e-5
+
+Func +=(p printer, f float64) printer {
+	// From https://blog.benoitblanchon.fr/lightweight-float-to-string/.
+	if: f != f then: {
+		add_string(p, "NaN"),
+		return: p
+	},
+	if: f > max_float64 then: {
+		add_string(p, "Inf"),
+		return: p
+	},
+	if: f < -max_float64 then: {
+		add_string(p, "-Inf"),
+		return: p
+	},
+	// TODO: allow 0 instead of 0.0 in llvm backend
+	if: f < 0.0 then: {
+		p += "-",
+		f := -f,
+	},
+	e := 0,
+	if: f >= max_pos_exp then: {
+		if: f >= 1.0e256 then: {
+			f := f / 1.0e256,
+			e := e + 256,
+		},
+		if: f >= 1.0e128 then: {
+			f := f / 1.0e128,
+			e := e + 128,
+		},
+		if: f >= 1.0e64 then: {
+			f := f / 1.0e64,
+			e := e + 64,
+		},
+		if: f >= 1.0e32 then: {
+			f := f / 1.0e32,
+			e := e + 32,
+		},
+		if: f >= 1.0e16 then: {
+			f := f / 1.0e16,
+			e := e + 16,
+		},
+		if: f >= 1.0e8 then: {
+			f := f / 1.0e8,
+			e := e + 8,
+		},
+		if: f >= 1.0e4 then: {
+			f := f / 1.0e4,
+			e := e + 4,
+		},
+		if: f >= 1.0e2 then: {
+			f := f / 1.0e2,
+			e := e + 2,
+		},
+		if: f >= 1.0e1 then: {
+			f := f / 1.0e1,
+			e := e + 1,
+		},
+	},
+	// TODO: allow 0 instead of 0.0 in llvm backend
+	if: f > 0.0 && f <= max_neg_exp then: {
+		if: f < 1.0e-255 then: {
+			f := f * 1.0e256,
+			e := e - 256,
+		},
+		if: f < 1.0e-127 then: {
+			f := f * 1.0e128,
+			e := e - 128,
+		},
+		if: f < 1.0e-63 then: {
+			f := f * 1.0e64,
+			e := e - 64,
+		},
+		if: f < 1.0e-31 then: {
+			f := f * 1.0e32,
+			e := e - 32,
+		},
+		if: f < 1.0e-15 then: {
+			f := f * 1.0e16,
+			e := e - 16,
+		},
+		if: f < 1.0e-7 then: {
+			f := f * 1.0e8,
+			e := e - 8,
+		},
+		if: f < 1.0e-3 then: {
+			f := f * 1.0e4,
+			e := e - 4,
+		},
+		if: f < 1.0e-1 then: {
+			f := f * 1.0e2,
+			e := e - 2,
+		},
+		if: f < 1.0e0 then: {
+			f := f * 1.0e1,
+			e := e - 1,
+		},
+	},
+
+	i := uint32 :: f,
+	r := (f - (float64 :: i)) * 1.0e9,
+	d := uint32 :: r,
+
+	// rounding
+	r := r - (float64 :: d),
+	if: r >= 0.5 then: {
+		d := d + 1,
+		if: d >= 1.0e9 then: {
+			d := 0,
+			i := i + 1,
+			if: e != 0 && i >= 10 then: {
+				++e,
+				i := 1,
+			},
+		},
+	},
+
+	p += i,
+	if: d != 0 then: {
+		p += ".",
+		add_fraction(p, d)
+	},
+	if: e < 0 then: {
+		p += "e-" += -e
+	},
+	if: e > 0 then: {
+		p += "e" += e
+	},
+	return: p
+}
+
+// add_fraction adds the fractional part of a float64 to the printer.
+// This routine is like +=(printer, uint64), but adapted to 32 bits,
+// and it strips zero suffixes.
+func add_fraction(p printer, u uint32) {
+	// 10 bytes is big enough for both base 10 uint32.
+	bs := [uint8] :: new(10, uint8 :: 0),
+	i := bs.length - 1,
+	while: { u >= 10 } do: {
+		u_next := u / 10,
+		bs[i] := uint8 :: u - u_next*10 + '0',
+		u := u_next,
+		--i,
+	},
+	bs[i] := uint8 :: u + '0',
+	while: { bs.length > 0 && {bs[bs.length-1] = '0'} } do: {
+		bs := bs[0, bs.length-1]
+	},
+	add_bytes(p, bs[i, bs.length])
+}
+
+test print_float64 {
+	assert: print_string(0.0 / 0.0) equals: "NaN",
+	assert: print_string(1.0 / 0.0) equals: "Inf",
+	assert: print_string(-1.0 / 0.0) equals: "-Inf",
+	assert: print_string(0) equals: "0",
+	assert: print_string(-0) equals: "0",
+	assert: print_string(1) equals: "1",
+	assert: print_string(-1) equals: "-1",
+	assert: print_string(3.14) equals: "3.14",
+	assert: print_string(-3.14) equals: "-3.14",
+	assert: print_string(1.0 / 2.0) equals: "0.5",
+	assert: print_string(1.0 / 4.0) equals: "0.25",
+	assert: print_string(1.0 / 8.0) equals: "0.125",
+	assert: print_string(1.0 / 3.0) equals: "0.333333333",
+	assert: print_string(4.0 / 3.0) equals: "1.333333333",
+	assert: print_string(2.0 / 3.0) equals: "0.666666667",
+	assert: print_string(5.0 / 3.0) equals: "1.666666667",
+	assert: print_string(float64 :: max_uint32) equals: "4.294967295e9",
+	assert: print_string(-(float64 :: max_uint32)) equals: "-4.294967295e9",
+	assert: print_string(max_float64) equals: "1.797693135e308",
+	assert: print_string(max_float64*2.0) equals: "Inf",
+	assert: print_string(-max_float64) equals: "-1.797693135e308",
+	assert: print_string(-max_float64*2.0) equals: "-Inf",
+}
