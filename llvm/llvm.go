@@ -709,11 +709,24 @@ func (g *gen) writeType(t flowgraph.Type) {
 		}
 		g.writeString("}")
 	case *flowgraph.FuncType:
-		if isEmpty(t.Ret) {
-			g.write("void (", t.Parms, ")*")
-		} else {
-			g.write("void (", t.Parms, ", ", t.Ret, "*)*")
+		g.writeString("void (")
+		for i, p := range t.Parms {
+			if i > 0 {
+				g.writeString(", ")
+			}
+			if isSmall(p) {
+				g.write(p)
+			} else {
+				g.write(p, "*")
+			}
 		}
+		if !isEmpty(t.Ret) {
+			if len(t.Parms) > 0 {
+				g.writeString(", ")
+			}
+			g.write(t.Ret, "*")
+		}
+		g.writeString(")*")
 	default:
 		panic(fmt.Sprintf("unknown Type type: %T", t))
 	}
@@ -785,6 +798,29 @@ func isUnsigned(v flowgraph.Value) bool {
 func isEmpty(t flowgraph.Type) bool {
 	s, ok := t.(*flowgraph.StructType)
 	return ok && len(s.Fields) == 0
+}
+
+func isSmall(t flowgraph.Type) bool {
+	switch t := t.(type) {
+	case *flowgraph.IntType:
+		return true
+	case *flowgraph.FloatType:
+		return true
+	case *flowgraph.AddrType:
+		return true
+	case *flowgraph.ArrayType:
+		return true
+	case *flowgraph.FrameType:
+		return true
+	case *flowgraph.StructType:
+		return false
+	case *flowgraph.UnionType:
+		return false
+	case *flowgraph.FuncType:
+		return true
+	default:
+		panic(fmt.Sprintf("unknown Type type: %T", t))
+	}
 }
 
 func elemType(t flowgraph.Type) flowgraph.Type {
