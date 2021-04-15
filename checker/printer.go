@@ -389,6 +389,7 @@ func (c *Convert) print(pc *config) {
 	pc.p("Convert{")
 	pc.loc(c.L)
 	pc.field("Kind", c.Kind)
+	pc.field("Explicit", c.Explicit)
 	pc.field("Expr", c.Expr)
 	pc.field("Type", c.T)
 	pc.p("\n}")
