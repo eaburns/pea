@@ -118,7 +118,7 @@ func (mb *modBuilder) buildDefs(mod *checker.Mod) {
 	if len(varInits) > 0 {
 		b1 = fb.buildBlocks(varInits)
 	} else {
-		b1 = fb.newBlock()
+		b1 = fb.newBlock(loc.Loc{})
 		b1.Return(nil)
 	}
 	b0.jump(b1)
@@ -428,11 +428,11 @@ func (mb *modBuilder) buildBlockLit(parent *funcBuilder, lit *checker.BlockLit) 
 	return fb
 }
 
-func (fb *funcBuilder) newBlock() *blockBuilder {
+func (fb *funcBuilder) newBlock(l0 loc.Loc) *blockBuilder {
 	fb.mod.nextBlock++
 	block := &BasicBlock{Num: fb.mod.nextBlock - 1, Func: fb.FuncDef}
 	fb.Blocks = append(fb.Blocks, block)
-	return &blockBuilder{fun: fb, BasicBlock: block}
+	return &blockBuilder{fun: fb, BasicBlock: block, L: l0}
 }
 
 func (mb *modBuilder) newFuncBuilder(path, name string, parms []*checker.ParmDef, ret checker.Type, l loc.Loc) *funcBuilder {
@@ -488,7 +488,7 @@ func (mb *modBuilder) newFuncBuilder(path, name string, parms []*checker.ParmDef
 }
 
 func (fb *funcBuilder) buildBlock0(locals []*checker.LocalDef) *blockBuilder {
-	fb.b0 = fb.newBlock()
+	fb.b0 = fb.newBlock(loc.Loc{})
 	for _, p := range fb.Parms {
 		if p.RetValue || p.BlockData {
 			continue
@@ -522,7 +522,7 @@ func (fb *funcBuilder) buildBlock0(locals []*checker.LocalDef) *blockBuilder {
 }
 
 func (fb *funcBuilder) buildBlocks(exprs []checker.Expr) *blockBuilder {
-	b1 := fb.newBlock()
+	b1 := fb.newBlock(loc.Loc{})
 	bb := b1
 	for i, expr := range exprs {
 		var v Value
@@ -619,6 +619,9 @@ func (bb *blockBuilder) expr(expr checker.Expr) (*blockBuilder, Value) {
 }
 
 func (bb *blockBuilder) Call(call *checker.Call) (*blockBuilder, Value) {
+	if bb.L == (loc.Loc{}) {
+		panic(fmt.Sprintf("00 call without a loc: %s", call))
+	}
 	switch fun := call.Func.(type) {
 	case *checker.FuncInst:
 		return bb.buildStaticCall(call)
@@ -665,7 +668,11 @@ func (bb *blockBuilder) buildStaticCall(call *checker.Call) (*blockBuilder, Valu
 		if bb, arg = bb.expr(expr); arg != nil {
 			args = append(args, arg)
 		}
+		if bb.L == (loc.Loc{}) {
+			panic(fmt.Sprintf("arg without a loc: %s", expr))
+		}
 	}
+
 	funcBuilder := bb.fun.mod.buildFuncInst(fun)
 	funcVal := bb.Func(funcBuilder)
 	var ret Value
@@ -721,7 +728,7 @@ func (bb *blockBuilder) buildSelect(call *checker.Call) (*blockBuilder, Value) {
 
 type switchCase struct {
 	num int
-	fun interface{}
+	fun loc.Locer
 
 	// base is the base of the Union if this is a typed case.
 	base Value
@@ -771,6 +778,7 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 	bDone := &blockBuilder{
 		fun:        bb.fun,
 		BasicBlock: &BasicBlock{Func: bb.fun.FuncDef},
+		L:          call.L,
 	}
 
 	sort.Slice(cases, func(i, j int) bool { return cases[i].num < cases[j].num })
@@ -808,38 +816,39 @@ func (bb *blockBuilder) buildCases(min, max int, tag, res Value, cases []switchC
 		panic("impossible no cases")
 	case len(cases) == 1:
 		if !total {
-			b0Body := bb.fun.newBlock()
+			b0Body := bb.fun.newBlock(cases[0].fun.Loc())
 			bb.ifEq(tag, cases[0].num, b0Body, bDone)
 			bb = b0Body
 		}
 		bb.buildCaseCall(cases[0], res, bDone)
 		return
 	case len(cases) == 2:
-		b0 := bb.fun.newBlock()
-		b1 := bb.fun.newBlock()
+		b0 := bb.fun.newBlock(cases[0].fun.Loc())
+		b1 := bb.fun.newBlock(cases[1].fun.Loc())
 		bb.ifEq(tag, cases[0].num, b0, b1)
 		b0.buildCaseCall(cases[0], res, bDone)
 
 		if !total {
-			b1Body := bb.fun.newBlock()
+			b1Body := bb.fun.newBlock(cases[1].fun.Loc())
 			b1.ifEq(tag, cases[1].num, b1Body, bDone)
 			b1 = b1Body
 		}
 		b1.buildCaseCall(cases[1], res, bDone)
 		return
 	case len(cases) == 3:
-		b0 := bb.fun.newBlock()
-		b1 := bb.fun.newBlock()
+		b0 := bb.fun.newBlock(cases[0].fun.Loc())
+		b1 := bb.fun.newBlock(cases[1].fun.Loc())
+		b2 := bb.fun.newBlock(cases[2].fun.Loc())
+
 		bb.ifEq(tag, cases[0].num, b0, b1)
 		b0.buildCaseCall(cases[0], res, bDone)
 
-		b1Body := bb.fun.newBlock()
-		b2 := bb.fun.newBlock()
+		b1Body := bb.fun.newBlock(cases[1].fun.Loc())
 		b1.ifEq(tag, cases[1].num, b1Body, b2)
 		b1Body.buildCaseCall(cases[1], res, bDone)
 
 		if !total {
-			b2Body := bb.fun.newBlock()
+			b2Body := bb.fun.newBlock(cases[2].fun.Loc())
 			b2.ifEq(tag, cases[2].num, b2Body, bDone)
 			b2 = b2Body
 		}
@@ -848,14 +857,15 @@ func (bb *blockBuilder) buildCases(min, max int, tag, res Value, cases []switchC
 	}
 
 	i := len(cases) / 2
-	bLeft := bb.fun.newBlock()
-	bRight := bb.fun.newBlock()
+	bLeft := bb.fun.newBlock(cases[0].fun.Loc())
+	bRight := bb.fun.newBlock(cases[i].fun.Loc())
 	bb.ifLess(tag, cases[i].num, bLeft, bRight)
 	bLeft.buildCases(min, cases[i].num, tag, res, cases[:i], bDone)
 	bRight.buildCases(cases[i].num, max, tag, res, cases[i:], bDone)
 }
 
 func (bb *blockBuilder) buildCaseCall(cas switchCase, res Value, bDone *blockBuilder) {
+	bb.L = cas.fun.Loc()
 	if cas.base == nil {
 		bb.buildBranchCall(cas.fun, nil, res, bDone)
 		return
@@ -869,7 +879,7 @@ func (bb *blockBuilder) buildCaseCall(cas switchCase, res Value, bDone *blockBui
 
 func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Call) (*blockBuilder, Value) {
 	bb, base := bb.expr(call.Args[0])
-	funcs := make([]interface{}, len(sw.Cases))
+	funcs := make([]loc.Locer, len(sw.Cases))
 	for i, expr := range call.Args[1:] {
 		if cvt, ok := expr.(*checker.Convert); ok && cvt.Kind == checker.Deref {
 			if funcs[i], ok = cvt.Expr.(*checker.BlockLit); ok {
@@ -889,10 +899,10 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 		BasicBlock: &BasicBlock{Func: bb.fun.FuncDef},
 	}
 
-	bYes := bb.fun.newBlock()
+	bYes := bb.fun.newBlock(loc.Loc{})
 	bNo := bDone
 	if len(sw.Cases) == 2 {
-		bNo = bb.fun.newBlock()
+		bNo = bb.fun.newBlock(loc.Loc{})
 	}
 	tag := bb.load(base)
 	if sw.Cases[0].Type == nil {
@@ -919,7 +929,8 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 }
 
 // fun is either a *checker.BlockLit or a Value address of a function header struct.
-func (bb *blockBuilder) buildBranchCall(fun interface{}, arg, res Value, bDone *blockBuilder) {
+func (bb *blockBuilder) buildBranchCall(fun loc.Locer, arg, res Value, bDone *blockBuilder) {
+	bb.L = fun.Loc()
 	var capsVal, funVal Value
 	if lit, ok := fun.(*checker.BlockLit); ok {
 		fb := bb.fun.mod.buildBlockLit(bb.fun, lit)
@@ -994,9 +1005,9 @@ func (bb *blockBuilder) buildNewArray(c *checker.Call) (*blockBuilder, Value) {
 	data := bb.allocN(n, elemType)
 	bb.store(bb.field(a, arrayType.Fields[1]), data)
 
-	cond := bb.fun.newBlock()
-	body := bb.fun.newBlock()
-	done := bb.fun.newBlock()
+	cond := bb.fun.newBlock(c.L)
+	body := bb.fun.newBlock(c.L)
+	done := bb.fun.newBlock(c.L)
 	intType := bb.fun.mod.intType()
 	i := bb.alloc(intType)
 	bb.store(i, n)
@@ -1144,9 +1155,9 @@ func (bb *blockBuilder) buildStrConvert(cvt *checker.Convert) (*blockBuilder, Va
 	bb.store(bb.field(a, strType.Fields[1]), strData)
 	bb.store(bb.field(a, strType.Fields[0]), n)
 
-	cond := bb.fun.newBlock()
-	body := bb.fun.newBlock()
-	done := bb.fun.newBlock()
+	cond := bb.fun.newBlock(cvt.L)
+	body := bb.fun.newBlock(cvt.L)
+	done := bb.fun.newBlock(cvt.L)
 	intType := bb.fun.mod.intType()
 	i := bb.alloc(intType)
 	bb.store(i, n)
@@ -1377,6 +1388,9 @@ func (bb *blockBuilder) copy(dst, src Value) *Copy {
 }
 
 func (bb *blockBuilder) call(fun Value, args []Value) *Call {
+	if bb.L == (loc.Loc{}) {
+		panic("call without a loc")
+	}
 	r := &Call{Func: fun, Args: args, L: bb.L}
 	bb.addInstr(r)
 	return r
