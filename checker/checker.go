@@ -524,6 +524,9 @@ func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []Error)
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
+		if ret == nil {
+			ret = &StructType{L: parserDecl.L}
+		}
 		decls = append(decls, FuncDecl{
 			Name:  parserDecl.Name.Name,
 			Parms: parms,
