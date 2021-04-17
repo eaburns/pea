@@ -1087,7 +1087,10 @@ func (bb *blockBuilder) buildLength(call *checker.Call) (*blockBuilder, Value) {
 }
 
 func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
-	bb, v := bb.expr(call.Args[0])
+	var v Value
+	if len(call.Args) == 1 {
+		bb, v = bb.expr(call.Args[0])
+	}
 	if v == nil {
 		var frame Value
 		if bb.fun.blockType != nil {
