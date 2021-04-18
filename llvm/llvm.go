@@ -744,6 +744,9 @@ func (g *gen) writeValue(v flowgraph.Value) {
 		g.write(v.Text)
 	case *flowgraph.Float:
 		g.write(v.Text)
+		if !strings.ContainsRune(v.Text, '.') {
+			g.writeString(".0")
+		}
 	case *flowgraph.Null:
 		g.write("null")
 	default:

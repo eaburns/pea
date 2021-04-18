@@ -16,8 +16,7 @@ Func +=(p printer, f float64) printer {
 		add_string(p, "-Inf"),
 		return: p
 	},
-	// TODO: allow 0 instead of 0.0 in llvm backend
-	if: f < 0.0 then: {
+	if: f < 0 then: {
 		p += "-",
 		f := -f,
 	},
@@ -60,8 +59,7 @@ Func +=(p printer, f float64) printer {
 			e := e + 1,
 		},
 	},
-	// TODO: allow 0 instead of 0.0 in llvm backend
-	if: f > 0.0 && f <= max_neg_exp then: {
+	if: f > 0 && f <= max_neg_exp then: {
 		if: f < 1.0e-255 then: {
 			f := f * 1.0e256,
 			e := e - 256,
