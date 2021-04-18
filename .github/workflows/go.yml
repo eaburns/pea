@@ -21,7 +21,12 @@ jobs:
         export PATH=$PATH:/usr/lib/llvm-11/bin
         /bin/sh ./libpea/build.sh
 
-    - name: Test
+    - name: Test compiler
       run: |
         export PATH=$PATH:/usr/lib/llvm-11/bin
         go test -v ./...
+
+    - name: Test modules
+      run: |
+        export PATH=$PATH:/usr/lib/llvm-11/bin
+        sh ./pea_test.sh modules

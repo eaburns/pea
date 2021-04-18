@@ -214,13 +214,13 @@ func compile(mod *Mod, testMain bool) []error {
 			fmt.Println("---- linking binary", mod.Path)
 		}
 	}
-	args := append([]string{
+	args := append(oFiles, []string{
 		"-g",
 		"-o", binFile,
 		"-pthread",
 		"-ldl", // needed for libunwind
 		filepath.Join(*libpea, "libpea.a"),
-	}, oFiles...)
+	}...)
 	if err := run("clang", args...); err != nil {
 		die("%s", err)
 	}
