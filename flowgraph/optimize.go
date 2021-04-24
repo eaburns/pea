@@ -867,12 +867,7 @@ func isCapsStruct(v Value) bool {
 	if !ok {
 		return false
 	}
-	for _, f := range s.Fields {
-		if f.Name == "<frame>" {
-			return true
-		}
-	}
-	return false
+	return strings.HasPrefix(s.Name, "<caps")
 }
 
 func singleFieldInit(base Value, def *FieldDef) Value {

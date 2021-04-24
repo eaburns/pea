@@ -75,6 +75,7 @@ type funcBuilder struct {
 	// fields set for block literals.
 	parent      *funcBuilder
 	blockType   *StructType
+	longReturns bool
 	returnField *FieldDef
 	frameField  *FieldDef
 }
@@ -378,7 +379,7 @@ func (mb *modBuilder) buildBlockLit(parent *funcBuilder, lit *checker.BlockLit) 
 	}
 	n := len(mb.funcBuilders)
 	funcName := fmt.Sprintf("<block%d>", n)
-	capsName := fmt.Sprintf("caps%d", n)
+	capsName := fmt.Sprintf("<caps%d>", n)
 	fb := mb.newFuncBuilder(mb.Path, funcName, parms, lit.Ret, lit.Loc())
 	fb.SourceName = mb.Path + " " + funcName
 	fb.parent = parent
@@ -425,6 +426,23 @@ func (mb *modBuilder) buildBlockLit(parent *funcBuilder, lit *checker.BlockLit) 
 	b0 := fb.buildBlock0(lit.Locals)
 	b1 := fb.buildBlocks(lit.Exprs)
 	b0.jump(b1)
+
+	if !fb.longReturns {
+		// If the function turns out to not long return,
+		// remove the frame and return fields from caps.
+		fb.frameField = nil
+		if fb.blockType.Fields[len(fb.blockType.Fields)-1].Name != "<frame>" {
+			panic("impossible")
+		}
+		fb.blockType.Fields = fb.blockType.Fields[:len(fb.blockType.Fields)-1]
+		if fb.returnField != nil {
+			fb.returnField = nil
+			if fb.blockType.Fields[len(fb.blockType.Fields)-1].Name != "<return>" {
+				panic("impossible")
+			}
+			fb.blockType.Fields = fb.blockType.Fields[:len(fb.blockType.Fields)-1]
+		}
+	}
 	return fb
 }
 
@@ -1322,6 +1340,10 @@ func (bb *blockBuilder) blockCaps(fb *funcBuilder, blockLit *checker.BlockLit) V
 	}
 	bb.L = oldLoc
 
+	if !fb.longReturns {
+		return caps
+	}
+
 	var longRetType Type
 	if bb.fun.parent == nil {
 		longRetType = bb.fun.Type.Ret
@@ -1454,6 +1476,7 @@ func (bb *blockBuilder) Return(frame Value) *Return {
 
 func (bb *blockBuilder) frame() Value {
 	if bb.fun.blockType != nil {
+		bb.fun.longReturns = true
 		block := bb.parm(bb.fun.Parms[0])
 		blockType := bb.fun.Parms[0].Type.(*AddrType).Elem.(*StructType)
 		frameField := blockType.Fields[len(blockType.Fields)-1]
