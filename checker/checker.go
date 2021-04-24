@@ -22,6 +22,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	if importer == nil {
 		importer = NewImporter(".", files)
 	}
+	var importedMods []*Mod
 	for _, parserFile := range files {
 		var imports []*Import
 		for _, parserImport := range parserFile.Imports {
@@ -30,6 +31,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				errs = append(errs, newError(parserImport.L, err.Error()))
 				continue
 			}
+			importedMods = append(importedMods, m)
 			name := filepath.Base(parserImport.Path)
 			if parserImport.Name != nil {
 				name = parserImport.Name.Name
@@ -234,6 +236,10 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	for i := 0; i < 5; i++ {
 		toSub := mod.toSub
 		mod.toSub = nil
+		for _, imp := range importedMods {
+			toSub = append(toSub, imp.toSub...)
+			imp.toSub = nil
+		}
 		for _, inst := range toSub {
 			subFuncInst(inst)
 		}
