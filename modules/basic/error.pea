@@ -6,6 +6,10 @@ Func new(msg string) error {
 	return: [.msg msg]
 }
 
+Func message(err error) string {
+	return: err.msg
+}
+
 Func +=(p printer, err error) printer {
 	return: p += err.msg,
 }
