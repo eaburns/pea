@@ -20,6 +20,10 @@ for mod in $mods; do
 		cat $o
 	fi
 	rm $o
+
+	# TODO: currently the .a file contains test main.
+	# If we do not remove the .a files then there will be dup test mains.
+	find $root -name \*.a | xargs rm
 done
 
 exit $fail
