@@ -15,3 +15,22 @@ Func assert:equals:(a T, b T) : =(T, T) bool, +=(printer, T)printer {
 		panic(print_string(a, " != ", b, " expected equal"))
 	}
 }
+
+Func assert_none:(o T option) : +=(printer, T)printer {
+	o some? (t T) {
+		panic(print_string("got ", o, " wanted none()"))
+	}
+}
+
+Func assert:some:(o T option, b T) :
+	+=(printer, T)printer,
+	=(T, T) bool,
+{
+	o some? (a T) {
+		a = b false? {
+			panic(print_string(o, " != some(", b, ")"))
+		}
+	} none? {
+		panic(print_string(o, " != some(", b, ")"))
+	}
+}
