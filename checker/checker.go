@@ -36,13 +36,17 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			if parserImport.Name != nil {
 				name = parserImport.Name.Name
 			}
-			if name != "_" {
-				if prev, ok := idNames[name]; ok {
-					errs = append(errs, redef(parserImport.L, name, prev))
-					continue
+			/*
+				// TODO: bad handling of re-defined imports.
+				// The re-definition should be per-file, not module.
+				if name != "_" {
+					if prev, ok := idNames[name]; ok {
+						errs = append(errs, redef(parserImport.L, name, prev))
+						continue
+					}
+					idNames[name] = parserImport.L
 				}
-				idNames[name] = parserImport.L
-			}
+			*/
 			imp := &Import{
 				Name: name,
 				Path: parserImport.Path,
