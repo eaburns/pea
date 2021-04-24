@@ -666,7 +666,14 @@ func (g *gen) writeType(t flowgraph.Type) {
 		if t.Mod != "" {
 			g.write(`%"`, t.Mod, " ", t.Name)
 			if len(t.Args) > 0 {
-				g.write("<", t.Args, ">")
+				g.writeString("<")
+				for i, a := range t.Args {
+					if i > 0 {
+						g.writeString(", ")
+					}
+					g.writeString(a.String())
+				}
+				g.writeString(">")
 			}
 			g.writeString(`"`)
 			return
