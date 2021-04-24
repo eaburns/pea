@@ -222,10 +222,6 @@ func decFuncRef(fb *funcBuilder, ref *FuncDef) {
 			if !strings.Contains(ref.Name, "<block") && fb.FuncDef != ref {
 				fb.inlineNonBlocks++
 			}
-			for o := range r.outRefs {
-				fb.outRefs[o]++
-				o.inRefs[fb]++
-			}
 			return
 		}
 	}
