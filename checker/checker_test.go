@@ -2542,6 +2542,8 @@ func TestSwitchReturnTypes(t *testing.T) {
 		type a_or_b [a?, b?]
 		var _ := (){} :: {
 			m() a? {1} b? {1},
+			// This was changed by commit c37747f,
+			// which explains why it does not work.
 			//m() a? {"hello"} b? {1},
 			m() a? {1},
 			m() b? {1},
