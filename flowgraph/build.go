@@ -14,8 +14,9 @@ type Option func(*modBuilder)
 
 var (
 	// NoOptimize disables all optimization passes.
-	NoOptimize  Option = func(mb *modBuilder) { mb.noOptimize = true }
-	TraceEscape        = func(mb *modBuilder) { mb.traceEsc = true }
+	NoOptimize    Option = func(mb *modBuilder) { mb.noOptimize = true }
+	TraceEscape          = func(mb *modBuilder) { mb.traceEsc = true }
+	TraceInlining        = func(mb *modBuilder) { mb.traceInline = true }
 )
 
 func Build(mod *checker.Mod, opts ...Option) *Mod {
@@ -50,8 +51,9 @@ type modBuilder struct {
 	trace bool
 
 	// options
-	noOptimize bool
-	traceEsc   bool
+	noOptimize  bool
+	traceEsc    bool
+	traceInline bool
 }
 
 type funcBuilder struct {

@@ -571,6 +571,10 @@ func leak(todo *[]Value, leaks map[Value]bool, v Value) {
 }
 
 func inlineCalls(fb *funcBuilder) {
+	fb.mod.trace = fb.mod.traceInline
+	defer func() { fb.mod.trace = false }()
+	fb.tr("---- inlining:\n%s\n", fb.FuncDef)
+
 	todo := fb.Blocks
 	var done []*BasicBlock
 	for len(todo) > 0 {
@@ -638,9 +642,7 @@ func canInline(fb *funcBuilder, def *FuncDef) bool {
 	if ref == nil {
 		panic(fmt.Sprintf("impossible: %s does not call %s", fb.Name, def.Name))
 	}
-	if fb.Test && !strings.Contains("<block", def.Name) {
-		return false
-	}
+	testCall := fb.Test && !strings.Contains("<block", def.Name)
 	self := fb.FuncDef == def
 	parent := fb.parent == ref
 	empty := len(def.Blocks) == 0
@@ -656,7 +658,33 @@ func canInline(fb *funcBuilder, def *FuncDef) bool {
 	}
 	onlyOneRef := len(ref.inRefs) == 1 && ref.inRefs[fb] == 1 && !ref.Exp
 	leafFun := len(ref.outRefs) == 0 && ref.inlineNonBlocks == 0
-	return !self && !parent && !empty && !noInline && !longRet && (onlyOneRef || leafFun)
+	ok := !self && !parent && !empty && !testCall && !noInline && !longRet &&
+		(onlyOneRef || leafFun)
+
+	if ok {
+		fb.tr("	can inline %s: TRUE", def.Name)
+	} else {
+		fb.tr("	can inline %s: FALSE", def.Name)
+	}
+	fb.tr("		self: %v", self)
+	fb.tr("		parent: %v", parent)
+	fb.tr("		empty: %v", empty)
+	fb.tr("		testCall: %v", testCall)
+	fb.tr("		noInline: %v", noInline)
+	fb.tr("		longRet: %v", longRet)
+	fb.tr("		onlyOneRef: %v", onlyOneRef)
+	fb.tr("		leafFun: %v", leafFun)
+	fb.tr("		exported: %v", ref.Exp)
+	fb.tr("		inlineNonBlocks: %d", ref.inlineNonBlocks)
+	fb.tr("		inRefs:")
+	for r, n := range ref.inRefs {
+		fb.tr("			%s: %d", r.Name, n)
+	}
+	fb.tr("		outRefs:")
+	for r, n := range ref.outRefs {
+		fb.tr("			%s: %d", r.Name, n)
+	}
+	return ok
 }
 
 func rmSelfTailCalls(fb *funcBuilder) {

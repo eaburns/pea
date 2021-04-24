@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	opt      = flag.Bool("opt", true, "whether to optimize")
-	traceEsc = flag.Bool("esc", false, "whether to trace escape analysis")
-	root     = flag.String("root", ".", "module root directory")
+	opt         = flag.Bool("opt", true, "whether to optimize")
+	root        = flag.String("root", ".", "module root directory")
+	traceEsc    = flag.Bool("esc", false, "whether to trace escape analysis")
+	traceInline = flag.Bool("inl", false, "whether to trace function inlining")
 )
 
 func main() {
@@ -50,6 +51,9 @@ func main() {
 	}
 	if *traceEsc {
 		options = append(options, flowgraph.TraceEscape)
+	}
+	if *traceInline {
+		options = append(options, flowgraph.TraceInlining)
 	}
 	g := flowgraph.Build(m, options...)
 	fmt.Println(g.String())
