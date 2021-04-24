@@ -688,7 +688,7 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 	}
 	if !isEmptyStruct(def.Ret) &&
 		def.Exprs != nil &&
-		(len(def.Exprs) == 0 || !isReturn(def.Exprs[len(def.Exprs)-1])) {
+		(len(def.Exprs) == 0 || !isBuiltin(def.Exprs[len(def.Exprs)-1], Return)) {
 		errs = append(errs, newError(def, "function must end in a return"))
 	}
 	for _, l := range def.Locals {
@@ -704,7 +704,7 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 	return errs
 }
 
-func isReturn(expr Expr) bool {
+func isBuiltin(expr Expr, op Op) bool {
 	for {
 		convert, ok := expr.(*Convert)
 		if !ok || convert.Kind != Deref {
@@ -723,7 +723,7 @@ func isReturn(expr Expr) bool {
 		return true
 	}
 	b, ok := call.Func.(*Builtin)
-	return ok && b.Op == Return
+	return ok && b.Op == op
 }
 
 func checkTestDef(def *TestDef, parserDef *parser.TestDef) []Error {
@@ -798,10 +798,16 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, want Type) (
 				continue
 			}
 		}
-		var es []Error
 		var expr Expr
+		var es []Error
 		if i == len(parserExprs)-1 && !isEmptyStruct(want) {
-			expr, es = checkAndConvertExpr(x, parserExpr, want)
+			expr, es = checkExpr(x, parserExpr, want)
+			if expr != nil && !isBuiltin(expr, Panic) && !isBuiltin(expr, Return) {
+				var err Error
+				if expr, err = convert(expr, want, false); err != nil {
+					es = append(es, err)
+				}
+			}
 		} else {
 			expr, es = checkExpr(x, parserExpr, nil)
 		}
@@ -1248,6 +1254,7 @@ func canConvertReturn(src, dst Type) bool {
 func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	var errs []Error
 	var fun *ExprFunc
+	// TODO: should checkExprCall just use checkExpr, without the convert?
 	expr, fs := checkAndConvertExpr(x, parserCall.Fun, want)
 	if len(fs) > 0 {
 		errs = append(errs, fs...)
