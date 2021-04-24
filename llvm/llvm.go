@@ -613,6 +613,7 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			} else {
 				g.line("call void @pea_panic(", typeVal{r.Args[0]}, ", i8* null, i32 0)")
 			}
+			g.line("unreachable")
 		case flowgraph.Print:
 			g.line("call void @pea_print(", typeVal{r.Args[0]}, ")")
 		default:

@@ -985,6 +985,10 @@ func (bb *blockBuilder) buildOp(call *checker.Call) (*blockBuilder, Value) {
 	}
 	typ := bb.buildType(fun.Ret)
 	op := bb.op(opMap[fun.Op], typ, args...)
+	if op.Op == Panic {
+		// Panic breaks control flow, so end the block.
+		bb.done = true
+	}
 	if typ.isEmpty() {
 		return bb, nil
 	}
