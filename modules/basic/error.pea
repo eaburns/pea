@@ -28,6 +28,27 @@ Func error(msg string) T or_error {
 	return: [error? new(msg)]
 }
 
+Func must(o T or_error) T {
+	return: o ok? (t T) {
+		t
+	} error? (e) {
+		panic(print_string(e))
+	}
+}
+
+Func error?(o T or_error, f (error){T}) T {
+	return: o error? (e error) {
+		f(e)
+	} ok? (t) {
+		t
+	}
+}
+
+test error_question {
+	assert: (int or_error :: ok(1)) error? (e) {5} equals: 1,
+	assert: (int or_error :: error("foo")) error? (e) {5} equals: 5,
+}
+
 Func if:ok:(o T or_error, k (T){}) {
 	o ok? k error? (_){}
 }

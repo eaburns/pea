@@ -1,8 +1,16 @@
-type T option [none?, some? T]
+Type T option [none?, some? T]
 
 Func some(t T) T option { return: [some? t] }
 
 Func none() T option { return: [none?] }
+
+Func error?(o error option, e (error){}) {
+	o some? e none? {}
+}
+
+Func must(o error option) {
+	o some? (e error) { panic(print_string(e)) }
+}
 
 Func =(a T option, b T option) bool : =(T, T)bool {
 	// TODO: for some?none?, why can't T be inferred?
