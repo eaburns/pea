@@ -285,6 +285,19 @@ test printer_reset_string {
 	assert: p.data equals: new(min_printer_len, uint8 :: 0),
 }
 
+test printer_copy {
+	p0 := printer :: new(),
+	p0 += "a",
+	p1 := p0,
+	p1 += "b",
+	p0 += "c",
+	assert: string :: reset(p0) equals: "abc",
+	assert: p0.data equals: new(min_printer_len, uint8 :: 0),
+	assert: p0.n equals: 0,
+	assert: p1.data equals: new(min_printer_len, uint8 :: 0),
+	assert: p1.n equals: 0,
+}
+
 Func print_string(t T) string : +=(printer, T)printer {
 	return: reset((printer :: new()) += t)
 }

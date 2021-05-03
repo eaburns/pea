@@ -1846,6 +1846,24 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in a?b?(&a_or_b, (){uint8}, (){uint8})uint8",
 		},
 		{
+			name: "built-in switch implicit ref return type",
+			src: `
+				type int_ref &int
+				var x := int_ref :: 3
+			`,
+			call: "(&bool :: [true?]) true? {x} false? {x}",
+			want: "built-in true?false?(&bool, (){int_ref}, (){int_ref})int_ref",
+		},
+		{
+			name: "built-in switch implicit ref return type 2",
+			src: `
+				type int_ref &[.x int]
+				var x := int_ref :: [.x 3]
+			`,
+			call: "(&bool :: [true?]) true? {x} false? {x}",
+			want: "built-in true?false?(&bool, (){int_ref}, (){int_ref})int_ref",
+		},
+		{
 			name: "built-in switch, other mod union",
 			src: `
 				import "other"
@@ -2977,6 +2995,124 @@ func TestNumLiteralErrors(t *testing.T) {
 	}
 }
 
+func TestBlockResultIdentType(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		x_is string
+		want string
+	}{
+		{
+			name: "simple value type",
+			x_is: "5",
+			want: "int",
+		},
+		{
+			name: "struct literal value type",
+			x_is: "[.x 5, .y 3.14]",
+			want: "[.x int, .y float64]",
+		},
+		{
+			name: "defined struct type",
+			src:  "type foo [.x int, .y float64]",
+			x_is: "foo :: [.x 5, .y 3.14]",
+			want: "foo",
+		},
+		{
+			name: "explicit reference type",
+			x_is: "&int :: 5",
+			want: "int",
+		},
+		{
+			name: "implicit, defined reference type",
+			src:  "type foo &int",
+			x_is: "foo :: 5",
+			want: "foo",
+		},
+		{
+			name: "implicit, defined reference-to-struct type",
+			src:  "type foo &[.x int]",
+			x_is: "foo :: [.x 5]",
+			want: "foo",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			src := fmt.Sprintf("%s\nfunc main() {x := %s, (){x}()}", test.src, test.x_is)
+			t.Log(src)
+			mod, errs := check("test", []string{src}, []testMod{})
+			if len(errs) > 0 {
+				t.Fatal("failed to parse and check:", errStr(errs))
+			}
+			fun := findFuncDef(t, "main", mod)
+			got := fun.Exprs[1].Type()
+			if got.String() != test.want {
+				t.Errorf("got %s, want %s", got, test.want)
+			}
+		})
+	}
+}
+
+func TestIdentType(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		x_is string
+		want string
+	}{
+		{
+			name: "simple value type",
+			x_is: "5",
+			want: "int",
+		},
+		{
+			name: "struct literal value type",
+			x_is: "[.x 5, .y 3.14]",
+			want: "[.x int, .y float64]",
+		},
+		{
+			name: "defined struct type",
+			src:  "type foo [.x int, .y float64]",
+			x_is: "foo :: [.x 5, .y 3.14]",
+			want: "foo",
+		},
+		{
+			name: "explicit reference type",
+			x_is: "&int :: 5",
+			want: "&int",
+		},
+		{
+			name: "implicit, defined reference type",
+			src:  "type foo &int",
+			x_is: "foo :: 5",
+			want: "foo",
+		},
+		{
+			name: "implicit, defined reference-to-struct type",
+			src:  "type foo &[.x int]",
+			x_is: "foo :: [.x 5]",
+			want: "foo",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			src := fmt.Sprintf("%s\nfunc main() {x := %s, x}", test.src, test.x_is)
+			t.Log(src)
+			mod, errs := check("test", []string{src}, []testMod{})
+			if len(errs) > 0 {
+				t.Fatal("failed to parse and check:", errStr(errs))
+			}
+			fun := findFuncDef(t, "main", mod)
+			got := fun.Exprs[1].Type()
+			if got.String() != test.want {
+				t.Errorf("got %s, want %s", got, test.want)
+			}
+		})
+	}
+}
+
 func TestLiteralInference(t *testing.T) {
 	tests := []struct {
 		expr     string
@@ -3205,6 +3341,23 @@ func TestLiteralInference(t *testing.T) {
 					type _foo (int){string}
 				`,
 			},
+		},
+		// Test inferring implicit reference result types.
+		{
+			src: `
+				type int_ref &int
+				var x := int_ref :: 3
+			`,
+			expr: `(){x}`,
+			want: "(){int_ref}",
+		},
+		{
+			src: `
+				type int_ref &[.x int]
+				var x := int_ref :: [.x 3]
+			`,
+			expr: `(){x}`,
+			want: "(){int_ref}",
 		},
 
 		{expr: "[true?]", infer: "bool", want: "bool"},

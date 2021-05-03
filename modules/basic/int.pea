@@ -135,3 +135,13 @@ test print_int64 {
 	assert: print_string(int64 :: -9223372036854775808)
 		equals: "-9223372036854775808",
 }
+
+// This test checks for a regression in the compiler
+// where +=(printer, int64) was returning
+// a copy of the printer instead of a reference to it.
+test print_int64_return_copy {
+	p := printer :: new(),
+	q := p += 5,
+	q += "boo",
+	assert: string :: reset(p) equals: "5boo",
+}

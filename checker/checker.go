@@ -799,7 +799,7 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, want Type) (
 		}
 		var expr Expr
 		var es []Error
-		if i == len(parserExprs)-1 && !isEmptyStruct(want) {
+		if i == len(parserExprs)-1 && want != nil && !isEmptyStruct(want) {
 			expr, es = checkExpr(x, parserExpr, want)
 			if expr != nil && !isBuiltin(expr, Panic) && !isBuiltin(expr, Return) {
 				var err Error
@@ -880,6 +880,9 @@ func newLocal(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Expr, []E
 }
 
 func convert(expr Expr, typ Type, explicit bool) (Expr, Error) {
+	if typ == nil {
+		panic("convert to no type")
+	}
 	if expr == nil || expr.Type() == nil {
 		return expr, nil
 	}
