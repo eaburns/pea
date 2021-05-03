@@ -692,7 +692,7 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 		errs = append(errs, newError(def, "function must end in a return"))
 	}
 	for _, l := range def.Locals {
-		if !l.used {
+		if l.Name != "_" && !l.used {
 			errs = append(errs, newError(l, "%s unused", l.Name))
 		}
 	}
@@ -1748,7 +1748,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 		errs = append(errs, fs...)
 	}
 	for _, l := range lit.Locals {
-		if !l.used {
+		if l.Name != "_" && !l.used {
 			errs = append(errs, newError(l, "%s unused", l.Name))
 		}
 	}
