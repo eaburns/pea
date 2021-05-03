@@ -2465,6 +2465,81 @@ func TestOverloadResolution(t *testing.T) {
 			call: "[1] = [2]",
 			want: "=([int], [int])bool",
 		},
+		{
+			name: "call other module function",
+			src: `
+				import "foo"
+			`,
+			call: "foo#bar()",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					func bar()int
+				`,
+			},
+			want: "foo#bar()int",
+		},
+		{
+			name: "disambiguate other module function on return",
+			src: `
+				import "foo"
+			`,
+			call: "foo#bar()",
+			ret:  "float64",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					func bar()int
+					func bar()float64
+				`,
+			},
+			want: "foo#bar()float64",
+		},
+		{
+			name: "disambiguate other module function on arity",
+			src: `
+				import "foo"
+			`,
+			call: "foo#bar(5, 6)",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					func bar(_ int, _ int)
+					func bar(_ int)
+				`,
+			},
+			want: "foo#bar(int, int)",
+		},
+		{
+			name: "disambiguate other module function on arg type",
+			src: `
+				import "foo"
+			`,
+			call: "foo#bar(5)",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					func bar(_ int)
+					func bar(_ string)
+				`,
+			},
+			want: "foo#bar(int)",
+		},
+		{
+			name: "ambiguous other module function",
+			src: `
+				import "foo"
+			`,
+			call: "foo#bar(5)",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					func bar(_ int)string
+					func bar(_ int)float64
+				`,
+			},
+			err: "bar: ambiguous call",
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -2514,6 +2589,205 @@ func findCall(e Expr) *Call {
 	default:
 		fmt.Printf("%T unimplemented", e)
 		return nil
+	}
+}
+
+func TestIDResolution(t *testing.T) {
+	tests := []struct {
+		name     string
+		src      string
+		err      string
+		otherMod testMod
+	}{
+		{
+			name: "simple",
+			src: `
+				var x := int :: 6
+				func main() {
+					_ := x
+				}
+			`,
+		},
+		{
+			name: "disambiguate functions",
+			src: `
+				func x()int
+				func x()float64
+				func main() {
+					_ := (){float64} :: x
+				}
+			`,
+		},
+		{
+			name: "disambiguate function and variable: function",
+			src: `
+				var x := int :: 5
+				func x()float64
+				func main() {
+					_ := (){float64} :: x
+				}
+			`,
+		},
+		{
+			name: "disambiguate function and variable: variable",
+			src: `
+				var x := int :: 5
+				func x()float64
+				func main() {
+					_ := int :: x
+				}
+			`,
+		},
+		{
+			name: "ambiguous functions",
+			src: `
+				func x()int
+				func x()float64
+				func main() {
+					_ := x
+				}
+			`,
+			err: "x is ambiguous",
+		},
+		{
+			name: "ambiguous function and variable",
+			src: `
+				var x := int :: 5
+				func x()float64
+				func main() {
+					_ := x
+				}
+			`,
+			err: "x is ambiguous",
+		},
+		{
+			name: "simple module selector",
+			src: `
+				import "foo"
+				func main() {
+					_ := foo#x
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
+				src:  "var x := int :: 5",
+			},
+		},
+		{
+			name: "mod selector not ambiguous with current mod ID",
+			src: `
+				import "foo"
+				var x := float64 :: 3.14
+				func main() {
+					_ := foo#x
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
+				src:  "var x := int :: 5",
+			},
+		},
+		{
+			name: "disambiguate other mod functions",
+			src: `
+				import "foo"
+				func main() {
+					_ := (){float64} :: foo#x
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					func x()int
+					func x()float64
+				`,
+			},
+		},
+		{
+			name: "disambiguate other mod function and variable: function",
+			src: `
+				import "foo"
+				func main() {
+					_ := (){float64} :: foo#x
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					var x := int :: 5
+					func x()float64
+				`,
+			},
+		},
+		{
+			name: "disambiguate other mod function and variable: variable",
+			src: `
+				import "foo"
+				func main() {
+					_ := int :: foo#x
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					var x := int :: 5
+					func x()float64
+				`,
+			},
+		},
+		{
+			name: "ambiguous other mod function and variable",
+			src: `
+				import "foo"
+				func main() {
+					_ := foo#x
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					var x := int :: 5
+					func x()float64
+				`,
+			},
+			err: "x is ambiguous",
+		},
+		{
+			name: "ambiguous other mod functions",
+			src: `
+				import "foo"
+				func main() {
+					_ := foo#x
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					func x()int
+					func x()float64
+				`,
+			},
+			err: "x is ambiguous",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			if strings.HasPrefix(test.name, "SKIP") {
+				t.Skip()
+			}
+			_, errs := check("test", []string{test.src}, []testMod{test.otherMod})
+			switch {
+			case test.err == "" && len(errs) == 0:
+				// OK
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
 	}
 }
 

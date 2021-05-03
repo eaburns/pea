@@ -757,8 +757,7 @@ func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Error) {
 	case *parser.FloatLit:
 		return checkFloatLit(parserExpr, want)
 	case *parser.ModSel:
-		// TODO: modsel is unimplemented
-		panic("unimplemented")
+		return checkModSel(x, parserExpr, true, want)
 	case parser.Ident:
 		return checkID(x, parserExpr, true, want)
 	default:
@@ -931,15 +930,23 @@ func convert(expr Expr, typ Type, explicit bool) (Expr, Error) {
 }
 
 func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
-	if _, ok := parserCall.Fun.(parser.Ident); ok {
-		return checkIDCall(x, parserCall, want)
+	switch fun := parserCall.Fun.(type) {
+	case parser.Ident:
+		ids := x.find(fun.Name)
+		return resolveIDCall(x, fun, parserCall, want, ids)
+	case *parser.ModSel:
+		imp := x.findMod(fun.Mod.Name)
+		if imp == nil {
+			return nil, []Error{notFound(fun.Mod.Name, fun.L)}
+		}
+		ids := imp.find(fun.Name.Name)
+		return resolveIDCall(x, fun.Name, parserCall, want, ids)
+	default:
+		return checkExprCall(x, parserCall, want)
 	}
-	return checkExprCall(x, parserCall, want)
 }
 
-func checkIDCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
-	parserID := parserCall.Fun.(parser.Ident)
-	ids := x.find(parserID.Name)
+func resolveIDCall(x scope, parserID parser.Ident, parserCall *parser.Call, want Type, ids []id) (Expr, []Error) {
 	if len(ids) == 0 {
 		args, errs := checkArgsFallback(x, parserCall.Args)
 		errs = append(errs, notFound(parserID.Name, parserID.L))
@@ -1299,14 +1306,28 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 	return expr, errs
 }
 
+func checkModSel(x scope, parserSel *parser.ModSel, useLocal bool, want Type) (Expr, []Error) {
+	imp := x.findMod(parserSel.Mod.Name)
+	if imp == nil {
+		return nil, []Error{notFound(parserSel.Mod.Name, parserSel.L)}
+	}
+	parserID := parserSel.Name
+	ids := imp.find(parserID.Name)
+	return resolveID(x, parserID, useLocal, want, ids)
+}
+
 func checkID(x scope, parserID parser.Ident, useLocal bool, want Type) (Expr, []Error) {
-	var notFoundNotes []note
-	var ambigNotes []note
 	ids := x.find(parserID.Name)
+	return resolveID(x, parserID, useLocal, want, ids)
+}
+
+func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []id) (Expr, []Error) {
 	if len(ids) == 1 {
 		return idToExpr(useID(x, parserID.L, useLocal, ids[0]), parserID.L), nil
 	}
 	var n int
+	var ambigNotes []note
+	var notFoundNotes []note
 	for _, id := range ids {
 		if !isGround(id) {
 			if n := unifyFunc(x, parserID.L, id.(Func), want); n != nil {
