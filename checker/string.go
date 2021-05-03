@@ -287,7 +287,7 @@ func (f *FuncDecl) buildString(s *strings.Builder) *strings.Builder {
 func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {
 	if f.Def.File.Mod.Imported {
 		s.WriteString(f.Def.Mod)
-		s.WriteRune(' ')
+		s.WriteRune('#')
 	}
 	s.WriteString(f.Def.Name)
 	s.WriteRune('(')
