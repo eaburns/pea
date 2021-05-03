@@ -15,7 +15,7 @@ for mod in $mods; do
 		continue
 	fi
 	o=$(mktemp pea.XXXXXXXXXX)
-	if ! $root/$mod/$mod.test > $o; then
+	if ! $root/$mod/$(basename $mod).test > $o; then
 		fail=1
 		cat $o
 	fi
