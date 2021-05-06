@@ -1171,10 +1171,7 @@ func TestConversions(t *testing.T) {
 		{src: "func f(x [.x int]) { [.x int] :: x }"},
 		{src: "type t [.x int]	func f(x t) { [.x int] :: x }"},
 		{src: "type t [.x int]	func f(x [.x int]) { t :: x }"},
-		{
-			src: "type t [.x int]	type u [.x int]	func f(x u) { t :: x }",
-			err: "cannot convert",
-		},
+		{src: "type t [.x int]	type u [.x int]	func f(x u) { t :: x }"},
 
 		{
 			name: "explicit conversion of an explicit conversion is ok",
@@ -1207,6 +1204,79 @@ func TestConversions(t *testing.T) {
 				var x int
 				func x()
 				func f() { uint8 :: (int :: x) }
+			`,
+		},
+		{
+			name: "implicit conversion to defined type",
+			src: `
+				type foo bar
+				type bar string
+				func f(x foo) bar {return: x}
+			`,
+			err: `cannot convert x \(foo\) to type bar`,
+		},
+		{
+			name: "explicit conversion to defined type",
+			src: `
+				type foo bar
+				type bar string
+				func f(x foo) bar {return: bar :: x}
+			`,
+		},
+		{
+			name: "explicit conversion literal to def type",
+			src: `
+				type foo string
+				func f() foo {return: foo :: "hello"}
+			`,
+		},
+		{
+			name: "explicit conversion between types not defined in terms of one another",
+			src: `
+				type foo string
+				type bar string
+				func f(x foo) bar {return: bar :: x}
+			`,
+		},
+		{
+			name: "explicit conversion def types make reference",
+			src: `
+				type foo string
+				type bar string
+				func f(x foo) {&bar :: (&foo :: x)}
+			`,
+		},
+		{
+			name: "explicit conversion implicit reference to explicit reference",
+			src: `
+				type foo &string
+				type bar string
+				func f(x foo) {&bar :: x}
+			`,
+		},
+		{
+			name: "explicit conversion explicit reference to implicit reference",
+			src: `
+				type foo string
+				type bar &string
+				func f(x &foo) {bar :: x}
+			`,
+		},
+		{
+			name: "implicit conversion to defined reference type",
+			src: `
+				type foo &bar
+				type bar string
+				func f(x foo) &bar {return: x}
+			`,
+			err: `cannot convert x \(foo\) to type &bar`,
+		},
+		{
+			name: "explicit conversion to defined reference type",
+			src: `
+				type foo &bar
+				type bar string
+				func f(x foo) &bar {return: &bar :: x}
 			`,
 		},
 	}

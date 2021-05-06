@@ -421,6 +421,32 @@ func refDepth(typ Type) int {
 	}
 }
 
+func definedBaseType(typ Type) Type {
+	switch typ := typ.(type) {
+	case nil:
+		return nil
+	case *RefType:
+		if typ.Type == nil {
+			return nil
+		}
+		dt := definedBaseType(typ.Type)
+		if dt == nil {
+			return nil
+		}
+		return &RefType{Type: dt, L: typ.L}
+	case *DefType:
+		if typ.Inst == nil || typ.Inst.Type == nil {
+			return nil
+		}
+		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+			return nil
+		}
+		return definedBaseType(typ.Inst.Type)
+	default:
+		return typ
+	}
+}
+
 func eqType(a, b Type) bool {
 	if a == nil || b == nil {
 		// nil indicates an error; just be equal to anything.

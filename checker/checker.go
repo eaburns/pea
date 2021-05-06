@@ -1487,6 +1487,14 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 		T:        typ,
 		L:        parserConvert.L,
 	}
+
+	if eqType(definedBaseType(expr.Type()), definedBaseType(typ)) {
+		// Explicit conversion between equivalent defined types is OK and a noop.
+		cvt.Expr = expr
+		cvt.Kind = Noop
+		return cvt, errs
+	}
+
 	switch basicKind(typ) {
 	case Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
 		if !isRefType(typ) && (isIntType(expr.Type()) || isFloatType(expr.Type())) {
@@ -1499,6 +1507,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 			return cvt, errs
 		}
 	}
+
 	// The conversion would happen implicitly,
 	// but it was made explicit in the code.
 	// Here we do the implicit conversion,

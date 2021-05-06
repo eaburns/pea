@@ -1,0 +1,12 @@
+type t u
+type u v
+type v string
+
+// Hello, World!
+func main() {
+	print("Hello, World!")
+}
+
+func foo(x t) {
+	print(string :: x)
+}
