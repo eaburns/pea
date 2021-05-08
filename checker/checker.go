@@ -897,6 +897,16 @@ func convert(expr Expr, typ Type, explicit bool) (Expr, Error) {
 			expr, expr.Type(), typ)
 	}
 
+	if isEmptyStruct(dstType) && !isEmptyStruct(srcType) {
+		return &Convert{
+			Kind:     Drop,
+			Explicit: explicit,
+			Expr:     expr,
+			T:        dstType,
+			L:        expr.Loc(),
+		}, nil
+	}
+
 	if isLiteralType(srcType) {
 		if dstLitType := literalType(dstType); dstLitType != nil {
 			dstType = dstLitType

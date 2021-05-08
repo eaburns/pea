@@ -407,6 +407,10 @@ const (
 	// but nothing is actually converted.
 	Noop ConvertKind = iota
 
+	// Drop is a conversion to an empty struct.
+	// The value is "dropped".
+	Drop
+
 	// Deref is a dereference conversion.
 	Deref
 

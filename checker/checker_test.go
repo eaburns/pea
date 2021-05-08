@@ -981,6 +981,11 @@ func TestConversions(t *testing.T) {
 		src  string
 		err  string
 	}{
+		{
+			name: "implicit conversion to empty struct",
+			src:  "func f(x int, y [.]) { y := x }",
+		},
+
 		{src: "func f(x int) { int :: x }"},
 		{src: "func f(x int) { int8 :: x }"},
 		{src: "func f(x int) { int16 :: x }"},

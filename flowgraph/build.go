@@ -1151,6 +1151,9 @@ func (bb *blockBuilder) convert(cvt *checker.Convert) (*blockBuilder, Value) {
 	switch cvt.Kind {
 	case checker.Noop:
 		return bb.expr(cvt.Expr)
+	case checker.Drop:
+		bb, _ := bb.expr(cvt.Expr)
+		return bb, nil
 	case checker.Deref:
 		bb, v := bb.expr(cvt.Expr)
 		if v != nil && v.Type().(*AddrType).Elem.isSmall() {
