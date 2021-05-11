@@ -18,7 +18,6 @@ func TestBuildType(t *testing.T) {
 		{src: "type t uint", want: "uint64"},
 		{src: "type t uint32", want: "uint32"},
 		{src: "type t &uint32", want: "*uint32"},
-		{src: "type t &&&uint32", want: "***uint32"},
 		{src: "type t [uint32]", want: "array<uint32>"},
 		{src: "type t [[uint32]]", want: "array<array<uint32>>"},
 		{src: "type t string", want: "string"},

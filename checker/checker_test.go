@@ -544,11 +544,6 @@ func TestNewLocalTypes(t *testing.T) {
 		},
 		{
 			src:  "var int_array [int]",
-			expr: "&&[int] :: int_array",
-			err:  "cannot convert int_array \\(\\[int\\]\\) to type &&\\[int\\]",
-		},
-		{
-			src:  "var int_array [int]",
 			expr: "int_array[0]",
 			want: "int",
 		},
@@ -556,16 +551,6 @@ func TestNewLocalTypes(t *testing.T) {
 			src:  "var int_array [int]",
 			expr: "&int :: int_array[0]",
 			want: "&int",
-		},
-		{
-			src:  "var int_array [int]",
-			expr: "&&int :: int_array[0]",
-			want: "&&int",
-		},
-		{
-			src:  "var int_array [int]",
-			expr: "&&&int :: int_array[0]",
-			err:  `cannot convert .* \(int\) to type &&&int`,
 		},
 		{
 			src:  "var int_ref_array [&int]",
@@ -576,21 +561,6 @@ func TestNewLocalTypes(t *testing.T) {
 			src:  "var int_ref_array [&int]",
 			expr: "&int :: int_ref_array[0]",
 			want: "&int",
-		},
-		{
-			src:  "var int_ref_array [&int]",
-			expr: "&&int :: int_ref_array[0]",
-			want: "&&int",
-		},
-		{
-			src:  "var int_ref_array [&int]",
-			expr: "&&&int :: int_ref_array[0]",
-			want: "&&&int",
-		},
-		{
-			src:  "var int_ref_array [&int]",
-			expr: "&&&&int :: int_ref_array[0]",
-			err:  `cannot convert .* \(int\) to type &&&&int`,
 		},
 		{
 			src:  "var int_array_ref &[int]",
@@ -618,14 +588,6 @@ func TestNewLocalTypes(t *testing.T) {
 				type point [.x int, .y int]
 				func make_point() point
 			`,
-			expr: "&&point :: make_point()",
-			err:  `cannot convert .* \(point\) to type &&point`,
-		},
-		{
-			src: `
-				type point [.x int, .y int]
-				func make_point() point
-			`,
 			expr: "make_point().x",
 			want: "int",
 		},
@@ -642,22 +604,6 @@ func TestNewLocalTypes(t *testing.T) {
 				type point [.x int, .y int]
 				func make_point() point
 			`,
-			expr: "&&int :: make_point().x",
-			want: "&&int",
-		},
-		{
-			src: `
-				type point [.x int, .y int]
-				func make_point() point
-			`,
-			expr: "&&&int :: make_point().x",
-			err:  `cannot convert .* \(int\) to type &&&int`,
-		},
-		{
-			src: `
-				type point [.x int, .y int]
-				func make_point() point
-			`,
 			expr: "make_point()",
 			want: "point",
 		},
@@ -668,14 +614,6 @@ func TestNewLocalTypes(t *testing.T) {
 			`,
 			expr: "&point :: make_point()",
 			want: "&point",
-		},
-		{
-			src: `
-				type point [.x int, .y int]
-				func make_point() point
-			`,
-			expr: "&&point :: make_point()",
-			err:  `cannot convert .* \(point\) to type &&point`,
 		},
 		{
 			src: `
@@ -885,11 +823,6 @@ func TestArgumentConversions(t *testing.T) {
 			expr: "1",
 		},
 		{
-			parm: "&&int",
-			expr: "1",
-			err:  `cannot convert 1 \(int\) to type &&int`,
-		},
-		{
 			src:  "var x int",
 			parm: "int",
 			expr: "x",
@@ -900,12 +833,6 @@ func TestArgumentConversions(t *testing.T) {
 			expr: "x",
 		},
 		{
-			src:  "var x int",
-			parm: "&&int",
-			expr: "x",
-			err:  `cannot convert x \(int\) to type &&int`,
-		},
-		{
 			src:  "func x()int",
 			parm: "int",
 			expr: "x()",
@@ -914,12 +841,6 @@ func TestArgumentConversions(t *testing.T) {
 			src:  "func x()int",
 			parm: "&int",
 			expr: "x()",
-		},
-		{
-			src:  "func x()int",
-			parm: "&&int",
-			expr: "x()",
-			err:  `cannot convert .* \(int\) to type &&int`,
 		},
 		{
 			src: `
@@ -936,23 +857,6 @@ func TestArgumentConversions(t *testing.T) {
 			`,
 			parm: "&int",
 			expr: "make_point().x",
-		},
-		{
-			src: `
-				type point [.x int, .y int]
-				func make_point() point
-			`,
-			parm: "&&int",
-			expr: "make_point().x",
-		},
-		{
-			src: `
-				type point [.x int, .y int]
-				func make_point() point
-			`,
-			parm: "&&&int",
-			expr: "make_point().x",
-			err:  `cannot convert .* \(int\) to type &&&int`,
 		},
 	}
 	for _, test := range tests {
@@ -1164,14 +1068,8 @@ func TestConversions(t *testing.T) {
 		{src: "type str [uint8]	func f(x str) { string :: x }"},
 
 		{src: "func f(x int) { &int :: x }"},
-		{
-			src: "func f(x int) { &&int :: x }",
-			err: "cannot convert",
-		},
 
 		{src: "func f(x &int) { int :: x }"},
-		{src: "func f(x &&int) { &int :: x }"},
-		{src: "func f(x &&int) { int :: x }"},
 
 		{src: "func f(x [.x int]) { [.x int] :: x }"},
 		{src: "type t [.x int]	func f(x t) { [.x int] :: x }"},
@@ -1655,15 +1553,6 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in .x(t)&int",
 		},
 		{
-			name: "built-in selector def ref ref type fails",
-			src: `
-				type t &&[.x int]
-				var x t
-			`,
-			call: "x.x",
-			err:  "not a struct type",
-		},
-		{
 			name: "built-in selector, other field",
 			src: `
 				type point [.x float64, .y float64]
@@ -1831,15 +1720,6 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "type a_or_b [a?, b?]",
 			call: "(&a_or_b :: [a?]) a? {} b? {}",
 			want: "built-in a?b?(&a_or_b, (){}, (){})",
-		},
-		{
-			name: "built-in switch def union ref ref fails",
-			src: `
-				type a_or_b &&[a?, b?]
-				var x a_or_b
-			`,
-			call: "(a_or_b :: x) a? {} b? {}",
-			err:  "not a union type",
 		},
 		{
 			name: "built-in switch typed cases",
@@ -2470,15 +2350,6 @@ func TestOverloadResolution(t *testing.T) {
 			want: "f(&int)",
 		},
 		{
-			name: "unify parm matches a same number of references",
-			src: `
-				func f(_ &&T)
-				var x &int
-			`,
-			call: "f(&&int :: x)",
-			want: "f(&&int)",
-		},
-		{
 			name: "unify parm infers dereference conversion",
 			src: `
 				func f(_ [.x T])
@@ -2486,15 +2357,6 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "f(x)",
 			want: "f([.x int])",
-		},
-		{
-			name: "unify parm infers dereference conversion to type var",
-			src: `
-				func f(_ &T)
-				var x &&int
-			`,
-			call: "f(x)",
-			want: "f(&&int)",
 		},
 		{
 			name: "unify parm infers reference conversion",
@@ -2524,33 +2386,6 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "f(x)",
 			want: "f(&point)",
-		},
-		{
-			name: "unify parm infers reference conversion, but conversion fails",
-			src: `
-				func f(_ &&T)
-				var x int
-			`,
-			call: "f(x)",
-			err:  `cannot convert argument x \(int\) to &&int`,
-		},
-		{
-			name: "unify parm infers reference conversion to multiple references",
-			src: `
-				func f(_ &&T)
-				func x() &int
-			`,
-			call: "f(x())",
-			want: "f(&&int)",
-		},
-		{
-			name: "unify parm ref conversion, bind happens inside literal",
-			src: `
-				func f(_ &&[.foo X])
-				var x &[.foo int]
-			`,
-			call: "f(x)",
-			want: "f(&&[.foo int])",
 		},
 		{
 			name: "unify iface",
@@ -3230,15 +3065,11 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "1.0", infer: "t", want: "t", src: "type t &int"},
 		{expr: "1.0", infer: "[int]", want: "float64"},
 		{expr: "1.0", infer: "string", want: "float64"},
-		{expr: "1.0", infer: "&&int8", want: "float64"},
-		{expr: "1.0", infer: "&&float32", want: "float64"},
 		{expr: "1.0", infer: "&t", want: "float64", src: "type t &float32"},
-		{expr: "1.0", infer: "t", want: "float64", src: "type t &&float32"},
 		{expr: "1.0", infer: "float64 t", want: "float64 t", src: "type T t T"},
 		{expr: "1.0", infer: "int32 t", want: "int32 t", src: "type T t T"},
 		{expr: "1.0", infer: "float32 t", want: "float32 t", src: "type T t T"},
 		{expr: "1.0", infer: "&float64 t", want: "&float64 t", src: "type T t T"},
-		{expr: "1.0", infer: "&&float64 t", want: "float64", src: "type T t T"},
 		{expr: "1.0", infer: "float64 t", want: "float64 t", src: "type T t &T"},
 		{expr: "1.0", infer: "&float64 t", want: "float64", src: "type T t &T"},
 		{expr: "1.0", infer: "string t", want: "float64", src: "type T t T"},
@@ -3283,15 +3114,12 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "1", infer: "&t", want: "&t", src: "type t float32"},
 		{expr: "1", infer: "t", want: "t", src: "type t &float32"},
 		{expr: "1", infer: "&t", want: "int", src: "type t &int16"},
-		{expr: "1", infer: "&&int32", want: "int"},
-		{expr: "1", infer: "&&float32", want: "int"},
 		{expr: "1", infer: "string", want: "int"},
 		{expr: "1", infer: "[int]", want: "int"},
 		{expr: "1", infer: "int t", want: "int t", src: "type T t T"},
 		{expr: "1", infer: "int32 t", want: "int32 t", src: "type T t T"},
 		{expr: "1", infer: "float32 t", want: "float32 t", src: "type T t T"},
 		{expr: "1", infer: "&int32 t", want: "&int32 t", src: "type T t T"},
-		{expr: "1", infer: "&&int32 t", want: "int", src: "type T t T"},
 		{expr: "1", infer: "int32 t", want: "int32 t", src: "type T t &T"},
 		{expr: "1", infer: "&int32 t", want: "int", src: "type T t &T"},
 		{expr: "1", infer: "string t", want: "int", src: "type T t T"},
@@ -3335,7 +3163,6 @@ func TestLiteralInference(t *testing.T) {
 		{expr: `"abc"`, infer: "int", want: "string"},
 		{expr: `"abc"`, infer: "string t", want: "string t", src: "type T t T"},
 		{expr: `"abc"`, infer: "&string t", want: "&string t", src: "type T t T"},
-		{expr: `"abc"`, infer: "&&string t", want: "string", src: "type T t T"},
 		{expr: `"abc"`, infer: "string t", want: "string t", src: "type T t &T"},
 		{expr: `"abc"`, infer: "&string t", want: "string", src: "type T t &T"},
 		{expr: `"abc"`, infer: "string t", want: "string", src: "type T t [T]"},
@@ -3380,7 +3207,6 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "(){1}", infer: "(){&int}", want: "(){&int}"},
 		{expr: "(){1}", infer: "(){&float32}", want: "(){&float32}"},
 		{expr: "(i int){1}", infer: "&(int){int}", want: "&(int){int}"},
-		{expr: "(i int){1}", infer: "&&(int){int}", want: "(int){int}"},
 		{expr: "(){1}", infer: "(){t}", want: "(){t}", src: "type t int"},
 		{expr: "(){1}", infer: "(){&t}", want: "(){&t}", src: "type t int"},
 		{expr: "(){1}", infer: "(){t}", want: "(){t}", src: "type t &int"},
@@ -3395,13 +3221,11 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "(){1}", infer: "int32 t", want: "int32 t", src: "type T t (){T}"},
 		{expr: "(){1}", infer: "float64 t", want: "float64 t", src: "type T t (){T}"},
 		{expr: "(){1}", infer: "&float64 t", want: "&float64 t", src: "type T t (){T}"},
-		{expr: "(){1}", infer: "&&float64 t", want: "(){int}", src: "type T t (){T}"},
 		{expr: "(){1}", infer: "float64 t", want: "float64 t", src: "type T t &(){T}"},
 		{expr: "(){1}", infer: "&float64 t", want: "(){int}", src: "type T t &(){T}"},
 		{expr: "(i int){}", infer: "int t", want: "int t", src: "type T t (T){}"},
 		{expr: "(i int){}", infer: "int32 t", want: "(int){}", src: "type T t (T){}"},
 		{expr: "(i int){}", infer: "&int t", want: "&int t", src: "type T t (T){}"},
-		{expr: "(i int){}", infer: "&&int t", want: "(int){}", src: "type T t (T){}"},
 		{expr: "(i int){}", infer: "int t", want: "int t", src: "type T t &(T){}"},
 		{expr: "(i int){}", infer: "&int t", want: "(int){}", src: "type T t &(T){}"},
 		{expr: "(){1}", infer: "int t", want: "(){int}", src: "type T t (T){T}"},
@@ -3458,23 +3282,19 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[true?]", infer: "&bool", want: "&bool"},
 		{expr: "[false?]", infer: "&bool", want: "&bool"},
 		{expr: "[none?]", want: "[none?]"},
-		{expr: "[none?]", infer: "&&[none?]", want: "[none?]"},
 		{expr: "[none?]", infer: "&[none?]", want: "&[none?]"},
 		{expr: "[none?]", infer: "t", want: "t", src: "type t [none?, some? int]"},
 		{expr: "[none?]", infer: "&t", want: "&t", src: "type t [none?, some? int]"},
-		{expr: "[none?]", infer: "&&t", want: "[none?]", src: "type t [none?, some? int]"},
 		{expr: "[none?]", infer: "t", want: "t", src: "type t &[none?, some? int]"},
 		{expr: "[none?]", infer: "&t", want: "[none?]", src: "type t &[none?, some? int]"},
 		{expr: "[some? 1]", want: "[some? int]"},
 		{expr: "[some? (i int){1.0}]", want: "[some? (int){float64}]"},
 		{expr: "[a? 1]", infer: "[a? int32]", want: "[a? int32]"},
 		{expr: "[a? 1]", infer: "&[a? int32]", want: "&[a? int32]"},
-		{expr: "[a? 1]", infer: "&&[a? int32]", want: "[a? int]"},
 		{expr: "[a? 1]", infer: "[a? int32, b?, c? int]", want: "[a? int32, b?, c? int]"},
 		{expr: "[a? 1]", infer: "[b?, a? int32, c? int]", want: "[b?, a? int32, c? int]"},
 		{expr: "[a? 1]", infer: "[b?, c? int, a? int32]", want: "[b?, c? int, a? int32]"},
 		{expr: "[a? 1]", infer: "&[b?, c? int, a? int32]", want: "&[b?, c? int, a? int32]"},
-		{expr: "[a? 1]", infer: "&&[b?, c? int, a? int32]", want: "[a? int]"},
 		{expr: "[a? 1]", infer: "[b?, c? int]", want: "[a? int]"},
 		{expr: "[a? 1]", infer: "[b?, c? int, a?]", want: "[a? int]"},
 		{expr: "[a? 1]", infer: "[b?, c? int, a? string]", want: "[b?, c? int, a? string]"},
@@ -3484,7 +3304,6 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[a? 1]", infer: "t", want: "t", src: "type t [b?, a? int, c? int]"},
 		{expr: "[a? 1]", infer: "t", want: "t", src: "type t [a? int32, b?]"},
 		{expr: "[a? 1]", infer: "&t", want: "&t", src: "type t [a? int, b?]"},
-		{expr: "[a? 1]", infer: "&&t", want: "[a? int]", src: "type t [a? int, b?]"},
 		{expr: "[a? 1]", infer: "t", want: "t", src: "type t &[a? int, b?]"},
 		{expr: "[a? 1]", infer: "&t", want: "[a? int]", src: "type t &[a? int, b?]"},
 		{expr: "[a? 1]", infer: "t", want: "[a? int]", src: "type t [c? int, b?]"},
@@ -3492,12 +3311,10 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[some? 1]", infer: "int opt", want: "int opt", src: "type T opt [none?, some? T]"},
 		{expr: "[some? 1]", infer: "int32 opt", want: "int32 opt", src: "type T opt [none?, some? T]"},
 		{expr: "[some? 1]", infer: "&int32 opt", want: "&int32 opt", src: "type T opt [none?, some? T]"},
-		{expr: "[some? 1]", infer: "&&int32 opt", want: "[some? int]", src: "type T opt [none?, some? T]"},
 		{expr: "[some? 1]", infer: "string opt", want: "string opt", src: "type T opt [none?, some? T]"},
 		{expr: "[some?]", infer: "int opt", want: "[some?]", src: "type T opt [none?, some? T]"},
 		{expr: "[none?]", infer: "int opt", want: "int opt", src: "type T opt [none?, some? T]"},
 		{expr: "[none?]", infer: "&int opt", want: "&int opt", src: "type T opt [none?, some? T]"},
-		{expr: "[none?]", infer: "&&int opt", want: "[none?]", src: "type T opt [none?, some? T]"},
 		{
 			expr:  `[none?]`,
 			infer: "other#foo",
@@ -3531,7 +3348,6 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[.x 5]", infer: "[.x int32]", want: "[.x int32]"},
 		{expr: "[.x 5]", infer: "[.x string]", want: "[.x string]"},
 		{expr: "[.x 5]", infer: "&[.x int32]", want: "&[.x int32]"},
-		{expr: "[.x 5]", infer: "&&[.x int32]", want: "[.x int]"},
 		{expr: "[.x 5]", infer: "[.x &int]", want: "[.x &int]"},
 		{expr: "[.x 5, .y 1]", infer: "[.x int8, .y float32]", want: "[.x int8, .y float32]"},
 		{expr: "[.x 5, .z 1]", infer: "[.x int8, .y float32]", want: "[.x int, .z int]"},
@@ -3542,7 +3358,6 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[.x 5]", infer: "t", want: "t", src: "type t [.x int]"},
 		{expr: "[.x 5]", infer: "t", want: "t", src: "type t [.x int32]"},
 		{expr: "[.x 5]", infer: "&t", want: "&t", src: "type t [.x int32]"},
-		{expr: "[.x 5]", infer: "&&t", want: "[.x int]", src: "type t [.x int32]"},
 		{expr: "[.x 5]", infer: "t", want: "[.x int]", src: "type t [.x int, .y int]"},
 		{expr: "[.x 5, .y 4]", infer: "t", want: "[.x int, .y int]", src: "type t [.x int]"},
 		{expr: "[.x 5, .y 4]", infer: "t", want: "[.x int, .y int]", src: "type t [.y int, .x int]"},
@@ -3550,7 +3365,6 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[.x 5]", infer: "&t", want: "[.x int]", src: "type t &[.x int32]"},
 		{expr: "[.x 5]", infer: "int8 t", want: "int8 t", src: "type T t [.x T]"},
 		{expr: "[.x 5]", infer: "&int8 t", want: "&int8 t", src: "type T t [.x T]"},
-		{expr: "[.x 5]", infer: "&&int8 t", want: "[.x int]", src: "type T t [.x T]"},
 		{expr: "[.x 5]", infer: "int8 t", want: "int8 t", src: "type T t &[.x T]"},
 		{expr: "[.x 5]", infer: "&int8 t", want: "[.x int]", src: "type T t &[.x T]"},
 		{expr: `[.x 5, .y "x"]`, infer: "(int, string) pair", want: "(int, string) pair", src: "type (X, Y) pair [.x X, .y Y]"},
@@ -3591,7 +3405,6 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[]", infer: "[float32]", want: "[float32]"},
 		{expr: "[5]", infer: "[int]", want: "[int]"},
 		{expr: "[5]", infer: "&[int]", want: "&[int]"},
-		{expr: "[5]", infer: "&&[int]", want: "[int]"},
 		{expr: "[5]", infer: "t", want: "t", src: "type t [int]"},
 		{expr: "[5]", infer: "&t", want: "&t", src: "type t [int]"},
 		{expr: "[5]", infer: "t", want: "t", src: "type t &[int]"},
@@ -3667,7 +3480,6 @@ func TestLiteralType(t *testing.T) {
 		{typ: "[x? int]", lit: "[x? int]"},
 		{typ: "(int){int}", lit: "(int){int}"},
 		{typ: "&int", lit: "&int"},
-		{typ: "&&int", lit: "&&int"},
 		{src: "type t int", typ: "t", lit: "int"},
 		{src: "type t int", typ: "&t", lit: "&int"},
 		{src: "type t &int", typ: "t", lit: "&int"},

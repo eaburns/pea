@@ -458,6 +458,16 @@ func TestExpr(t *testing.T) {
 	}
 }
 
+func TestNoDoubleRef(t *testing.T) {
+	const src = `
+		type t &&int
+	`
+	if err := New().Parse("", strings.NewReader(src)); err == nil {
+		t.Log(src)
+		t.Fatalf("got successful parse, want error")
+	}
+}
+
 func TestImportsOnly_NoImports(t *testing.T) {
 	const src = `
 		func main() {}

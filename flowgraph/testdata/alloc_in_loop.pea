@@ -1,16 +1,21 @@
 // 0123456789
 func main() {
 	zero := 0,
-	a := [&int] :: new(10, &int :: zero),
-	for: 0 to: 9 do: (i int) {
-		&&int :: a[i] := i,
+	a := [int pointer] :: new(10, &zero),
+	for: 0 to: a.length - 1 do: (i int) {
+		a[i] := &i
 	},
-	for: 0 to: 9 do: (i int) {
-		print_int(a[i])
+	for: 0 to: a.length - 1 do: (i int) {
+		print_int(*a[i])
 	}
 }
 
-func for:to:do:(start int, end int, f (int){}) {
+Type T pointer := T _pointer
+type T _pointer &T
+Func &(t &T) T pointer { return: T pointer :: t }
+Func *(t T pointer) &T { return: &T :: t }
+
+Func for:to:do:(start int, end int, f (int) {}) {
 	start <= end true? {
 		f(start),
 		for: start + 1 to: end do: f

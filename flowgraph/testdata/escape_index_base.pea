@@ -3,15 +3,20 @@
 func main() {
 	foo_no_inline(),
 	y := 0,
-	print_int(a[0])
+	print_int((*a)[0])
 }
 
 func foo_no_inline() {
 	s := [&int] :: [1, 3],
-	&&[&int] :: a := s,
+	a := &s,
 }
 
-var a := &[&int] :: [y, y]
+var a := [&int] pointer :: &(&[&int] :: [y, y])
 var y := int :: 5
+
+Type T pointer := T _pointer
+type T _pointer &T
+Func &(t &T) T pointer { return: T pointer :: t }
+Func *(t T pointer) &T { return: &T :: t }
 
 func print_int(_ int)

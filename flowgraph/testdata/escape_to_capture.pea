@@ -2,12 +2,17 @@
 func main() {
 	f := f_no_inline(),
 	f(),
-	print(x)
+	print(*x)
 }
 
 func f_no_inline() (){}{
 	str := "Hello, World!",
-	return: {&&string :: x := str}
+	return: {x := &str}
 }
 
-var x := &string :: "fail"
+var x := string pointer :: &"fail"
+
+Type T pointer := T _pointer
+type T _pointer &T
+Func &(t &T) T pointer { return: T pointer :: t }
+Func *(t T pointer) &T { return: &T :: t }

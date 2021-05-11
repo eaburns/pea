@@ -14,113 +14,114 @@ const (
 	_Type                       int = 8
 	_Types                      int = 9
 	_RefType                    int = 10
-	_NamedType                  int = 11
-	_ModName                    int = 12
-	_TypeArgs                   int = 13
-	_TypeLit                    int = 14
-	_ArrayType                  int = 15
-	_StructType                 int = 16
-	_FieldDef                   int = 17
-	_FieldDefs                  int = 18
-	_UnionType                  int = 19
-	_CaseDef                    int = 20
-	_CaseDefs                   int = 21
-	_FuncType                   int = 22
-	_FuncDef                    int = 23
-	_FuncBody                   int = 24
-	_FuncParms                  int = 25
-	_FuncParm                   int = 26
-	_FuncDecl                   int = 27
-	_FuncDecls                  int = 28
-	_TestDef                    int = 29
-	_Expr                       int = 30
-	_Exprs                      int = 31
-	_Asgn                       int = 32
-	_AsgnArg                    int = 33
-	_AsgnOp                     int = 34
-	_KwCall                     int = 35
-	_KwArg                      int = 36
-	_Cvt                        int = 37
-	_CvtArg                     int = 38
-	_Switch                     int = 39
-	_SwitchArg                  int = 40
-	_Bin5                       int = 41
-	_Bin5Arg                    int = 42
-	_Bin5Op                     int = 43
-	_Bin4                       int = 44
-	_Bin4Arg                    int = 45
-	_Bin4Op                     int = 46
-	_Bin3                       int = 47
-	_Bin3Arg                    int = 48
-	_Bin3Op                     int = 49
-	_Bin2                       int = 50
-	_Bin2Arg                    int = 51
-	_Bin2Op                     int = 52
-	_Bin1                       int = 53
-	_Bin1Arg                    int = 54
-	_Bin1Op                     int = 55
-	_Un                         int = 56
-	_Op                         int = 57
-	_UnArg                      int = 58
-	_Pri                        int = 59
-	_Sel                        int = 60
-	_Call                       int = 61
-	_Idx                        int = 62
-	_PriArg                     int = 63
-	_SubExpr                    int = 64
-	_ModSel                     int = 65
-	_FuncName                   int = 66
-	_IdxOp                      int = 67
-	_Cases                      int = 68
-	_Kwds                       int = 69
-	_Kwd                        int = 70
-	_ArrayLit                   int = 71
-	_StructLit                  int = 72
-	_FieldVals                  int = 73
-	_FieldVal                   int = 74
-	_FieldId                    int = 75
-	_UnionLit                   int = 76
-	_CaseVal                    int = 77
-	_CaseId                     int = 78
-	_BlkLit                     int = 79
-	_BlkParm                    int = 80
-	_BlkParms                   int = 81
-	_CharLit                    int = 82
-	_StrLit                     int = 83
-	_InterpStr                  int = 84
-	_Esc                        int = 85
-	_RawStr                     int = 86
-	_NumLit                     int = 87
-	_DecLit                     int = 88
-	_HexLit                     int = 89
-	_FloatLit                   int = 90
-	_Id                         int = 91
-	_TypeVar                    int = 92
-	_Reserved                   int = 93
-	_D                          int = 94
-	_X                          int = 95
-	_L                          int = 96
-	_O                          int = 97
-	__                          int = 98
-	_Space                      int = 99
-	_Cmnt                       int = 100
-	_Eof                        int = 101
-	_Bin__AsgnOp__AsgnArg       int = 102
-	_NameArg__Kwd__KwArg        int = 103
-	_NameArg__CaseId__SwitchArg int = 104
-	_Bin__Bin5Op__Bin5Arg       int = 105
-	_Bin__Bin4Op__Bin4Arg       int = 106
-	_Bin__Bin3Op__Bin3Arg       int = 107
-	_Bin__Bin2Op__Bin2Arg       int = 108
-	_Bin__Bin1Op__Bin1Arg       int = 109
-	_BinTail__AsgnOp__AsgnArg   int = 110
-	_BinTail__Bin5Op__Bin5Arg   int = 111
-	_BinTail__Bin4Op__Bin4Arg   int = 112
-	_BinTail__Bin3Op__Bin3Arg   int = 113
-	_BinTail__Bin2Op__Bin2Arg   int = 114
-	_BinTail__Bin1Op__Bin1Arg   int = 115
+	_RefableType                int = 11
+	_NamedType                  int = 12
+	_ModName                    int = 13
+	_TypeArgs                   int = 14
+	_TypeLit                    int = 15
+	_ArrayType                  int = 16
+	_StructType                 int = 17
+	_FieldDef                   int = 18
+	_FieldDefs                  int = 19
+	_UnionType                  int = 20
+	_CaseDef                    int = 21
+	_CaseDefs                   int = 22
+	_FuncType                   int = 23
+	_FuncDef                    int = 24
+	_FuncBody                   int = 25
+	_FuncParms                  int = 26
+	_FuncParm                   int = 27
+	_FuncDecl                   int = 28
+	_FuncDecls                  int = 29
+	_TestDef                    int = 30
+	_Expr                       int = 31
+	_Exprs                      int = 32
+	_Asgn                       int = 33
+	_AsgnArg                    int = 34
+	_AsgnOp                     int = 35
+	_KwCall                     int = 36
+	_KwArg                      int = 37
+	_Cvt                        int = 38
+	_CvtArg                     int = 39
+	_Switch                     int = 40
+	_SwitchArg                  int = 41
+	_Bin5                       int = 42
+	_Bin5Arg                    int = 43
+	_Bin5Op                     int = 44
+	_Bin4                       int = 45
+	_Bin4Arg                    int = 46
+	_Bin4Op                     int = 47
+	_Bin3                       int = 48
+	_Bin3Arg                    int = 49
+	_Bin3Op                     int = 50
+	_Bin2                       int = 51
+	_Bin2Arg                    int = 52
+	_Bin2Op                     int = 53
+	_Bin1                       int = 54
+	_Bin1Arg                    int = 55
+	_Bin1Op                     int = 56
+	_Un                         int = 57
+	_Op                         int = 58
+	_UnArg                      int = 59
+	_Pri                        int = 60
+	_Sel                        int = 61
+	_Call                       int = 62
+	_Idx                        int = 63
+	_PriArg                     int = 64
+	_SubExpr                    int = 65
+	_ModSel                     int = 66
+	_FuncName                   int = 67
+	_IdxOp                      int = 68
+	_Cases                      int = 69
+	_Kwds                       int = 70
+	_Kwd                        int = 71
+	_ArrayLit                   int = 72
+	_StructLit                  int = 73
+	_FieldVals                  int = 74
+	_FieldVal                   int = 75
+	_FieldId                    int = 76
+	_UnionLit                   int = 77
+	_CaseVal                    int = 78
+	_CaseId                     int = 79
+	_BlkLit                     int = 80
+	_BlkParm                    int = 81
+	_BlkParms                   int = 82
+	_CharLit                    int = 83
+	_StrLit                     int = 84
+	_InterpStr                  int = 85
+	_Esc                        int = 86
+	_RawStr                     int = 87
+	_NumLit                     int = 88
+	_DecLit                     int = 89
+	_HexLit                     int = 90
+	_FloatLit                   int = 91
+	_Id                         int = 92
+	_TypeVar                    int = 93
+	_Reserved                   int = 94
+	_D                          int = 95
+	_X                          int = 96
+	_L                          int = 97
+	_O                          int = 98
+	__                          int = 99
+	_Space                      int = 100
+	_Cmnt                       int = 101
+	_Eof                        int = 102
+	_Bin__AsgnOp__AsgnArg       int = 103
+	_NameArg__Kwd__KwArg        int = 104
+	_NameArg__CaseId__SwitchArg int = 105
+	_Bin__Bin5Op__Bin5Arg       int = 106
+	_Bin__Bin4Op__Bin4Arg       int = 107
+	_Bin__Bin3Op__Bin3Arg       int = 108
+	_Bin__Bin2Op__Bin2Arg       int = 109
+	_Bin__Bin1Op__Bin1Arg       int = 110
+	_BinTail__AsgnOp__AsgnArg   int = 111
+	_BinTail__Bin5Op__Bin5Arg   int = 112
+	_BinTail__Bin4Op__Bin4Arg   int = 113
+	_BinTail__Bin3Op__Bin3Arg   int = 114
+	_BinTail__Bin2Op__Bin2Arg   int = 115
+	_BinTail__Bin1Op__Bin1Arg   int = 116
 
-	_N int = 116
+	_N int = 117
 )
 
 type _Parser struct {
@@ -2603,41 +2604,26 @@ fail:
 }
 
 func _TypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [1]string
-	use(labels)
 	if dp, de, ok := _memo(parser, _Type, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// NamedType/tvar:TypeVar {…}/TypeLit
+	// RefType/RefableType
 	{
 		pos3 := pos
-		// NamedType
-		if !_accept(parser, _NamedTypeAccepts, &pos, &perr) {
+		// RefType
+		if !_accept(parser, _RefTypeAccepts, &pos, &perr) {
 			goto fail4
 		}
 		goto ok0
 	fail4:
 		pos = pos3
-		// action
-		// tvar:TypeVar
-		{
-			pos6 := pos
-			// TypeVar
-			if !_accept(parser, _TypeVarAccepts, &pos, &perr) {
-				goto fail5
-			}
-			labels[0] = parser.text[pos6:pos]
+		// RefableType
+		if !_accept(parser, _RefableTypeAccepts, &pos, &perr) {
+			goto fail5
 		}
 		goto ok0
 	fail5:
-		pos = pos3
-		// TypeLit
-		if !_accept(parser, _TypeLitAccepts, &pos, &perr) {
-			goto fail7
-		}
-		goto ok0
-	fail7:
 		pos = pos3
 		goto fail
 	ok0:
@@ -2648,8 +2634,6 @@ fail:
 }
 
 func _TypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [1]string
-	use(labels)
 	pos, failure := _failMemo(parser, _Type, start, errPos)
 	if failure != nil {
 		return pos, failure
@@ -2659,35 +2643,22 @@ func _TypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _Type}
-	// NamedType/tvar:TypeVar {…}/TypeLit
+	// RefType/RefableType
 	{
 		pos3 := pos
-		// NamedType
-		if !_fail(parser, _NamedTypeFail, errPos, failure, &pos) {
+		// RefType
+		if !_fail(parser, _RefTypeFail, errPos, failure, &pos) {
 			goto fail4
 		}
 		goto ok0
 	fail4:
 		pos = pos3
-		// action
-		// tvar:TypeVar
-		{
-			pos6 := pos
-			// TypeVar
-			if !_fail(parser, _TypeVarFail, errPos, failure, &pos) {
-				goto fail5
-			}
-			labels[0] = parser.text[pos6:pos]
+		// RefableType
+		if !_fail(parser, _RefableTypeFail, errPos, failure, &pos) {
+			goto fail5
 		}
 		goto ok0
 	fail5:
-		pos = pos3
-		// TypeLit
-		if !_fail(parser, _TypeLitFail, errPos, failure, &pos) {
-			goto fail7
-		}
-		goto ok0
-	fail7:
 		pos = pos3
 		goto fail
 	ok0:
@@ -2700,9 +2671,6 @@ fail:
 }
 
 func _TypeAction(parser *_Parser, start int) (int, *Type) {
-	var labels [1]string
-	use(labels)
-	var label0 TypeVar
 	dp := parser.deltaPos[start][_Type]
 	if dp < 0 {
 		return -1, nil
@@ -2715,12 +2683,12 @@ func _TypeAction(parser *_Parser, start int) (int, *Type) {
 	}
 	var node Type
 	pos := start
-	// NamedType/tvar:TypeVar {…}/TypeLit
+	// RefType/RefableType
 	{
 		pos3 := pos
 		var node2 Type
-		// NamedType
-		if p, n := _NamedTypeAction(parser, pos); n == nil {
+		// RefType
+		if p, n := _RefTypeAction(parser, pos); n == nil {
 			goto fail4
 		} else {
 			node = *n
@@ -2730,40 +2698,15 @@ func _TypeAction(parser *_Parser, start int) (int, *Type) {
 	fail4:
 		node = node2
 		pos = pos3
-		// action
-		{
-			start6 := pos
-			// tvar:TypeVar
-			{
-				pos7 := pos
-				// TypeVar
-				if p, n := _TypeVarAction(parser, pos); n == nil {
-					goto fail5
-				} else {
-					label0 = *n
-					pos = p
-				}
-				labels[0] = parser.text[pos7:pos]
-			}
-			node = func(
-				start, end int, tvar TypeVar) Type {
-				return Type(tvar)
-			}(
-				start6, pos, label0)
-		}
-		goto ok0
-	fail5:
-		node = node2
-		pos = pos3
-		// TypeLit
-		if p, n := _TypeLitAction(parser, pos); n == nil {
-			goto fail8
+		// RefableType
+		if p, n := _RefableTypeAction(parser, pos); n == nil {
+			goto fail5
 		} else {
 			node = *n
 			pos = p
 		}
 		goto ok0
-	fail8:
+	fail5:
 		node = node2
 		pos = pos3
 		goto fail
@@ -3072,7 +3015,7 @@ func _RefTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ "&" typ:Type
+	// _ "&" typ:RefableType
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
@@ -3083,11 +3026,11 @@ func _RefTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto fail
 	}
 	pos++
-	// typ:Type
+	// typ:RefableType
 	{
 		pos1 := pos
-		// Type
-		if !_accept(parser, _TypeAccepts, &pos, &perr) {
+		// RefableType
+		if !_accept(parser, _RefableTypeAccepts, &pos, &perr) {
 			goto fail
 		}
 		labels[0] = parser.text[pos1:pos]
@@ -3110,7 +3053,7 @@ func _RefTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _RefType}
 	// action
-	// _ "&" typ:Type
+	// _ "&" typ:RefableType
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
@@ -3126,11 +3069,11 @@ func _RefTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto fail
 	}
 	pos++
-	// typ:Type
+	// typ:RefableType
 	{
 		pos1 := pos
-		// Type
-		if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+		// RefableType
+		if !_fail(parser, _RefableTypeFail, errPos, failure, &pos) {
 			goto fail
 		}
 		labels[0] = parser.text[pos1:pos]
@@ -3161,7 +3104,7 @@ func _RefTypeAction(parser *_Parser, start int) (int, *Type) {
 	// action
 	{
 		start0 := pos
-		// _ "&" typ:Type
+		// _ "&" typ:RefableType
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
@@ -3173,11 +3116,11 @@ func _RefTypeAction(parser *_Parser, start int) (int, *Type) {
 			goto fail
 		}
 		pos++
-		// typ:Type
+		// typ:RefableType
 		{
 			pos2 := pos
-			// Type
-			if p, n := _TypeAction(parser, pos); n == nil {
+			// RefableType
+			if p, n := _RefableTypeAction(parser, pos); n == nil {
 				goto fail
 			} else {
 				label0 = *n
@@ -3190,6 +3133,179 @@ func _RefTypeAction(parser *_Parser, start int) (int, *Type) {
 			return Type(&RefType{Type: typ, L: l(parser, start, end)})
 		}(
 			start0, pos, label0)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _RefableTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [1]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _RefableType, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// NamedType/tvar:TypeVar {…}/TypeLit
+	{
+		pos3 := pos
+		// NamedType
+		if !_accept(parser, _NamedTypeAccepts, &pos, &perr) {
+			goto fail4
+		}
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// tvar:TypeVar
+		{
+			pos6 := pos
+			// TypeVar
+			if !_accept(parser, _TypeVarAccepts, &pos, &perr) {
+				goto fail5
+			}
+			labels[0] = parser.text[pos6:pos]
+		}
+		goto ok0
+	fail5:
+		pos = pos3
+		// TypeLit
+		if !_accept(parser, _TypeLitAccepts, &pos, &perr) {
+			goto fail7
+		}
+		goto ok0
+	fail7:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	return _memoize(parser, _RefableType, start, pos, perr)
+fail:
+	return _memoize(parser, _RefableType, start, -1, perr)
+}
+
+func _RefableTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [1]string
+	use(labels)
+	pos, failure := _failMemo(parser, _RefableType, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "RefableType",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _RefableType}
+	// NamedType/tvar:TypeVar {…}/TypeLit
+	{
+		pos3 := pos
+		// NamedType
+		if !_fail(parser, _NamedTypeFail, errPos, failure, &pos) {
+			goto fail4
+		}
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// tvar:TypeVar
+		{
+			pos6 := pos
+			// TypeVar
+			if !_fail(parser, _TypeVarFail, errPos, failure, &pos) {
+				goto fail5
+			}
+			labels[0] = parser.text[pos6:pos]
+		}
+		goto ok0
+	fail5:
+		pos = pos3
+		// TypeLit
+		if !_fail(parser, _TypeLitFail, errPos, failure, &pos) {
+			goto fail7
+		}
+		goto ok0
+	fail7:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _RefableTypeAction(parser *_Parser, start int) (int, *Type) {
+	var labels [1]string
+	use(labels)
+	var label0 TypeVar
+	dp := parser.deltaPos[start][_RefableType]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _RefableType}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Type)
+		return start + int(dp-1), &n
+	}
+	var node Type
+	pos := start
+	// NamedType/tvar:TypeVar {…}/TypeLit
+	{
+		pos3 := pos
+		var node2 Type
+		// NamedType
+		if p, n := _NamedTypeAction(parser, pos); n == nil {
+			goto fail4
+		} else {
+			node = *n
+			pos = p
+		}
+		goto ok0
+	fail4:
+		node = node2
+		pos = pos3
+		// action
+		{
+			start6 := pos
+			// tvar:TypeVar
+			{
+				pos7 := pos
+				// TypeVar
+				if p, n := _TypeVarAction(parser, pos); n == nil {
+					goto fail5
+				} else {
+					label0 = *n
+					pos = p
+				}
+				labels[0] = parser.text[pos7:pos]
+			}
+			node = func(
+				start, end int, tvar TypeVar) Type {
+				return Type(tvar)
+			}(
+				start6, pos, label0)
+		}
+		goto ok0
+	fail5:
+		node = node2
+		pos = pos3
+		// TypeLit
+		if p, n := _TypeLitAction(parser, pos); n == nil {
+			goto fail8
+		} else {
+			node = *n
+			pos = p
+		}
+		goto ok0
+	fail8:
+		node = node2
+		pos = pos3
+		goto fail
+	ok0:
 	}
 	parser.act[key] = node
 	return pos, &node
@@ -4086,43 +4202,36 @@ func _TypeLitAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// RefType/FuncType/ArrayType/StructType/UnionType
+	// FuncType/ArrayType/StructType/UnionType
 	{
 		pos3 := pos
-		// RefType
-		if !_accept(parser, _RefTypeAccepts, &pos, &perr) {
+		// FuncType
+		if !_accept(parser, _FuncTypeAccepts, &pos, &perr) {
 			goto fail4
 		}
 		goto ok0
 	fail4:
 		pos = pos3
-		// FuncType
-		if !_accept(parser, _FuncTypeAccepts, &pos, &perr) {
+		// ArrayType
+		if !_accept(parser, _ArrayTypeAccepts, &pos, &perr) {
 			goto fail5
 		}
 		goto ok0
 	fail5:
 		pos = pos3
-		// ArrayType
-		if !_accept(parser, _ArrayTypeAccepts, &pos, &perr) {
+		// StructType
+		if !_accept(parser, _StructTypeAccepts, &pos, &perr) {
 			goto fail6
 		}
 		goto ok0
 	fail6:
 		pos = pos3
-		// StructType
-		if !_accept(parser, _StructTypeAccepts, &pos, &perr) {
+		// UnionType
+		if !_accept(parser, _UnionTypeAccepts, &pos, &perr) {
 			goto fail7
 		}
 		goto ok0
 	fail7:
-		pos = pos3
-		// UnionType
-		if !_accept(parser, _UnionTypeAccepts, &pos, &perr) {
-			goto fail8
-		}
-		goto ok0
-	fail8:
 		pos = pos3
 		goto fail
 	ok0:
@@ -4142,43 +4251,36 @@ func _TypeLitFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _TypeLit}
-	// RefType/FuncType/ArrayType/StructType/UnionType
+	// FuncType/ArrayType/StructType/UnionType
 	{
 		pos3 := pos
-		// RefType
-		if !_fail(parser, _RefTypeFail, errPos, failure, &pos) {
+		// FuncType
+		if !_fail(parser, _FuncTypeFail, errPos, failure, &pos) {
 			goto fail4
 		}
 		goto ok0
 	fail4:
 		pos = pos3
-		// FuncType
-		if !_fail(parser, _FuncTypeFail, errPos, failure, &pos) {
+		// ArrayType
+		if !_fail(parser, _ArrayTypeFail, errPos, failure, &pos) {
 			goto fail5
 		}
 		goto ok0
 	fail5:
 		pos = pos3
-		// ArrayType
-		if !_fail(parser, _ArrayTypeFail, errPos, failure, &pos) {
+		// StructType
+		if !_fail(parser, _StructTypeFail, errPos, failure, &pos) {
 			goto fail6
 		}
 		goto ok0
 	fail6:
 		pos = pos3
-		// StructType
-		if !_fail(parser, _StructTypeFail, errPos, failure, &pos) {
+		// UnionType
+		if !_fail(parser, _UnionTypeFail, errPos, failure, &pos) {
 			goto fail7
 		}
 		goto ok0
 	fail7:
-		pos = pos3
-		// UnionType
-		if !_fail(parser, _UnionTypeFail, errPos, failure, &pos) {
-			goto fail8
-		}
-		goto ok0
-	fail8:
 		pos = pos3
 		goto fail
 	ok0:
@@ -4203,12 +4305,12 @@ func _TypeLitAction(parser *_Parser, start int) (int, *Type) {
 	}
 	var node Type
 	pos := start
-	// RefType/FuncType/ArrayType/StructType/UnionType
+	// FuncType/ArrayType/StructType/UnionType
 	{
 		pos3 := pos
 		var node2 Type
-		// RefType
-		if p, n := _RefTypeAction(parser, pos); n == nil {
+		// FuncType
+		if p, n := _FuncTypeAction(parser, pos); n == nil {
 			goto fail4
 		} else {
 			node = *n
@@ -4218,8 +4320,8 @@ func _TypeLitAction(parser *_Parser, start int) (int, *Type) {
 	fail4:
 		node = node2
 		pos = pos3
-		// FuncType
-		if p, n := _FuncTypeAction(parser, pos); n == nil {
+		// ArrayType
+		if p, n := _ArrayTypeAction(parser, pos); n == nil {
 			goto fail5
 		} else {
 			node = *n
@@ -4229,8 +4331,8 @@ func _TypeLitAction(parser *_Parser, start int) (int, *Type) {
 	fail5:
 		node = node2
 		pos = pos3
-		// ArrayType
-		if p, n := _ArrayTypeAction(parser, pos); n == nil {
+		// StructType
+		if p, n := _StructTypeAction(parser, pos); n == nil {
 			goto fail6
 		} else {
 			node = *n
@@ -4240,8 +4342,8 @@ func _TypeLitAction(parser *_Parser, start int) (int, *Type) {
 	fail6:
 		node = node2
 		pos = pos3
-		// StructType
-		if p, n := _StructTypeAction(parser, pos); n == nil {
+		// UnionType
+		if p, n := _UnionTypeAction(parser, pos); n == nil {
 			goto fail7
 		} else {
 			node = *n
@@ -4249,17 +4351,6 @@ func _TypeLitAction(parser *_Parser, start int) (int, *Type) {
 		}
 		goto ok0
 	fail7:
-		node = node2
-		pos = pos3
-		// UnionType
-		if p, n := _UnionTypeAction(parser, pos); n == nil {
-			goto fail8
-		} else {
-			node = *n
-			pos = p
-		}
-		goto ok0
-	fail8:
 		node = node2
 		pos = pos3
 		goto fail

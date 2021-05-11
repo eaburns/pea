@@ -12,10 +12,6 @@ func TestString(t *testing.T) {
 			want: "&int",
 		},
 		{
-			src:  "type t &&int",
-			want: "&&int",
-		},
-		{
 			src:  "type t &[int]",
 			want: "&[int]",
 		},
