@@ -146,17 +146,23 @@ func isGroundType(parms map[*TypeParm]bool, typ Type) bool {
 // and returns the binding from type variables to types.
 // parms are the function's type parameters.
 //
-// typ unifies with pat…
-// 	* if pat is a literal type, typ's literal type unifies with pat,
-// 	* or if typ is a literal type, pat's literal type unifies with pat.
-// 	* if the reference depth of typ is less than pat,
-// 		typ unifies with pat, with leading references removed until equal depth.
-// 	* or if the reference depth of pat is less than typ,
-// 		- if pat is a type variable, typ strictly unifies with pat,
-// 		- or if pat is a reference, typ's referred type unifies with pat's referred type,
-// 		- otherwise, typ's referred type unifies with pat.
-// 	* otherwise, typ strictly unifies with pat.
+// unify is related to unifyStrict, but allows an implicit conversion.
+//
+// typ unifies with pat if…
+// 	* pat is a variable that is a free parameter, in which case pat=typ is bound; or
+// 	* pat is a type literal and typ's literal form unifies with pat; or
+// 	* typ is a type literal and pat's literal form unifies with pat; or
+// 	* pat and typ are references, and their referred types strictly unify; or
+// 	* pat is a reference, typ is not, and pat's referred type strictly unifies with typ; or
+// 	* typ is a reference, pat is not, and typ's referred type strictly unifies with pat; or
+// 	* typ strictly unifies with pat.
 func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
+	bind := make(map[*TypeParm]Type)
+	if v, ok := pat.(*TypeVar); ok && parms[v.Def] {
+		bind[v.Def] = typ
+		return bind
+	}
+
 	if isLiteralType(pat) {
 		if lit := literalType(typ); lit != nil {
 			typ = lit
@@ -166,26 +172,18 @@ func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
 			pat = lit
 		}
 	}
-	patRefDepth := refDepth(pat)
-	typRefDepth := refDepth(typ)
-	for typRefDepth < patRefDepth {
-		pat = pat.(*RefType).Type
-		patRefDepth--
+	var ok bool
+	switch {
+	case isRefType(pat) && isRefType(typ):
+		ok = unifyStrict(parms, bind, pat.(*RefType).Type, typ.(*RefType).Type)
+	case isRefType(pat):
+		ok = unifyStrict(parms, bind, pat.(*RefType).Type, typ)
+	case isRefType(typ):
+		ok = unifyStrict(parms, bind, pat, typ.(*RefType).Type)
+	default:
+		ok = unifyStrict(parms, bind, pat, typ)
 	}
-loop:
-	for typRefDepth > patRefDepth {
-		switch pat.(type) {
-		case *TypeVar:
-			break loop
-		case *RefType:
-			pat = pat.(*RefType).Type
-			patRefDepth--
-		}
-		typ = typ.(*RefType).Type
-		typRefDepth--
-	}
-	bind := make(map[*TypeParm]Type)
-	if !unifyStrict(parms, bind, pat, typ) {
+	if !ok {
 		return nil
 	}
 	return bind
