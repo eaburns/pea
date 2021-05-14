@@ -3023,6 +3023,24 @@ func TestIdentType(t *testing.T) {
 	}
 }
 
+func TestBlockLitLocals(t *testing.T) {
+	const src = `
+		func use(t T)
+		var x := (){} :: {
+			y := 5,
+		}
+		var xx := (){int} :: {
+			y := 5,
+		}
+		var xxx := (){&int} :: {
+			y := 5,
+		}
+	`
+	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
+		t.Errorf("got %s, expected nil\n", errs[0])
+	}
+}
+
 func TestLiteralInference(t *testing.T) {
 	tests := []struct {
 		expr     string
