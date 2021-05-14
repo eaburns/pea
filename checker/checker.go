@@ -800,7 +800,7 @@ func _checkExprs(x scope, newLocals bool, parserExprs []parser.Expr) (scope, []E
 			}
 			continue
 		}
-		expr, es := checkExpr(x, parserExpr, &StructType{})
+		expr, es := checkExpr(x, parserExpr, nil)
 		if len(es) > 0 {
 			errs = append(errs, es...)
 		}
@@ -1273,7 +1273,8 @@ func canConvertReturn(src, dst Type) bool {
 func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	var errs []Error
 	var fun *ExprFunc
-	expr, fs := checkExpr(x, parserCall.Fun, nil)
+	// TODO: should checkExprCall just use checkExpr, without the convert?
+	expr, fs := checkAndConvertExpr(x, parserCall.Fun, want)
 	if len(fs) > 0 {
 		errs = append(errs, fs...)
 	}
@@ -1773,7 +1774,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 				errs = append(errs, es...)
 			}
 			// Handle the last statement in the block:
-			// It is either a local initialization or an expression.
+			// It is either an assignment or an expression.
 			// It must convert to the result type.
 			var ok bool
 			var expr Expr
@@ -1819,39 +1820,17 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 	}
 	lit.Parms = lit.Parms[:n]
 
-	if n := len(parserLit.Exprs); n == 0 {
-		lit.Exprs = []Expr{}
-	} else {
-		var x2 scope
-		var es []Error
-		x2, lit.Exprs, es = _checkExprs(x, true, parserLit.Exprs[:n-1])
-		if len(es) > 0 {
-			errs = append(errs, es...)
-		}
-		// Handle the last statement in the block:
-		// It is either a local initialization or an expression.
-		var ok bool
-		var expr Expr
-		if ok, _, expr, es = newLocal(x2, parserLit.Exprs[n-1]); ok {
-			if len(es) > 0 {
-				errs = append(errs, es...)
-			}
-		} else {
-			expr, es = checkExpr(x2, parserLit.Exprs[n-1], nil)
-			if len(es) > 0 {
-				errs = append(errs, es...)
-			}
-		}
-		if expr != nil {
-			lit.Exprs = append(lit.Exprs, expr)
-		}
+	var fs []Error
+	lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs)
+	if len(fs) > 0 {
+		errs = append(errs, fs...)
 	}
-	// TODO: copy unused local checking up to the want-type branch too.
 	for _, l := range lit.Locals {
 		if l.Name != "_" && !l.used {
 			errs = append(errs, newError(l, "%s unused", l.Name))
 		}
 	}
+
 	if len(lit.Exprs) > 0 {
 		lit.Ret = lit.Exprs[len(lit.Exprs)-1].Type()
 	}
