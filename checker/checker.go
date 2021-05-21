@@ -561,7 +561,7 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
 				Ret:   expr.Type(),
 			},
 			Args: []Expr{&Var{Def: def, T: refType(def.T), L: def.L}, expr},
-			T:    expr.Type(),
+			T:    &StructType{L: def.L},
 			L:    def.L,
 		}
 	}
@@ -870,7 +870,7 @@ func newLocal(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Expr, []E
 				&Local{Def: local, T: refType(expr.Type()), L: id.L},
 				expr,
 			},
-			T: &RefType{Type: &StructType{L: id.L}, L: id.L},
+			T: &StructType{L: call.L},
 			L: call.L,
 		},
 		T: &StructType{L: id.L},

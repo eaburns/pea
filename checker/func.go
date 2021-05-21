@@ -590,12 +590,10 @@ func (b *Builtin) unifyParm(i int, typ Type) note {
 		case ok:
 			b.Parms[0] = typ
 			b.Parms[1] = r.Type
-			b.Ret = r.Type
 			return nil
 		default:
 			b.Parms[0] = &RefType{Type: typ, L: typ.Loc()}
 			b.Parms[1] = typ
-			b.Ret = typ
 			return nil
 		}
 

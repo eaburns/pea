@@ -1009,7 +1009,7 @@ func (bb *blockBuilder) buildAssign(call *checker.Call) (*blockBuilder, Value) {
 	default:
 		bb.copy(dst, src)
 	}
-	return bb, dst
+	return bb, nil
 }
 
 func (bb *blockBuilder) buildNewArray(c *checker.Call) (*blockBuilder, Value) {

@@ -1904,20 +1904,13 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in assign",
 			src:  "var a := int :: 1",
 			call: "a := 6",
-			want: "built-in :=(&int, int)int",
+			want: "built-in :=(&int, int)",
 		},
 		{
 			name: "built-in assign, ref lhs",
 			src:  "var a := int :: 1",
 			call: "(&int :: a) := 6",
-			want: "built-in :=(&int, int)int",
-		},
-		{
-			name: "built-in assign, expected, lhs mismatch",
-			src:  "var a := string :: \"\"",
-			call: "a := 6",
-			ret:  "int",
-			err:  `cannot convert 6 \(int\) to type string`,
+			want: "built-in :=(&int, int)",
 		},
 		{
 			name: "built-in assign, expected, rhs mismatch",

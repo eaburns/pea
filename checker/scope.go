@@ -231,7 +231,7 @@ type builtin struct {
 }
 
 var builtins = []builtin{
-	{name: ":=", op: Assign, parms: []Type{nil, nil}, ret: nil},
+	{name: ":=", op: Assign, parms: []Type{nil, nil}, ret: &StructType{}},
 	{name: "new", op: NewArray, parms: []Type{basic(Int), nil}, ret: nil},
 	{name: "^", op: BitNot, parms: []Type{nil}, ret: nil},
 	{name: "^", op: BitXor, parms: []Type{nil, nil}, ret: nil},
