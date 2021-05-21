@@ -58,32 +58,34 @@ TypeVars <-
 		return []TypeVar(append([]TypeVar{t0}, ts...))
 	}
 
-Type <- RefType / RefableType
+Type <- RefType / NamedType / LiteralType
 
 Types <- t0:Type ts:(_ "," t1:Type { return Type(t1) })* (_ ",")? {
 	return []Type(append([]Type{t0}, ts...))
 }
 
-RefType <- _ "&" typ:RefableType {
+RefType <- _ "&" typ:(NamedType / LiteralType) {
 	return Type(&RefType{Type: typ, L: l(parser, start, end)})
 }
 
-RefableType <- NamedType / tvar:TypeVar { return Type(tvar) } / TypeLit
-
-NamedType <- (args:TypeArgs)? names:ModName+ {
-	return Type(namedType(args, names, l(parser, start, end)))
-}
+NamedType <-
+	(args:TypeArgs)? names:ModName+ {
+		return Type(namedType(args, names, l(parser, start, end)))
+	} /
+	tvar:TypeVar {
+		return Type(tvar)
+	}
 
 ModName <- mod:(m:Id _ "#" { return Ident(m) })? name:Id {
 	return &NamedType{Mod: mod, Name: name, L: l(parser, start, end)}
 }
 
 TypeArgs <-
-	t:(tv:TypeVar { return Type(tv) } / TypeLit) { return []Type{t} } /
+	t:(tv:TypeVar { return Type(tv) } / LiteralType) { return []Type{t} } /
 	_ "(" arg:Type _ ")" { return []Type{arg} } /
 	_ "(" args: Types _ ")" { return []Type(args) }
 
-TypeLit <-
+LiteralType <-
 	FuncType /
 	ArrayType /
 	StructType /
