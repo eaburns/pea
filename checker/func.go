@@ -338,7 +338,6 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 
 func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, decl *FuncDecl) (Func, note) {
 	var notFoundNotes []note
-	var ambigNotes []note
 	var funcs []Func
 	for _, id := range x.find(decl.Name) {
 		switch id.(type) {
@@ -350,7 +349,6 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, decl *FuncDecl) (Func, n
 			notFoundNotes = append(notFoundNotes, newNote("%s: not a static function", id).setLoc(id))
 			continue
 		}
-		ambigNotes = append(ambigNotes, newNote(id.String()).setLoc(id))
 		funcs = append(funcs, id.(Func))
 	}
 	var n int
@@ -369,8 +367,12 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, decl *FuncDecl) (Func, n
 		note.setNotes(notFoundNotes)
 		return nil, note
 	case len(funcs) > 1:
+		var notes []note
+		for _, f := range funcs {
+			notes = append(notes, newNote(f.String()).setLoc(f))
+		}
 		note := newNote("%s: ambiguous", decl).setLoc(decl.L)
-		note.setNotes(ambigNotes)
+		note.setNotes(notes)
 		return nil, note
 	default:
 		fun := funcs[0]
