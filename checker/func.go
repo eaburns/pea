@@ -42,7 +42,7 @@ func (f *FuncInst) unifyParm(i int, typ Type) note {
 	}
 	bind := unify(parms, f.T.Parms[i], typ)
 	if bind == nil {
-		return newNote("%s: cannot argument %d: %s and %s", f, i, f.T.Parms[i], typ).setLoc(typ)
+		return newNote("%s: cannot unify argument %d: %s and %s", f, i, f.T.Parms[i], typ).setLoc(typ)
 	}
 	f.sub(bind)
 	return nil
