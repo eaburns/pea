@@ -268,6 +268,8 @@ type FuncDecl struct {
 	L     loc.Loc
 }
 
+func (f *FuncDecl) Loc() loc.Loc { return f.L }
+
 func (f *FuncDecl) Type() Type {
 	return &FuncType{Parms: f.Parms, Ret: f.Ret, L: f.L}
 }
