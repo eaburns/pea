@@ -396,16 +396,16 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
 		return note
 	}
 	r := funcType.Ret
-	if t := f.groundRet(); !eqType(t, r) {
-		return newNote("%s: return mismatch", f).setLoc(t)
+	if t := f.groundRet(); !canImplicitConvert(t, r) {
+		return newNote("%s: cannot convert returned %s to %s", f, t, r).setLoc(t)
 	}
 	for i := 0; i < f.arity(); i++ {
 		p := funcType.Parms[i]
 		if note := f.unifyParm(i, p); note != nil {
 			return note
 		}
-		if t := f.groundParm(i); !eqType(t, p) {
-			return newNote("%s: parameter mismatch", f).setLoc(t)
+		if t := f.groundParm(i); !canImplicitConvert(p, t) {
+			return newNote("%s: cannot convert argument %s to %s", f, p, t).setLoc(t)
 		}
 	}
 	return instIface(x, l, f)

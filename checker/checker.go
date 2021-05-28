@@ -1149,12 +1149,12 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 		}
 		// If there is only 1 function, don't bother checking conversion.
 		// If it cannot convert, it will fail upstream.
-		// The reason for this special case is that canConvertReturn
+		// The reason for this special case is that canImplicitConvert
 		// only accepts implicit conversions.
 		// If the parent node is an explicit conversion,
 		// we want it to be accepted in the common case
 		// that there is only one function overload acceptable at this point.
-		if len(funcs) > 1 && !canConvertReturn(retType, want) {
+		if len(funcs) > 1 && !canImplicitConvert(retType, want) {
 			notes = append(notes, newNote("%s: cannot convert returned %s to %s", f, retType, want).setLoc(f))
 			continue
 		}
@@ -1255,7 +1255,41 @@ func ambiguousCall(name string, funcs []Func, l loc.Loc) Error {
 	return err
 }
 
-func canConvertReturn(src, dst Type) bool {
+// canImplicitConvert returns whether the src type
+// can implicitly convert to the dst type.
+func canImplicitConvert(src, dst Type) bool {
+	/*
+		This works by calling convert()
+		on a Deref expression of the src type
+		to the dst type.
+		Deref allows for &-conversion,
+		which works in convert()
+		by looking for and pealing off
+		a top-level Deref expression.
+
+		This cannot lead to risk of addressing
+		a non-addressable expression:
+
+		The only non-addressable expression
+		is a &-conversion.
+		If S is the result of an &-conversion,
+		then S must be the & of some type, say T:
+		S=&T.
+
+		For an implicit conversion to add too many &,
+		it must be an implicit &-conversion.
+		This means that D = &S, so D = &S = &&T.
+		However &&T is not gramatical,
+		so there is no way to write such a type D.
+
+		Note that implicit conversions
+		cannot convert into a defined type.
+		So there is no risk of D being &&T
+		written as some defined type U=&T with D=&U,
+		because such an implicit conversion
+		isn't allowed, and convert will fail.
+	*/
+
 	someNonZeroLoc := loc.Loc{1, 1}
 	// To test whether a return type is convertable,
 	// we create a dummy Deref

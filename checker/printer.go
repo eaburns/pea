@@ -320,7 +320,12 @@ func (f *FuncInst) print(pc *config) {
 		pc.n--
 	}
 	pc.field("TypeArgs", f.TypeArgs)
+
+	save := pc.printInstBody
+	pc.printInstBody = false
 	pc.field("IfaceArgs", f.IfaceArgs)
+	pc.printInstBody = save
+
 	pc.field("Type", f.T)
 	if pc.printInstBody {
 		pc.field("Parms", f.Parms)

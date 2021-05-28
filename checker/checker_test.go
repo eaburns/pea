@@ -1323,6 +1323,136 @@ func TestTypeResolution(t *testing.T) {
 	}
 }
 
+func TestIfaceInst(t *testing.T) {
+	tests := []struct {
+		name      string
+		src       string
+		want      string
+		err       string
+		otherMods []testMod
+	}{
+		{
+			name: "simple match",
+			src: `
+				func main() { foo(5) }
+				func bar(_ int)
+				func foo(_ X) : bar(X)
+			`,
+			want: "bar(int)",
+		},
+		{
+			name: "no match",
+			src: `
+				func main() { foo(5) }
+				func foo(_ X) : bar(X)
+			`,
+			err: "failed to instantiate",
+		},
+		{
+			name: "match with recursive inst",
+			src: `
+				func main() { foo(5) }
+				func baz(_ int)
+				func bar(_ X) : baz(X)
+				func foo(_ X) : bar(X)
+			`,
+			want: "bar(int)",
+		},
+		{
+			name: "no match because recursive inst",
+			src: `
+				func main() { foo(5) }
+				func bar(_ X) : baz(X)
+				func foo(_ X) : bar(X)
+			`,
+			err: "failed to instantiate",
+		},
+		{
+			name: "T matches &T",
+			src: `
+				func main() { foo(5) }
+				func bar(_ &int)
+				func foo(_ X) : bar(X)
+			`,
+			want: "bar(&int)",
+		},
+		{
+			name: "&T matches T",
+			src: `
+				func main() { foo(5) }
+				func bar(_ int)
+				func foo(_ X) : bar(&X)
+			`,
+			want: "bar(int)",
+		},
+		{
+			name: "T matches literal",
+			src: `
+				type t [.x int]
+				func main() { foo(t :: [.x 4]) }
+				func bar(_ [.x int])
+				func foo(_ X) : bar(&X)
+			`,
+			want: "bar([.x int])",
+		},
+		{
+			name: "literal matches T",
+			src: `
+				type t [.x int]
+				func main() { foo([.x 4]) }
+				func bar(_ t)
+				func foo(_ X) : bar(&X)
+			`,
+			want: "bar(t)",
+		},
+		{
+			name: "T as type argument",
+			src: `
+				type T nest [.x T]
+				func main() { foo(5) }
+				func bar(_ int nest)
+				func foo(_ X) : bar(X nest)
+			`,
+			want: "bar(int nest)",
+		},
+		{
+			name: "T as type argument, does not match &T argument",
+			src: `
+				type T nest [.x T]
+				func main() { foo(5) }
+				func bar(_ (&int) nest)
+				func foo(_ X) : bar(X nest)
+			`,
+			err: "failed to instantiate",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			if strings.HasPrefix(test.name, "SKIP") {
+				t.Skip()
+			}
+			mod, errs := check("test", []string{test.src}, test.otherMods)
+			switch {
+			case test.err == "" && len(errs) == 0:
+				main := findFuncDef(t, "main", mod)
+				call := findCall(main.Exprs[0])
+				fun := call.Func.(*FuncInst)
+				got := fun.IfaceArgs[0].String()
+				if got != test.want {
+					t.Errorf("got %s, want %s", got, test.want)
+				}
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
 func TestOverloadResolution(t *testing.T) {
 	tests := []struct {
 		name     string

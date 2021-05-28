@@ -143,12 +143,53 @@ func subExprs(bindings bindings, exprs []Expr) []Expr {
 }
 
 func (c *Call) subExpr(bindings bindings) Expr {
-	return &Call{
-		Func: subFunc(bindings, c.Func),
-		Args: subExprs(bindings, c.Args),
-		T:    subType(bindings.Types, c.T),
+	if _, ok := c.Func.(*FuncDecl); !ok {
+		// This is a short-cut for the common case: substituting a non-funcdecl.
+		// The argument types and return type will not change.
+		return &Call{
+			Func: subFunc(bindings, c.Func),
+			Args: subExprs(bindings, c.Args),
+			T:    subType(bindings.Types, c.T),
+			L:    c.L,
+		}
+	}
+
+	// Here we are substituting a FuncDecl -- an iface call.
+	// The function actually called may have
+	// different argument types and/or a different return type.
+	// The types are guaranteed to be implicitly convertable,
+	// so we first substitute and then call convert().
+	// Interface instantiation guarantees that the convert() cannot fail,
+	// otherwise we would have returned an error
+	// before getting to substitution.
+
+	fun := subFunc(bindings, c.Func)
+	args := subExprs(bindings, c.Args)
+	for i := range args {
+		var err Error
+		args[i], err = convert(args[i], fun.groundParm(i), false)
+		if err != nil {
+			// The conversion should always succeed,
+			// because iface instantiation only binds
+			// functions where arguments implicitly convert.
+			panic(fmt.Sprintf("bad arg convert in Call.subExpr: %s", err))
+		}
+	}
+	call := &Call{
+		Func: fun,
+		Args: args,
+		T:    refType(fun.groundRet()),
 		L:    c.L,
 	}
+	retType := subType(bindings.Types, c.T)
+	expr, err := convert(call, retType, false)
+	if err != nil {
+		// The conversion should always succeed,
+		// because iface instantiation only binds
+		// functions where returns implicitly convert.
+		panic(fmt.Sprintf("bad ret convert in Call.subExpr: %s", err))
+	}
+	return expr
 }
 
 func (c *Convert) subExpr(bindings bindings) Expr {
