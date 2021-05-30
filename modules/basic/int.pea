@@ -80,6 +80,50 @@ test for_to_do {
 	assert: inds[10] equals: 5,
 }
 
+Func for:down_to:do:(start int, end int, f (int){}) {
+	start >= end true? {
+		f(start),
+		for: start -1 down_to: end do: f
+	}
+}
+
+test for_down_to_do {
+	iters := 0,
+	for: -1 down_to: 0 do: (_){++iters},
+	assert: iters equals: 0,
+
+	iters := 0,
+	for: 0 down_to: 0 do: (_){++iters},
+	assert: iters equals: 1,
+
+	iters := 0,
+	for: 1 down_to: 0 do: (_){++iters},
+	assert: iters equals: 2,
+
+	iters := 0,
+	for: 1 down_to: -1 do: (_){++iters},
+	assert: iters equals: 3,
+
+	iters := 0,
+	inds := [int] :: new(11, -100),
+	for: 5 down_to: -5 do: (i) {
+		inds[iters] := i,
+		++iters,
+	},
+	assert: iters equals: 11,
+	assert: inds[0] equals: 5,
+	assert: inds[1] equals: 4,
+	assert: inds[2] equals: 3,
+	assert: inds[3] equals: 2,
+	assert: inds[4] equals: 1,
+	assert: inds[5] equals: 0,
+	assert: inds[6] equals: -1,
+	assert: inds[7] equals: -2,
+	assert: inds[8] equals: -3,
+	assert: inds[9] equals: -4,
+	assert: inds[10] equals: -5,
+}
+
 Func +=(p printer, u uint) printer { return: add_uint64(p, uint64 :: u) }
 Func +=(p printer, u uint8) printer { return: add_uint64(p, uint64 :: u) }
 Func +=(p printer, u uint16) printer { return: add_uint64(p, uint64 :: u) }
