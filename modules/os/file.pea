@@ -1,0 +1,118 @@
+// TODO: don't Capital Import container/array once parser supports array#sort:
+Import "container/array"
+Import "basic"
+import "io"
+
+Type file := _file
+
+Type open_options := [
+	.read bool,
+	.write bool,
+	.create bool,
+	.truncate bool,
+	.exclusive bool,
+	.permissions int,
+]
+
+Func new() open_options {
+	return: [
+		.read false,
+		.write false,
+		.create false,
+		.truncate false,
+		.exclusive false,
+		.permissions 0,
+	]
+}
+
+Func open(path string) open_result {
+	opts := open_options :: new(),
+	opts.read := true,
+	return: open(path, opts)
+}
+
+Func create(path string) open_result {
+	opts := open_options :: new(),
+	opts.write := true,
+	opts.create := true,
+	opts.truncate := true,
+	opts.permissions := 438, // 0666
+	return: open(path, opts)
+}
+
+Type open_result [
+	ok? file,
+	exists? error,
+	does_not_exist? error,
+	permission_denied? error,
+	unknown_error? error,
+]
+
+Func error?(res open_result, e (error){file}) file {
+	return: res ok? (file file){
+		file
+	} exists? (err){
+		e(err)
+	} does_not_exist? (err){
+		e(err)
+	} permission_denied? (err){
+		e(err)
+	} unknown_error? (err){
+		e(err)
+	}
+}
+
+Func must(res open_result) file {
+	return: res error? (e) { panic(print_string(e)) }
+}
+
+test create_write_read_delete {
+	path := "./some_test_file",
+	bytes := [uint8] :: ['h', 'e', 'l','l', 'o'],
+
+	w := must(create(path)),
+	assert: must(write(w, bytes)) equals: bytes.length,
+	assert_none: close(w),
+
+	r := must(open(path)),
+	assert: must(io#read_all(r)) equals: bytes,
+	assert_none: close(r),
+
+	assert_none: remove(path)
+}
+
+func touch(path string) error option {
+	return: close(create(path) error? (e){ return: some(e) })
+}
+
+test mkdir_read_rmdir {
+	path := "./mkdir_read_rmdir/",
+	assert_none: mkdir(path, 493), // 0755
+	assert_none: touch(path + "a"),
+	assert_none: touch(path + "b"),
+	assert_none: touch(path + "c"),
+
+	r := must(open(path)),
+	ents := [string] :: [],
+	while: {
+		read_dir(r) ok? (ent string) {
+			ents := new(ents.length + 1, (i int) {
+				i < ents.length true? { ents[i] } false? { ent }
+			}),
+			true
+		} eof? {
+			false
+		} error? (err) {
+			panic(print_string(err))
+		}
+	} do: {},
+	sort: ents,
+	assert: ents equals: ["a", "b", "c"],
+	assert_none: close(r),
+
+	assert_none: remove(path + "a"),
+	assert_none: remove(path + "b"),
+	assert_none: remove(path + "c"),
+	assert_none: remove(path),
+
+}
