@@ -304,6 +304,13 @@ func (g *gen) write(vs ...interface{}) {
 		case intType:
 			g.write("i", int(v))
 		case *flowgraph.FuncDef:
+			if len(v.Blocks) == 0 && cName(v.Name) {
+				// External definitions with C-compatible names
+				// ([_a-zA-Z][_0-9a-zA-Z]*)
+				// use C-style names to link with C.
+				g.write("@", v.Mod, "__", v.Name)
+				break
+			}
 			g.write(`@"`, v.SourceName, `"`)
 		case []*flowgraph.ParmDef:
 			for i, p := range v {
@@ -316,6 +323,15 @@ func (g *gen) write(vs ...interface{}) {
 			panic(fmt.Sprintf("unknown print type: %T", v))
 		}
 	}
+}
+
+func cName(s string) bool {
+	return strings.IndexFunc(s, func(r rune) bool {
+		return r != '_' &&
+			(r < 'a' || 'z' < r) &&
+			(r < 'A' || 'Z' < r) &&
+			(r < '0' || '9' < r)
+	}) < 0
 }
 
 func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
