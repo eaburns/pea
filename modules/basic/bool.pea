@@ -129,6 +129,23 @@ test while_do {
 	assert: iters equals: 10,
 }
 
+Func do:while:(f (){}, cond (){bool}) {
+	f(),
+	cond() true? {
+		while: cond do: f
+	}
+}
+
+test do_while {
+	iters := 0,
+	do: {++iters} while: {false},
+	assert: iters equals: 1,
+
+	iters := 0,
+	do: {++iters} while: {iters < 10},
+	assert: iters equals: 10,
+}
+
 Func +=(p printer, b bool) printer {
 	return: b true? {
 		p += "true"
