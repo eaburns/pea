@@ -1,0 +1,28 @@
+type a int
+type b int
+type c [.c int]
+
+// 012
+func main() {
+	foo(a :: 0),
+	foo(b :: 1),
+	foo(c :: [.c 2]),
+}
+
+func foo(x X) : pr(X) {
+	pr(x)
+}
+
+func pr(a a) {
+	print_int(int :: a)
+}
+
+func pr(b &b) {
+	print_int(int :: (b :: b))
+}
+
+func pr(c [.c int]) {
+	print_int(c.c)
+}
+
+func print_int(_ int)

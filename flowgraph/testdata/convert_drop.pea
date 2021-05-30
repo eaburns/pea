@@ -1,0 +1,15 @@
+/*
+Tests converting a non-empty struct to an empty struct.
+*/
+
+// 5
+func main() {
+	foo(5, [.])
+}
+
+func foo(x int, y [.]) {
+	y := x,
+	print_int(x)
+}
+
+func print_int(_ int)
