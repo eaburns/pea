@@ -44,6 +44,30 @@ test string_not_equal {
 	assert_true: "こんにちは" != "今日は",
 }
 
+Func <(a string, b string) bool {
+	for: 0 to: a.length - 1 do: (i) {
+		i < b.length false? {
+			return: false
+		},
+		a[i] = b[i] false? {
+			return: a[i] < b[i]
+		}
+	},
+	return: a.length < b.length
+}
+
+test string_less {
+	assert_false: "" < "",
+	assert_false: "a" < "a",
+	assert_false: "ab" < "a",
+	assert_false: "z" < "a",
+
+	assert_true: "" < "a",
+	assert_true: "a" < "b",
+	assert_true: "a" < "aa",
+	assert_true: "foo bar" < "zoo bar",
+}
+
 Func +(a string, b string) string {
 	if: a.length = 0 then: {
 		return: b
