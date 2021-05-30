@@ -1,3 +1,4 @@
+libpea/libpea.a
 libpea/libpea.o
 libpea/vendor/gc-8.0.4/*.o
 libpea/vendor/gc-8.0.4/1
@@ -20,3 +21,5 @@ libpea/vendor/libunwind-11.0.0.src/test/CMakeFiles/
 libpea/vendor/libunwind-11.0.0.src/test/Makefile
 libpea/vendor/libunwind-11.0.0.src/test/cmake_install.cmake
 libpea/vendor/libunwind-11.0.0.src/test/lit.site.cfg
+modules/basic/basic.test
+modules/container/array/array.test
