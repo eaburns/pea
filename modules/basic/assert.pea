@@ -34,3 +34,9 @@ Func assert:some:(o T option, b T) :
 		panic(print_string(o, " != some(", b, ")"))
 	}
 }
+
+Func assert_some:(o T option) : +=(printer, T)printer {
+	o none? {
+		panic(print_string(o, " != some(...)"))
+	}
+}
