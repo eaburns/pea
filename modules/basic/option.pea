@@ -112,6 +112,25 @@ test while_some {
 	assert: iters equals: 10,
 }
 
+Func while:none:(cond (){T option}, f (){}) {
+	cond() none? {
+		f(),
+		while: cond none: f
+	}
+}
+
+test while_none {
+	iters := 0,
+	while: {int option :: some(1)} none: (){++iters},
+	assert: iters equals: 0,
+
+	iters := 0,
+	while: {iters < 10 true? {int option :: none()} false? {some(iters)}} none: (){
+		++iters
+	},
+	assert: iters equals: 10,
+}
+
 Func +=(p printer, o T option) printer : +=(printer, T)printer {
 	return: o some? (t T) {
 		p += "some(" += t += ")",
