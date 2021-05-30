@@ -187,6 +187,7 @@ func bins(expr Expr, calls []*Call) Expr {
 type primary interface{}
 
 type sel struct {
+	mod  *Ident
 	name Ident
 	l    loc.Loc
 }
@@ -206,8 +207,16 @@ func primaries(head Expr, tail []primary) Expr {
 	for _, primary := range tail {
 		switch p := primary.(type) {
 		case sel:
+			var fun Expr = p.name
+			if p.mod != nil {
+				fun = &ModSel{
+					Mod:  *p.mod,
+					Name: p.name,
+					L:    p.l,
+				}
+			}
 			head = &Call{
-				Fun:  p.name,
+				Fun:  fun,
 				Args: []Expr{head},
 				L:    loc.Loc{l0, p.l[1]},
 			}

@@ -263,10 +263,14 @@ Pri <- head:PriArg tail:(Sel / Call / Idx)+ {
 	return Expr(primaries(head, tail))
 }
 
-Sel <- _ "." _ name:Id {
+Sel <- mod:ModTag? name:DotName {
+	return primary(sel{mod:mod, name: name, l: l(parser, start, end)})
+}
+
+DotName <- _ "." _ name:Id {
 	name.Name = "." + name.Name
 	name.L = l(parser, start, end)
-	return primary(sel{name: name, l: name.L})
+	return Ident(name)
 }
 
 Call <- _ "(" es:Exprs? _ ")" {

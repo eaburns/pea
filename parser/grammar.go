@@ -64,64 +64,65 @@ const (
 	_UnArg                      int = 58
 	_Pri                        int = 59
 	_Sel                        int = 60
-	_Call                       int = 61
-	_Idx                        int = 62
-	_PriArg                     int = 63
-	_SubExpr                    int = 64
-	_ModSel                     int = 65
-	_ModTag                     int = 66
-	_FuncName                   int = 67
-	_IdxOp                      int = 68
-	_Cases                      int = 69
-	_Kwds                       int = 70
-	_Kwd                        int = 71
-	_ArrayLit                   int = 72
-	_StructLit                  int = 73
-	_FieldVals                  int = 74
-	_FieldVal                   int = 75
-	_FieldId                    int = 76
-	_UnionLit                   int = 77
-	_CaseVal                    int = 78
-	_CaseId                     int = 79
-	_BlkLit                     int = 80
-	_BlkParm                    int = 81
-	_BlkParms                   int = 82
-	_CharLit                    int = 83
-	_StrLit                     int = 84
-	_InterpStr                  int = 85
-	_Esc                        int = 86
-	_RawStr                     int = 87
-	_NumLit                     int = 88
-	_DecLit                     int = 89
-	_HexLit                     int = 90
-	_FloatLit                   int = 91
-	_Id                         int = 92
-	_TypeVar                    int = 93
-	_Reserved                   int = 94
-	_D                          int = 95
-	_X                          int = 96
-	_L                          int = 97
-	_O                          int = 98
-	__                          int = 99
-	_Space                      int = 100
-	_Cmnt                       int = 101
-	_Eof                        int = 102
-	_Bin__AsgnOp__AsgnArg       int = 103
-	_NameArg__Kwd__KwArg        int = 104
-	_NameArg__CaseId__SwitchArg int = 105
-	_Bin__Bin5Op__Bin5Arg       int = 106
-	_Bin__Bin4Op__Bin4Arg       int = 107
-	_Bin__Bin3Op__Bin3Arg       int = 108
-	_Bin__Bin2Op__Bin2Arg       int = 109
-	_Bin__Bin1Op__Bin1Arg       int = 110
-	_BinTail__AsgnOp__AsgnArg   int = 111
-	_BinTail__Bin5Op__Bin5Arg   int = 112
-	_BinTail__Bin4Op__Bin4Arg   int = 113
-	_BinTail__Bin3Op__Bin3Arg   int = 114
-	_BinTail__Bin2Op__Bin2Arg   int = 115
-	_BinTail__Bin1Op__Bin1Arg   int = 116
+	_DotName                    int = 61
+	_Call                       int = 62
+	_Idx                        int = 63
+	_PriArg                     int = 64
+	_SubExpr                    int = 65
+	_ModSel                     int = 66
+	_ModTag                     int = 67
+	_FuncName                   int = 68
+	_IdxOp                      int = 69
+	_Cases                      int = 70
+	_Kwds                       int = 71
+	_Kwd                        int = 72
+	_ArrayLit                   int = 73
+	_StructLit                  int = 74
+	_FieldVals                  int = 75
+	_FieldVal                   int = 76
+	_FieldId                    int = 77
+	_UnionLit                   int = 78
+	_CaseVal                    int = 79
+	_CaseId                     int = 80
+	_BlkLit                     int = 81
+	_BlkParm                    int = 82
+	_BlkParms                   int = 83
+	_CharLit                    int = 84
+	_StrLit                     int = 85
+	_InterpStr                  int = 86
+	_Esc                        int = 87
+	_RawStr                     int = 88
+	_NumLit                     int = 89
+	_DecLit                     int = 90
+	_HexLit                     int = 91
+	_FloatLit                   int = 92
+	_Id                         int = 93
+	_TypeVar                    int = 94
+	_Reserved                   int = 95
+	_D                          int = 96
+	_X                          int = 97
+	_L                          int = 98
+	_O                          int = 99
+	__                          int = 100
+	_Space                      int = 101
+	_Cmnt                       int = 102
+	_Eof                        int = 103
+	_Bin__AsgnOp__AsgnArg       int = 104
+	_NameArg__Kwd__KwArg        int = 105
+	_NameArg__CaseId__SwitchArg int = 106
+	_Bin__Bin5Op__Bin5Arg       int = 107
+	_Bin__Bin4Op__Bin4Arg       int = 108
+	_Bin__Bin3Op__Bin3Arg       int = 109
+	_Bin__Bin2Op__Bin2Arg       int = 110
+	_Bin__Bin1Op__Bin1Arg       int = 111
+	_BinTail__AsgnOp__AsgnArg   int = 112
+	_BinTail__Bin5Op__Bin5Arg   int = 113
+	_BinTail__Bin4Op__Bin4Arg   int = 114
+	_BinTail__Bin3Op__Bin3Arg   int = 115
+	_BinTail__Bin2Op__Bin2Arg   int = 116
+	_BinTail__Bin1Op__Bin1Arg   int = 117
 
-	_N int = 117
+	_N int = 118
 )
 
 type _Parser struct {
@@ -12377,9 +12378,163 @@ fail:
 }
 
 func _SelAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [1]string
+	var labels [2]string
 	use(labels)
 	if dp, de, ok := _memo(parser, _Sel, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// mod:ModTag? name:DotName
+	// mod:ModTag?
+	{
+		pos1 := pos
+		// ModTag?
+		{
+			pos3 := pos
+			// ModTag
+			if !_accept(parser, _ModTagAccepts, &pos, &perr) {
+				goto fail4
+			}
+			goto ok5
+		fail4:
+			pos = pos3
+		ok5:
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// name:DotName
+	{
+		pos6 := pos
+		// DotName
+		if !_accept(parser, _DotNameAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[1] = parser.text[pos6:pos]
+	}
+	return _memoize(parser, _Sel, start, pos, perr)
+fail:
+	return _memoize(parser, _Sel, start, -1, perr)
+}
+
+func _SelFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [2]string
+	use(labels)
+	pos, failure := _failMemo(parser, _Sel, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "Sel",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _Sel}
+	// action
+	// mod:ModTag? name:DotName
+	// mod:ModTag?
+	{
+		pos1 := pos
+		// ModTag?
+		{
+			pos3 := pos
+			// ModTag
+			if !_fail(parser, _ModTagFail, errPos, failure, &pos) {
+				goto fail4
+			}
+			goto ok5
+		fail4:
+			pos = pos3
+		ok5:
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// name:DotName
+	{
+		pos6 := pos
+		// DotName
+		if !_fail(parser, _DotNameFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[1] = parser.text[pos6:pos]
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _SelAction(parser *_Parser, start int) (int, *primary) {
+	var labels [2]string
+	use(labels)
+	var label0 *Ident
+	var label1 Ident
+	dp := parser.deltaPos[start][_Sel]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _Sel}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(primary)
+		return start + int(dp-1), &n
+	}
+	var node primary
+	pos := start
+	// action
+	{
+		start0 := pos
+		// mod:ModTag? name:DotName
+		// mod:ModTag?
+		{
+			pos2 := pos
+			// ModTag?
+			{
+				pos4 := pos
+				label0 = new(Ident)
+				// ModTag
+				if p, n := _ModTagAction(parser, pos); n == nil {
+					goto fail5
+				} else {
+					*label0 = *n
+					pos = p
+				}
+				goto ok6
+			fail5:
+				label0 = nil
+				pos = pos4
+			ok6:
+			}
+			labels[0] = parser.text[pos2:pos]
+		}
+		// name:DotName
+		{
+			pos7 := pos
+			// DotName
+			if p, n := _DotNameAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label1 = *n
+				pos = p
+			}
+			labels[1] = parser.text[pos7:pos]
+		}
+		node = func(
+			start, end int, mod *Ident, name Ident) primary {
+			return primary(sel{mod: mod, name: name, l: l(parser, start, end)})
+		}(
+			start0, pos, label0, label1)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _DotNameAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [1]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _DotName, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
@@ -12408,23 +12563,23 @@ func _SelAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[0] = parser.text[pos1:pos]
 	}
-	return _memoize(parser, _Sel, start, pos, perr)
+	return _memoize(parser, _DotName, start, pos, perr)
 fail:
-	return _memoize(parser, _Sel, start, -1, perr)
+	return _memoize(parser, _DotName, start, -1, perr)
 }
 
-func _SelFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+func _DotNameFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	var labels [1]string
 	use(labels)
-	pos, failure := _failMemo(parser, _Sel, start, errPos)
+	pos, failure := _failMemo(parser, _DotName, start, errPos)
 	if failure != nil {
 		return pos, failure
 	}
 	failure = &peg.Fail{
-		Name: "Sel",
+		Name: "DotName",
 		Pos:  int(start),
 	}
-	key := _key{start: start, rule: _Sel}
+	key := _key{start: start, rule: _DotName}
 	// action
 	// _ "." _ name:Id
 	// _
@@ -12462,21 +12617,21 @@ fail:
 	return -1, failure
 }
 
-func _SelAction(parser *_Parser, start int) (int, *primary) {
+func _DotNameAction(parser *_Parser, start int) (int, *Ident) {
 	var labels [1]string
 	use(labels)
 	var label0 Ident
-	dp := parser.deltaPos[start][_Sel]
+	dp := parser.deltaPos[start][_DotName]
 	if dp < 0 {
 		return -1, nil
 	}
-	key := _key{start: start, rule: _Sel}
+	key := _key{start: start, rule: _DotName}
 	n := parser.act[key]
 	if n != nil {
-		n := n.(primary)
+		n := n.(Ident)
 		return start + int(dp-1), &n
 	}
-	var node primary
+	var node Ident
 	pos := start
 	// action
 	{
@@ -12512,10 +12667,10 @@ func _SelAction(parser *_Parser, start int) (int, *primary) {
 			labels[0] = parser.text[pos2:pos]
 		}
 		node = func(
-			start, end int, name Ident) primary {
+			start, end int, name Ident) Ident {
 			name.Name = "." + name.Name
 			name.L = l(parser, start, end)
-			return primary(sel{name: name, l: name.L})
+			return Ident(name)
 		}(
 			start0, pos, label0)
 	}
