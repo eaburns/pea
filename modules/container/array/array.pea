@@ -1,0 +1,94 @@
+ Import "basic"
+
+Func sort:by:(ts [T], less (&T, &T){bool}) {
+	for: ts.length/2 -1 down_to: 0 do: (i) {
+		max_heap_down(ts, less, i),
+	},
+	for: ts.length - 1 down_to: 1 do: (i) {
+		tmp := ts[0], ts[0] := ts[i], ts[i] := tmp,
+		max_heap_down(ts[0, i], less, 0),
+	}
+}
+
+func max_heap_down(ts [T], less (&T, &T){bool}, i int) {
+	left := 2*i + 1,
+	while: {left < ts.length && left >= 0} do: { // left >=0 for overflow
+		big := left,
+		right := left + 1,
+		if: right < ts.length && { less(ts[left], ts[right]) } then: {
+			big := right
+		},
+		if: less(ts[big], ts[i]) then: {
+			return()
+		},
+		tmp := ts[i], ts[i] := ts[big], ts[big] := tmp,
+		i := big,
+		left := 2*i + 1,
+	}
+}
+
+test sort_by {
+	sorted_by_max := (a [int]) {
+		sort: a by: (a, b) {a > b},
+		a
+	},
+	assert: sorted_by_max([]) equals: [],
+	assert: sorted_by_max([5]) equals: [5],
+	assert: sorted_by_max([1, 2]) equals: [2, 1],
+	assert: sorted_by_max([2, 1]) equals: [2, 1],
+	assert: sorted_by_max([1, 2, 3]) equals: [3, 2, 1],
+	assert: sorted_by_max([2, 1, 3]) equals: [3, 2, 1],
+	assert: sorted_by_max([3, 2, 1]) equals: [3, 2, 1],
+	assert: sorted_by_max([1, 3, 2]) equals: [3, 2, 1],
+	assert: sorted_by_max([1, 2, 3, 4]) equals: [4, 3, 2, 1],
+	assert: sorted_by_max([2, 1, 3, 4]) equals: [4, 3, 2, 1],
+	assert: sorted_by_max([3, 2, 1, 4]) equals: [4, 3, 2, 1],
+	assert: sorted_by_max([4, 2, 3, 1]) equals: [4, 3, 2, 1],
+	assert: sorted_by_max([1, 3, 2, 4]) equals: [4, 3, 2, 1],
+	assert: sorted_by_max([1, 4, 3, 2]) equals: [4, 3, 2, 1],
+	assert: sorted_by_max([1, 2, 4, 3]) equals: [4, 3, 2, 1],
+}
+
+Func sort:(ts [T]) : <(T, T) bool {
+	sort: ts by: (a, b){ a < b }
+}
+
+type ref_cmp_type [.x int, .y int]
+
+func <(a &ref_cmp_type, b &ref_cmp_type)bool {
+	return: a.x = b.x && { a.y < b.y } || { a.x < b.x }
+}
+
+func =(a &ref_cmp_type, b &ref_cmp_type)bool {
+	return: a.x = b.x && a.y = b.y
+}
+
+func +=(p printer, x ref_cmp_type) printer {
+	return: p += "[.x " += x.x += ", .y " += x.y += "]"
+}
+
+test sort {
+	sorted := (a [int]){
+		sort: a,
+		a
+	},
+	assert: sorted([]) equals: [],
+	assert: sorted([5]) equals: [5],
+	assert: sorted([1, 2]) equals: [1, 2],
+	assert: sorted([2, 1]) equals: [1, 2],
+	assert: sorted([1, 2, 3]) equals: [1, 2, 3],
+	assert: sorted([2, 1, 3]) equals: [1, 2, 3],
+	assert: sorted([3, 2, 1]) equals: [1, 2, 3],
+	assert: sorted([1, 3, 2]) equals: [1, 2, 3],
+	assert: sorted([1, 2, 3, 4]) equals: [1, 2, 3, 4],
+	assert: sorted([2, 1, 3, 4]) equals: [1, 2, 3, 4],
+	assert: sorted([3, 2, 1, 4]) equals: [1, 2, 3, 4],
+	assert: sorted([4, 2, 3, 1]) equals: [1, 2, 3, 4],
+	assert: sorted([1, 3, 2, 4]) equals: [1, 2, 3, 4],
+	assert: sorted([1, 4, 3, 2]) equals: [1, 2, 3, 4],
+	assert: sorted([1, 2, 4, 3]) equals: [1, 2, 3, 4],
+
+	a := [ref_cmp_type] :: [[.x 1, .y 2], [.x 1, .y 1], [.x 0, .y 100]],
+	sort: a by: (a, b) {a < b},
+	assert: a equals: [[.x 0, .y 100], [.x 1, .y 1], [.x 1, .y 2]],
+}
