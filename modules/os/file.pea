@@ -1,5 +1,4 @@
-// TODO: don't Capital Import container/array once parser supports array#sort:
-Import "container/array"
+import "container/array"
 Import "basic"
 import "io"
 
@@ -106,7 +105,7 @@ test mkdir_read_rmdir {
 			panic(print_string(err))
 		}
 	} do: {},
-	sort: ents,
+	array#sort: ents,
 	assert: ents equals: ["a", "b", "c"],
 	assert_none: close(r),
 

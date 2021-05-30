@@ -76,7 +76,7 @@ NamedType <-
 		return Type(tvar)
 	}
 
-ModName <- mod:(m:Id _ "#" { return Ident(m) })? name:Id {
+ModName <- mod:ModTag? name:Id {
 	return &NamedType{Mod: mod, Name: name, L: l(parser, start, end)}
 }
 
@@ -185,8 +185,8 @@ AsgnOp "assignment operator" <- _ name:":=" {
 	return Ident{Name: name, L: l(parser, start, end)}
 }
 
-KwCall <- nameArgs:NameArg<Kwd, KwArg>+ {
-	return Expr(nary(l(parser, start, end), nameArgs))
+KwCall <- mod:ModTag? nameArgs:NameArg<Kwd, KwArg>+ {
+	return Expr(nary(l(parser, start, end), mod, nameArgs))
 }
 KwArg <- Cvt / CvtArg
 
@@ -195,8 +195,8 @@ Cvt <- typ:Type _ "::" expr:CvtArg {
 }
 CvtArg <- Switch / SwitchArg
 
-Switch <- arg0:SwitchArg nameArgs:NameArg<CaseId, SwitchArg>+ {
-	call := nary(l(parser, start, end), nameArgs)
+Switch <- arg0:SwitchArg mod:ModTag? nameArgs:NameArg<CaseId, SwitchArg>+ {
+	call := nary(l(parser, start, end), mod, nameArgs)
 	call.Args = append([]Expr{arg0}, call.Args...)
 	return Expr(call)
 }
@@ -299,20 +299,24 @@ SubExpr <-
 	}
 
 ModSel <-
-	mod0:Id _ "#" name0:FuncName {
+	mod0:ModTag name0:FuncName {
 		return Expr(&ModSel{
 			Mod: mod0,
 			Name: name0,
 			L: l(parser, start, end),
 		})
 	} /
-	mod1:Id _ "#" _ "(" name1:FuncName _")" {
+	mod1:ModTag _ "(" name1:FuncName _")" {
 		return Expr(&ModSel{
 			Mod: mod1,
 			Name: name1,
 			L: l(parser, start, end),
 		})
 	}
+
+ModTag <- id:Id _ "#" {
+	return Ident(id)
+}
 
 FuncName <- FieldId / IdxOp / Op / Kwds / Cases / Id
 

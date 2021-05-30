@@ -148,7 +148,7 @@ type nameArg struct {
 	arg  Expr
 }
 
-func nary(l loc.Loc, nameArgs []nameArg) *Call {
+func nary(l loc.Loc, mod *Ident, nameArgs []nameArg) *Call {
 	var name Ident
 	name.L[0] = nameArgs[0].name.L[0]
 	name.L[1] = nameArgs[len(nameArgs)-1].name.L[1]
@@ -157,7 +157,15 @@ func nary(l loc.Loc, nameArgs []nameArg) *Call {
 		name.Name += nameArg.name.Name
 		args = append(args, nameArg.arg)
 	}
-	return &Call{Fun: name, Args: args, L: l}
+	var fun Expr = name
+	if mod != nil {
+		fun = &ModSel{
+			Mod:  *mod,
+			Name: name,
+			L:    loc.Loc{mod.L[0], name.L[1]},
+		}
+	}
+	return &Call{Fun: fun, Args: args, L: l}
 }
 
 func bins(expr Expr, calls []*Call) Expr {
