@@ -288,6 +288,9 @@ func compilePea(mod *Mod, oFile string, testMain bool) []error {
 		fmt.Println(" to", llFile)
 	}
 	p := parser.New()
+	if wd, err := os.Getwd(); err == nil {
+		p.TrimPathPrefix = wd + "/"
+	}
 	for _, file := range files {
 		if err := p.ParseFile(file); err != nil {
 			return []error{err}

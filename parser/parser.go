@@ -20,7 +20,11 @@ import (
 // A Parser parses source code files.
 type Parser struct {
 	Files []*File
-	offs  int
+	// TrimPathPrefix is trimmed as the prefix
+	// for any subsequenly parsed files.
+	// This affects all locations created in those files.
+	TrimPathPrefix string
+	offs           int
 }
 
 // New returns a new parser.
@@ -75,6 +79,7 @@ func (p *Parser) Parse(path string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	path = strings.TrimPrefix(path, p.TrimPathPrefix)
 	_p := _NewParser(string(data))
 	_p.data = p
 	if pos, perr := _FileAccepts(_p, 0); pos < 0 {
