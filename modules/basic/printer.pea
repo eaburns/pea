@@ -1,0 +1,259 @@
+Type printer := _printer
+
+type _printer &[.n int, .data [uint8]]
+
+const min_printer_len := int :: 16
+
+Func new() printer {
+	return: [.n 0, .data new(min_printer_len, uint8 :: 0)]
+}
+
+Func add_byte(p printer, b uint8) {
+	if: p.n + 1 >= p.data.length then: {
+		grow(p, 1)
+	},
+	p.data[p.n] := b,
+	++p.n
+}
+
+test printer_add_byte {
+	p := printer :: new(),
+
+	add_byte(p, 'a'),
+	assert: p.n equals: 1,
+	assert: p.data[0, p.n] equals: ['a'],
+
+	add_byte(p, 'b'),
+	assert: p.n equals: 2,
+	assert: p.data[0, p.n] equals: ['a', 'b'],
+
+	add_byte(p, 'c'),
+	assert: p.n equals: 3,
+	assert: p.data[0, p.n] equals: ['a', 'b', 'c'],
+}
+
+test printer_add_byte_grow {
+	bytes := [uint8] :: new(min_printer_len*2, (i int){uint8 :: i + '0'}),
+
+	p := printer :: new(),
+	n := 0,
+	for: bytes each: (b) {
+		add_byte(p, b),
+		++n,
+		assert: p.n equals: n,
+		assert_true: p.n <= p.data.length,
+		assert: p.data[0, p.n] equals: bytes[0, n],
+	}
+}
+
+Func add_bytes(p printer, bs [uint8]) {
+	if: p.n + bs.length >= p.data.length then: {
+		grow(p, bs.length)
+	},
+	d := p.data[p.n, p.n+bs.length],
+	for: 0 to: bs.length - 1 do: (i) {
+		d[i] := bs[i]
+	},
+	p.n := p.n + bs.length
+}
+
+test printer_add_bytes {
+	p := printer :: new(),
+	add_bytes(p, []),
+	assert: p.n equals: 0,
+
+	p := printer :: new(),
+	add_bytes(p, ['a', 'b', 'c']),
+	assert: p.n equals: 3,
+	assert: p.data[0, p.n] equals: ['a', 'b', 'c'],
+
+	add_bytes(p, ['d', 'e', 'f']),
+	assert: p.n equals: 6,
+	assert: p.data[0, p.n] equals: ['a', 'b', 'c', 'd', 'e', 'f'],
+
+	add_bytes(p, []),
+	assert: p.n equals: 6,
+	assert: p.data[0, p.n] equals: ['a', 'b', 'c', 'd', 'e', 'f'],
+}
+
+test printer_add_bytes_grow {
+	bytes := [uint8] :: new(min_printer_len-1, (i int){uint8 :: i + '0'}),
+	p := printer :: new(),
+	add_bytes(p, bytes),
+	assert: p.n equals: bytes.length,
+	assert: p.data[0, p.n] equals: bytes,
+
+	bytes := [uint8] :: new(min_printer_len, (i int){uint8 :: i + '0'}),
+	p := printer :: new(),
+	add_bytes(p, bytes),
+	assert: p.n equals: bytes.length,
+	assert: p.data[0, p.n] equals: bytes,
+
+	bytes := [uint8] :: new(min_printer_len+1, (i int){uint8 :: i + '0'}),
+	p := printer :: new(),
+	add_bytes(p, bytes),
+	assert: p.n equals: bytes.length,
+	assert: p.data[0, p.n] equals: bytes,
+}
+
+Func add_string(p printer, s string) {
+	if: p.n + s.length >= p.data.length then: {
+		grow(p, s.length)
+	},
+	d := p.data[p.n, p.n+s.length],
+	for: 0 to: s.length - 1 do: (i) {
+		d[i] := s[i]
+	},
+	p.n := p.n + s.length
+}
+
+test printer_add_string {
+	p := printer :: new(),
+	add_string(p, ""),
+	assert: p.n equals: 0,
+
+	p := printer :: new(),
+	add_string(p, "abc"),
+	assert: p.n equals: 3,
+	assert: p.data[0, p.n] equals: ['a', 'b', 'c'],
+
+	add_string(p, "def"),
+	assert: p.n equals: 6,
+	assert: p.data[0, p.n] equals: ['a', 'b', 'c', 'd', 'e', 'f'],
+
+	add_string(p, ""),
+	assert: p.n equals: 6,
+	assert: p.data[0, p.n] equals: ['a', 'b', 'c', 'd', 'e', 'f'],
+}
+
+test printer_add_string_grow {
+	bytes := [uint8] :: new(min_printer_len-1, (i int){uint8 :: i + '0'}),
+	str := string :: bytes,
+	p := printer :: new(),
+	add_string(p, str),
+	assert: p.n equals: str.length,
+	assert: p.data[0, p.n] equals: bytes,
+
+	bytes := [uint8] :: new(min_printer_len, (i int){uint8 :: i + '0'}),
+	str := string :: bytes,
+	p := printer :: new(),
+	add_string(p, str),
+	assert: p.n equals: str.length,
+	assert: p.data[0, p.n] equals: bytes,
+
+	bytes := [uint8] :: new(min_printer_len+1, (i int){uint8 :: i + '0'}),
+	str := string :: bytes,
+	p := printer :: new(),
+	add_string(p, str),
+	assert: p.n equals: str.length,
+	assert: p.data[0, p.n] equals: bytes,
+}
+
+func grow(p printer, delta int) {
+	min := p.n + delta,
+	len := p.data.length + 1,
+	while: {len < min} do: {
+		len := len * 2
+	},
+	data := [uint8] :: new(len, uint8 :: 0),
+	for: 0 to: p.n - 1 do: (i) {
+		data[i] := p.data[i]
+	},
+	p.data := data
+}
+
+Func reset(p printer) [uint8] {
+	b := p.data[0, p.n],
+	p.n := 0,
+	p.data := new(min_printer_len, uint8 :: 0),
+	return: b
+}
+
+test printer_reset_bytes {
+	p := printer :: new(),
+	assert: [uint8] :: reset(p) equals: [],
+	assert: p.n equals: 0,
+
+	p := printer :: new(),
+	add_bytes(p, ['a', 'b', 'c']),
+	assert: [uint8] :: reset(p) equals: ['a', 'b', 'c'],
+	assert: p.n equals: 0,
+	assert: p.data equals: new(min_printer_len, uint8 :: 0),
+
+	p := printer :: new(),
+	add_bytes(p, ['a', 'b', 'c']),
+	orig := [uint8] :: reset(p),
+	assert: orig equals: ['a', 'b', 'c'],
+	add_bytes(p, ['x', 'y', 'z']),
+	// Modifying p doesn't modify the array returned from reset.
+	assert: orig equals: ['a', 'b', 'c'],
+}
+
+Func reset(p printer) string {
+	return: string :: ([uint8] :: reset(p))
+}
+
+test printer_reset_string {
+	p := printer :: new(),
+	assert: string :: reset(p) equals: "",
+	assert: p.n equals: 0,
+
+	p := printer :: new(),
+	add_bytes(p, ['a', 'b', 'c']),
+	assert: string :: reset(p) equals: "abc",
+	assert: p.n equals: 0,
+	assert: p.data equals: new(min_printer_len, uint8 :: 0),
+}
+
+test printer_copy {
+	p0 := printer :: new(),
+	p0 += "a",
+	p1 := p0,
+	p1 += "b",
+	p0 += "c",
+	assert: string :: reset(p0) equals: "abc",
+	assert: p0.data equals: new(min_printer_len, uint8 :: 0),
+	assert: p0.n equals: 0,
+	assert: p1.data equals: new(min_printer_len, uint8 :: 0),
+	assert: p1.n equals: 0,
+}
+
+Func print_string(t T) string : +=(printer, T)printer {
+	return: reset((printer :: new()) += t)
+}
+
+Func print_string(t T, u U) string :
+	+=(printer, T)printer,
+	+=(printer, U)printer,
+{
+	return: reset((printer :: new()) += t += u)
+}
+
+Func print_string(t T, u U, v V) string :
+	+=(printer, T)printer,
+	+=(printer, U)printer,
+	+=(printer, V)printer,
+{
+	return: reset((printer :: new()) += t += u += v)
+}
+
+Func print_string(t T, u U, v V, w W) string :
+	+=(printer, T)printer,
+	+=(printer, U)printer,
+	+=(printer, V)printer,
+	+=(printer, W)printer,
+{
+	return: reset((printer :: new()) += t += u += v += w)
+}
+
+// TODO: variadic arguments.
+// TODO: Go-like interfaces.
+Func print_string(t T, u U, v V, w W, x X) string :
+	+=(printer, T)printer,
+	+=(printer, U)printer,
+	+=(printer, V)printer,
+	+=(printer, W)printer,
+	+=(printer, X)printer,
+{
+	return: reset((printer :: new()) += t += u += v += w += x)
+}
