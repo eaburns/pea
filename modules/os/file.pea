@@ -71,13 +71,13 @@ test create_write_read_delete {
 
 	w := must(create(path)),
 	assert: must(write(w, bytes)) equals: bytes.length,
-	assert_none: close(w),
+	assert_ok: close(w),
 
 	r := must(open(path)),
 	assert: must(io#read_all(r)) equals: bytes,
-	assert_none: close(r),
+	assert_ok: close(r),
 
-	assert_none: remove(path)
+	assert_ok: remove(path)
 }
 
 func touch(path string) error option {
@@ -86,10 +86,10 @@ func touch(path string) error option {
 
 test mkdir_read_rmdir {
 	path := "./mkdir_read_rmdir/",
-	assert_none: mkdir(path, 493), // 0755
-	assert_none: touch(path + "a"),
-	assert_none: touch(path + "b"),
-	assert_none: touch(path + "c"),
+	assert_ok: mkdir(path, 493), // 0755
+	assert_ok: touch(path + "a"),
+	assert_ok: touch(path + "b"),
+	assert_ok: touch(path + "c"),
 
 	r := must(open(path)),
 	ents := [string] :: [],
@@ -107,11 +107,11 @@ test mkdir_read_rmdir {
 	} do: {},
 	array#sort: ents,
 	assert: ents equals: ["a", "b", "c"],
-	assert_none: close(r),
+	assert_ok: close(r),
 
-	assert_none: remove(path + "a"),
-	assert_none: remove(path + "b"),
-	assert_none: remove(path + "c"),
-	assert_none: remove(path),
+	assert_ok: remove(path + "a"),
+	assert_ok: remove(path + "b"),
+	assert_ok: remove(path + "c"),
+	assert_ok: remove(path),
 
 }

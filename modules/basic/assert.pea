@@ -40,3 +40,47 @@ Func assert_some:(o T option) : +=(printer, T)printer {
 		panic(print_string(o, " != some(...)"))
 	}
 }
+
+Func assert_ok:(o error option) {
+	if: o error: (e){
+		panic(print_string("got error ", e, ", wanted OK"))
+	}
+}
+
+Func assert_ok:(o T or_error) {
+	if: o error: (e){
+		panic(print_string("got error ", e, ", wanted OK"))
+	}
+}
+
+Func assert_error:(o error option) {
+	if: o ok: {
+		panic(print_string("got OK, wanted an error"))
+	}
+}
+
+Func assert_error:(o T or_error) : +=(printer, T)printer {
+	if: o ok: (t){
+		panic(print_string("got ", t, ", wanted an error"))
+	}
+}
+
+Func assert:error:(o error option, msg string) {
+	if: o ok: {
+		panic(print_string("got OK, wanted an error"))
+	} error: (e){
+		if: message(e) != msg then: {
+			panic(print_string("got error ", e, ", wanted ", msg))
+		}
+	}
+}
+
+Func assert:error:(o T or_error, msg string) : +=(printer, T)printer {
+	if: o ok: (t){
+		panic(print_string("got ", t, ", wanted an error"))
+	} error: (e){
+		if: message(e) != msg then: {
+			panic(print_string("got error ", e, ", wanted ", msg))
+		}
+	}
+}
