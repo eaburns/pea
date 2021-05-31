@@ -1,15 +1,11 @@
 Type T option [none?, some? T]
 
-Func some(t T) T option { return: [some? t] }
-
-Func none() T option { return: [none?] }
-
-Func error?(o error option, e (error){}) {
-	o some? e none? {}
+Func some(t T) T option {
+	return: [some? t]
 }
 
-Func must(o error option) {
-	o some? (e error) { panic(print_string(e)) }
+Func none() T option {
+	return: [none?]
 }
 
 Func =(a T option, b T option) bool : =(T, T)bool {

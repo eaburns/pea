@@ -29,19 +29,11 @@ Func error(msg string) T or_error {
 }
 
 Func must(o T or_error) T {
-	return: o ok? (t T) {
-		t
-	} error? (e) {
-		panic(print_string(e))
-	}
+	return: o ok? (t T){ t } error? (e){ panic(print_string(e)) }
 }
 
 Func error?(o T or_error, f (error){T}) T {
-	return: o error? (e error) {
-		f(e)
-	} ok? (t) {
-		t
-	}
+	return: o error? f ok? (t){ t }
 }
 
 test error_question {
@@ -77,4 +69,40 @@ test print_or_error {
 	assert: print_string(int or_error :: error("oops")) equals: "error(oops)",
 	assert: print_string(ok(1)) equals: "ok(1)",
 	assert: print_string(ok("Hello, World!")) equals: "ok(Hello, World!)",
+}
+
+Func ok() error option {
+	return: none()
+}
+
+Func error(e error) error option {
+	return: some(e)
+}
+
+Func error(msg string) error option {
+	return: some(new(msg))
+}
+
+Func error?(o error option, e (error){}) {
+	o some? e none? {}
+}
+
+Func must(o error option) {
+	o some? (e error) { panic(print_string(e)) }
+}
+
+Func if:ok:(o error option, k (){}) {
+	o some? (_ error){} none? k
+}
+
+Func if:error:(o error option, e (error){}) {
+	o some? e none? {}
+}
+
+Func if:ok:error:(o error option, k (){}, e (error){}) {
+	o some? e none? k
+}
+
+Func if:error:ok:(o error option, e (error){}, k (){}) {
+	o some? e none? k
 }
