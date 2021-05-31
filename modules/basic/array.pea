@@ -85,6 +85,33 @@ test array_not_equal {
 	assert_true: [1, 2, 3] != [1, 2, 4],
 }
 
+Func <(a [T], b [T]) bool : <(T,T)bool {
+	for: 0 to: a.length - 1 do: (i) {
+		i < b.length false? {
+			return: false
+		},
+		a[i] < b[i] true? {
+			return: true
+		},
+		b[i] < a[i] true? {
+			return: false
+		}
+	},
+	return: a.length < b.length
+}
+
+test array_less {
+	assert_false: ([int] :: []) < ([int] :: []),
+	assert_false: [1] < [1],
+	assert_false: [1, 2] < [1],
+	assert_false: [2] < [1],
+
+	assert_true: ([int] :: []) < [1],
+	assert_true: [1] < [2],
+	assert_true: [1] < [1, 1],
+	assert_true: [1, 5, 6] < [1, 7, 8],
+}
+
 Func copy(a [T]) [T] {
 	if: a.length = 0 then: {
 		return: []
