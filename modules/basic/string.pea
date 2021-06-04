@@ -1,9 +1,9 @@
 Func =(a string, b string) bool {
-	a.length = b.length false? {
+	if: a.length != b.length then: {
 		return: false
 	},
 	for: 0 to: a.length - 1 do: (i) {
-		a[i] = b[i] false? {
+		if: a[i] != b[i] then: {
 			return: false
 		}
 	},
@@ -46,10 +46,10 @@ test string_not_equal {
 
 Func <(a string, b string) bool {
 	for: 0 to: a.length - 1 do: (i) {
-		i < b.length false? {
+		if: i >= b.length then: {
 			return: false
 		},
-		a[i] = b[i] false? {
+		if: a[i] != b[i] then: {
 			return: a[i] < b[i]
 		}
 	},

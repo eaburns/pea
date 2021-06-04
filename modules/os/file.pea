@@ -113,5 +113,4 @@ test mkdir_read_rmdir {
 	assert_ok: remove(path + "b"),
 	assert_ok: remove(path + "c"),
 	assert_ok: remove(path),
-
 }

@@ -113,7 +113,7 @@ test if_then_else {
 }
 
 Func while:do:(cond (){bool}, f (){}) {
-	cond() true? {
+	if: cond() then: {
 		f(),
 		while: cond do: f
 	}
@@ -131,7 +131,7 @@ test while_do {
 
 Func do:while:(f (){}, cond (){bool}) {
 	f(),
-	cond() true? {
+	if: cond() then: {
 		while: cond do: f
 	}
 }

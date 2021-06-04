@@ -1,23 +1,23 @@
 Func assert_true:(cond bool) {
-	cond false? {
+	if: !cond then: {
 		panic("got false, expected true")
 	}
 }
 
 Func assert_false:(cond bool) {
-	cond true? {
+	if: cond then: {
 		panic("got true, expected false")
 	}
 }
 
 Func assert:equals:(a T, b T) : =(T, T) bool, +=(printer, T)printer {
-	a = b false? {
+	if: !(a = b) then: {
 		panic(print_string(a, " != ", b, " expected equal"))
 	}
 }
 
 Func assert_none:(o T option) : +=(printer, T)printer {
-	o some? (t T) {
+	if: o some: (t T) {
 		panic(print_string("got ", o, " wanted none()"))
 	}
 }
@@ -26,17 +26,17 @@ Func assert:some:(o T option, b T) :
 	+=(printer, T)printer,
 	=(T, T) bool,
 {
-	o some? (a T) {
-		a = b false? {
+	if: o some: (a T) {
+		if: !(a = b) then: {
 			panic(print_string(o, " != some(", b, ")"))
 		}
-	} none? {
+	} none: {
 		panic(print_string(o, " != some(", b, ")"))
 	}
 }
 
 Func assert_some:(o T option) : +=(printer, T)printer {
-	o none? {
+	if: o none: {
 		panic(print_string(o, " != some(...)"))
 	}
 }

@@ -9,13 +9,12 @@ Func none() T option {
 }
 
 Func =(a T option, b T option) bool : =(T, T)bool {
-	// TODO: for some?none?, why can't T be inferred?
-	a some? (a_val T) {
-		b some? (b_val) {
+	if: a some: (a_val) {
+		if: b some: (b_val) {
 			return: a_val = b_val
 		},
-	} none? {
-		b none? {
+	} none: {
+		if: b none: {
 			return: true
 		}
 	},
@@ -89,7 +88,7 @@ test if_some_none {
 }
 
 Func while:some:(cond (){T option}, f (T){}) {
-	cond() some? (t) {
+	if: cond() some: (t) {
 		f(t),
 		while: cond some: f
 	}
@@ -109,7 +108,7 @@ test while_some {
 }
 
 Func while:none:(cond (){T option}, f (){}) {
-	cond() none? {
+	if: cond() none: {
 		f(),
 		while: cond none: f
 	}

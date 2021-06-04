@@ -37,7 +37,7 @@ test int_dec {
 }
 
 Func for:to:do:(start int, end int, f (int){}) {
-	start <= end true? {
+	if: start <= end then: {
 		f(start),
 		for: start + 1 to: end do: f
 	}
@@ -81,7 +81,7 @@ test for_to_do {
 }
 
 Func for:down_to:do:(start int, end int, f (int){}) {
-	start >= end true? {
+	if: start >= end then: {
 		f(start),
 		for: start -1 down_to: end do: f
 	}

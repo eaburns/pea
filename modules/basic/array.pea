@@ -44,7 +44,7 @@ Func =(a [T], b [T]) bool : =(T, T) bool {
 		return: false
 	},
 	for: 0 to: a.length - 1 do: (i) {
-		a[i] = b[i] false? {
+		if: !(a[i] = b[i]) then: {
 			return: false
 		}
 	},
@@ -87,13 +87,13 @@ test array_not_equal {
 
 Func <(a [T], b [T]) bool : <(T,T)bool {
 	for: 0 to: a.length - 1 do: (i) {
-		i < b.length false? {
+		if: i >= b.length then: {
 			return: false
 		},
-		a[i] < b[i] true? {
+		if: a[i] < b[i] then: {
 			return: true
 		},
-		b[i] < a[i] true? {
+		if: b[i] < a[i] then: {
 			return: false
 		}
 	},

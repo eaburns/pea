@@ -84,25 +84,25 @@ Func error(msg string) error option {
 }
 
 Func error?(o error option, e (error){}) {
-	o some? e none? {}
+	if: o some: e
 }
 
 Func must(o error option) {
-	o some? (e error) { panic(print_string(e)) }
+	if: o some: (e){ panic(print_string(e)) }
 }
 
 Func if:ok:(o error option, k (){}) {
-	o some? (_ error){} none? k
+	if: o none: k
 }
 
 Func if:error:(o error option, e (error){}) {
-	o some? e none? {}
+	if: o some: e
 }
 
 Func if:ok:error:(o error option, k (){}, e (error){}) {
-	o some? e none? k
+	if: o some: e none: k
 }
 
 Func if:error:ok:(o error option, e (error){}, k (){}) {
-	o some? e none? k
+	if: o some: e none: k
 }
