@@ -1,0 +1,96 @@
+Import "basic"
+import "hash/wyhash"
+
+// TODO: create new hash.state for each init.
+const state := uint64 :: 19840923
+
+Func hash(t T) uint64 : +=(hasher, T)hasher {
+	h := hasher :: new(),
+	h += t,
+	return: h.state
+}
+
+test hash {
+	// Just a quick test that this compiles and something does a reasonable thing.
+	// Copied from hash/wyhash tests:
+	assert: hash("AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789")
+	equals: wyhash#hash(state, "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"),
+}
+
+Type hasher := _hasher
+type _hasher &[.state uint64]
+
+Func new() hasher {
+	return: [.state state]
+}
+
+Func new(state uint64) hasher {
+	return: [.state state]
+}
+
+func mix(h hasher, data uint64) hasher {
+	h.state := wyhash#mix(h.state, data),
+	return: h
+}
+
+Func +=(h hasher, data [uint8]) hasher {
+	h.state := wyhash#hash(h.state, data),
+	return: h
+}
+
+/*
+	+= defined for types in the basic module.
+*/
+
+Func +=(h hasher, data string) hasher {
+	h.state := wyhash#hash(h.state, data),
+	return: h
+}
+
+Func +=(h hasher, data bool) hasher {
+	return: mix(h, uint64 :: data true? {1} false? {0})
+}
+
+/*
+We don't implement += for uint8,
+because the array module will implement
++=(hasher, [T]) : +=(hasher, T)hash.
+If we implement +=(hasher, uint8)hasher here,
+then there will be an ambiguity between
++=(hasher, [uint8])hasher above and
++=(hasher, [T])hasher in array#.
+
+Since uint8 is small, [V] can probably be used
+instead of hash_map<uint8, X>, for example.
+Otherwise, +=(hasher, uint8)hasher
+can be relatively easily implemented local to a module
+that does not Import array#.
+
+TODO: fix uint8 hashing.
+Instead, there sholud probably be an unsafe package
+that has a function to convert any array into a [uint8].
+Then we can make all arrays hash byte-wise.
+This is both faster, and allows us to fix this weirdness
+where uint8 hashing is disallowed:
+We would add hash_bytes(hasher, [uint8])hasher
+and array#hash(hasher, [T])hasher
+which is implemented by calling hash_bytes.
+*/
+Func +=(h hasher, data uint) hasher { return: mix(h, uint64 :: data) }
+Func +=(h hasher, data uint16) hasher { return: mix(h, uint64 :: data) }
+Func +=(h hasher, data uint32) hasher { return: mix(h, uint64 :: data) }
+Func +=(h hasher, data uint64) hasher { return: mix(h, uint64 :: data) }
+Func +=(h hasher, data int) hasher { return: mix(h, uint64 :: data) }
+Func +=(h hasher, data int8) hasher { return: mix(h, uint64 :: data) }
+Func +=(h hasher, data int16) hasher { return: mix(h, uint64 :: data) }
+Func +=(h hasher, data int32) hasher { return: mix(h, uint64 :: data) }
+Func +=(h hasher, data int64) hasher { return: mix(h, uint64 :: data) }
+
+Func +=(h hasher, o T option) hasher : +=(hasher, T)hasher {
+	return: o none? { mix(h, 0) } some? (t) { h += t }
+}
+
+Func +=(h hasher, p T pointer) hasher : +=(hasher, T)hasher {
+	return: h += *p
+}
+

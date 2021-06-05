@@ -136,7 +136,7 @@ func consume64(data &T) uint64 :
 	return: u
 }
 
-func mix(a uint64, b uint64) uint64 {
+Func mix(a uint64, b uint64) uint64 {
 	c := mul64to128(a, b),
 	return: c.lo ^ c.hi
 }
