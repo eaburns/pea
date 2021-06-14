@@ -1,0 +1,140 @@
+Import "basic"
+Import "hash"
+
+Type (K, V) hash_map := (K, V) _hash_map
+type (K, V) _hash_map &[
+	.n int,
+	.buckets [(K, V) bucket],
+	.hash (K){uint64},
+	.eq (K, K){bool},
+]
+
+type (K, V) bucket := [(K, V) entry option]
+
+type (K, V) entry &[.k K, .v V]
+
+Func new() (K, V) hash_map : hash(K)uint64, =(K, K)bool{
+	return: [.n 0, .buckets [[]], .hash hash, .eq (=)]
+}
+
+Func .length(m (K, V) hash_map) int {
+	return: m.n
+}
+
+Func find(m (K, V) hash_map, k K) V option {
+	h := m.hash(k),
+	i := (int :: h) % m.buckets.length,
+	for: m.buckets[i] each_entry: (e) {
+		if: m.eq(e.k, k) then: {
+			return: some(e.v)
+		}
+	},
+	return: none()
+}
+
+Func bind(m (K, V) hash_map, k K, v V) V option {
+	h := m.hash(k),
+	i := (int :: h) % m.buckets.length,
+	for: m.buckets[i] each_entry: (e) {
+		if: m.eq(e.k, k) then: {
+			old := e.v,
+			e.v := v,
+			return: some(old)
+		}
+	},
+
+	if: m.n * 3 > m.buckets.length then: {
+		grow(m),
+		i := (int :: h) % m.buckets.length,
+	},
+
+	++m.n,
+	append(m.buckets[i], [.k k, .v v]),
+	return: none()
+}
+
+func grow(m (K, V) hash_map) {
+	len := 2 * m.buckets.length,
+	if: len < 4 then: {
+		len := 4
+	},
+	buckets2 := [(K, V) bucket] :: new(len , (K, V) bucket :: []),
+	for: m.buckets each: (b) {
+		for: b each_entry: (e) {
+			h := m.hash(e.k),
+			i := (int :: h) % len,
+			append(buckets2[i], e)
+		}
+	},
+	m.buckets := buckets2,
+}
+
+func append(b &(K, V) bucket, e (K, V) entry) {
+	for: 0 to: b.length - 1 do: (i) {
+		b[i] none? {
+			b[i] := some(e),
+			return()
+		}
+	},
+	len := 2*b.length,
+	if: len < 4 then: {
+		len := 4
+	},
+	b2 := (K, V) bucket :: new(len, (K, V) entry option :: none()),
+	for: 0 to: b.length-1 do: (j) {
+		b2[j] := b[j]
+	},
+	b2[b.length] := some(e),
+	b := b2
+}
+
+Func delete(m (K, V) hash_map, k K) V option {
+	h := m.hash(k),
+	i := (int :: h) % m.buckets.length,
+	b := m.buckets[i],
+	for: 0 to: b.length - 1 do: (j) {
+		b[j] some? (e) {
+			if: m.eq(e.k, k) then: {
+				--m.n,
+				b[j] := none(),
+				return: some(e.v)
+			}
+		}
+	},
+	return: none()
+}
+
+Func for:each:(m (K, V) hash_map, f ([.key K, .val V]){}) {
+	for: m.buckets each: (bucket){
+		for: bucket each_entry: (e) {
+			f([.key e.k, .val e.v])
+		}
+	}
+}
+
+func for:each_entry:(b (K, V) bucket, f ((K, V) entry){}) {
+	for: b each: (e) {
+		e some? f
+	}
+}
+
+test new {
+	m := (string, int) hash_map :: new(),
+	assert: m.length equals: 0,
+	assert_none: find(m, "hello"),
+}
+
+test bind_find {
+	m := (string, int) hash_map :: new(),
+	bind(m, "Hello", 5),
+	assert: find(m, "Hello") some: 5,
+	assert: m.length equals: 1,
+}
+
+test bind_delete {
+	m := (string, int) hash_map :: new(),
+	bind(m, "Hello", 5),
+	assert: delete(m, "Hello") some: 5,
+	assert_none: find(m, "Hello"),
+	assert: m.length equals: 0,
+}

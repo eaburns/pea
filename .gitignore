@@ -23,6 +23,7 @@ libpea/vendor/libunwind-11.0.0.src/test/cmake_install.cmake
 libpea/vendor/libunwind-11.0.0.src/test/lit.site.cfg
 modules/basic/basic.test
 modules/container/array/array.test
+modules/container/hash_map/hash_map.test
 modules/hash/hash.test
 modules/hash/wyhash/wyhash.test
 modules/os/os.test
