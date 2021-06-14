@@ -1,17 +1,15 @@
-Type T pointer := T _pointer
-
-type T _pointer [.val &T]
+Type T pointer &T
 
 Func &(t &T) T pointer {
-	return: [.val t]
+	return: (T pointer :: t)
 }
 
 Func *(t T pointer) &T {
-	return: t.val
+	return: (&T :: t)
 }
 
-Func +=(p printer, q T pointer) printer : +=(printer, T) printer {
-	return: p += q.val
+Func +=(p printer, t T pointer) printer : +=(printer, T) printer {
+	return: p += (T :: (&T :: t))
 }
 
 test print_pointer {
