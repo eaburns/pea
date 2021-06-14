@@ -36,6 +36,12 @@ func (f *FuncInst) groundParm(i int) Type {
 }
 
 func (f *FuncInst) unifyParm(i int, typ Type) note {
+	if f.T.Parms[i] == nil {
+		// TODO: we shouldn't call unifyParm on functions that failed to check.
+		// This indicates that the function failed to check,
+		// because one of its parameters has a unknown type.
+		return newNote("%s: bad parameter type", f)
+	}
 	parms := f.typeParmMap()
 	if isGroundType(parms, f.T.Parms[i]) {
 		return nil
