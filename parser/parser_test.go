@@ -473,6 +473,20 @@ func TestExpr(t *testing.T) {
 				},
 			},
 		},
+		{
+			`foo.bar(x, y, z)`,
+			&Call{
+				Fun: &Call{
+					Fun:  Ident{Name: ".bar"},
+					Args: []Expr{Ident{Name: "foo"}},
+				},
+				Args: []Expr{
+					Ident{Name: "x"},
+					Ident{Name: "y"},
+					Ident{Name: "z"},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		test := test
