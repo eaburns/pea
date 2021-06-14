@@ -28,6 +28,7 @@ type Mod struct {
 type Type interface {
 	String() string
 	buildString(*strings.Builder) *strings.Builder
+	buildStringRecur(map[Type]bool, *strings.Builder) *strings.Builder
 	isEmpty() bool
 	isSmall() bool
 	eq(Type) bool
@@ -112,6 +113,10 @@ func (t *StructType) eq(other Type) bool {
 	o, ok := other.(*StructType)
 	if !ok || len(t.Fields) != len(o.Fields) {
 		return false
+	}
+	if t == o {
+		// Pointers are equal; don't infinite recur.
+		return true
 	}
 	for i := range t.Fields {
 		if t.Fields[i].Name != o.Fields[i].Name ||

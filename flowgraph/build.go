@@ -40,7 +40,7 @@ func Build(mod *checker.Mod, opts ...Option) *Mod {
 
 type modBuilder struct {
 	*Mod
-	typeDef      map[*checker.TypeInst]*StructType
+	typeDef      map[*checker.TypeInst]Type
 	varDef       map[*checker.VarDef]*VarDef
 	funcDef      map[*checker.FuncInst]*funcBuilder
 	funcBuilders []*funcBuilder
@@ -157,7 +157,7 @@ func (mb *modBuilder) topoSortFuncs() {
 func newModBuilder(path string) *modBuilder {
 	return &modBuilder{
 		Mod:     &Mod{Path: path},
-		typeDef: make(map[*checker.TypeInst]*StructType),
+		typeDef: make(map[*checker.TypeInst]Type),
 		varDef:  make(map[*checker.VarDef]*VarDef),
 		funcDef: make(map[*checker.FuncInst]*funcBuilder),
 	}
@@ -175,11 +175,41 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			return t
 		}
 		// Add a binding, in case this becomes recursive.
-		t := &StructType{}
+		//
+		// Add an empty field so that t.isEmpty()==false;
+		// if the struct is recursive, it cannot be empty,
+		// because it must at least have a reference to itself.
+		// This makes it non-empty.
+		// Note that if it is not recursive, isEmpty won't be called
+		// during the recursive buildType here,
+		// so the empty field in that case is ignored.
+		t := &StructType{Fields: []*FieldDef{{Name: "!!" + typ.String() + "!!"}}}
 		mb.typeDef[typ.Inst] = t
-		inner := mb.buildType(typ.Inst.Type)
-		if st, ok := inner.(*StructType); ok {
-			*t = *st
+
+		// There are three important cases to handle:
+		// 1) The defined type is a struct. It may be recursive,
+		// 	and the recursive definition uses t.
+		// 	Copy the struct we built into t,
+		//	and set the struct name so the backend
+		// 	can build a recursive struct definition with it.
+		// 2) The defined type is an address. It may be recursive,
+		// 	but the recursive definition uses StructType t
+		// 	instead of an AddrType.
+		// 	Further, the LLVM backend cannot define
+		// 	recursive pointer types, only structs.
+		// 	We break the recursive in the type
+		// 	by replacing all references to the t StructType
+		// 	with *struct{}, a void pointer.
+		// 	The flowgraph and llvm backends
+		// 	both will convert this automatically
+		// 	to any other pointer type, and our def is a pointer
+		// 	so we've got it.
+		// 3) The defined type is any non-struct, non-address type.
+		// 	It cannot be recursive; it must be just a value.
+		// 	Just return that type.
+		switch inner := mb.buildType(typ.Inst.Type).(type) {
+		case *StructType:
+			*t = *inner
 			t.Mod = typ.Def.Mod
 			t.Name = typ.Name
 			for _, a := range typ.Args {
@@ -187,10 +217,15 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			}
 			mb.Types = append(mb.Types, t)
 			return t
+		case *AddrType:
+			var ret Type = inner
+			fixDefAddrType(make(map[Type]bool), &ret, t)
+			mb.typeDef[typ.Inst] = inner
+			return ret
+		default:
+			mb.typeDef[typ.Inst] = inner
+			return inner
 		}
-		// It wasn't actually a struct type; just a normal type.
-		delete(mb.typeDef, typ.Inst)
-		return inner
 
 	case *checker.RefType:
 		return &AddrType{Elem: mb.buildType(typ.Type)}
@@ -313,6 +348,61 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 	default:
 		panic(fmt.Sprintf("bad checker.Type type: %T", typ))
 	}
+}
+
+func fixDefAddrType(seen map[Type]bool, typ *Type, s *StructType) {
+	if st, ok := (*typ).(*StructType); ok && st == s {
+		*typ = &AddrType{Elem: &StructType{}}
+		return
+	}
+	if seen[*typ] {
+		return
+	}
+	seen[*typ] = true
+	typePointer := typ
+	switch typ := (*typ).(type) {
+	case nil:
+		return
+	case *IntType:
+	case *FloatType:
+	case *AddrType:
+		fixDefAddrType(seen, &typ.Elem, s)
+	case *ArrayType:
+		fixDefAddrType(seen, &typ.Elem, s)
+	case *FrameType:
+	case *StructType:
+		for i := range typ.Args {
+			fixDefAddrType(seen, &typ.Args[i], s)
+		}
+		for _, f := range typ.Fields {
+			fixDefAddrType(seen, &f.Type, s)
+		}
+	case *UnionType:
+		for _, c := range typ.Cases {
+			fixDefAddrType(seen, &c.Type, s)
+		}
+		// A case may have changed from &StructType{}
+		// to an &AddrType{}, so re-do pointer optimization.
+		if len(typ.Cases) == 2 {
+			if isAddr(typ.Cases[0].Type) && typ.Cases[1].Type == nil {
+				*typePointer = typ.Cases[0].Type
+			} else if typ.Cases[0].Type == nil && isAddr(typ.Cases[1].Type) {
+				*typePointer = typ.Cases[1].Type
+			}
+		}
+	case *FuncType:
+		for i := range typ.Parms {
+			fixDefAddrType(seen, &typ.Parms[i], s)
+		}
+		fixDefAddrType(seen, &typ.Ret, s)
+	default:
+		panic(fmt.Sprintf("bad Type type: %T", typ))
+	}
+}
+
+func isAddr(typ Type) bool {
+	_, ok := typ.(*AddrType)
+	return ok
 }
 
 func isPointer(typ *checker.UnionType) bool {
@@ -741,8 +831,19 @@ func (bb *blockBuilder) buildSelect(call *checker.Call) (*blockBuilder, Value) {
 	if fieldDef == nil {
 		panic("bad field")
 	}
-	a := bb.alloc(&AddrType{Elem: fieldDef.Type})
-	bb.store(a, bb.field(base, fieldDef))
+	t := bb.buildType(call.Type()).(*AddrType).Elem
+	a := bb.alloc(t)
+	f := bb.field(base, fieldDef)
+	if f.Type().String() != t.String() {
+		// The field type does not match the call.Type().
+		// This happens when there is a recursive pointer type.
+		// We erase it's type when using it as a field;
+		// the type becomes *struct{} instead of *T.
+		// Here we convert it back to *T so the LLVM types match.
+		bb.store(a, bb.op(NumConvert, t, f))
+	} else {
+		bb.store(a, f)
+	}
 	return bb, a
 }
 

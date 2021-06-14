@@ -1,0 +1,32 @@
+// 123
+func main() {
+	head := int list :: new(),
+	head := push(head, 3),
+	head := push(head, 2),
+	head := push(head, 1),
+	for: head each: (i) {
+		print_int(i)
+	}
+}
+
+type T list [
+	none?,
+	some? [.t T, .next &T list],
+]
+
+func for:each:(ts T list, f (T){}) {
+	ts some? (e) {
+		f(e.t),
+		for: e.next each: f
+	}
+}
+
+func new() T list {
+	return: [none?]
+}
+
+func push(ts T list, t T) T list {
+	return: [some? [.t t, .next ts]]
+}
+
+func print_int(_ int)

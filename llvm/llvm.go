@@ -454,8 +454,18 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 	case *flowgraph.Parm:
 		break
 	case *flowgraph.Field:
-		t := r.Base.Type()
-		g.line(r, " = getelementptr ", elemType(t), ", ", t, " ", r.Base, ", i32 0, i32 ", r.Def.Num)
+		base := r.Base
+		baseStruct := elemType(base.Type())
+		actualStruct := &r.BaseType
+		if baseStruct.String() != actualStruct.String() {
+			// The base-struct has a type-erased field.
+			// Convert to the actual struct before accessing.
+			tmp := g.tmp()
+			g.line(tmp, " = bitcast ", typeVal{base}, " to ", actualStruct, "*")
+			g.line(r, " = getelementptr ", actualStruct, ", ", actualStruct, "* ", tmp, ", i32 0, i32 ", r.Def.Num)
+		} else {
+			g.line(r, " = getelementptr ", baseStruct, ", ", typeVal{base}, ", i32 0, i32 ", r.Def.Num)
+		}
 	case *flowgraph.Case:
 		// TODO: Set Num on union cases to the field number.
 		// The idea was that they would all be offset 0, so set all to 0.
@@ -572,6 +582,8 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 		case flowgraph.NumConvert:
 			var op string
 			switch dstType := r.Type().(type) {
+			case *flowgraph.AddrType:
+				op = "bitcast"
 			case *flowgraph.IntType:
 				switch srcType := r.Args[0].Type().(type) {
 				case *flowgraph.IntType:
@@ -774,7 +786,7 @@ func (g *gen) writeValue(v flowgraph.Value) {
 	case *flowgraph.Null:
 		g.write("null")
 	default:
-		g.write("%x", v.Num())
+		g.write("%v", v.Num())
 	}
 }
 

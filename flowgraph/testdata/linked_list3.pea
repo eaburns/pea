@@ -1,0 +1,34 @@
+// 123
+func main() {
+	head := int elem option :: new(),
+	head := push(head, 3),
+	head := push(head, 2),
+	head := push(head, 1),
+	for: head each: (i) {
+		print_int(i)
+	}
+}
+
+type T elem &[
+	.t T,
+	.next T elem option,
+]
+
+func for:each:(ts T elem option, f (T){}) {
+	ts some? (e) {
+		f(e.t),
+		for: e.next each: f
+	}
+}
+
+func new() T elem option {
+	return: [none?]
+}
+
+func push(ts T elem option, t T) T elem option {
+	return: [some? [.t t, .next ts]]
+}
+
+type T option [none?, some? T]
+
+func print_int(_ int)

@@ -77,6 +77,10 @@ func (m *Mod) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (t *IntType) buildString(s *strings.Builder) *strings.Builder {
+	return t.buildStringRecur(make(map[Type]bool), s)
+}
+
+func (t *IntType) buildStringRecur(_ map[Type]bool, s *strings.Builder) *strings.Builder {
 	if t.Unsigned {
 		fmt.Fprintf(s, "uint%d", t.Size)
 	} else {
@@ -86,28 +90,48 @@ func (t *IntType) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (t *FloatType) buildString(s *strings.Builder) *strings.Builder {
+	return t.buildStringRecur(make(map[Type]bool), s)
+}
+
+func (t *FloatType) buildStringRecur(_ map[Type]bool, s *strings.Builder) *strings.Builder {
 	fmt.Fprintf(s, "float%d", t.Size)
 	return s
 }
 
 func (t *AddrType) buildString(s *strings.Builder) *strings.Builder {
+	return t.buildStringRecur(make(map[Type]bool), s)
+}
+
+func (t *AddrType) buildStringRecur(seen map[Type]bool, s *strings.Builder) *strings.Builder {
 	s.WriteRune('*')
-	t.Elem.buildString(s)
+	t.Elem.buildStringRecur(seen, s)
 	return s
 }
 
 func (t *ArrayType) buildString(s *strings.Builder) *strings.Builder {
+	return t.buildStringRecur(make(map[Type]bool), s)
+}
+
+func (t *ArrayType) buildStringRecur(seen map[Type]bool, s *strings.Builder) *strings.Builder {
 	s.WriteString("[]")
-	t.Elem.buildString(s)
+	t.Elem.buildStringRecur(seen, s)
 	return s
 }
 
 func (t *FrameType) buildString(s *strings.Builder) *strings.Builder {
+	return t.buildStringRecur(make(map[Type]bool), s)
+}
+
+func (t *FrameType) buildStringRecur(_ map[Type]bool, s *strings.Builder) *strings.Builder {
 	s.WriteString("<frame>")
 	return s
 }
 
 func (t *StructType) buildString(s *strings.Builder) *strings.Builder {
+	return t.buildStringRecur(make(map[Type]bool), s)
+}
+
+func (t *StructType) buildStringRecur(seen map[Type]bool, s *strings.Builder) *strings.Builder {
 	if t.Name != "" {
 		if t.Mod != "" {
 			s.WriteString(t.Mod)
@@ -115,12 +139,21 @@ func (t *StructType) buildString(s *strings.Builder) *strings.Builder {
 		}
 		s.WriteString(t.Name)
 		if len(t.Args) > 0 {
+			// The only recursive types built are named structs.
+			// The only way their strings can be recursive
+			// is through the argument list; break it here.
+			if seen[t] {
+				s.WriteString("<…>")
+				return s
+			}
+			seen[t] = true
+
 			s.WriteRune('<')
 			for i, a := range t.Args {
 				if i > 0 {
 					s.WriteString(", ")
 				}
-				a.buildString(s)
+				a.buildStringRecur(seen, s)
 			}
 			s.WriteRune('>')
 		}
@@ -133,13 +166,21 @@ func (t *StructType) buildString(s *strings.Builder) *strings.Builder {
 		}
 		s.WriteString(f.Name)
 		s.WriteRune(' ')
-		f.Type.buildString(s)
+		if f.Type == nil {
+			s.WriteString("<nil>")
+		} else {
+			f.Type.buildStringRecur(seen, s)
+		}
 	}
 	s.WriteRune('}')
 	return s
 }
 
 func (t *UnionType) buildString(s *strings.Builder) *strings.Builder {
+	return t.buildStringRecur(make(map[Type]bool), s)
+}
+
+func (t *UnionType) buildStringRecur(seen map[Type]bool, s *strings.Builder) *strings.Builder {
 	s.WriteString("union{")
 	for i, f := range t.Cases {
 		if i > 0 {
@@ -147,23 +188,27 @@ func (t *UnionType) buildString(s *strings.Builder) *strings.Builder {
 		}
 		s.WriteString(f.Name)
 		s.WriteRune(' ')
-		f.Type.buildString(s)
+		f.Type.buildStringRecur(seen, s)
 	}
 	s.WriteRune('}')
 	return s
 }
 
 func (t *FuncType) buildString(s *strings.Builder) *strings.Builder {
+	return t.buildStringRecur(make(map[Type]bool), s)
+}
+
+func (t *FuncType) buildStringRecur(seen map[Type]bool, s *strings.Builder) *strings.Builder {
 	s.WriteString("func(")
 	for i, p := range t.Parms {
 		if i > 0 {
 			s.WriteString(", ")
 		}
-		p.buildString(s)
+		p.buildStringRecur(seen, s)
 	}
 	s.WriteRune(')')
 	if !t.Ret.isEmpty() {
-		t.Ret.buildString(s)
+		t.Ret.buildStringRecur(seen, s)
 	}
 	return s
 }
