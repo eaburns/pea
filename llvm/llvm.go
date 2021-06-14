@@ -457,13 +457,23 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 		base := r.Base
 		baseStruct := elemType(base.Type())
 		actualStruct := &r.BaseType
-		if baseStruct.String() != actualStruct.String() {
-			// The base-struct has a type-erased field.
-			// Convert to the actual struct before accessing.
+		fieldType := actualStruct.Fields[r.Def.Num].Type
+		// There are three cases here due to type-erasure for recursive reference types.
+		switch {
+		case baseStruct.String() != actualStruct.String():
+			// 1) The base value has type-erased fields, but the Field's expected struct does not.
+			// We need to bitcast the base value to the expected base struct type.
 			tmp := g.tmp()
 			g.line(tmp, " = bitcast ", typeVal{base}, " to ", actualStruct, "*")
 			g.line(r, " = getelementptr ", actualStruct, ", ", actualStruct, "* ", tmp, ", i32 0, i32 ", r.Def.Num)
-		} else {
+		case elemType(r.Type()).String() != fieldType.String():
+			// 2) The field value is a type-erased pointer.
+			// We need to bitcast the field to the non-erased type.
+			tmp := g.tmp()
+			g.line(tmp, " = getelementptr ", baseStruct, ", ", typeVal{base}, ", i32 0, i32 ", r.Def.Num)
+			g.line(r, " = bitcast ", fieldType, "* ", tmp, " to ", r.Type())
+		default:
+			// 3) No type erasure involved, just get the field.
 			g.line(r, " = getelementptr ", baseStruct, ", ", typeVal{base}, ", i32 0, i32 ", r.Def.Num)
 		}
 	case *flowgraph.Case:
@@ -582,8 +592,6 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 		case flowgraph.NumConvert:
 			var op string
 			switch dstType := r.Type().(type) {
-			case *flowgraph.AddrType:
-				op = "bitcast"
 			case *flowgraph.IntType:
 				switch srcType := r.Args[0].Type().(type) {
 				case *flowgraph.IntType:

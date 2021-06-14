@@ -820,7 +820,10 @@ func (bb *blockBuilder) buildIndirectCall(call *checker.Call) (*blockBuilder, Va
 func (bb *blockBuilder) buildSelect(call *checker.Call) (*blockBuilder, Value) {
 	fun := call.Func.(*checker.Select)
 	bb, base := bb.expr(call.Args[0])
-	structType := base.Type().(*AddrType).Elem.(*StructType)
+	// We are careful to get the struct type from the call.Func, not base Value.
+	// The type of the base value may have recursive pointers type-erased.
+	// We need the _actual_ struct type, converted from the checker.Call.
+	structType := bb.buildType(fun.Struct).(*StructType)
 	var fieldDef *FieldDef
 	for i := range structType.Fields {
 		if structType.Fields[i].Name == fun.Field.Name[1:] {
@@ -831,19 +834,13 @@ func (bb *blockBuilder) buildSelect(call *checker.Call) (*blockBuilder, Value) {
 	if fieldDef == nil {
 		panic("bad field")
 	}
+	// We are careful to get the element type from call.Type,
+	// so that we ensure it isn't a type-erased pointer
+	// representing a recursive reference type.
 	t := bb.buildType(call.Type()).(*AddrType).Elem
 	a := bb.alloc(t)
 	f := bb.field(base, fieldDef)
-	if f.Type().String() != t.String() {
-		// The field type does not match the call.Type().
-		// This happens when there is a recursive pointer type.
-		// We erase it's type when using it as a field;
-		// the type becomes *struct{} instead of *T.
-		// Here we convert it back to *T so the LLVM types match.
-		bb.store(a, bb.op(NumConvert, t, f))
-	} else {
-		bb.store(a, f)
-	}
+	bb.store(a, f)
 	return bb, a
 }
 

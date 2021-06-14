@@ -535,9 +535,6 @@ func Bool(b bool) Number {
 
 func convert(obj Val, typ flowgraph.Type) Val {
 	switch typ := typ.(type) {
-	case *flowgraph.AddrType:
-		// No-op, "bitcast" between pointer types.
-		return obj
 	case *flowgraph.IntType:
 		switch {
 		case typ.Size == 8 && typ.Unsigned == false:
