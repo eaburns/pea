@@ -1308,8 +1308,7 @@ func canImplicitConvert(src, dst Type) bool {
 func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	var errs []Error
 	var fun *ExprFunc
-	// TODO: should checkExprCall just use checkExpr, without the convert?
-	expr, fs := checkAndConvertExpr(x, parserCall.Fun, want)
+	expr, fs := checkExpr(x, parserCall.Fun, nil)
 	if len(fs) > 0 {
 		errs = append(errs, fs...)
 	}
