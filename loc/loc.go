@@ -65,7 +65,16 @@ func (fs Files) Location(l Loc) Location {
 	p0, l0, c0 := fs.loc(l[0])
 	p1, l1, c1 := fs.loc(l[1])
 	if p0 != p1 {
-		panic("multi-file Loc")
+		if l1 != 1 && c1 != 1 {
+			panic("multi-file Loc")
+		}
+		// Exclusive end point is the beginning of the next file.
+		// Instead, point it to the end of the start location file.
+		p1, l1, c1 = fs.loc(l[1] - 1)
+		if p0 != p1 {
+			panic("multi-file Loc")
+		}
+		c1++
 	}
 	return Location{Path: p0, Line: [2]int{l0, l1}, Col: [2]int{c0, c1}}
 }
