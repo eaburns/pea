@@ -455,7 +455,7 @@ func eqType(a, b Type) bool {
 	switch a := a.(type) {
 	case *DefType:
 		if a.Def.Alias {
-			panic("impossible")
+			panic(fmt.Sprintf("impossible alias: %s", a))
 		}
 		b, ok := b.(*DefType)
 		if !ok {
@@ -542,8 +542,12 @@ func instType(typ Type) Type {
 		if typ.Def == nil {
 			return typ
 		}
-		if typ.Inst = findInst(typ.Def, typ.Args); typ.Inst == nil {
-			typ.Inst = newInst(typ.Def, typ.Args)
+		var args []Type
+		for _, a := range typ.Args {
+			args = append(args, resolveAlias(a))
+		}
+		if typ.Inst = findInst(typ.Def, args); typ.Inst == nil {
+			typ.Inst = newInst(typ.Def, args)
 		}
 	case *ArrayType:
 		typ.ElemType = instType(typ.ElemType)
