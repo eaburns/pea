@@ -1,0 +1,452 @@
+Import "basic"
+
+const letters := [string] :: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
+
+// Some random permutation of 0 to 25.
+const perm := [int] :: [19, 16, 11, 10, 17, 21, 2, 7, 12, 6, 24, 14, 23, 0, 5, 1, 3, 13, 25, 9, 8, 15, 4, 22, 20, 18]
+
+test insert_in_order {
+	i := 1,
+	m := (string, int) tree_map :: new(),
+	for: letters each: (letter) {
+		assert_none: bind(m, letter, i),
+		check_invariants(m),
+		++i,
+	},
+	assert: m elements: [
+  		[.key "a", .val 1],
+  		[.key "b", .val 2],
+  		[.key "c", .val 3],
+  		[.key "d", .val 4],
+  		[.key "e", .val 5],
+  		[.key "f", .val 6],
+  		[.key "g", .val 7],
+  		[.key "h", .val 8],
+  		[.key "i", .val 9],
+  		[.key "j", .val 10],
+  		[.key "k", .val 11],
+  		[.key "l", .val 12],
+  		[.key "m", .val 13],
+  		[.key "n", .val 14],
+  		[.key "o", .val 15],
+  		[.key "p", .val 16],
+  		[.key "q", .val 17],
+  		[.key "r", .val 18],
+  		[.key "s", .val 19],
+  		[.key "t", .val 20],
+  		[.key "u", .val 21],
+  		[.key "v", .val 22],
+  		[.key "w", .val 23],
+  		[.key "x", .val 24],
+  		[.key "y", .val 25],
+  		[.key "z", .val 26],
+	],
+}
+
+test insert_random_order {
+	m := (string, int) tree_map :: new(),
+	for: perm each: (i) {
+		assert_none: bind(m, letters[i], i+1),
+		check_invariants(m),
+	},
+	assert: m elements: [
+  		[.key "a", .val 1],
+  		[.key "b", .val 2],
+  		[.key "c", .val 3],
+  		[.key "d", .val 4],
+  		[.key "e", .val 5],
+  		[.key "f", .val 6],
+  		[.key "g", .val 7],
+  		[.key "h", .val 8],
+  		[.key "i", .val 9],
+  		[.key "j", .val 10],
+  		[.key "k", .val 11],
+  		[.key "l", .val 12],
+  		[.key "m", .val 13],
+  		[.key "n", .val 14],
+  		[.key "o", .val 15],
+  		[.key "p", .val 16],
+  		[.key "q", .val 17],
+  		[.key "r", .val 18],
+  		[.key "s", .val 19],
+  		[.key "t", .val 20],
+  		[.key "u", .val 21],
+  		[.key "v", .val 22],
+  		[.key "w", .val 23],
+  		[.key "x", .val 24],
+  		[.key "y", .val 25],
+  		[.key "z", .val 26],
+	],
+}
+
+test find {
+	m := (string, int) tree_map :: new(),
+	assert_none: find(m, "a"),
+
+	bind(m, "e", 5),
+	bind(m, "c", 3),
+	bind(m, "d", 4),
+	bind(m, "b", 2),
+	bind(m, "f", 6),
+	bind(m, "a", 1),
+
+	assert: find(m, "a") some: 1,
+	assert: find(m, "b") some: 2,
+	assert: find(m, "c") some: 3,
+	assert: find(m, "d") some: 4,
+	assert: find(m, "e") some: 5,
+	assert: find(m, "f") some: 6,
+	assert_none: find(m, ""),
+	assert_none: find(m, "1"),
+	assert_none: find(m, "zzz"),
+}
+
+test delete_not_found {
+	m := (string, int) tree_map :: new(),
+	assert_none: delete(m, "zzz"),
+	check_invariants(m),
+
+	bind(m, "a", 1),
+	assert_none: delete(m, "zzz"),
+	assert: m elements: [[.key "a", .val 1]],
+	check_invariants(m),
+}
+
+test delete_only_value {
+	m := (string, int) tree_map :: new(),
+	bind(m, "a", 1),
+	assert: m elements: [[.key "a", .val 1]],
+	assert: delete(m, "a") some: 1,
+	assert: m elements: [[.key string, .val int]] :: [],
+	check_invariants(m),
+}
+
+test delete_one {
+	i := 1,
+	for: letters each: (letter) {
+		j := 1,
+		m := (string, int) tree_map :: new(),
+		for: letters each: (letter) {
+			bind(m, letter, j),
+			++j,
+		},
+		print_tree(m),
+		print(print_string("deleting ", letter, "\n")),
+		assert: delete(m, letter) some: i,
+		++i,
+		check_invariants(m),
+	},
+}
+
+test delete_all {
+	i := 1,
+	m := (string, int) tree_map :: new(),
+	for: letters each: (letter) {
+		bind(m, letter, i),
+		++i,
+	},
+	print_tree(m),
+	i := 1,
+	for: letters each: (letter) {
+		print(print_string("deleting ", letter, "\n")),
+		assert: delete(m, letter) some: i,
+		++i,
+		check_invariants(m),
+	},
+	assert: m elements: [[.key string, .val int]] :: [],
+}
+
+test for_each {
+	m := (string, int) tree_map :: new(),
+	bind(m, "e", 5),
+	bind(m, "c", 3),
+	bind(m, "d", 4),
+	bind(m, "b", 2),
+	bind(m, "f", 6),
+	bind(m, "a", 1),
+	assert: m elements: [
+		[.key "a", .val 1],
+		[.key "b", .val 2],
+		[.key "c", .val 3],
+		[.key "d", .val 4],
+		[.key "e", .val 5],
+		[.key "f", .val 6],
+	],
+}
+
+func +=(p printer, a [.key string, .val int])printer {
+	return: p += "[.key " += a.key += ", .val " += a.val += "]"
+}
+
+func =(a [.key string, .val int], b [.key string, .val int])bool {
+	return: a.key = b.key && a.val = b.val
+}
+
+test rotate_left {
+	x := [.k 0, .v 0],
+	empty := (int, int) node :: [.n 0, .keys [], .kids []],
+	n := (int, int) node :: [
+		.n 1,
+		.keys [[.k 5, .v 5], x, x],
+		.kids [
+			[
+				.n 1,
+				.keys [[.k 1, .v 1], x, x],
+				.kids [],
+			],
+			[
+				.n 3,
+				.keys [[.k 6, .v 6], [.k 7, .v 7], [.k 8, .v 8]],
+				.kids [],
+			],
+			empty,
+			empty,
+		],
+	],
+	rotate_left: n at: 0,
+	m := (int, int) node :: [
+		.n 1,
+		.keys [[.k 6, .v 6], x, x],
+		.kids [
+			[
+				.n 2,
+				.keys [[.k 1, .v 1], [.k 5, .v 5], x],
+				.kids [],
+			],
+			[
+				.n 2,
+				.keys [[.k 7, .v 7], [.k 8, .v 8], x],
+				.kids [],
+			],
+			empty,
+			empty,
+		],
+	],
+	if: m != n then: {
+		print("got\n"),
+		print_node(n, 0),
+		print("want\n"),
+		print_node(m, 0),
+		panic("fail")
+	}
+}
+
+test rotate_right {
+	x := [.k 0, .v 0],
+	empty := (int, int) node :: [.n 0, .keys [], .kids []],
+	n := (int, int) node :: [
+		.n 1,
+		.keys [[.k 5, .v 5], x, x],
+		.kids [
+			[
+				.n 3,
+				.keys [[.k 1, .v 1], [.k 2, .v 2], [.k 3, .v 3]],
+				.kids [],
+			],
+			[
+				.n 1,
+				.keys [[.k 6, .v 6], x, x],
+				.kids [],
+			],
+			empty,
+			empty,
+		],
+	],
+	rotate_right: n at: 0,
+	m := (int, int) node :: [
+		.n 1,
+		.keys [[.k 3, .v 3], x, x],
+		.kids [
+			[
+				.n 2,
+				.keys [[.k 1, .v 1], [.k 2, .v 2], x],
+				.kids [],
+			],
+			[
+				.n 2,
+				.keys [[.k 5, .v 5], [.k 6, .v 6], x],
+				.kids [],
+			],
+			empty,
+			empty,
+		],
+	],
+	if: m != n then: {
+		print("got\n"),
+		print_node(n, 0),
+		print("want\n"),
+		print_node(m, 0),
+		panic("fail")
+	}
+}
+
+test merge {
+	x := [.k 0, .v 0],
+	empty := (int, int) node :: [.n 0, .keys [], .kids []],
+	n := (int, int) node :: [
+		.n 1,
+		.keys [[.k 5, .v 5], x, x],
+		.kids [
+			[
+				.n 1,
+				.keys [[.k 1, .v 1], x, x],
+				.kids [],
+			],
+			[
+				.n 1,
+				.keys [[.k 6, .v 6], x, x],
+				.kids [],
+			],
+			empty,
+			empty,
+		],
+	],
+	merge: n at: 0,
+	m := (int, int) node :: [
+		.n 0,
+		.keys [x, x, x],
+		.kids [
+			[
+				.n 3,
+				.keys [[.k 1, .v 1], [.k 5, .v 5], [.k 6, .v 6]],
+				.kids [],
+			],
+			empty,
+			empty,
+			empty,
+		],
+	],
+	if: m != n then: {
+		print("got\n"),
+		print_node(n, 0),
+		print("want\n"),
+		print_node(m, 0),
+		panic("fail")
+	}
+}
+
+func check_invariants(m (K, V) tree_map) :
+	+=(printer, K)printer,
+	+=(printer, V)printer
+{
+	check_invariants(m, m.root, true, K option :: none(), K option :: none()),
+	c := count(m.root),
+	if: c != m.n then: {
+		panic(print_string("count mismatch: ", c, " != ", m.n))
+	}
+}
+
+func check_invariants(m (K, V) tree_map, n (K, V) node, root bool, min K option, max K option) int :
+	+=(printer, K)printer,
+	+=(printer, V)printer
+{
+	if: !root && n.n < m.min_keys then: {
+		print_tree(m),
+		panic(print_string("node has too few keys: ", n.n, " < ", m.min_keys)),
+	},
+	if: min some: (min) {
+		for: n.keys[0, n.n] each: (kv) {
+			if: !m.pred(min, kv.k) then: {
+				print_tree(m),
+				panic(print_string(kv.k, " <= ", min)),
+			}
+		}
+	},
+	if: max some: (max) {
+		for: n.keys[0, n.n] each: (kv) {
+			if: !m.pred(kv.k, max) then: {
+				print_tree(m),
+				panic(print_string(kv.k, " >= ", max)),
+			}
+		}
+	},
+	prev := n.keys[0].k,
+	for: n.keys[1, n.n] each: (kv) {
+		if: !m.pred(prev, kv.k) then: {
+			print_tree(m),
+			panic(print_string(prev, " >= ", kv.k)),
+		},
+		prev := kv.k,
+	},
+	depth := 0,
+	if: n.kids.length > 0 then: {
+		for: 0 to: n.n do: (i) {
+			min := i > 0 true? {some(n.keys[i-1].k)} false? {none()},
+			max := i < n.n true? {some(n.keys[i].k)} false? {none()},
+			d := check_invariants(m, n.kids[i], false, min, max),
+			if: i = 0 then: {
+				depth := d,
+			} else: {
+				if: d != depth then: {
+					print_tree(m),
+					panic("unbalanced"),
+				}
+			}
+		}
+	},
+	return: depth + 1,
+}
+
+func count(n (K, V) node) int {
+	num := n.n,
+	if: n.n > 0 && n.kids.length > 0 then: {
+		for: n.kids[0, n.n+1] each: (k) {
+			num := num + count(k),
+		},
+	},
+	return: num,
+}
+
+func print_tree(m (K, V) tree_map) :
+	+=(printer, K)printer,
+	+=(printer, V)printer,
+{
+	print(print_string("size=", m.n, "\n")),
+	print_node(m.root, 0),
+}
+
+func print_node(n (K, V) node, depth int) :
+	+=(printer, K)printer,
+	+=(printer, V)printer,
+{
+	indent := {
+		for: 0 to: depth-1 do: (_) {
+			print("      "),
+		}
+	},
+	if: n.kids.length = 0 then: {
+		for: 0 to: n.n - 1 do: (i) {
+			indent(),
+			print(print_string("[", n.keys[i].k, " = ", n.keys[i].v, "]\n")),
+		},
+	} else: {
+		for: 0 to: n.n - 1 do: (i) {
+			print_node(n.kids[i], depth+1),
+			indent(),
+			print(print_string("[", n.keys[i].k, " = ", n.keys[i].v, "]\n")),
+		},
+		print_node(n.kids[n.n], depth+1),
+		if: n.n = 0 then: {
+			indent(), print("[]\n"),
+		},
+	},
+	print_string("\n")
+}
+
+func =(a (K, V) node, b (K, V) node)bool : =(K, K)bool, =(V, V)bool {
+	return: a.n = b.n &&
+		a.keys[0, a.n] = b.keys[0, b.n] &&
+		(a.kids.length = 0 || { a.kids[0, a.n+1] = b.kids[0, b.n+1] })
+}
+
+func !=(a (K, V) node, b (K, V) node)bool : =(K, K)bool, =(V, V)bool {
+	return: !(a = b)
+}
+
+func =(a [.k K, .v V], b [.k K, .v V]) bool : =(K, K)bool, =(V, V)bool {
+	return: a.k = b.k && a.v = b.v
+}
+
+func +=(p printer, a [.k K, .v V]) printer : +=(printer, K)printer, +=(printer, V)printer {
+	return: p += "[.k " += a.k += ", .v " += a.v += "]"
+}
