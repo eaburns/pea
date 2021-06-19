@@ -1,0 +1,203 @@
+Import "basic"
+
+Type T cursor := T _cursor
+type T _cursor [
+	.list T linked_list,
+	.node T node option,
+]
+
+Func .value(c T cursor) (&T) option {
+	return: c.node some? (n T node) {
+		some(&T :: n.value)
+	} none? {
+		none()
+	}
+}
+
+Func .front(l T linked_list) T cursor {
+	return: T cursor :: [.list l, .node l.head]
+}
+
+test front {
+	l := string linked_list :: new(),
+	assert_none: l.front.value,
+	push_back(l, "Hello"),
+	assert: l.front.value some: "Hello",
+	push_back(l, "World"),
+	assert: l.front.value some: "Hello",
+}
+
+Func .back(l T linked_list) T cursor {
+	return: l.head some? (h T node) {
+		t := h.prev some? (t T node) {t} none? {panic("impossible")},
+		T cursor :: [.list l, .node some(t)]
+	} none? {
+		T cursor :: [.list l, .node none()]
+	},
+}
+
+test back {
+	l := string linked_list :: new(),
+	assert_none: l.back.value,
+	push_back(l, "Hello"),
+	assert: l.back.value some: "Hello",
+	push_back(l, "World"),
+	assert: l.back.value some: "World",
+}
+
+Func advance:(c &T cursor) {
+	if: c.node some: (n) {
+		if: same_node(n.next, c.list.head) then: {
+			c.node := none()
+		} else: {
+			c.node := n.next
+		}
+	} none: {
+		c := c.list.front
+	}
+}
+
+test advance {
+	l := string linked_list :: new(),
+
+	cur := l.front,
+	assert_none: cur.value,
+	advance: cur,
+	assert_none: cur.value,
+	advance: cur,
+	assert_none: cur.value,
+
+	push_back(l, "Hello"),
+
+	cur := l.front,
+	assert: cur.value some: "Hello",
+	advance: cur,
+	assert_none: cur.value,
+	advance: cur,
+	assert: cur.value some: "Hello",
+
+
+	push_back(l, "World"),
+
+	cur := l.front,
+	assert: cur.value some: "Hello",
+	advance: cur,
+	assert: cur.value some: "World",
+	advance: cur,
+	assert_none: cur.value,
+	advance: cur,
+	assert: cur.value some: "Hello",
+	advance: cur,
+	assert: cur.value some: "World",
+	advance: cur,
+	assert_none: cur.value,
+
+	cur := l.back,
+	assert: cur.value some: "World",
+	advance: cur,
+	assert_none: cur.value,
+	advance: cur,
+	assert: cur.value some: "Hello",
+	advance: cur,
+	assert: cur.value some: "World",
+	advance: cur,
+	assert_none: cur.value,
+	advance: cur,
+	assert: cur.value some: "Hello",
+}
+
+Func reverse:(c &T cursor) {
+	if: same_node(c.node, c.list.head) then: {
+		c.node := none(),
+		return()
+	},
+	if: c.node some: (n) {
+		c.node := n.prev
+	} none: {
+		c := c.list.back
+	}
+}
+
+test reverse {
+	l := string linked_list :: new(),
+
+	cur := l.back,
+	assert_none: cur.value,
+	reverse: cur,
+	assert_none: cur.value,
+	reverse: cur,
+	assert_none: cur.value,
+
+	push_back(l, "Hello"),
+
+	cur := l.back,
+	assert: cur.value some: "Hello",
+	reverse: cur,
+	assert_none: cur.value,
+	reverse: cur,
+	assert: cur.value some: "Hello",
+
+	push_back(l, "World"),
+
+	cur := l.front,
+	assert: cur.value some: "Hello",
+	reverse: cur,
+	assert_none: cur.value,
+	reverse: cur,
+	assert: cur.value some: "World",
+	reverse: cur,
+	assert: cur.value some: "Hello",
+	reverse: cur,
+	assert_none: cur.value,
+	reverse: cur,
+	assert: cur.value some: "World",
+
+	cur := l.back,
+	assert: cur.value some: "World",
+	reverse: cur,
+	assert: cur.value some: "Hello",
+	reverse: cur,
+	assert_none: cur.value,
+	reverse: cur,
+	assert: cur.value some: "World",
+	reverse: cur,
+	assert: cur.value some: "Hello",
+	reverse: cur,
+	assert_none: cur.value,
+}
+
+test advance_and_reverse {
+	l := string linked_list :: new(),
+
+	cur := l.front,
+	assert_none: cur.value,
+	advance: cur,
+	assert_none: cur.value,
+	reverse: cur,
+	assert_none: cur.value,
+
+	push_back(l, "Hello"),
+
+	cur := l.front,
+	assert: cur.value some: "Hello",
+	advance: cur,
+	assert_none: cur.value,
+	reverse: cur,
+	assert: cur.value some: "Hello",
+
+	push_back(l, "World"),
+
+	cur := l.front,
+	assert: cur.value some: "Hello",
+	advance: cur,
+	assert: cur.value some: "World",
+	reverse: cur,
+	assert: cur.value some: "Hello",
+
+	cur := l.back,
+	assert: cur.value some: "World",
+	reverse: cur,
+	assert: cur.value some: "Hello",
+	advance: cur,
+	assert: cur.value some: "World",
+}

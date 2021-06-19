@@ -1,0 +1,201 @@
+Import "basic"
+
+Type T linked_list := T _linked_list
+type T _linked_list &[
+	.len int,
+	.head T node option,
+]
+
+type T node &[
+	.value T,
+	.prev T node option,
+	.next T node option,
+]
+
+func same_node(x T node option, y T node option) bool {
+	x_addr := x some? (x T node) { uintref :: x } none? { 0 },
+	y_addr := y some? (y T node) { uintref :: y } none? { 0 },
+	return: x_addr = y_addr
+}
+
+Func new() T linked_list {
+	return: [.len 0, .head none()],
+}
+
+test new {
+	string_list := string linked_list :: new(),
+	assert: string_list.length equals: 0,
+}
+
+Func .length(l T linked_list) int {
+	return: l.len
+}
+
+// Push adds and returns a new node.
+// If the list was empty, it is the new head.
+// Otherwise it is pushed before head, to the back.
+func push(l T linked_list, t T) T node {
+	n := T node :: [.value t, .prev none(), .next none()],
+	if: l.head some: (h) {
+		n.next := some(h),
+		n.prev := h.prev,
+		// If the node is in the list, it's prev and next are always non-none.
+		h.prev some?(p T node) {p.next := some(n)} none? {panic("impossible")},
+		h.prev := some(n),
+	} none: {
+		l.head := some(n),
+		n.prev := some(n),
+		n.next := some(n),
+	},
+	++l.len,
+	return: n
+}
+
+Func push_front(l T linked_list, t T) {
+	l.head := some(push(l, t))
+}
+
+test push_front {
+	l := string linked_list :: new(),
+	assert: l elements: [string] :: [],
+	assert: l.length equals: 0,
+
+	push_front(l, "c"),
+	assert: l elements: ["c"],
+	assert: l.length equals: 1,
+
+	push_front(l, "b"),
+	assert: l elements: ["b", "c"],
+	assert: l.length equals: 2,
+
+	push_front(l, "a"),
+	assert: l elements: ["a", "b", "c"],
+	assert: l.length equals: 3,
+}
+
+Func push_back(l T linked_list, t T) {
+	push(l, t)
+}
+
+test push_back {
+	l := string linked_list :: new(),
+	assert: l elements: [string] :: [],
+	assert: l.length equals: 0,
+
+	push_back(l, "a"),
+	assert: l elements: ["a"],
+	assert: l.length equals: 1,
+
+	push_back(l, "b"),
+	assert: l elements: ["a", "b"],
+	assert: l.length equals: 2,
+
+	push_back(l, "c"),
+	assert: l elements: ["a", "b", "c"],
+	assert: l.length equals: 3,
+}
+
+func remove(l T linked_list, x T node) {
+	if: same_node(some(x), l.head) then: {
+		l.head := none(),
+	} else: {
+		x.next some? (n T node){n.prev := x.prev} none? {panic("impossible")},
+		x.prev some? (p T node){p.next := x.next} none? {panic("impossible")},
+	},
+	--l.len,
+	x.prev := none(),
+	x.next := none(),
+}
+
+Func pop_front(l T linked_list) T option {
+	h :=  l.head some? (h T node) {
+		h
+	} none? {
+		return: none()
+	},
+	l.head := h.next,
+	remove(l, h),
+	return: some(h.value)
+}
+
+test pop_front {
+	l := string linked_list :: new(),
+	push_back(l, "a"),
+	push_back(l, "b"),
+	push_back(l, "c"),
+	push_back(l, "d"),
+	assert: l.length equals: 4,
+	assert: l elements: ["a", "b", "c", "d"],
+
+	assert: pop_front(l) some: "a",
+	assert: l.length equals: 3,
+	assert: l elements: ["b", "c", "d"],
+
+	assert: pop_front(l) some: "b",
+	assert: l.length equals: 2,
+	assert: l elements: ["c", "d"],
+
+	assert: pop_front(l) some: "c",
+	assert: l.length equals: 1,
+	assert: l elements: [string] :: ["d"],
+
+	assert: pop_front(l) some: "d",
+	assert: l.length equals: 0,
+	assert: l elements: [string] :: [],
+
+	assert_none: pop_front(l),
+	assert: l.length equals: 0,
+	assert: l elements: [string] :: [],
+}
+
+Func pop_back(l T linked_list) T option {
+	h :=  l.head some? (h T node) {
+		h
+	} none? {
+		return: none()
+	},
+	t := h.prev some? (t T node){t} none? {panic("impossible")},
+	remove(l, t),
+	return: some(t.value)
+}
+
+test pop_back {
+	l := string linked_list :: new(),
+	push_back(l, "a"),
+	push_back(l, "b"),
+	push_back(l, "c"),
+	push_back(l, "d"),
+	assert: l elements: ["a", "b", "c", "d"],
+	assert: l.length equals: 4,
+
+	assert: pop_back(l) some: "d",
+	assert: l elements: ["a", "b", "c"],
+	assert: l.length equals: 3,
+
+	assert: pop_back(l) some: "c",
+	assert: l elements: ["a", "b"],
+	assert: l.length equals: 2,
+
+	assert: pop_back(l) some: "b",
+	assert: l elements: ["a"],
+	assert: l.length equals: 1,
+
+	assert: pop_back(l) some: "a",
+	assert: l elements: [string] :: [],
+	assert: l.length equals: 0,
+
+	assert_none: pop_back(l),
+	assert: l elements: [string] :: [],
+	assert: l.length equals: 0,
+}
+
+Func for:each:(l T linked_list, f (T){}) {
+	cur := l.head,
+	while: {cur} some: (n){
+		f(n.value),
+		if: same_node(n.next, l.head) then: {
+			return()
+		},
+		cur := n.next
+	}
+}
