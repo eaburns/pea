@@ -29,6 +29,9 @@ func (f *FuncDecl) eq(other Func) bool {
 func (f *FuncInst) arity() int { return len(f.T.Parms) }
 
 func (f *FuncInst) groundParm(i int) Type {
+	if f.T.Parms[i] == nil {
+		panic(fmt.Sprintf("impossible: %s\n", f.Name()))
+	}
 	if !isGroundType(f.typeParmMap(), f.T.Parms[i]) {
 		return nil
 	}
@@ -482,6 +485,9 @@ func (s *Select) unifyParm(i int, typ Type) note {
 	}
 	if f == nil {
 		return newNote("%s: %s has no field %s", s, typ, s.Field.Name).setLoc(typ)
+	}
+	if f.Type == nil {
+		panic(fmt.Sprintf("impossible nil field type: %s\n", f.Name))
 	}
 	s.Field = f
 	s.Ret = &RefType{Type: f.Type, L: f.Type.Loc()}

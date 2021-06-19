@@ -1496,13 +1496,13 @@ func wrapCallInBlock(fun Func, l loc.Loc) Expr {
 	for i := 0; i < fun.arity(); i++ {
 		p := fun.groundParm(i)
 		if p == nil {
-			panic("impossible")
+			panic(fmt.Sprintf("impossible: %s", fun))
 		}
 		parms = append(parms, p)
 	}
 	ret := fun.groundRet()
 	if ret == nil {
-		panic("impossible")
+		panic(fmt.Sprintf("impossible: %s\n", fun))
 	}
 	typ := &FuncType{Parms: parms, Ret: ret, L: l}
 	blk := &BlockLit{Ret: typ.Ret, T: refType(typ), L: l}
