@@ -1,0 +1,149 @@
+Import "basic"
+
+Type T vector := T _vector
+type T _vector := &[.n int, .data [T]]
+
+Func new() T vector {
+	return: [.n 0, .data []]
+}
+
+test new {
+	v := int vector :: new(),
+	assert: v.length equals: 0,
+}
+
+Func new(a [T]) T vector {
+	return: [.n a.length, .data a]
+}
+
+test new_array {
+	v := int vector :: new([0, 1, 2, 3]),
+	assert: v.length equals: 4,
+	assert: v elements: [0, 1, 2, 3],
+}
+
+test new_array_shares_array {
+	a := [0, 1, 2, 3],
+	v := int vector :: new(a),
+	v[0] := 10,
+	v[1] := 9,
+	v[2] := 8,
+	v[3] := 7,
+	assert: a equals: [10, 9, 8, 7],
+}
+
+Func .length(v T vector) int {
+	return: v.n
+}
+
+Func [](v T vector, i int) &T {
+	if: i < 0 then: {
+		panic(print_string("index out of bounds: ", i, " < 0"))
+	},
+	if: i >= v.n then: {
+		panic(print_string("index out of bounds: ", i, " >= ", v.n))
+	},
+	return: v.data[i]
+}
+
+test index {
+	v := string vector :: new(["Hello", "World", "!"]),
+	assert: v[0] equals: "Hello",
+	assert: v[1] equals: "World",
+	assert: v[2] equals: "!",
+}
+
+Func [](v T vector, s int, e int) T vector {
+	if: s < 0 then: {
+		panic(print_string("start index out of bounds: ", s, " < 0"))
+	},
+	if: e > v.n then: {
+		panic(print_string("end index out of bounds: ", e, " >= ", v.n))
+	},
+	if: s > e then: {
+		panic(print_string("start index is greater than end: ", s, " > ", e))
+	},
+	return: [.n e-s, .data v.data[s, e]]
+}
+
+test slice {
+	v := string vector :: new(["Hello", ",", " ", "World", "!"]),
+	assert: v[0, 0] elements: [string] :: [],
+	assert: v[2, 2] elements: [string] :: [],
+	assert: v[4, 4] elements: [string] :: [],
+	assert: v[0, 1] elements: ["Hello"],
+	assert: v[2, 3] elements: [" "],
+	assert: v[4, 5] elements: ["!"],
+	assert: v[0, 4] elements: ["Hello", ",", " ", "World"],
+	assert: v[1, 5] elements: [",", " ", "World", "!"],
+	assert: v[1, 4] elements: [",", " ", "World"],
+	assert: v[0, 5] elements: ["Hello", ",", " ", "World", "!"],
+}
+
+test slice_shares_orignial_array {
+	v := string vector :: new(["Hello", ",", " ", "World", "!"]),
+	s := v[1, 3],
+	s[0] := "---",
+	assert: v elements: ["Hello", "---", " ", "World", "!"],
+}
+
+Func .back(v T vector) &T {
+	return: v[v.n-1]
+}
+
+Func push_back(v T vector, t T) {
+	if: v.n >= v.data.length then: {
+		data := [T] :: new((v.data.length+1) * 2, t),
+		for: 0 to: v.data.length - 1 do: (i) {
+			data[i] := v.data[i]
+		},
+		v.data := data
+	},
+	v.data[v.n] := t,
+	++v.n
+}
+
+test push_back {
+	v := int vector :: new(),
+	assert: v.length equals: 0,
+
+	push_back(v, 0),
+	assert: v.length equals: 1,
+	assert: v elements: [0],
+
+	push_back(v, 1),
+	assert: v.length equals: 2,
+	assert: v elements: [0, 1],
+
+	push_back(v, 2),
+	assert: v.length equals: 3,
+	assert: v elements: [0, 1, 2],
+}
+
+Func pop_back(v T vector) T {
+	if: v.n = 0 then: {
+		panic("pop_back from an empty vector")
+	},
+	--v.n,
+	return: v.data[v.n]
+}
+
+test pop_back {
+	v := int vector :: new([0, 1, 2]),
+
+	assert: pop_back(v) equals: 2,
+	assert: v.length equals: 2,
+	assert: v elements: [0, 1],
+
+	assert: pop_back(v) equals: 1,
+	assert: v.length equals: 1,
+	assert: v elements: [0],
+
+	assert: pop_back(v) equals: 0,
+	assert: v.length equals: 0,
+	assert: v elements: [int] :: [],
+}
+
+Func for:each:(v T vector, f (T){}) {
+	for: v.data[0, v.n] each: f
+}
