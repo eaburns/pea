@@ -679,8 +679,8 @@ func (b *Builtin) groundRet() Type { return b.Ret }
 
 func (b *Builtin) unifyRet(typ Type) note { return nil }
 
-var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64}
-var numTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64}
+var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64}
+var numTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64}
 
 func unifyBuiltin(allowedTypes []BasicTypeKind, b *Builtin, typ Type) note {
 	ground := true

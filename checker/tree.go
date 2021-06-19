@@ -191,6 +191,7 @@ const (
 	Int16
 	Int32
 	Int64
+	UintRef
 	Uint
 	Uint8
 	Uint16

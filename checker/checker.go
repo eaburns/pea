@@ -1564,6 +1564,11 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 			cvt.Kind = NumConvert
 			return cvt, errs
 		}
+	case UintRef:
+		if !isRefType(typ) && isRefType(definedBaseType(expr.Type())) {
+			cvt.Kind = NumConvert
+			return cvt, errs
+		}
 	case String:
 		if !isRefType(typ) && isByteArray(expr.Type()) {
 			cvt.Kind = StrConvert
@@ -1957,6 +1962,9 @@ func newIntLit(parserLit *parser.IntLit, want Type) (*IntLit, []Error) {
 	case Int64:
 		bits = 64
 		signed = true
+	case UintRef:
+		bits = 64 // TODO: set by a flag
+		signed = false
 	case Uint:
 		bits = 64 // TODO: set by a flag
 		signed = false

@@ -242,6 +242,8 @@ func (k BasicTypeKind) String() string {
 		return "int32"
 	case Int64:
 		return "int64"
+	case UintRef:
+		return "uintref"
 	case Uint:
 		return "uint"
 	case Uint8:

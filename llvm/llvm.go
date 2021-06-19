@@ -594,6 +594,8 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			switch dstType := r.Type().(type) {
 			case *flowgraph.IntType:
 				switch srcType := r.Args[0].Type().(type) {
+				case *flowgraph.AddrType:
+					op = "ptrtoint"
 				case *flowgraph.IntType:
 					switch {
 					case dstType.Size == srcType.Size:

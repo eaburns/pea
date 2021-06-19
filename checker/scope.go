@@ -76,6 +76,8 @@ func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 		return &BasicType{Kind: Int32, L: l}
 	case "int64":
 		return &BasicType{Kind: Int64, L: l}
+	case "uintref":
+		return &BasicType{Kind: UintRef, L: l}
 	case "uint":
 		return &BasicType{Kind: Uint, L: l}
 	case "uint8":

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unsafe"
 
 	"github.com/eaburns/pea/flowgraph"
 )
@@ -585,7 +586,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 			case SignedInt:
 				return Int64(obj.Int64())
 			case UnsignedInt:
-				return Int32(obj.Uint64())
+				return Int64(obj.Uint64())
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
@@ -599,6 +600,8 @@ func convert(obj Val, typ flowgraph.Type) Val {
 				return Uint8(obj.Int64())
 			case UnsignedInt:
 				return Uint8(obj.Uint64())
+			case Pointer:
+				return Uint8(uintptr(unsafe.Pointer(obj.Elem)))
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
@@ -612,6 +615,8 @@ func convert(obj Val, typ flowgraph.Type) Val {
 				return Uint16(obj.Int64())
 			case UnsignedInt:
 				return Uint16(obj.Uint64())
+			case Pointer:
+				return Uint16(uintptr(unsafe.Pointer(obj.Elem)))
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
@@ -625,6 +630,8 @@ func convert(obj Val, typ flowgraph.Type) Val {
 				return Uint32(obj.Int64())
 			case UnsignedInt:
 				return Uint32(obj.Uint64())
+			case Pointer:
+				return Uint32(uintptr(unsafe.Pointer(obj.Elem)))
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
@@ -638,6 +645,8 @@ func convert(obj Val, typ flowgraph.Type) Val {
 				return Uint64(obj.Int64())
 			case UnsignedInt:
 				return Uint64(obj.Uint64())
+			case Pointer:
+				return Uint64(uintptr(unsafe.Pointer(obj.Elem)))
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}

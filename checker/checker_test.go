@@ -955,6 +955,60 @@ func TestConversions(t *testing.T) {
 		{src: "func f(x int64) { float32 :: x }"},
 		{src: "func f(x int64) { float64 :: x }"},
 		{src: "type num int	func f(x int64) { num :: x }"},
+
+		// Converting TO uintref only works from explicit or implicit ref types.
+		// This is to prevent accidentally converting a variable of type int,
+		// for example, to uintref when intend to corvent the reference
+		// to that variable to uintref.
+		{
+			src: `
+				func f(x T) { uintref :: (&T :: x) }
+			`,
+		},
+		{
+			src: `
+				type xyz &int
+				func f(x xyz) { uintref :: x }
+			`,
+		},
+		{
+			src: `
+				type xyz abc
+				type abc &int
+				func f(x xyz) { uintref :: x }
+			`,
+		},
+		{
+			// We cannot convert x (an int) to uintref,
+			// only references can be converted.
+			src: `
+				func f(x int) { uintref :: x }
+			`,
+			err: "cannot convert x \\(int\\) to type uintref",
+		},
+		{
+			// We can convert a reference to x, however.
+			// This is not the _value_ stored in x,
+			// but the address of the variable x itself.
+			src: `
+				func f(x int) { uintref :: (&int :: x) }
+			`,
+		},
+
+		// Convert from uintref to other numeric types is fine.
+		{src: "func f(x uintref) { int :: x }"},
+		{src: "func f(x uintref) { int8 :: x }"},
+		{src: "func f(x uintref) { int16 :: x }"},
+		{src: "func f(x uintref) { int32 :: x }"},
+		{src: "func f(x uintref) { int64 :: x }"},
+		{src: "func f(x uintref) { uint :: x }"},
+		{src: "func f(x uintref) { uint8 :: x }"},
+		{src: "func f(x uintref) { uint16 :: x }"},
+		{src: "func f(x uintref) { uint32 :: x }"},
+		{src: "func f(x uintref) { uint64 :: x }"},
+		{src: "func f(x uintref) { float32 :: x }"},
+		{src: "func f(x uintref) { float64 :: x }"},
+
 		{src: "func f(x uint) { int :: x }"},
 		{src: "func f(x uint) { int8 :: x }"},
 		{src: "func f(x uint) { int16 :: x }"},

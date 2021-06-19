@@ -227,7 +227,7 @@ func isIntType(typ Type) bool {
 		}
 	case *BasicType:
 		switch typ.Kind {
-		case Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64:
+		case Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64:
 			return true
 		}
 	}

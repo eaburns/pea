@@ -313,6 +313,10 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			return &IntType{Size: 32}
 		case checker.Int64:
 			return &IntType{Size: 64}
+		case checker.UintRef:
+			i := mb.intType()
+			i.Unsigned = true
+			return i
 		case checker.Uint:
 			i := mb.intType()
 			i.Unsigned = true
