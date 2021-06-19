@@ -14,7 +14,7 @@ libunwind_path=vendor/libunwind-11.0.0.src
 	make > /dev/null)
 
 echo "Building libpea.a"
-rm -f libpea.a
+rm -f libpea/libpea.a
 $clang -pthread \
 	-g \
 	-I libpea/$gc_path/include \
