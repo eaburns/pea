@@ -84,3 +84,27 @@ Func assert:error:(o T or_error, msg string) : +=(printer, T)printer {
 		}
 	}
 }
+
+Func assert:elements:(c C, want [T]) :
+	for:each:(C, (T){}),
+	=(T,T)bool,
+	+=(printer, T)printer,
+{
+	i := 0,
+	array := [T] :: [],
+	for: c each: (t) {
+		if: i >= array.length then: {
+			array2 := [T] :: new((array.length + 1) * 2, t),
+			for: 0 to: array.length - 1 do: (j) {
+				array2[j] := array[j]
+			},
+			array := array2,
+		},
+		array[i] := t,
+		++i,
+	},
+	got := array[0, i],
+	if: got != want then: {
+		panic(print_string("got ", got, ", wanted ", want))
+	}
+}
