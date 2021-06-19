@@ -699,21 +699,21 @@ func hasTypeVariable(typ Type) bool {
 	case *StructType:
 		for i := range typ.Fields {
 			if hasTypeVariable(typ.Fields[i].Type) {
-				return false
+				return true
 			}
 		}
 		return false
 	case *UnionType:
 		for i := range typ.Cases {
 			if hasTypeVariable(typ.Cases[i].Type) {
-				return false
+				return true
 			}
 		}
 		return false
 	case *FuncType:
 		for i := range typ.Parms {
 			if hasTypeVariable(typ.Parms[i]) {
-				return false
+				return true
 			}
 		}
 		return hasTypeVariable(typ.Ret)
