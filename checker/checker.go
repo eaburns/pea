@@ -237,6 +237,26 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 		return nil, nil, es
 	}
 
+	// TODO: only limit sub depth of already-seenfunctions.
+	//
+	// Currently we limit to 5 rounds of substitution.
+	// This means if there is a chain of 5 functions
+	// one calls another calls another,
+	// and they have type parameters, this will error.
+	//
+	// Actually 5 is not an unreasonable call depth,
+	// and this can happen in practice,
+	// for example, with type-parameterized data structs.
+	//
+	// Instead, what we want to do is catch and break
+	// infinite recursions.
+	// A recursion only happens between
+	// functions definitions that have already been seen.
+	//
+	// Instead of doing N rounds,
+	// we should do infinite rounds,
+	// but track a round-count for each func def substituted,
+	// and break that at N.
 	for i := 0; i < 5; i++ {
 		toSub := mod.toSub
 		mod.toSub = nil
