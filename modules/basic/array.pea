@@ -174,7 +174,7 @@ test array_plus {
 	assert: [1, 2] + [3, 4] equals: [1, 2, 3, 4],
 }
 
-Func for:each:(a [T], f (&T){}) {
+Func for:each:(a [T], f (T){}) {
 	for: 0 to: a.length - 1 do: (i) {
 		f(a[i])
 	}
