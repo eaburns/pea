@@ -308,7 +308,8 @@ func (g *gen) write(vs ...interface{}) {
 				// External definitions with C-compatible names
 				// ([_a-zA-Z][_0-9a-zA-Z]*)
 				// use C-style names to link with C.
-				g.write("@", v.Mod, "__", v.Name)
+				mod := strings.ReplaceAll(v.Mod, "/", "__")
+				g.write("@", mod, "__", v.Name)
 				break
 			}
 			g.write(`@"`, v.SourceName, `"`)
