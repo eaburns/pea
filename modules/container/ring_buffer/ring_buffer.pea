@@ -1,0 +1,287 @@
+Import "basic"
+
+Type T ring_buffer := T _ring_buffer
+type T _ring_buffer := &[
+	.n int,
+	.start int,
+	.end int,	// exclusive
+	.data [T],
+]
+
+Func new() T ring_buffer {
+	return: [.n 0, .start 0, .end 0, .data []]
+}
+
+test new {
+	r := int ring_buffer :: new(),
+	assert: r.length equals: 0,
+}
+
+Func new(ts [T]) T ring_buffer {
+	return: [.n ts.length, .start 0, .end ts.length, .data ts]
+}
+
+test new_array {
+	r := int ring_buffer :: new([0, 1, 2, 3]),
+	assert: r.length equals: 4,
+	assert: r elements: [0, 1, 2, 3],
+}
+
+test new_array_shares_array {
+	a := [0, 1, 2, 3],
+	r := int ring_buffer :: new(a),
+	r[0] := 10,
+	r[1] := 9,
+	r[2] := 8,
+	r[3] := 7,
+	assert: a elements: [10, 9, 8, 7],
+}
+
+Func .length(r T ring_buffer) int {
+	return: r.n
+}
+
+Func [](r T ring_buffer, i int) &T {
+	if: i < 0 then: {
+		panic(print_string("index out of bounds: ", i, " < 0"))
+	},
+	if: i >= r.n then: {
+		panic(print_string("index out of bounds: ", i, " >= ", r.n))
+	},
+	return: r.data[index(r, i)]
+}
+
+test index {
+	r := string ring_buffer :: new(),
+	for: ["zero", "one", "two", "three", "four", "five", "six"] each: (s){
+		push_back(r, s),
+	},
+	assert: r[0] equals: "zero",
+	assert: r[1] equals: "one",
+	assert: r[2] equals: "two",
+	assert: r[3] equals: "three",
+	assert: r[4] equals: "four",
+	assert: r[5] equals: "five",
+	assert: r[6] equals: "six",
+}
+
+Func [](r T ring_buffer, s int, e int) T ring_buffer {
+	if: s < 0 then: {
+		panic(print_string("start index out of bounds: ", s, " < 0"))
+	},
+	if: e > r.n then: {
+		panic(print_string("end index out of bounds: ", e, " >= ", r.n))
+	},
+	if: s > e then: {
+		panic(print_string("start index is greater than end: ", s, " > ", e))
+	},
+	print(print_string("start=", r.start, " end=", r.end, "\n")),
+	print(print_string("s=", s, " e=", e)),
+	print("\n"),
+	return: [.n e - s, .start index(r, s), .end index(r, e), .data r.data]
+}
+
+test slice {
+	r := string ring_buffer :: new(["Hello", ",", " ", "World", "!"]),
+	assert: r[0, 0] elements: [string] :: [],
+	assert: r[2, 2] elements: [string] :: [],
+	assert: r[4, 4] elements: [string] :: [],
+	assert: r[0, 1] elements: ["Hello"],
+	assert: r[2, 3] elements: [" "],
+	assert: r[4, 5] elements: ["!"],
+	assert: r[0, 4] elements: ["Hello", ",", " ", "World"],
+	assert: r[1, 5] elements: [",", " ", "World", "!"],
+	assert: r[1, 4] elements: [",", " ", "World"],
+	assert: r[0, 5] elements: ["Hello", ",", " ", "World", "!"],
+}
+
+Func .front(r T ring_buffer) T option {
+	return: r.n > 0 true? {
+		some(r.data[index(r, 0)])
+	} false? {
+		none()
+	}
+}
+
+test front {
+	assert_none: (int ring_buffer :: new()).front,
+	assert: (int ring_buffer :: new([0, 1, 2])).front some: 0,
+}
+
+Func .back(r T ring_buffer) T option {
+	return: r.n > 0 true? {
+		some(r.data[prev(r, r.end)])
+	} false? {
+		none()
+	}
+}
+
+test back {
+	assert_none: (int ring_buffer :: new()).back,
+	assert: (int ring_buffer :: new([0, 1, 2])).back some: 2,
+}
+
+Func push_front(r T ring_buffer, t T) {
+	if: r.n = r.data.length then: {
+		grow(r, t)
+	},
+	r.start := prev(r, r.start),
+	r.data[r.start] := t,
+	++r.n,
+}
+
+test push_front {
+	r := int ring_buffer :: new(),
+	for: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] each: (i) {
+		push_front(r, i),
+	},
+	assert: r elements: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+}
+
+Func push_back(r T ring_buffer, t T) {
+	if: r.n = r.data.length then: {
+		grow(r, t)
+	},
+	r.data[r.end] := t,
+	r.end := next(r, r.end),
+	++r.n,
+}
+
+test push_back {
+	r := int ring_buffer :: new(),
+	for: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] each: (i) {
+		push_back(r, i),
+	},
+	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+}
+
+func grow(r T ring_buffer, t T) {
+	data := [T] :: new((r.data.length+1) * 2, t),
+	start := data.length / 4,
+	end := start,
+	assert_true: data.length - start > r.n,
+	if: r.n > 0 then: {
+		if: r.start < r.end then: {
+			for: r.start to: r.end - 1 do: (i) {
+				data[end] := r.data[i],
+				++end,
+			},
+		} else: {
+			for: r.start to: r.data.length-1 do: (i) {
+				data[end] := r.data[i],
+				++end,
+			},
+			for: 0 to: r.end-1 do: (i) {
+				data[end] := r.data[i],
+				++end,
+			}
+		},
+	},
+	r.start := start,
+	r.end := end,
+	r.data := data
+}
+
+Func pop_front(r T ring_buffer) T option {
+	if: r.n = 0 then: {
+		return: none()
+	},
+	x := r.data[index(r, 0)],
+	r.start := next(r, r.start),
+	--r.n,
+	return: some(x)
+}
+
+test pop_front {
+	r := int ring_buffer :: new(),
+	assert_none: pop_front(r),
+
+	r := new([0, 1, 2]),
+	assert: pop_front(r) some: 0,
+	assert: r.length equals: 2,
+	assert: pop_front(r) some: 1,
+	assert: r.length equals: 1,
+	assert: pop_front(r) some: 2,
+	assert: r.length equals: 0,
+	assert_none: pop_front(r),
+	assert: r.length equals: 0,
+}
+
+Func pop_back(r T ring_buffer) T option {
+	if: r.n = 0 then: {
+		return: none()
+	},
+	x := r.data[prev(r, r.end)],
+	r.end := prev(r, r.end),
+	--r.n,
+	return: some(x)
+}
+
+test pop_back {
+	r := int ring_buffer :: new(),
+	assert_none: pop_back(r),
+
+	r := new([0, 1, 2]),
+	assert: pop_back(r) some: 2,
+	assert: r.length equals: 2,
+	assert: pop_back(r) some: 1,
+	assert: r.length equals: 1,
+	assert: pop_back(r) some: 0,
+	assert: r.length equals: 0,
+	assert_none: pop_back(r),
+	assert: r.length equals: 0,
+}
+
+test push_pop_front_back {
+	r := string ring_buffer :: new(),
+	push_front(r, "three"),
+	push_back(r, "four"),
+	push_front(r, "two"),
+	assert: r elements: ["two", "three", "four"],
+	assert: pop_back(r) some: "four",
+	assert: r elements: ["two", "three"],
+	push_back(r, "four"),
+	assert: r elements: ["two", "three", "four"],
+	assert: pop_front(r) some: "two",
+	assert: r elements: ["three", "four"],
+	push_front(r, "one"),
+	assert: r elements: ["one", "three", "four"],
+	assert: pop_back(r) some: "four",
+	assert: r elements: ["one", "three"],
+	assert: pop_back(r) some: "three",
+	assert: r elements: ["one"],
+	assert: pop_front(r) some: "one",
+	assert: r elements: [string] :: [],
+	assert_none: pop_front(r),
+	assert: r elements: [string] :: [],
+}
+
+Func for:each:(r T ring_buffer, f (T){}) {
+	if: r.n = 0 then: {
+		return()
+	},
+	if: r.start < r.end then: {
+		for: r.start to: r.end-1 do: (i) {
+		 	f(r.data[i]),
+		}
+	} else: {
+		for: r.start to: r.data.length-1 do: (i) {
+		 	f(r.data[i]),
+		},
+		for: 0 to: r.end-1 do: (i) {
+		 	f(r.data[i]),
+		}
+	}
+}
+
+func index(r T ring_buffer, i int) int {
+	return: (r.start + i) % r.data.length
+}
+
+func next(r T ring_buffer, i int) int {
+	return: (i + 1) % r.data.length
+}
+
+func prev(r T ring_buffer, i int) int {
+	return: (i + r.data.length - 1) % r.data.length
+}
