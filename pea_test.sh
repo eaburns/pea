@@ -7,10 +7,12 @@ mods=$(
 	done) | sort | uniq
 )
 
+go build -o peac/peac peac/main.go
+
 fail=0
 for mod in $mods; do
 	echo Testing $mod
-	if ! go run peac/main.go -libpea ./libpea -test -root $root $mod; then
+	if ! ./peac/peac -libpea ./libpea -test -root $root $mod; then
 		fail=1
 		continue
 	fi
@@ -20,10 +22,6 @@ for mod in $mods; do
 		cat $o
 	fi
 	rm $o
-
-	# TODO: currently the .a file contains test main.
-	# If we do not remove the .a files then there will be dup test mains.
-	find $root -name \*.a | xargs rm
 done
 
 exit $fail

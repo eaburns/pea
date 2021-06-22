@@ -10,107 +10,60 @@ import (
 	"github.com/eaburns/pea/loc"
 )
 
-type Option func(*gen)
-
-// TestMain generates a test binary instead of a normal object file.
-var TestMain Option = func(g *gen) { g.test = true }
-
-// LocFiles specifies the source files for location information.
-func LocFiles(files loc.Files) Option {
-	return func(g *gen) { g.files = files }
+func GenerateDefs(w io.Writer, mod *flowgraph.Mod, files loc.Files) (err error) {
+	defer recoverError(&err)
+	g := newGen(w, files)
+	g.writeHeader(mod)
+	g.writeTypeDefs(mod)
+	g.writeStringDefs(mod)
+	g.writeVarDefs(mod)
+	g.writeFuncDefs(mod)
+	return nil
 }
 
-func Generate(w io.Writer, mod *flowgraph.Mod, opts ...Option) error {
-	g := &gen{
-		w:        w,
-		intBits:  64,
-		boolBits: 64,
-		panicNum: make(map[*flowgraph.Op]int),
-		callNum:  make(map[*flowgraph.Call]int),
+func GenerateDefsAndMain(w io.Writer, mod *flowgraph.Mod, files loc.Files) (err error) {
+	defer recoverError(&err)
+	g := newGen(w, files)
+	g.writeHeader(mod)
+	g.writeTypeDefs(mod)
+	g.writeStringDefs(mod)
+	g.writeVarDefs(mod)
+	g.writeFuncDefs(mod)
+	for _, fun := range mod.Funcs {
+		if fun.Name == "main" {
+			g.writeMain(mod, fun)
+		}
 	}
-	for _, o := range opts {
-		o(g)
-	}
-	return g.generate(w, mod)
+	return nil
 }
 
-func (g *gen) generate(w io.Writer, mod *flowgraph.Mod) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			if ioErr, ok := r.(ioError); ok {
-				err = ioErr.error
-			} else {
-				panic(r)
-			}
-		}
-	}()
-	if g.files != nil {
-		g.declarePanicLocStrings(mod)
-		if g.test {
-			g.declareTestCallLocStrings(mod)
-		}
-	}
-	g.write(
-		"%string = type {", g.int(), ", i8*}\n",
-		"declare i8* @pea_malloc(", g.int(), ")\n",
-		"declare i8* @pea_new_frame()\n",
-		"declare void @pea_finish_frame(i8* nocapture)\n",
-		"declare void @pea_long_return(i8* nocapture) noreturn\n",
-		"declare void @pea_set_test_call_loc(i8*, i32)\n",
-		"declare void @pea_panic(%string* nocapture, i8* nocapture, i32) readonly noreturn\n",
-		"declare void @pea_print(%string* nocapture) readonly\n",
-		"declare void @pea_print_int(i64)\n",
-		"declare void @llvm.memcpy.p0i8.p0i8.", g.int(), "(i8*, i8*, ", g.int(), ", i1)\n",
-		"declare i32 @setjmp(i8*) returns_twice\n")
-	for _, t := range mod.Types {
-		unnamed := *t
-		unnamed.Mod = ""
-		unnamed.Args = nil
-		unnamed.Name = ""
-		g.write(t, " = type ", &unnamed, "\n")
-	}
-	for _, s := range mod.Strings {
-		g.write("@str", s.Num, " = private unnamed_addr constant [", len(s.Text), " x i8] c", quote(s.Text), "\n")
-	}
-	for _, v := range mod.Vars {
-		if v.Mod == mod.Path {
-			g.write("@\"", v.Mod, " ", v.Name, "\" = global ", v.Type, " zeroinitializer\n")
-		} else {
-			g.write("@\"", v.Mod, " ", v.Name, "\" = external global ", v.Type, "\n")
-		}
-	}
-	for _, f := range mod.Funcs {
-		if f.Mod == "main" && f.Name == "print_int" {
-			// print_int declared above.
-			continue
-		}
-		if len(f.Blocks) == 0 {
-			g.write("declare void ", f, "(", f.Parms, ")\n")
-			continue
-		}
-		if f.Test {
-			continue
-		}
-		g.writeFuncDef(f)
-	}
-	if g.test {
-		g.writeTestMain(mod)
-		return nil
-	}
-	var main *flowgraph.FuncDef
-	for _, f := range mod.Funcs {
-		if f.Mod == "main" && f.Name == "main" && len(f.Parms) == 0 {
-			main = f
-			break
-		}
-	}
+func GenerateMain(w io.Writer, mod *flowgraph.Mod, main *flowgraph.FuncDef, files loc.Files) (err error) {
+	defer recoverError(&err)
+	g := newGen(w, files)
+	g.writeHeader(mod)
+	g.writeTypeDefs(mod)
+	g.writeStringDefs(mod)
+	g.writeVarDecls(mod)
+	g.writeFuncDecls(mod)
 	g.writeMain(mod, main)
+	return nil
+}
+
+func GenerateTestMain(w io.Writer, mod *flowgraph.Mod, files loc.Files) (err error) {
+	defer recoverError(&err)
+	g := newGen(w, files)
+	g.writeHeader(mod)
+	g.declareTestCallLocStrings(mod)
+	g.writeTypeDefs(mod)
+	g.writeStringDefs(mod)
+	g.writeVarDecls(mod)
+	g.writeFuncDecls(mod)
+	g.writeTestMain(mod)
 	return nil
 }
 
 type gen struct {
 	w        io.Writer
-	test     bool
 	files    loc.Files
 	intBits  int
 	boolBits int
@@ -134,6 +87,108 @@ func (g *gen) int() intType  { return intType(g.intBits) }
 func (g *gen) bool() intType { return intType(g.boolBits) }
 
 type typeVal struct{ Value flowgraph.Value }
+
+func newGen(w io.Writer, files loc.Files) *gen {
+	g := &gen{
+		w:        w,
+		files:    files,
+		intBits:  64,
+		boolBits: 64,
+		panicNum: make(map[*flowgraph.Op]int),
+		callNum:  make(map[*flowgraph.Call]int),
+	}
+	return g
+}
+
+func recoverError(err *error) {
+	if r := recover(); r != nil {
+		if ioErr, ok := r.(ioError); ok {
+			*err = ioErr.error
+		} else {
+			panic(r)
+		}
+	}
+}
+
+func (g *gen) writeHeader(mod *flowgraph.Mod) {
+	if g.files != nil {
+		g.declarePanicLocStrings(mod)
+	}
+	g.write(
+		"%string = type {", g.int(), ", i8*}\n",
+		"declare i8* @pea_malloc(", g.int(), ")\n",
+		"declare i8* @pea_new_frame()\n",
+		"declare void @pea_finish_frame(i8* nocapture)\n",
+		"declare void @pea_long_return(i8* nocapture) noreturn\n",
+		"declare void @pea_set_test_call_loc(i8*, i32)\n",
+		"declare void @pea_panic(%string* nocapture, i8* nocapture, i32) readonly noreturn\n",
+		"declare void @pea_print(%string* nocapture) readonly\n",
+		"declare void @pea_print_int(i64)\n",
+		"declare void @llvm.memcpy.p0i8.p0i8.", g.int(), "(i8*, i8*, ", g.int(), ", i1)\n",
+		"declare i32 @setjmp(i8*) returns_twice\n")
+}
+
+func (g *gen) writeTypeDefs(mod *flowgraph.Mod) {
+	for _, t := range mod.Types {
+		unnamed := *t
+		unnamed.Mod = ""
+		unnamed.Args = nil
+		unnamed.Name = ""
+		g.write(t, " = type ", &unnamed, "\n")
+	}
+}
+
+func (g *gen) writeStringDefs(mod *flowgraph.Mod) {
+	for _, s := range mod.Strings {
+		g.write("@str", s.Num, " = private unnamed_addr constant [", len(s.Text), " x i8] c", quote(s.Text), "\n")
+	}
+}
+
+func (g *gen) writeVarDefs(mod *flowgraph.Mod) {
+	for _, v := range mod.Vars {
+		if v.Mod == mod.Path {
+			g.write("@\"", v.Mod, " ", v.Name, "\" = global ", v.Type, " zeroinitializer\n")
+		} else {
+			g.write("@\"", v.Mod, " ", v.Name, "\" = external global ", v.Type, "\n")
+		}
+	}
+}
+
+func (g *gen) writeVarDecls(mod *flowgraph.Mod) {
+	for _, v := range mod.Vars {
+		g.write("@\"", v.Mod, " ", v.Name, "\" = external global ", v.Type, "\n")
+	}
+}
+
+func (g *gen) writeFuncDefs(mod *flowgraph.Mod) {
+	for _, f := range mod.Funcs {
+		if f.Mod == "main" && f.Name == "print_int" {
+			// print_int declared above.
+			continue
+		}
+		if len(f.Blocks) == 0 {
+			g.write("declare void ", f, "(", f.Parms, ")\n")
+			continue
+		}
+		if f.Test {
+			continue
+		}
+		g.writeFuncDef(f)
+	}
+}
+
+func (g *gen) writeFuncDecls(mod *flowgraph.Mod) {
+	for _, f := range mod.Funcs {
+		if f.Mod == "main" && f.Name == "print_int" {
+			// print_int declared above.
+			continue
+		}
+		if f.Test {
+			continue
+		}
+		g.write("declare void ", f, "(", f.Parms, ")\n")
+	}
+}
 
 func (g *gen) writeMain(mod *flowgraph.Mod, main *flowgraph.FuncDef) {
 	if main == nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/eaburns/pea/checker"
 	"github.com/eaburns/pea/flowgraph"
 	"github.com/eaburns/pea/llvm"
+	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
 )
 
@@ -167,7 +168,8 @@ func compile(mod *Mod, testMain bool) []error {
 		}
 		oFiles = append(oFiles, objFile(mod))
 		seen[mod] = true
-		upToDate := !needsUpdate(mod)
+		// TODO: don't always recompile on testMain, but check if it needs updating.
+		upToDate := !testMain && !needsUpdate(mod)
 		for _, dep := range mod.Deps {
 			changed, errs := buildObjFiles(dep, false)
 			if len(errs) > 0 {
@@ -214,6 +216,15 @@ func compile(mod *Mod, testMain bool) []error {
 			fmt.Println("---- linking binary", mod.Path)
 		}
 	}
+	if testMain {
+		testOFile := filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".test.pea.o")
+		oFiles = append([]string{testOFile}, oFiles...)
+		defer os.Remove(testOFile)
+	} else if filepath.Base(mod.Path) == "main" {
+		mainOFile := filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".main.pea.o")
+		oFiles = append([]string{mainOFile}, oFiles...)
+		defer os.Remove(mainOFile)
+	}
 	args := append(oFiles, []string{
 		"-g",
 		"-o", binFile,
@@ -233,12 +244,23 @@ func compile1(mod *Mod, testMain bool) []error {
 	}
 	var oFiles []string
 
-	oFile := filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".pea.o")
-	if errs := compilePea(mod, oFile, testMain); len(errs) > 0 {
+	fg, locFiles, errs := buildFlowGraph(mod)
+	if len(errs) > 0 {
 		return errs
 	}
-	defer func() { os.Remove(oFile) }()
+
+	oFile := filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".pea.o")
+	compilePeaDefs(mod, fg, locFiles, oFile)
+	defer os.Remove(oFile)
 	oFiles = append(oFiles, oFile)
+
+	if testMain {
+		oFile = filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".test.pea.o")
+		compilePeaTestMain(mod, fg, locFiles, oFile)
+	} else if filepath.Base(mod.Path) == "main" {
+		oFile = filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".main.pea.o")
+		compilePeaMain(mod, fg, locFiles, oFile)
+	}
 
 	for _, file := range mod.SrcFiles {
 		switch filepath.Ext(file) {
@@ -247,14 +269,14 @@ func compile1(mod *Mod, testMain bool) []error {
 			if err := run("clang", "-g", "-o", oFile, "-c", file); err != nil {
 				return []error{err}
 			}
-			defer func() { os.Remove(oFile) }()
+			defer os.Remove(oFile)
 			oFiles = append(oFiles, oFile)
 		case ".ll":
 			oFile := strings.TrimSuffix(file, ".ll") + ".ll.o"
 			if err := compileLL(file, oFile); err != nil {
 				return []error{err}
 			}
-			defer func() { os.Remove(oFile) }()
+			defer os.Remove(oFile)
 			oFiles = append(oFiles, oFile)
 		default:
 			continue
@@ -266,7 +288,82 @@ func compile1(mod *Mod, testMain bool) []error {
 	return nil
 }
 
-func compilePea(mod *Mod, oFile string, testMain bool) []error {
+func compilePeaDefs(mod *Mod, fg *flowgraph.Mod, locFiles loc.Files, oFile string) {
+	llFile := strings.TrimSuffix(oFile, "o") + "ll"
+	if *v {
+		fmt.Println("defs file: ", llFile)
+	}
+	f, err := os.Create(llFile)
+	if err != nil {
+		die("failed to create output file: %s", err)
+	}
+	w := bufio.NewWriter(f)
+	llvm.GenerateDefs(w, fg, locFiles)
+	w.Flush()
+	if err := f.Close(); err != nil {
+		die("failed to close output file: %s", err)
+	}
+	defer os.Remove(llFile)
+
+	if err := compileLL(llFile, oFile); err != nil {
+		die("%s", err)
+	}
+}
+
+func compilePeaTestMain(mod *Mod, fg *flowgraph.Mod, locFiles loc.Files, oFile string) {
+	llFile := strings.TrimSuffix(oFile, "o") + "ll"
+	if *v {
+		fmt.Println("test main file: ", llFile)
+	}
+	f, err := os.Create(llFile)
+	if err != nil {
+		die("failed to create output file: %s", err)
+	}
+	w := bufio.NewWriter(f)
+	llvm.GenerateTestMain(w, fg, locFiles)
+	w.Flush()
+	if err := f.Close(); err != nil {
+		die("failed to close output file: %s", err)
+	}
+	defer os.Remove(llFile)
+
+	if err := compileLL(llFile, oFile); err != nil {
+		die("%s", err)
+	}
+}
+
+func compilePeaMain(mod *Mod, fg *flowgraph.Mod, locFiles loc.Files, oFile string) {
+	llFile := strings.TrimSuffix(oFile, "o") + "ll"
+	if *v {
+		fmt.Println("main file: ", llFile)
+	}
+	f, err := os.Create(llFile)
+	if err != nil {
+		die("failed to create output file: %s", err)
+	}
+	w := bufio.NewWriter(f)
+	var main *flowgraph.FuncDef
+	for _, fun := range fg.Funcs {
+		if fun.Mod == "main" && fun.Name == "main" {
+			main = fun
+		}
+	}
+	if main == nil {
+		die("no main function")
+	}
+	llvm.GenerateMain(w, fg, main, locFiles)
+	w.Flush()
+	if err := f.Close(); err != nil {
+		die("failed to close output file: %s", err)
+	}
+	defer os.Remove(llFile)
+
+	if err := compileLL(llFile, oFile); err != nil {
+		die("%s", err)
+	}
+}
+
+func buildFlowGraph(mod *Mod) (*flowgraph.Mod, loc.Files, []error) {
 	var files []string
 	for _, file := range mod.SrcFiles {
 		if filepath.Ext(file) == ".pea" {
@@ -274,9 +371,8 @@ func compilePea(mod *Mod, oFile string, testMain bool) []error {
 		}
 	}
 	if len(files) == 0 {
-		return []error{fmt.Errorf("module %s has no pea source files", mod.Path)}
+		return nil, nil, []error{fmt.Errorf("module %s has no pea source files", mod.Path)}
 	}
-	llFile := filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".pea.ll")
 	if *v {
 		fmt.Print("pea files: ")
 		for i, file := range files {
@@ -285,7 +381,7 @@ func compilePea(mod *Mod, oFile string, testMain bool) []error {
 			}
 			fmt.Print(file)
 		}
-		fmt.Println(" to", llFile)
+		fmt.Println("")
 	}
 	p := parser.New()
 	if wd, err := os.Getwd(); err == nil {
@@ -293,35 +389,15 @@ func compilePea(mod *Mod, oFile string, testMain bool) []error {
 	}
 	for _, file := range files {
 		if err := p.ParseFile(file); err != nil {
-			return []error{err}
+			return nil, nil, []error{err}
 		}
 	}
 	imp := checker.NewImporter(*root, p.Files)
 	m, locFiles, errs := checker.Check(mod.Path, p.Files, imp)
 	if len(errs) > 0 {
-		return errs
+		return nil, nil, errs
 	}
-	fg := flowgraph.Build(m)
-	f, err := os.Create(llFile)
-	if err != nil {
-		return []error{err}
-	}
-	w := bufio.NewWriter(f)
-	opts := []llvm.Option{llvm.LocFiles(locFiles)}
-	if testMain {
-		opts = append(opts, llvm.TestMain)
-	}
-	llvm.Generate(w, fg, opts...)
-	w.Flush()
-	if err := f.Close(); err != nil {
-		die("failed to close output file: %s", err)
-	}
-	defer func() { os.Remove(llFile) }()
-
-	if err := compileLL(llFile, oFile); err != nil {
-		die("%s", err)
-	}
-	return nil
+	return flowgraph.Build(m), locFiles, nil
 }
 
 func compileLL(file, oFile string) error {
@@ -329,7 +405,7 @@ func compileLL(file, oFile string) error {
 	if err := run("llc", file, "-o", sFile); err != nil {
 		die("%s", err)
 	}
-	defer func() { os.Remove(sFile) }()
+	defer os.Remove(sFile)
 
 	if err := run("clang", "-g", "-o", oFile, "-c", sFile); err != nil {
 		die("%s", err)

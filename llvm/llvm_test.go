@@ -15,6 +15,7 @@ import (
 	"github.com/eaburns/pea/checker"
 	"github.com/eaburns/pea/flowgraph"
 	"github.com/eaburns/pea/llvm"
+	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
 )
 
@@ -37,7 +38,7 @@ func TestLLVM(t *testing.T) {
 		t.Run(fileInfo.Name(), func(t *testing.T) {
 			t.Parallel()
 			path := filepath.Join(dir, fileInfo.Name())
-			f, err := loadMod(path)
+			f, locFiles, err := loadMod(path)
 			if err != nil {
 				t.Fatalf(err.Error())
 			}
@@ -45,7 +46,7 @@ func TestLLVM(t *testing.T) {
 			if err != nil {
 				t.Fatalf(err.Error())
 			}
-			got := runTest(t, f)
+			got := runTest(t, f, locFiles)
 			if got != want {
 				t.Errorf("%s\ngot:\n%q\nwant:\n%q", path, got, want)
 			}
@@ -53,7 +54,7 @@ func TestLLVM(t *testing.T) {
 	}
 }
 
-func runTest(t *testing.T, f *flowgraph.Mod) string {
+func runTest(t *testing.T, f *flowgraph.Mod, locFiles loc.Files) string {
 	dir, err := ioutil.TempDir("/tmp", "pea_llvm_test-*")
 	if err != nil {
 		t.Fatalf("TempDir failed: %s", err)
@@ -65,7 +66,7 @@ func runTest(t *testing.T, f *flowgraph.Mod) string {
 		t.Fatalf("failed to open t.ll: %s", err)
 	}
 	buf := bufio.NewWriter(ll)
-	llvm.Generate(buf, f)
+	llvm.GenerateDefsAndMain(buf, f, locFiles)
 	buf.Flush()
 	if err := ll.Close(); err != nil {
 		t.Fatalf("error closing t.ll: %s", err)
@@ -97,17 +98,17 @@ func runTest(t *testing.T, f *flowgraph.Mod) string {
 	return stdout.String()
 }
 
-func loadMod(path string) (*flowgraph.Mod, error) {
+func loadMod(path string) (*flowgraph.Mod, loc.Files, error) {
 	p := parser.New()
 	if err := p.ParseFile(path); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	c, _, errs := checker.Check("main", p.Files, nil)
+	c, locFiles, errs := checker.Check("main", p.Files, nil)
 	if len(errs) > 0 {
-		return nil, errs[0]
+		return nil, nil, errs[0]
 	}
 	f := flowgraph.Build(c)
-	return f, nil
+	return f, locFiles, nil
 }
 
 func expectedOutput(path string) (string, error) {

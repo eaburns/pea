@@ -49,11 +49,13 @@ func main() {
 	}
 	g := flowgraph.Build(m, flowgraphOpts...)
 
-	llvmOpts := []llvm.Option{llvm.LocFiles(locFiles)}
+	var err error
 	if *test {
-		llvmOpts = append(llvmOpts, llvm.TestMain)
+		err = llvm.GenerateTestMain(os.Stdout, g, locFiles)
+	} else {
+		err = llvm.GenerateDefs(os.Stdout, g, locFiles)
 	}
-	if err := llvm.Generate(os.Stdout, g, llvmOpts...); err != nil {
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
