@@ -21,12 +21,7 @@ libpea/vendor/libunwind-11.0.0.src/test/CMakeFiles/
 libpea/vendor/libunwind-11.0.0.src/test/Makefile
 libpea/vendor/libunwind-11.0.0.src/test/cmake_install.cmake
 libpea/vendor/libunwind-11.0.0.src/test/lit.site.cfg
-modules/basic/basic.test
-modules/container/array/array.test
-modules/container/hash_map/hash_map.test
-modules/container/linked_list/linked_list.test
-modules/container/tree_map/tree_map.test
-modules/container/vector/vector.test
-modules/hash/hash.test
-modules/hash/wyhash/wyhash.test
-modules/os/os.test
+modules/**/*.a
+modules/**/*.o
+modules/**/*.test
+peac/peac
