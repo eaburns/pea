@@ -1,4 +1,4 @@
-import "container/array"
+import "algorithm/sort"
 Import "basic"
 import "io"
 
@@ -105,7 +105,7 @@ test mkdir_read_rmdir {
 			panic(print_string(err))
 		}
 	} do: {},
-	array#sort: ents,
+	sort#sort: ents,
 	assert: ents equals: ["a", "b", "c"],
 	assert_ok: close(r),
 

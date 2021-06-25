@@ -1,6 +1,11 @@
  Import "basic"
+ Import "container/vector"
 
-Func sort:by:(ts [T], less (&T, &T){bool}) {
+Func sort:by:(ts C, less (&T, &T){bool}) :
+	.length(C)int,
+	[](C, int)&T,
+	[](C, int, int)C
+{
 	for: ts.length/2 -1 down_to: 0 do: (i) {
 		max_heap_down(ts, less, i),
 	},
@@ -10,7 +15,10 @@ Func sort:by:(ts [T], less (&T, &T){bool}) {
 	}
 }
 
-func max_heap_down(ts [T], less (&T, &T){bool}, i int) {
+func max_heap_down(ts C, less (&T, &T){bool}, i int) :
+	.length(C)int,
+	[](C, int)&T
+{
 	left := 2*i + 1,
 	while: {left < ts.length && left >= 0} do: { // left >=0 for overflow
 		big := left,
@@ -29,7 +37,7 @@ func max_heap_down(ts [T], less (&T, &T){bool}, i int) {
 
 test sort_by {
 	sorted_by_max := (a [int]) {
-		sort: a by: (a, b) {a > b},
+		sort: a by: (a &int, b &int) {a > b},
 		a
 	},
 	assert: sorted_by_max([]) equals: [],
@@ -50,7 +58,11 @@ test sort_by {
 }
 
 Func sort:(ts [T]) : <(T, T) bool {
-	sort: ts by: (a, b){ a < b }
+	sort: ts by: (a &T, b &T){ a < b }
+}
+
+Func sort:(ts T vector) : <(T, T) bool {
+	sort: ts by: (a &T, b &T){ a < b }
 }
 
 type ref_cmp_type [.x int, .y int]
@@ -89,6 +101,6 @@ test sort {
 	assert: sorted([1, 2, 4, 3]) equals: [1, 2, 3, 4],
 
 	a := [ref_cmp_type] :: [[.x 1, .y 2], [.x 1, .y 1], [.x 0, .y 100]],
-	sort: a by: (a, b) {a < b},
+	sort: a by: (a &ref_cmp_type, b &ref_cmp_type) {a < b},
 	assert: a equals: [[.x 0, .y 100], [.x 1, .y 1], [.x 1, .y 2]],
 }
