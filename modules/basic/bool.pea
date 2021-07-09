@@ -1,6 +1,11 @@
+// The constant value true.
 Const true := bool :: [true?]
+
+// The constant value false.
 Const false := bool :: [false?]
 
+// Returns the boolean negation:
+// false if b is true or true if b is false.
 Func !(b bool) bool {
 	return: b true? { false } false? { true }
 }
@@ -10,6 +15,7 @@ test not {
 	assert_true: !false,
 }
 
+// Returns whether two booleans have the same value.
 Func =(a bool, b bool) bool {
 	return: a true? {b} false? {!b}
 }
@@ -21,6 +27,7 @@ test bool_equal {
 	assert_false: false = true,
 }
 
+// Returns whether two booleans have differing values.
 Func !=(a bool, b bool) bool {
 	return: a true? {!b} false? {b}
 }
@@ -32,6 +39,8 @@ test bool_not_equal {
 	assert_true: false != true,
 }
 
+// Returns whether both arguments are true.
+// This is non-lazy &&; both arguments are always evaluated.
 Func &&(a bool, b bool) bool {
 	return: a true? {b} false? {false}
 }
@@ -43,6 +52,8 @@ test and {
 	assert_true: true && true,
 }
 
+// Returns whether a and b() are both true.
+// This is the lazy-version of &&; b() is called if and only if a is true.
 Func &&(a bool, b (){bool}) bool {
 	return: a true? {b()} false? {false}
 }
@@ -56,6 +67,8 @@ test lazy_and {
 	assert_false: false && {panic("fail"), false},
 }
 
+// Returns whether at least on of the arguments is true.
+// This is non-lazy ||; both arguments are always evaluated.
 Func ||(a bool, b bool) bool {
 	return: a true? {a} false? {b}
 }
@@ -67,6 +80,8 @@ test or {
 	assert_true: true || true,
 }
 
+// Returns whether at least one of a or b() is true.
+// This is the lazy-version of ||; b() is called if and only if a is false.
 Func ||(a bool, b (){bool}) bool {
 	return: a true? {true} false? {b()}
 }
@@ -80,6 +95,7 @@ test lazy_or {
 	assert_true: true || {panic("fail"), false},
 }
 
+// Calls t() if cond is true.
 Func if:then:(cond bool, t (){}) {
 	cond true? t false? {}
 }
@@ -94,6 +110,7 @@ test if_then {
 	assert_false: called,
 }
 
+// Calls t() if cond is true, otherwise calls f().
 Func if:then:else:(cond bool, t (){}, f (){}) {
 	cond true? t false? f
 }
@@ -112,6 +129,8 @@ test if_then_else {
 	assert_true: elseCalled,
 }
 
+// Continually calls cond() until it returns false.
+// Each time cond() returns true, f() is called.
 Func while:do:(cond (){bool}, f (){}) {
 	if: cond() then: {
 		f(),
@@ -129,6 +148,8 @@ test while_do {
 	assert: iters equals: 10,
 }
 
+// Calls f(), then continually calls cond() until it returns false.
+// Each time cond() returns true, f() is called.
 Func do:while:(f (){}, cond (){bool}) {
 	f(),
 	if: cond() then: {
@@ -146,6 +167,8 @@ test do_while {
 	assert: iters equals: 10,
 }
 
+// Adds the string representation of a bool to the printer
+// and then returns the printer.
 Func +=(p printer, b bool) printer {
 	return: b true? {
 		p += "true"

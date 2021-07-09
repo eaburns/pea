@@ -1,27 +1,34 @@
+// Panics if cond is false.
 Func assert_true:(cond bool) {
 	if: !cond then: {
 		panic("got false, expected true")
 	}
 }
 
+// Panics if cond is true.
 Func assert_false:(cond bool) {
 	if: cond then: {
 		panic("got true, expected false")
 	}
 }
 
+// Panics of a is not equal to b by the = function.
 Func assert:equals:(a T, b T) : =(T, T) bool, +=(printer, T)printer {
 	if: !(a = b) then: {
 		panic(print_string(a, " != ", b, " expected equal"))
 	}
 }
 
+// Panics if o is the some? case.
 Func assert_none:(o T option) : +=(printer, T)printer {
 	if: o some: (t T) {
 		panic(print_string("got ", o, " wanted none()"))
 	}
 }
 
+// Panics of o is the none? case
+// or if the some? case value of o
+// is not equal to b.
 Func assert:some:(o T option, b T) :
 	+=(printer, T)printer,
 	=(T, T) bool,
@@ -35,36 +42,44 @@ Func assert:some:(o T option, b T) :
 	}
 }
 
+// Panics if o is not the some? case.
 Func assert_some:(o T option) : +=(printer, T)printer {
 	if: o none: {
 		panic(print_string(o, " != some(...)"))
 	}
 }
 
+// Panics if o is the some? case.
 Func assert_ok:(o error option) {
 	if: o error: (e){
 		panic(print_string("got error ", e, ", wanted OK"))
 	}
 }
 
+// Panics if o is the error? case.
 Func assert_ok:(o T or_error) {
 	if: o error: (e){
 		panic(print_string("got error ", e, ", wanted OK"))
 	}
 }
 
+// Panics if o is the none? case.
 Func assert_error:(o error option) {
 	if: o ok: {
 		panic(print_string("got OK, wanted an error"))
 	}
 }
 
+// Panics if o is the ok? case.
 Func assert_error:(o T or_error) : +=(printer, T)printer {
 	if: o ok: (t){
 		panic(print_string("got ", t, ", wanted an error"))
 	}
 }
 
+// Panics if o is the none? case
+// or if the some? case value's message
+// is not equal to msg.
 Func assert:error:(o error option, msg string) {
 	if: o ok: {
 		panic(print_string("got OK, wanted an error"))
@@ -75,6 +90,9 @@ Func assert:error:(o error option, msg string) {
 	}
 }
 
+// Panics if o is the ok? case
+// or if the error? case value's message
+// is not equal to msg.
 Func assert:error:(o T or_error, msg string) : +=(printer, T)printer {
 	if: o ok: (t){
 		panic(print_string("got ", t, ", wanted an error"))
@@ -85,6 +103,9 @@ Func assert:error:(o T or_error, msg string) : +=(printer, T)printer {
 	}
 }
 
+// Panics if the the number of elements in c is not want.length,
+// or if for any i, the ith element in the order of for:each:
+// is not equal to the ith element of want.
 Func assert:elements:(c C, want [T]) :
 	for:each:(C, (T){}),
 	=(T,T)bool,

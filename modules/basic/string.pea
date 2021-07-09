@@ -1,3 +1,6 @@
+// Returns whether two strings are equal.
+// Two strings are equal if the have the same length,
+// and for every index i, the corresponding elements are =.
 Func =(a string, b string) bool {
 	if: a.length != b.length then: {
 		return: false
@@ -25,6 +28,8 @@ test string_equal {
 	assert_false: "こんにちは" = "今日は",
 }
 
+// Returns whether two strings are not equal.
+// Two strings are not equal if the = function returns false for the strings.
 Func !=(a string, b string) bool {
 	return: !(a = b)
 }
@@ -44,6 +49,10 @@ test string_not_equal {
 	assert_true: "こんにちは" != "今日は",
 }
 
+// Returns whether a string is less than another.
+// Less is determined lexically: string a is less than b if,
+// * for some 0 ≤ i < a.length, a[i] < b[i], and for all 0 ≤ j < i, a[j] = b[j],
+// * or for all 0 ≤ i < a.length, a[i] = b[i] and a.length < b.length.
 Func <(a string, b string) bool {
 	for: 0 to: a.length - 1 do: (i) {
 		if: i >= b.length then: {
@@ -68,6 +77,7 @@ test string_less {
 	assert_true: "foo bar" < "zoo bar",
 }
 
+// Returns the concatenation of two strings.
 Func +(a string, b string) string {
 	if: a.length = 0 then: {
 		return: b
@@ -97,6 +107,7 @@ test string_plus {
 	assert_true: "こんにち" + "は" = "こんにちは",
 }
 
+// Adds the string to the printer and returns the printer.
 Func +=(p printer, s string) printer {
 	add_string(p, s),
 	return: p

@@ -2,6 +2,8 @@ const max_float64 := float64 :: 1.797693134862315708145274237317043567981e+308
 const max_pos_exp := float64 :: 1.0e7
 const max_neg_exp := float64 :: -1.0e-5
 
+// Adds the string representation of f to the printer
+// and returns the printer.
 Func +=(p printer, f float64) printer {
 	// From https://blog.benoitblanchon.fr/lightweight-float-to-string/.
 	if: f != f then: {

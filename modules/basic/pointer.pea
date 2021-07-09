@@ -1,13 +1,23 @@
+// A pointer type.
+// A pointer is like a reference type,
+// but unlike a reference, assigning to a pointer
+// re-points it to a new object.
+// (Assigning to a reference, assigns to the referred value.)
+// Like references, pointers to not have a null or nil value.
 Type T pointer &T
 
+// Returns a pointer to the reference to a value.
 Func &(t &T) T pointer {
 	return: (T pointer :: t)
 }
 
+// Returns a reference to the value of a pointer.
 Func *(t T pointer) &T {
 	return: (&T :: t)
 }
 
+// Adds the string representation of the pointer value to the printer
+// and returns the printer.
 Func +=(p printer, t T pointer) printer : +=(printer, T) printer {
 	return: p += (T :: (&T :: t))
 }

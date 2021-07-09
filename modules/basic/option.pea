@@ -1,13 +1,20 @@
+// And optional T type.
+// There is either some value of type T or none.
 Type T option [none?, some? T]
 
+// Returns a new option in the some? case with the value t.
 Func some(t T) T option {
 	return: [some? t]
 }
 
+// Returns a new option in the none? case.
 Func none() T option {
 	return: [none?]
 }
 
+// Returns whether two options are equal.
+// They are equal if they are either both the none? case,
+// or they are both the some? case with = some? values.
 Func =(a T option, b T option) bool : =(T, T)bool {
 	if: a some: (a_val) {
 		if: b some: (b_val) {
@@ -32,6 +39,7 @@ test option_equals {
 	assert_false: some("Hello") = some("Good-bye"),
 }
 
+// Calls s with the some? value if the case of o is some?.
 Func if:some:(o T option, s (T){}) {
 	o some? s none? {}
 }
@@ -46,6 +54,7 @@ test if_some {
 	assert_false: called,
 }
 
+// Calls n() if the case of o is none?.
 Func if:none:(o T option, n (){}) {
 	// TODO: for some?none?, why can't T be inferred?
 	o some? (_ T){} none? n
@@ -61,6 +70,8 @@ test if_none {
 	assert_true: called,
 }
 
+// Calls s with the some? value if the case of o is some?,
+// otherwise calls n().
 Func if:some:none:(o T option, s (T){}, n (){}) {
 	o some? s none? n
 }
@@ -87,6 +98,14 @@ test if_some_none {
 	assert_true: elseCalled,
 }
 
+// Calls s with the some? value if the case of o is some?,
+// otherwise calls n().
+Func if:none:some:(o T option, n (){}, s (T){}) {
+	o some? s none? n
+}
+
+// Continually calls cond() until it returns an option in the none? case.
+// Each time cond() returns a some? case, f is called with the some? value.
 Func while:some:(cond (){T option}, f (T){}) {
 	if: cond() some: (t) {
 		f(t),
@@ -107,6 +126,8 @@ test while_some {
 	assert: iters equals: 10,
 }
 
+// Continually calls cond() until it returns an option in the some? case.
+// Each time cond() returns a none? case, f() is called.
 Func while:none:(cond (){T option}, f (){}) {
 	if: cond() none: {
 		f(),
@@ -126,6 +147,8 @@ test while_none {
 	assert: iters equals: 10,
 }
 
+// Adds the string representation of the option to the printer
+// and returns the printer.
 Func +=(p printer, o T option) printer : +=(printer, T)printer {
 	return: o some? (t T) {
 		p += "some(" += t += ")",

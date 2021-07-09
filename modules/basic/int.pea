@@ -1,5 +1,7 @@
+// The maximum value of a uint32.
 Const max_uint32 := uint32 :: 4294967295
 
+// Increases the value of n by one.
 Func ++(n &int) { &int :: n := n + 1 }
 
 test int_inc {
@@ -18,6 +20,7 @@ test int_inc {
 	assert: n equals: 3,
 }
 
+// Decreases the value of n by one.
 Func --(n &int) { &int :: n := n - 1 }
 
 test int_dec {
@@ -36,6 +39,8 @@ test int_dec {
 	assert: n equals: -3,
 }
 
+// Calls f with each value from start (inclusive)
+// up to end (inclusive) in increasing order.
 Func for:to:do:(start int, end int, f (int){}) {
 	if: start <= end then: {
 		f(start),
@@ -80,6 +85,8 @@ test for_to_do {
 	assert: inds[10] equals: 5,
 }
 
+// Calls f with each value from start (inclusive)
+// down to end (inclusive) in decreasing order.
 Func for:down_to:do:(start int, end int, f (int){}) {
 	if: start >= end then: {
 		f(start),
@@ -124,6 +131,7 @@ test for_down_to_do {
 	assert: inds[10] equals: -5,
 }
 
+// Adds the string representation to the printer and returns the printer.
 Func +=(p printer, u uint) printer { return: add_uint64(p, uint64 :: u) }
 Func +=(p printer, u uint8) printer { return: add_uint64(p, uint64 :: u) }
 Func +=(p printer, u uint16) printer { return: add_uint64(p, uint64 :: u) }
@@ -153,6 +161,7 @@ test print_uint64 {
 		equals: "18446744073709551615",
 }
 
+// Adds the string representation to the printer and returns the printer.
 Func +=(p printer, d int) printer { return: add_int64(p, int64 :: d) }
 Func +=(p printer, d int8) printer { return: add_int64(p, int64 :: d) }
 Func +=(p printer, d int16) printer { return: add_int64(p, int64 :: d) }

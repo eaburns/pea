@@ -1,13 +1,20 @@
+// A string printer.
+// Printer is used for converting values of other types
+// into human-readable strings.
+// All types T implementing +=(printer, T)printer
+// can be used to add the string representation of the type
+// to the printer.
 Type printer := _printer
-
 type _printer &[.n int, .data [uint8]]
 
 const min_printer_len := int :: 16
 
+// Returns a new string printer.
 Func new() printer {
 	return: [.n 0, .data new(min_printer_len, uint8 :: 0)]
 }
 
+// Adds the byte to the end of the printer's string.
 Func add_byte(p printer, b uint8) {
 	if: p.n + 1 >= p.data.length then: {
 		grow(p, 1)
@@ -46,6 +53,7 @@ test printer_add_byte_grow {
 	}
 }
 
+// Adds an array of bytes to the end of the printer's string.
 Func add_bytes(p printer, bs [uint8]) {
 	if: p.n + bs.length >= p.data.length then: {
 		grow(p, bs.length)
@@ -96,6 +104,7 @@ test printer_add_bytes_grow {
 	assert: p.data[0, p.n] equals: bytes,
 }
 
+// Adds a string to the end of a printer's string.
 Func add_string(p printer, s string) {
 	if: p.n + s.length >= p.data.length then: {
 		grow(p, s.length)
@@ -162,6 +171,8 @@ func grow(p printer, delta int) {
 	p.data := data
 }
 
+// Returns the printer's string as an array of uint8s
+// and resets the printer to empty.
 Func reset(p printer) [uint8] {
 	b := p.data[0, p.n],
 	p.n := 0,
@@ -189,6 +200,7 @@ test printer_reset_bytes {
 	assert: orig equals: ['a', 'b', 'c'],
 }
 
+// Returns the printer's string and resets the printer to empty.
 Func reset(p printer) string {
 	return: string :: ([uint8] :: reset(p))
 }
@@ -218,10 +230,12 @@ test printer_copy {
 	assert: p1.n equals: 0,
 }
 
+// Returns the string resulting from printing t to a printer.
 Func print_string(t T) string : +=(printer, T)printer {
 	return: reset((printer :: new()) += t)
 }
 
+// Returns the string resulting from printing t then u to a printer.
 Func print_string(t T, u U) string :
 	+=(printer, T)printer,
 	+=(printer, U)printer,
@@ -229,6 +243,7 @@ Func print_string(t T, u U) string :
 	return: reset((printer :: new()) += t += u)
 }
 
+// Returns the string resulting from printing t then u then v to a printer.
 Func print_string(t T, u U, v V) string :
 	+=(printer, T)printer,
 	+=(printer, U)printer,
@@ -237,6 +252,7 @@ Func print_string(t T, u U, v V) string :
 	return: reset((printer :: new()) += t += u += v)
 }
 
+// Returns the string resulting from printing t then u then v then w to a printer.
 Func print_string(t T, u U, v V, w W) string :
 	+=(printer, T)printer,
 	+=(printer, U)printer,
@@ -246,6 +262,7 @@ Func print_string(t T, u U, v V, w W) string :
 	return: reset((printer :: new()) += t += u += v += w)
 }
 
+// Returns the string resulting from printing t then u then v then w then x to a printer.
 // TODO: variadic arguments.
 // TODO: Go-like interfaces.
 Func print_string(t T, u U, v V, w W, x X) string :

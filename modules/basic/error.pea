@@ -1,37 +1,51 @@
+// An error.
 Type error := _error
-
 type _error [.msg string]
 
+// Returns a new error with a given message.
 Func new(msg string) error {
 	return: [.msg msg]
 }
 
+// Returns the error's message.
 Func message(err error) string {
 	return: err.msg
 }
 
+// Adds the error's message to the printer
+// and returns the printer.
 Func +=(p printer, err error) printer {
 	return: p += err.msg,
 }
 
+// An error or some value of type T.
 Type T or_error [error? error, ok? T]
 
+// Returns a new or_error in the ok? case with the given T value.
 Func ok(t T) T or_error {
 	return: [ok? t]
 }
 
+// Returns a new or_error in the error? case with the given error value.
 Func error(err error) T or_error {
 	return: [error? err]
 }
 
+// Returns a new or_error in the error? case with a new error value
+// that has the given message.
 Func error(msg string) T or_error {
 	return: [error? new(msg)]
 }
 
+// Panics if the case of o is no the error? case,
+// and returns the ok? value if it is the ok? case.
 Func must(o T or_error) T {
 	return: o ok? (t T){ t } error? (e){ panic(print_string(e)) }
 }
 
+// If o is the ok? case, returns the ok? value,
+// otherwise returns the result of calling f
+// with the error? case value.
 Func error?(o T or_error, f (error){T}) T {
 	return: o error? f ok? (t){ t }
 }
@@ -41,22 +55,30 @@ test error_question {
 	assert: (int or_error :: error("foo")) error? (e) {5} equals: 5,
 }
 
+// Calls k with the ok? case value if the case of o is ok?.
 Func if:ok:(o T or_error, k (T){}) {
 	o ok? k error? (_){}
 }
 
+// Calls e with the error? case value if the case of o is error?.
 Func if:error:(o T or_error, e (error){}) {
 	o ok? (_ T){} error? e
 }
 
+// Calls k with the ok? case value if the case of o is ok?,
+// otherwise calls e with the error? case value.
 Func if:ok:error:(o T or_error, k (T){}, e (error){}) {
 	o ok? k error? e
 }
 
+// Calls k with the ok? case value if the case of o is ok?,
+// otherwise calls e with the error? case value.
 Func if:error:ok:(o T or_error, e (error){}, k (T){}) {
 	o ok? k error? e
 }
 
+// Adds the string representation of the or_error to the printer
+// and returns the printer.
 Func +=(p printer, t_or T or_error) printer : +=(printer, T)printer {
 	return: t_or ok? (t T) {
 		p += "ok(" += t += ")"
@@ -71,38 +93,51 @@ test print_or_error {
 	assert: print_string(ok("Hello, World!")) equals: "ok(Hello, World!)",
 }
 
+// Returns a new error option with the none? case.
 Func ok() error option {
 	return: none()
 }
 
+// Returns a new error option with the some? case
+// containing the given error value.
 Func error(e error) error option {
 	return: some(e)
 }
 
+// Returns a new error option with the some? case
+// containing a new error that has the given message.
 Func error(msg string) error option {
 	return: some(new(msg))
 }
 
+// Calls e with the some? case value if the case of o is some?.
 Func error?(o error option, e (error){}) {
 	if: o some: e
 }
 
+// Panics if the case of o is some?.
 Func must(o error option) {
 	if: o some: (e){ panic(print_string(e)) }
 }
 
+// Calls k() if the case of o is none?.
 Func if:ok:(o error option, k (){}) {
 	if: o none: k
 }
 
+// Calls e with the some? case value if the case of o is some?.
 Func if:error:(o error option, e (error){}) {
 	if: o some: e
 }
 
+// Calls k() if the case of o is none?,
+// otherwise calls e with the some? case value.
 Func if:ok:error:(o error option, k (){}, e (error){}) {
 	if: o some: e none: k
 }
 
+// Calls k() if the case of o is none?,
+// otherwise calls e with the some? case value.
 Func if:error:ok:(o error option, e (error){}, k (){}) {
 	if: o some: e none: k
 }
