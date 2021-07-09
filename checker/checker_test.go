@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -54,6 +55,7 @@ func newTestImporter(mods []testMod, files []*parser.File) *testImporter {
 func (imp *testImporter) Files() loc.Files { return imp.files }
 
 func (imp *testImporter) Load(path string) (*Mod, error) {
+	path = filepath.Clean(path)
 	if mod, ok := imp.loaded[path]; ok {
 		return mod, nil
 	}
@@ -2912,6 +2914,29 @@ func TestIDResolution(t *testing.T) {
 				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
 			}
 		})
+	}
+}
+
+func TestNestedImportName(t *testing.T) {
+	const src = `
+		import "github.com/eaburns/pea/modules//sys/net/tcp"
+		func main() {
+			sys#net#tcp#foo()
+		}
+	`
+	fooMod := testMod{
+		path: "github.com/eaburns/pea/modules/sys/net/tcp",
+		src:  "Func foo() {}",
+	}
+	mod, errs := check("test", []string{src}, []testMod{fooMod})
+	if len(errs) > 0 {
+		t.Fatalf("got unexpected error: %s", errs[0])
+	}
+	main := findFuncDef(t, "main", mod)
+	funcDef := main.Exprs[0].(*Convert).Expr.(*Call).Func.(*FuncInst).Def
+	const want = "github.com/eaburns/pea/modules/sys/net/tcp"
+	if funcDef.Mod != want {
+		t.Errorf("got %s, wanted %s", funcDef.Mod, want)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
@@ -32,7 +33,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				continue
 			}
 			importedMods = append(importedMods, m)
-			name := filepath.Base(parserImport.Path)
+			name := importName(parserImport.Path)
 			if parserImport.Name != nil {
 				name = parserImport.Name.Name
 			}
@@ -290,6 +291,13 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	mod.Deps = importer.Deps()
 
 	return mod, importer.Files(), nil
+}
+
+func importName(path string) string {
+	if i := strings.LastIndex(path, "//"); i >= 0 {
+		return strings.Replace(path[i+2:], "/", "#", -1)
+	}
+	return filepath.Base(path)
 }
 
 func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm, []Error) {

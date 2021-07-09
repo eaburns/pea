@@ -318,8 +318,8 @@ ModSel <-
 		})
 	}
 
-ModTag <- id:Id _ "#" {
-	return Ident(id)
+ModTag <- ids:(i:Id "#" { return Ident(i) })+ {
+	return Ident(modTag(ids))
 }
 
 FuncName <- FieldId / IdxOp / Op / Kwds / Cases / Id

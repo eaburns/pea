@@ -487,6 +487,16 @@ func TestExpr(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			"foo#bar#baz#qux()",
+			&Call{
+				Fun: &ModSel{
+					Mod:  Ident{Name: "foo#bar#baz"},
+					Name: Ident{Name: "qux"},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		test := test

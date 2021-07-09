@@ -63,7 +63,7 @@ func importsOnly(path string, r io.Reader) ([]string, error) {
 	_, imports := _ImportsOnlyAction(_p, 0)
 	var paths []string
 	for _, imp := range *imports {
-		paths = append(paths, imp.Path)
+		paths = append(paths, filepath.Clean(imp.Path))
 	}
 	return paths, nil
 }
@@ -237,6 +237,20 @@ func primaries(head Expr, tail []primary) Expr {
 		}
 	}
 	return head
+}
+
+func modTag(ids []Ident) Ident {
+	var s strings.Builder
+	for i, id := range ids {
+		s.WriteString(id.Name)
+		if i < len(ids)-1 {
+			s.WriteRune('#')
+		}
+	}
+	return Ident{
+		Name: s.String(),
+		L:    loc.Loc{ids[0].L[0], ids[len(ids)-1].L[1]},
+	}
 }
 
 func catNames(ids []Ident) string {
