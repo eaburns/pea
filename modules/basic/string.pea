@@ -77,6 +77,44 @@ test string_less {
 	assert_true: "foo bar" < "zoo bar",
 }
 
+// Returns whether a string is greater than another.
+// Greater is determined lexically: string a is greater than b if,
+// * for some 0 ≤ i < a.length, a[i] > b[i], and for all 0 ≤ j < i, a[j] = b[j],
+// * or for all 0 ≤ i < a.length, a[i] = b[i] and a.length > b.length.
+Func >(a string, b string) bool {
+	for: 0 to: a.length - 1 do: (i) {
+		if: i >= b.length then: {
+			return: true
+		},
+		if: a[i] != b[i] then: {
+			return: a[i] > b[i]
+		}
+	},
+	return: a.length > b.length
+}
+
+test string_greater {
+	assert_false: "" > "",
+	assert_false: "a" > "a",
+	assert_false: "a" > "ab",
+	assert_false: "a" > "z",
+
+	assert_true: "a" > "",
+	assert_true: "b" > "a",
+	assert_true: "aa" > "a",
+	assert_true: "zoo bar" > "foo bar",
+}
+
+// Returns whether a string is < or = to another.
+Func <=(a string, b string) bool {
+	return: a < b || {a = b}
+}
+
+// Returns whether a string is > or = to another.
+Func >=(a string, b string) bool {
+	return: a > b || {a = b}
+}
+
 // Returns the concatenation of two strings.
 Func +(a string, b string) string {
 	if: a.length = 0 then: {
