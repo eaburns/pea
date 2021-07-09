@@ -139,6 +139,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				typeDef := defs[parserDef].(*TypeDef)
 				typeDef.Type = instType(typeDef.Type)
 			case *parser.VarDef:
+				origErrorCount := len(errs)
 				name := parserDef.Name.Name
 				if name != "_" {
 					if prev, ok := idNames[name]; ok {
@@ -147,9 +148,9 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 					}
 					idNames[name] = parserDef.L
 				}
-				t, fs := makeType(file, parserDef.Type)
-				if len(fs) > 0 {
-					errs = append(errs, fs...)
+				t, es := makeType(file, parserDef.Type)
+				if len(es) > 0 {
+					errs = append(errs, es...)
 				}
 				varDef := &VarDef{
 					File:  file,
@@ -160,9 +161,16 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 					Exp:   parserDef.Exp,
 					L:     parserDef.L,
 				}
-				mod.Defs = append(mod.Defs, varDef)
 				defs[parserDef] = varDef
+				if len(errs) == origErrorCount {
+					// Only add to the mod defs list used for scope lookup
+					// if there were no errors in the variable signature.
+					// If there was an error, the types likely contain nil,
+					// which downstream code assumes is non-nil.
+					mod.Defs = append(mod.Defs, varDef)
+				}
 			case *parser.FuncDef:
+				origErrorCount := len(errs)
 				typeParms := findTypeParms(importer.Files(), parserDef)
 				funDef := &FuncDef{
 					File:      file,
@@ -172,21 +180,27 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 					Exp:       parserDef.Exp,
 					L:         parserDef.L,
 				}
-				var fs []Error
-				if funDef.Parms, fs = makeFuncParms(funDef, parserDef.Parms); len(fs) > 0 {
-					errs = append(errs, fs...)
+				var es []Error
+				if funDef.Parms, es = makeFuncParms(funDef, parserDef.Parms); len(es) > 0 {
+					errs = append(errs, es...)
 				}
-				if funDef.Ret, fs = makeType(funDef, parserDef.Ret); len(fs) > 0 {
-					errs = append(errs, fs...)
+				if funDef.Ret, es = makeType(funDef, parserDef.Ret); len(es) > 0 {
+					errs = append(errs, es...)
 				}
 				if funDef.Ret == nil {
 					funDef.Ret = &StructType{L: parserDef.L}
 				}
-				if funDef.Iface, fs = makeFuncDecls(funDef, parserDef.Iface); len(fs) > 0 {
-					errs = append(errs, fs...)
+				if funDef.Iface, es = makeFuncDecls(funDef, parserDef.Iface); len(es) > 0 {
+					errs = append(errs, es...)
 				}
-				mod.Defs = append(mod.Defs, funDef)
 				defs[parserDef] = funDef
+				if len(errs) == origErrorCount {
+					// Only add to the mod defs list used for scope lookup
+					// if there were no errors in the function signature.
+					// If there was an error, the types likely contain nil,
+					// which downstream code assumes is non-nil.
+					mod.Defs = append(mod.Defs, funDef)
+				}
 			case *parser.TestDef:
 				name := parserDef.Name.Name
 				if prev, ok := testNames[name]; ok {
@@ -568,28 +582,24 @@ func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []Error)
 }
 
 func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
-	var errs []Error
-	if parserDef.Expr != nil {
-		expr, fs := checkAndConvertExpr(def, parserDef.Expr, def.T)
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
-		}
-		def.Expr = &Call{
-			Func: &Builtin{
-				Op:    Assign,
-				Parms: []Type{refType(def.T), expr.Type()},
-				Ret:   expr.Type(),
-			},
-			Args: []Expr{&Var{Def: def, T: refType(def.T), L: def.L}, expr},
-			T:    &StructType{L: def.L},
-			L:    def.L,
-		}
+	if parserDef.Expr == nil {
+		// This is a variable declaration.
+		// If the type was erronous, that error is reported elsewhere.
+		return nil
 	}
-	if def.T == nil && def.Expr != nil {
-		def.T = def.Expr.Type()
+	expr, errs := checkAndConvertExpr(def, parserDef.Expr, def.T)
+	if def.T == nil || expr.Type() == nil {
+		return errs
 	}
-	if def.T == nil && def.Expr == nil {
-		errs = append(errs, newError(def, "cannot infer variable type"))
+	def.Expr = &Call{
+		Func: &Builtin{
+			Op:    Assign,
+			Parms: []Type{refType(def.T), expr.Type()},
+			Ret:   expr.Type(),
+		},
+		Args: []Expr{&Var{Def: def, T: refType(def.T), L: def.L}, expr},
+		T:    &StructType{L: def.L},
+		L:    def.L,
 	}
 	return errs
 }

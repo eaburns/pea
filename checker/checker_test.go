@@ -2645,6 +2645,14 @@ func TestOverloadResolution(t *testing.T) {
 			},
 			err: "bar: ambiguous call",
 		},
+		{
+			name: "don't crash on error func arg type",
+			src: `
+				func foo(_ not_found_type)
+			`,
+			call: "foo(5)",
+			err:  "foo: not found",
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -2873,6 +2881,17 @@ func TestIDResolution(t *testing.T) {
 				`,
 			},
 			err: "x is ambiguous",
+		},
+		{
+			name: "don't crash on error func arg type",
+			src: `
+				func foo(_ not_found_type)
+				const f := (_ not_found_type){} :: foo
+				func main() {
+					f(5)
+				}
+			`,
+			err: "f: not found",
 		},
 	}
 	for _, test := range tests {
