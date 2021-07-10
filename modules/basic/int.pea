@@ -2,7 +2,7 @@
 Const max_uint32 := uint32 :: 4294967295
 
 // Increases the value of n by one.
-Func ++(n &int) { &int :: n := n + 1 }
+Func ++(n &int) { n := n + 1 }
 
 test int_inc {
 	n := -3,
@@ -21,7 +21,7 @@ test int_inc {
 }
 
 // Decreases the value of n by one.
-Func --(n &int) { &int :: n := n - 1 }
+Func --(n &int) { n := n - 1 }
 
 test int_dec {
 	n := 3,
@@ -37,6 +37,90 @@ test int_dec {
 	assert: n equals: -2,
 	--n,
 	assert: n equals: -3,
+}
+
+// Assigns the result of x OP y to x,
+// where OP is +, -, *, /, or %,
+// as denoted by the operator name.
+Func +=(x &int, y int) { x := x + y }
+Func +=(x &int8, y int8) { x := x + y }
+Func +=(x &int16, y int16) { x := x + y }
+Func +=(x &int32, y int32) { x := x + y }
+Func +=(x &int64, y int64) { x := x + y }
+Func +=(x &uint, y uint) { x := x + y }
+Func +=(x &uint8, y uint8) { x := x + y }
+Func +=(x &uint16, y uint16) { x := x + y }
+Func +=(x &uint32, y uint32) { x := x + y }
+Func +=(x &uint64, y uint64) { x := x + y }
+Func -=(x &int, y int) { x := x - y }
+Func -=(x &int8, y int8) { x := x - y }
+Func -=(x &int16, y int16) { x := x - y }
+Func -=(x &int32, y int32) { x := x - y }
+Func -=(x &int64, y int64) { x := x - y }
+Func -=(x &uint, y uint) { x := x - y }
+Func -=(x &uint8, y uint8) { x := x - y }
+Func -=(x &uint16, y uint16) { x := x - y }
+Func -=(x &uint32, y uint32) { x := x - y }
+Func -=(x &uint64, y uint64) { x := x - y }
+Func *=(x &int, y int) { x := x * y }
+Func *=(x &int8, y int8) { x := x * y }
+Func *=(x &int16, y int16) { x := x * y }
+Func *=(x &int32, y int32) { x := x * y }
+Func *=(x &int64, y int64) { x := x * y }
+Func *=(x &uint, y uint) { x := x * y }
+Func *=(x &uint8, y uint8) { x := x * y }
+Func *=(x &uint16, y uint16) { x := x * y }
+Func *=(x &uint32, y uint32) { x := x * y }
+Func *=(x &uint64, y uint64) { x := x * y }
+Func /=(x &int, y int) { x := x / y }
+Func /=(x &int8, y int8) { x := x / y }
+Func /=(x &int16, y int16) { x := x / y }
+Func /=(x &int32, y int32) { x := x / y }
+Func /=(x &int64, y int64) { x := x / y }
+Func /=(x &uint, y uint) { x := x / y }
+Func /=(x &uint8, y uint8) { x := x / y }
+Func /=(x &uint16, y uint16) { x := x / y }
+Func /=(x &uint32, y uint32) { x := x / y }
+Func /=(x &uint64, y uint64) { x := x / y }
+Func %=(x &int, y int) { x := x % y }
+Func %=(x &int8, y int8) { x := x % y }
+Func %=(x &int16, y int16) { x := x % y }
+Func %=(x &int32, y int32) { x := x % y }
+Func %=(x &int64, y int64) { x := x % y }
+Func %=(x &uint, y uint) { x := x % y }
+Func %=(x &uint8, y uint8) { x := x % y }
+Func %=(x &uint16, y uint16) { x := x % y }
+Func %=(x &uint32, y uint32) { x := x % y }
+Func %=(x &uint64, y uint64) { x := x % y }
+
+test plus_equals {
+	i := 3,
+	i += 5,
+	assert: i equals: 8,
+}
+
+test minus_equals {
+	i := 3,
+	i -= 5,
+	assert: i equals: -2,
+}
+
+test times_equals {
+	i := 3,
+	i *= 5,
+	assert: i equals: 15,
+}
+
+test divide_equals {
+	i := 15,
+	i /= 5,
+	assert: i equals: 3,
+}
+
+test mod_equals {
+	i := 18,
+	i %= 5,
+	assert: i equals: 3,
 }
 
 // Calls f with each value from start (inclusive)
