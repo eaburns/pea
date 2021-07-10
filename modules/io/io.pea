@@ -1,16 +1,49 @@
 Import "basic"
 
-Type read_result [ok? int, eof?, error? error]
+// The result of a read operation.
+Type read_result [
+	// The given number of bytes were successfully read.
+	ok? int,
+	// The end of the input was reached;
+	// there was nothing left to read.
+	end?,
+	// An error was encountered.
+	error? error,
+]
 
-Type write_result := int or_error
+// The result of a write operation.
+Type write_result := [
+	// The number of bytes written.
+	.n int,
+	// Whether there was an error.
+	.error error option,
+]
 
+// Returns the number of bytes written if there was no error,
+// otherwise returns the result of e called with the error.
+Func error?(res write_result, e (error){int}) int {
+	return: res.error none? {
+		res.n
+	} some? (err) {
+		e(err)
+	}
+}
+
+// Returns the number of bytes written;
+// panics if there was an error.
+Func must(res write_result) int {
+	return: res error? (e error) { panic(print_string(e)) }
+}
+
+// Reads from a reader until its end
+// and returns an array of all bytes read.
 Func read_all(r R) [uint8] or_error : read(R, [uint8]) read_result {
 	total := 0,
 	buf := [uint8] :: new(128, uint8 :: 0),
 	while: {true} do: {
 		read(r, buf[total, buf.length]) error? (e error) {
 			return: [error? e]
-		} eof? {
+		} end? {
 			return: [ok? buf[0, total]]
 		} ok? (n) {
 			total := total + n

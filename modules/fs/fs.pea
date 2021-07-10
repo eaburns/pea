@@ -1,0 +1,34 @@
+Import "basic"
+
+// The result of opening a file.
+Type F open_result [
+	ok? F,
+	exists? error,
+	does_not_exist? error,
+	permission_denied? error,
+	unknown_error? error,
+]
+
+// Returns the opened file if there was no error,
+// otherwise returns the result of calling e with the error.
+Func error?(res F open_result, e (error){F}) F {
+	return: res ok? (file F){
+		file
+	} exists? (err){
+		e(err)
+	} does_not_exist? (err){
+		e(err)
+	} permission_denied? (err){
+		e(err)
+	} unknown_error? (err){
+		e(err)
+	}
+}
+
+// Returns the opened file or panics if there was an error.
+Func must(res F open_result) F {
+	return: res error? (e) { panic(print_string(e)) }
+}
+
+// The result of reading from a directory.
+Type read_dir_result [ok? string, eof?, error? error]

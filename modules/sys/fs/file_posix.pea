@@ -1,4 +1,5 @@
 Import "basic"
+import "fs"
 import "io"
 
 // These functions return errno values.
@@ -60,7 +61,8 @@ func errno_error(errno int32) error {
 	return: new("")
 }
 
-Func open(path string, opts open_options) open_result {
+// Opens a file at a local filesystem path with given options.
+Func open(path string, opts open_options) file fs#open_result {
 	flags := int32 :: 0,
 	if: opts.read && opts.write then: {
 		flags := posix_o_rdwr()
@@ -99,7 +101,9 @@ Func open(path string, opts open_options) open_result {
 	return: [ok? [.fd fd, .dir none()]]
 }
 
-func close(f file) error option {
+// Closes an open file.
+// An error is returned if called on an already closed file.
+Func close(f file) error option {
 	res := f.dir some? (d dir) {
 		posix_closedir(d)
 	} none? {
@@ -111,7 +115,9 @@ func close(f file) error option {
 	return: none()
 }
 
-func remove(path string) error option {
+// Removes a file or empty directory
+// at a path in the local filesystem.
+Func remove(path string) error option {
 	r0 := posix_unlink(path),
 	if: r0 = 0 then: {
 		return: none()
@@ -130,31 +136,33 @@ func remove(path string) error option {
 	return: some(errno_error(-r1))
 }
 
+// Reads at most buf.length bytes from an open file into buf.
 Func read(f file, buf [uint8]) io#read_result {
 	n := posix_read(f.fd, buf),
 	if: n < 0 then: {
 		return: [error? errno_error(int32 :: -n)]
 	},
 	if: n = 0 then: {
-		return: [eof?]
+		return: [end?]
 	},
 	return: [ok? int :: n]
 }
 
+// Writes at most buf.length bytes from buf to an open file.
+// If fewer than buf.length bytes are written,
+// a non-none error is returned.
 Func write(f file, buf [uint8]) io#write_result {
 	n := posix_write(f.fd, buf),
 	if: n < 0 then: {
-		return: [error? errno_error(int32 :: -n)]
+		return: [.n 0, .error some(errno_error(int32 :: -n))]
 	},
 	if: n < (int64 :: buf.length) then: {
-		return: [error? new("short write")]
+		return: [.n int :: n, .error some(error :: new("short write"))]
 	},
-	return: [ok? int :: n]
+	return: [.n int :: n, .error none()]
 }
 
-Type read_dir_result [ok? string, eof?, error? error]
-
-Func read_dir(f file) read_dir_result {
+Func read_dir(f file) fs#read_dir_result {
 	dir := f.dir some? (d dir) {
 		d
 	} none? {

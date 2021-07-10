@@ -1,9 +1,12 @@
-import "algorithm/sort"
 Import "basic"
-import "io"
+Import "fs"
+Import "io"
+import "algorithm/sort"
 
+// A file or directory on the local filesystem.
 Type file := _file
 
+// Options for opening a file.
 Type open_options := [
 	.read bool,
 	.write bool,
@@ -13,6 +16,8 @@ Type open_options := [
 	.permissions int,
 ]
 
+// Returns a new open options
+// with all bools false and permissions 0.
 Func new() open_options {
 	return: [
 		.read false,
@@ -24,45 +29,23 @@ Func new() open_options {
 	]
 }
 
-Func open(path string) open_result {
+// Opens a file at a local filesystem path for read only.
+Func open(path string) file fs#open_result {
 	opts := open_options :: new(),
 	opts.read := true,
 	return: open(path, opts)
 }
 
-Func create(path string) open_result {
+// Creates or opens and truncates
+// a file at a local filesystem path
+// for write only with permissions 0666.
+Func create(path string) file fs#open_result {
 	opts := open_options :: new(),
 	opts.write := true,
 	opts.create := true,
 	opts.truncate := true,
 	opts.permissions := 438, // 0666
 	return: open(path, opts)
-}
-
-Type open_result [
-	ok? file,
-	exists? error,
-	does_not_exist? error,
-	permission_denied? error,
-	unknown_error? error,
-]
-
-Func error?(res open_result, e (error){file}) file {
-	return: res ok? (file file){
-		file
-	} exists? (err){
-		e(err)
-	} does_not_exist? (err){
-		e(err)
-	} permission_denied? (err){
-		e(err)
-	} unknown_error? (err){
-		e(err)
-	}
-}
-
-Func must(res open_result) file {
-	return: res error? (e) { panic(print_string(e)) }
 }
 
 test create_write_read_delete {
