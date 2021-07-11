@@ -1,7 +1,7 @@
 Import "basic"
 Import "fs"
 Import "io"
-import "algorithm/sort"
+import "sort"
 
 // A file or directory on the local filesystem.
 Type file := _file
