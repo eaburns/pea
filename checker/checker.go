@@ -999,74 +999,40 @@ func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 
 func resolveIDCall(x scope, parserID parser.Ident, parserCall *parser.Call, want Type, ids []id) (Expr, []Error) {
 	if len(ids) == 0 {
-		args, errs := checkArgsFallback(x, parserCall.Args)
+		errs := checkArgsFallback(x, parserCall.Args)
 		errs = append(errs, notFound(parserID.Name, parserID.L))
-		return &Call{Args: args, L: parserCall.L}, errs
+		return &Call{L: parserCall.L}, errs
 	}
+
 	funcs, notes := filterToFuncs(ids, parserID.L)
 	if len(funcs) == 0 {
-		args, errs := checkArgsFallback(x, parserCall.Args)
+		errs := checkArgsFallback(x, parserCall.Args)
 		err := newError(parserID.L, "%s is not callable", parserID.Name)
 		err.setNotes(notes)
 		errs = append(errs, err)
-		return &Call{Args: args, L: parserCall.L}, errs
+		return &Call{L: parserCall.L}, errs
 	}
+
 	funcs, ns := filterByArity(funcs, len(parserCall.Args))
-	if len(ns) > 0 {
-		notes = append(notes, ns...)
-	}
-	var errs []Error
+	notes = append(notes, ns...)
+
 	var args []Expr
 	for i, parserArg := range parserCall.Args {
-		t := commonGroundParmType(funcs, i)
-		if t == nil {
-			var arg Expr
-			var es []Error
-			// If this is the LHS of an assignment to an Ident,
-			// don't mark it as "used" if it is a local variable.
-			if lhs, ok := parserArg.(parser.Ident); ok && i == 0 && parserID.Name == ":=" {
-				arg, es = checkID(x, lhs, false, t)
-			} else {
-				arg, es = checkAndConvertExpr(x, parserArg, nil)
-			}
-			if arg == nil || arg.Type() == nil || len(es) > 0 {
-				errs = append(errs, es...)
-				as, es := checkArgsFallback(x, parserCall.Args[i+1:])
-				args = append(args, as...)
-				errs = append(errs, es...)
-				return &Call{Args: args, L: parserCall.L}, errs
-			}
-			args = append(args, arg)
-			var ns []note
-			funcs, ns = filterByGroundedArg(funcs, i, arg)
-			notes = append(notes, ns...)
-			continue
+		arg, fs, ns, errs := checkArgAndFilter(x, parserID, i, parserArg, funcs)
+		if len(errs) > 0 {
+			errs = append(errs, checkArgsFallback(x, parserCall.Args[i+1:])...)
+			return &Call{L: parserCall.L}, errs
 		}
-		arg, es := checkExpr(x, parserArg, t)
-		// TODO: these errors should become notes and be appended.
-		if len(es) > 0 {
-			errs = append(errs, es...)
-			as, es := checkArgsFallback(x, parserCall.Args[i+1:])
-			args = append(args, as...)
-			errs = append(errs, es...)
-			return &Call{Args: args, L: parserCall.L}, errs
-		}
-		if arg, err := convert(arg, t, false); err != nil {
-			var notes []note
-			for _, f := range funcs {
-				notes = append(notes, newNote("%s parameter %d is type %s", f, i, t).setLoc(f.groundParm(i)))
-			}
-			err.setNotes(notes)
-			errs = append(errs, err)
-			as, fs := checkArgsFallback(x, parserCall.Args)
-			if len(fs) > 0 {
-				errs = append(errs, fs...)
-			}
-			args = append(args, as...)
-			return &Call{Args: args, L: parserCall.L}, errs
-		} else if arg != nil {
-			args = append(args, arg)
-		}
+		funcs = fs
+		args = append(args, arg)
+		// TODO: add a verbosity option.
+		// It would prevent this from appending, and instead overwrite.
+		// That way when no functions remain, we will print only the notes
+		// from those functions that made it all the way to the last argument
+		// before being filtered. This will be much less noisy
+		// than printing every single function, which prints much that are
+		// clearly not intended.
+		notes = append(notes, ns...)
 	}
 
 	if want != nil {
@@ -1080,15 +1046,15 @@ func resolveIDCall(x scope, parserID parser.Ident, parserCall *parser.Call, want
 
 	funcs, ns = filterIfaceConstraints(x, parserCall.L, funcs)
 	notes = append(notes, ns...)
+
 	switch {
 	case len(funcs) == 0:
 		err := notFound(parserID.Name, parserID.L)
 		err.setNotes(notes)
-		errs = append(errs, err)
-		return &Call{Args: args, L: parserCall.L}, errs
+		return &Call{Args: args, L: parserCall.L}, []Error{err}
 	case len(funcs) > 1:
-		errs = append(errs, ambiguousCall(parserID.Name, funcs, parserID.L))
-		return &Call{Args: args, L: parserCall.L}, errs
+		err := ambiguousCall(parserID.Name, funcs, parserID.L)
+		return &Call{Args: args, L: parserCall.L}, []Error{err}
 	}
 
 	fun := useFunc(x, parserCall.L, funcs[0])
@@ -1105,7 +1071,7 @@ func resolveIDCall(x scope, parserID parser.Ident, parserCall *parser.Call, want
 	for isRefType(expr.Type()) {
 		expr = deref(expr)
 	}
-	return expr, errs
+	return expr, nil
 }
 
 func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
@@ -1158,48 +1124,50 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func checkArgsFallback(x scope, parserArgs []parser.Expr) ([]Expr, []Error) {
-	var args []Expr
-	var errs []Error
-	for _, parserArg := range parserArgs {
-		arg, fs := checkAndConvertExpr(x, parserArg, nil)
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
+func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.Expr, funcs []Func) (Expr, []Func, []note, []Error) {
+	if t := commonGroundParmType(funcs, i); t != nil {
+		arg, errs := checkExpr(x, parserArg, t)
+		if len(errs) > 0 {
+			return nil, nil, nil, errs
 		}
-		if arg != nil {
-			args = append(args, arg)
+		arg, err := convert(arg, t, false)
+		if err != nil {
+			var notes []note
+			for _, f := range funcs {
+				l := f.groundParm(i)
+				note := newNote("%s parameter %d is type %s", f, i, t).setLoc(l)
+				notes = append(notes, note)
+			}
+			err.setNotes(notes)
+			errs = append(errs, err)
+			return nil, nil, nil, errs
 		}
+		return arg, funcs, nil, errs
 	}
-	return args, errs
+	var arg Expr
+	var errs []Error
+	// If this is the LHS of an assignment to an Ident,
+	// don't mark it as "used" if it is a local variable.
+	if lhs, ok := parserArg.(parser.Ident); ok && i == 0 && parserID.Name == ":=" {
+		arg, errs = checkID(x, lhs, false, nil)
+	} else {
+		arg, errs = checkAndConvertExpr(x, parserArg, nil)
+	}
+	if len(errs) > 0 {
+		return nil, nil, nil, errs
+	}
+	var notes []note
+	funcs, notes = filterByGroundedArg(funcs, i, arg)
+	return arg, funcs, notes, errs
 }
 
-func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
-	var n int
-	var notes []note
-	for _, f := range funcs {
-		if note := f.unifyRet(want); note != nil {
-			notes = append(notes, note)
-			continue
-		}
-		retType := f.groundRet()
-		if retType == nil {
-			continue
-		}
-		// If there is only 1 function, don't bother checking conversion.
-		// If it cannot convert, it will fail upstream.
-		// The reason for this special case is that canImplicitConvert
-		// only accepts implicit conversions.
-		// If the parent node is an explicit conversion,
-		// we want it to be accepted in the common case
-		// that there is only one function overload acceptable at this point.
-		if len(funcs) > 1 && !canImplicitConvert(retType, want) {
-			notes = append(notes, newNote("%s: cannot convert returned %s to %s", f, retType, want).setLoc(f))
-			continue
-		}
-		funcs[n] = f
-		n++
+func checkArgsFallback(x scope, parserArgs []parser.Expr) []Error {
+	var errs []Error
+	for _, parserArg := range parserArgs {
+		_, es := checkAndConvertExpr(x, parserArg, nil)
+		errs = append(errs, es...)
 	}
-	return funcs[:n], notes
+	return errs
 }
 
 func commonGroundParmType(funcs []Func, i int) Type {
@@ -1236,6 +1204,35 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 		}
 		notes = append(notes, newNote("%s: cannot convert argument %s (%s) to %s",
 			f, arg, arg.Type(), parmType).setLoc(parmType))
+	}
+	return funcs[:n], notes
+}
+
+func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
+	var n int
+	var notes []note
+	for _, f := range funcs {
+		if note := f.unifyRet(want); note != nil {
+			notes = append(notes, note)
+			continue
+		}
+		retType := f.groundRet()
+		if retType == nil {
+			continue
+		}
+		// If there is only 1 function, don't bother checking conversion.
+		// If it cannot convert, it will fail upstream.
+		// The reason for this special case is that canImplicitConvert
+		// only accepts implicit conversions.
+		// If the parent node is an explicit conversion,
+		// we want it to be accepted in the common case
+		// that there is only one function overload acceptable at this point.
+		if len(funcs) > 1 && !canImplicitConvert(retType, want) {
+			notes = append(notes, newNote("%s: cannot convert returned %s to %s", f, retType, want).setLoc(f))
+			continue
+		}
+		funcs[n] = f
+		n++
 	}
 	return funcs[:n], notes
 }
