@@ -998,21 +998,7 @@ func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 }
 
 func resolveIDCall(x scope, parserID parser.Ident, parserCall *parser.Call, want Type, ids []id) (Expr, []Error) {
-	if len(ids) == 0 {
-		errs := checkArgsFallback(x, parserCall.Args)
-		errs = append(errs, notFound(parserID.Name, parserID.L))
-		return &Call{L: parserCall.L}, errs
-	}
-
 	funcs, notes := filterToFuncs(ids, parserID.L)
-	if len(funcs) == 0 {
-		errs := checkArgsFallback(x, parserCall.Args)
-		err := newError(parserID.L, "%s is not callable", parserID.Name)
-		err.setNotes(notes)
-		errs = append(errs, err)
-		return &Call{L: parserCall.L}, errs
-	}
-
 	funcs, ns := filterByArity(funcs, len(parserCall.Args))
 	notes = append(notes, ns...)
 
@@ -1032,6 +1018,10 @@ func resolveIDCall(x scope, parserID parser.Ident, parserCall *parser.Call, want
 		// before being filtered. This will be much less noisy
 		// than printing every single function, which prints much that are
 		// clearly not intended.
+		notes = append(notes, ns...)
+
+		fs, ns = adLookup(x, parserID, len(parserCall.Args), args)
+		funcs = append(funcs, fs...)
 		notes = append(notes, ns...)
 	}
 
@@ -1125,6 +1115,7 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 }
 
 func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.Expr, funcs []Func) (Expr, []Func, []note, []Error) {
+	var notes []note
 	if t := commonGroundParmType(funcs, i); t != nil {
 		arg, errs := checkExpr(x, parserArg, t)
 		if len(errs) > 0 {
@@ -1132,17 +1123,9 @@ func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.E
 		}
 		arg, err := convert(arg, t, false)
 		if err != nil {
-			var notes []note
-			for _, f := range funcs {
-				l := f.groundParm(i)
-				note := newNote("%s parameter %d is type %s", f, i, t).setLoc(l)
-				notes = append(notes, note)
-			}
-			err.setNotes(notes)
-			errs = append(errs, err)
-			return nil, nil, nil, errs
+			funcs, notes = filterByGroundedArg(funcs, i, arg)
 		}
-		return arg, funcs, nil, errs
+		return arg, funcs, notes, errs
 	}
 	var arg Expr
 	var errs []Error
@@ -1156,9 +1139,43 @@ func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.E
 	if len(errs) > 0 {
 		return nil, nil, nil, errs
 	}
-	var notes []note
 	funcs, notes = filterByGroundedArg(funcs, i, arg)
 	return arg, funcs, notes, errs
+}
+
+func adLookup(x scope, parserID parser.Ident, arity int, args []Expr) ([]Func, []note) {
+	// Only called after args have been added, so args cannot be empty.
+	defType, ok := args[len(args)-1].Type().(*DefType)
+	if !ok {
+		return nil, nil
+	}
+
+	file := x.file()
+	if defType.Def.Mod == file.Mod.Path {
+		return nil, nil
+	}
+	var ids []id
+	for _, imp := range file.Imports {
+		if imp.Path == defType.Def.Mod {
+			if imp.Exp {
+				return nil, nil
+			}
+			ids = imp.find(parserID.Name)
+			break
+		}
+	}
+
+	funcs, notes := filterToFuncs(ids, parserID.L)
+
+	var ns []note
+	funcs, ns = filterByArity(funcs, arity)
+	notes = append(notes, ns...)
+
+	for i, arg := range args {
+		funcs, ns = filterByGroundedArg(funcs, i, arg)
+		notes = append(notes, ns...)
+	}
+	return funcs, notes
 }
 
 func checkArgsFallback(x scope, parserArgs []parser.Expr) []Error {

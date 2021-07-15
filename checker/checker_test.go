@@ -708,7 +708,7 @@ func TestCheckFuncReturnCall(t *testing.T) {
 		{
 			name: "return type mismatch",
 			src:  "func foo() int { return: \"hello\" }",
-			err:  `cannot convert "hello" \(string\) to type int`,
+			err:  `cannot convert argument "hello" \(string\) to int`,
 		},
 	}
 	for _, test := range tests {
@@ -768,7 +768,7 @@ func TestCheckFuncScope(t *testing.T) {
 					x("hello")
 				}
 			`,
-			err: "x is not callable",
+			err: "x \\(int\\) is not a function",
 		},
 		{
 			name: "param shadows module-level var",
@@ -778,7 +778,7 @@ func TestCheckFuncScope(t *testing.T) {
 					return: x
 				}
 			`,
-			err: "cannot convert x \\(int\\) to type string",
+			err: "cannot convert argument x \\(int\\) to string",
 		},
 		{
 			name: "param shadows interface func",
@@ -788,7 +788,7 @@ func TestCheckFuncScope(t *testing.T) {
 					return: x
 				}
 			`,
-			err: "cannot convert x \\(int\\) to type \\(\\){}",
+			err: "cannot convert argument x \\(int\\) to \\(\\){}",
 		},
 	}
 	for _, test := range tests {
@@ -1172,7 +1172,7 @@ func TestConversions(t *testing.T) {
 				type bar string
 				func f(x foo) bar {return: x}
 			`,
-			err: `cannot convert x \(foo\) to type bar`,
+			err: `cannot convert argument x \(foo\) to bar`,
 		},
 		{
 			name: "explicit conversion to defined type",
@@ -1228,7 +1228,7 @@ func TestConversions(t *testing.T) {
 				type bar string
 				func f(x foo) &bar {return: x}
 			`,
-			err: `cannot convert x \(foo\) to type &bar`,
+			err: `cannot convert argument x \(foo\) to &bar`,
 		},
 		{
 			name: "explicit conversion to defined reference type",
@@ -1524,7 +1524,7 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "var x int",
 			ret:  "int",
 			call: "x()",
-			err:  "not callable",
+			err:  "x \\(int\\) is not a function",
 		},
 		{
 			name: "no functions found",
@@ -1575,7 +1575,7 @@ func TestOverloadResolution(t *testing.T) {
 			name: "argument type mismatch",
 			src:  "func x(i int)",
 			call: "x(\"hello\")",
-			err:  `cannot convert "hello" \(string\) to type int`,
+			err:  `cannot convert argument "hello" \(string\) to int`,
 		},
 		{
 			name: "0-ary no return function found",
@@ -2044,7 +2044,7 @@ func TestOverloadResolution(t *testing.T) {
 				var point_a_var point_a
 			`,
 			call: "f(point_a_var)",
-			err:  `cannot convert point_a_var \(point_a\) to type point_b`,
+			err:  `cannot convert argument point_a_var \(point_a\) to point_b`,
 		},
 		{
 			name: "convert defined to literal type",
@@ -2103,13 +2103,13 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "var a := int :: 1",
 			call: "a := \"\"",
 			ret:  "int",
-			err:  `cannot convert "" \(string\) to type int`,
+			err:  `cannot convert argument "" \(string\) to int`,
 		},
 		{
 			name: "built-in assign, lhs/rhs mismatch",
 			src:  "var a := int :: 1",
 			call: "a := \"\"",
-			err:  `cannot convert "" \(string\) to type int`,
+			err:  `cannot convert argument "" \(string\) to int`,
 		},
 		{
 			name: "built-in new array, no expected type",
@@ -2654,6 +2654,107 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "foo(5)",
 			err:  "foo: not found",
+		},
+		{
+			name: "adl parm 0",
+			src: `
+				import "foo"
+			`,
+			call: "bar(foo#new_x())",
+			want: "foo#bar(foo#x)",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Type x int
+					Func new_x()x {return: x :: 0}
+					Func bar(_ x){}
+				`,
+			},
+		},
+		{
+			name: "adl parm 1",
+			src: `
+				import "foo"
+				func bar(_ int, _ int)
+			`,
+			call: "bar(5, foo#new_x())",
+			want: "foo#bar(int, foo#x)",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Type x int
+					Func new_x()x {return: x :: 0}
+					Func bar(_ int, _ x){}
+				`,
+			},
+		},
+		{
+			name: "adl parm 2",
+			src: `
+				import "foo"
+				func bar(_ int, _ string, _ int, _ int32)
+			`,
+			call: "bar(5, \"hello\", foo#new_x(), 12)",
+			want: "foo#bar(int, string, foo#x, int64)",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Type x int
+					Func new_x()x {return: x :: 0}
+					Func bar(_ int, _ string, _ x, _ int64){}
+				`,
+			},
+		},
+		{
+			name: "adl earlier arguments mismatch",
+			src: `
+				import "foo"
+				func bar(_ int, _ string, _ int, _ int32)
+			`,
+			call: "bar(5, \"hello\", foo#new_x(), 12)",
+			err:  `cannot convert argument "hello" \(string\) to float32`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Type x int
+					Func new_x()x {return: x :: 0}
+					Func bar(_ int, _ float32, _ x, _ int64){}
+				`,
+			},
+		},
+		{
+			name: "adl already capital Imported",
+			src: `
+				Import "foo"
+				func bar(_ int, _ int)
+			`,
+			call: "bar(5, foo#new_x())",
+			want: `foo#bar(int, foo#x)`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Type x int
+					Func new_x()x {return: x :: 0}
+					Func bar(_ int, _ x){}
+				`,
+			},
+		},
+		{
+			name: "no-adl because no external module type",
+			src: `
+				import "foo"
+			`,
+			call: "(int64 :: 5) * 6",
+			want: `built-in *(int64, int64)int64`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Type x int
+					// This won't get used by the call,
+					// since the args don't have a foo# type.
+					func *(_ int64, _ x)x
+				`,
+			},
 		},
 	}
 	for _, test := range tests {

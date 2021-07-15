@@ -9,6 +9,7 @@ import (
 )
 
 type scope interface {
+	file() *File
 	find(name string) []id
 	findMod(name string) *Import
 	findType(args []Type, name string, l loc.Loc) []Type
@@ -38,6 +39,17 @@ type localScope struct {
 	parent scope
 	*LocalDef
 }
+
+func (*Mod) file() *File             { return nil }
+func (*Import) file() *File          { return nil }
+func (f *File) file() *File          { return f }
+func (v *VarDef) file() *File        { return v.File.file() }
+func (t *TypeDef) file() *File       { return t.File.file() }
+func (f *FuncDef) file() *File       { return f.File.file() }
+func (t *TestDef) file() *File       { return t.File.file() }
+func (b *blockLitScope) file() *File { return b.parent.file() }
+func (e *excludeFunc) file() *File   { return e.parent.file() }
+func (o *localScope) file() *File    { return o.parent.file() }
 
 func (*Mod) findMod(string) *Import    { return nil }
 func (*Import) findMod(string) *Import { return nil }
