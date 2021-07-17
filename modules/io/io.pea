@@ -12,7 +12,7 @@ Type read_result [
 ]
 
 // The result of a write operation.
-Type write_result := [
+Type write_result [
 	// The number of bytes written.
 	.n int,
 	// Whether there was an error.
