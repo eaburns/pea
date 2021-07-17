@@ -1137,7 +1137,7 @@ func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.E
 		arg, errs = checkAndConvertExpr(x, parserArg, nil)
 	}
 	if len(errs) > 0 {
-		return nil, nil, nil, errs
+		return arg, nil, nil, errs
 	}
 	funcs, notes = filterByGroundedArg(funcs, i, arg)
 	return arg, funcs, notes, errs
@@ -1203,6 +1203,11 @@ func commonGroundParmType(funcs []Func, i int) Type {
 }
 
 func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
+	if arg.Type() == nil {
+		// There was an error checking the argument.
+		// Just silently filter out all functions.
+		return nil, nil
+	}
 	var n int
 	var notes []note
 	for _, f := range funcs {
