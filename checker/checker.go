@@ -1420,20 +1420,37 @@ func checkID(x scope, parserID parser.Ident, useLocal bool, want Type) (Expr, []
 }
 
 func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []id) (Expr, []Error) {
-	if len(ids) == 1 {
-		return idToExpr(useID(x, parserID.L, useLocal, ids[0]), parserID.L), nil
-	}
 	var n int
-	var ambigNotes []note
 	var notFoundNotes []note
 	for _, id := range ids {
 		if !isGround(id) {
+			if want == nil {
+				n := newNote("cannot ground %s", id).setLoc(id)
+				notFoundNotes = append(notFoundNotes, n)
+				continue
+			}
 			if n := unifyFunc(x, parserID.L, id.(Func), want); n != nil {
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
 		}
-		if want != nil {
+		ids[n] = id
+		n++
+	}
+	ids = ids[:n]
+
+	// If there is more than one ID, filter to only those
+	// implicitly convertable to the want type.
+	// We don't filter in the 1-ID case,
+	// to allow explicit conversions to work
+	// when the ID is unambiguous.
+	// If we filtered here, the explicit conversion
+	// would get a "not found" instead of
+	// the convertible expression.
+	var ambigNotes []note
+	if len(ids) > 1 && want != nil {
+		var n int
+		for _, id := range ids {
 			expr := idToExpr(id, parserID.L)
 			if _, err := convert(expr, want, false); err != nil {
 				notFoundNotes = append(notFoundNotes,
@@ -1441,16 +1458,13 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []i
 						expr, expr.Type(), want).setLoc(expr))
 				continue
 			}
+			ambigNotes = append(ambigNotes, newNote(id.String()).setLoc(id))
+			ids[n] = id
+			n++
 		}
-		var l loc.Loc
-		if locer, ok := id.(interface{ Loc() loc.Loc }); ok {
-			l = locer.Loc()
-		}
-		ambigNotes = append(ambigNotes, newNote(id.String()).setLoc(l))
-		ids[n] = id
-		n++
+		ids = ids[:n]
 	}
-	ids = ids[:n]
+
 	switch {
 	case len(ids) == 0:
 		err := notFound(parserID.Name, parserID.L)
