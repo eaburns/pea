@@ -1,6 +1,6 @@
 Import "basic"
-Import "fs"
-Import "io"
+import "fs"
+import "io"
 import "sort"
 
 // A file or directory on the local filesystem.
