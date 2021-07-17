@@ -398,7 +398,7 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, decl *FuncDecl) (Func, n
 func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
 	funcType, ok := valueType(literalType(typ)).(*FuncType)
 	if !ok {
-		return newNote("%s: not a function", f).setLoc(f)
+		return newNote("%s: not a function", typ).setLoc(f)
 	}
 	if f.arity() != len(funcType.Parms) {
 		return newNote("%s: parameter mismatch", f).setLoc(f)
