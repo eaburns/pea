@@ -1480,7 +1480,9 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []i
 		err.setNotes(ambigNotes)
 		return nil, []Error{err}
 	default:
-		return idToExpr(useID(x, parserID.L, useLocal, ids[0]), parserID.L), nil
+		id := useID(x, parserID.L, useLocal, ids[0])
+		expr := idToExpr(id, parserID.L)
+		return expr, nil
 	}
 }
 
@@ -2103,7 +2105,9 @@ func deref(expr Expr) Expr {
 	var t Type
 	switch ref := expr.Type().(type) {
 	case nil:
-		return nil
+		// The expression's type had some kind of error.
+		// It is reported elsewhere; just propagate the nil.
+		break
 	case *RefType:
 		t = ref.Type
 	case *DefType:
