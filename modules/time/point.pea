@@ -1,0 +1,14 @@
+Import "basic"
+
+Type point := _point
+type _point [.ns int64]
+
+Const epoch := point :: [.ns 0]
+
+Func +(t point, d duration) point { return: [.ns t.ns + d.ns] }
+Func -(t point, d duration) point { return: [.ns t.ns - d.ns] }
+Func -(a point, b point) duration { return: [.ns a.ns - b.ns] }
+
+Func +=(p printer, t point) printer {
+	return: p += t.ns
+}

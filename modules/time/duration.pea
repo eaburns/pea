@@ -1,0 +1,91 @@
+Import "basic"
+
+Type duration := _duration
+type _duration [.ns int64]
+
+Const nanosecond := duration :: [.ns 1]
+Const microsecond := duration :: 1000*nanosecond
+Const millisecond := duration :: 1000*microsecond
+Const second := duration :: 1000*millisecond
+Const minute := duration :: 60*second
+Const hour := duration :: 60*minute
+
+Func =(a duration, b duration) bool { return: a.ns = b.ns }
+Func !=(a duration, b duration) bool { return: a.ns != b.ns }
+Func <(a duration, b duration) bool { return: a.ns < b.ns }
+Func <=(a duration, b duration) bool { return: a.ns <= b.ns }
+Func >(a duration, b duration) bool { return: a.ns > b.ns }
+Func >=(a duration, b duration) bool { return: a.ns >= b.ns }
+
+Func +(a duration, b duration) duration { return: [.ns a.ns + b.ns] }
+Func -(a duration, b duration) duration { return: [.ns a.ns - b.ns] }
+
+Func *(a duration, b int) duration { return: [.ns int64 :: (int :: a.ns) * b] }
+Func *(a int, b duration) duration { return: [.ns int64 :: a * (int :: b.ns)] }
+Func *(a duration, b int64) duration { return: [.ns a.ns * b] }
+Func *(a int64, b duration) duration { return: [.ns a * b.ns] }
+
+Func /(a duration, b duration) float64 { return: (float64 :: a.ns) / (float64 :: b.ns) }
+
+Func +=(p printer, d duration) printer {
+	if: d.ns < 0 then: {
+		p += "-",
+		d.ns := -d.ns
+	},
+	if: d < microsecond then: {
+		return: p += d.ns += "ns"
+	},
+	if: d < millisecond then: {
+		usec := (float64 :: d.ns) / (float64 :: microsecond.ns),
+		return: p += usec += "μs"
+	},
+	if: d < second then: {
+		msec := (float64 :: d.ns) / (float64 :: millisecond.ns),
+		return: p += msec += "ms"
+	},
+
+	if: d >= hour then: {
+		h := d.ns / hour.ns,
+		d := d - h*hour,
+		p += h += "h",
+	},
+	if: d >= minute then: {
+		m := d.ns / minute.ns,
+		d := d - m*minute,
+		p += m += "m",
+	},
+	if: d >= second then: {
+		s := (float64 :: d.ns) / (float64 :: second.ns),
+		p += s += "s",
+	},
+	return: p
+}
+
+test duration_string {
+	assert: print_string(1*nanosecond) equals: "1ns",
+	assert: print_string(1*microsecond) equals: "1μs",
+	assert: print_string(1*millisecond) equals: "1ms",
+	assert: print_string(1*second) equals: "1s",
+	assert: print_string(1*minute) equals: "1m",
+	assert: print_string(1*hour) equals: "1h",
+	assert: print_string(2*nanosecond) equals: "2ns",
+	assert: print_string(2*microsecond) equals: "2μs",
+	assert: print_string(2*millisecond) equals: "2ms",
+	assert: print_string(2*second) equals: "2s",
+	assert: print_string(2*minute) equals: "2m",
+	assert: print_string(2*hour) equals: "2h",
+	assert: print_string(2*hour + 3*minute + 4*second + 500*millisecond) equals: "2h3m4.5s",
+	assert: print_string(2*millisecond + 500*microsecond) equals: "2.5ms",
+	assert: print_string(2*microsecond + 500*nanosecond) equals: "2.5μs",
+	assert: print_string(1000000000*nanosecond) equals: "1s",
+	assert: print_string(1000000*microsecond) equals: "1s",
+	assert: print_string(1000*millisecond) equals: "1s",
+	assert: print_string(60*second) equals: "1m",
+	assert: print_string(60*minute) equals: "1h",
+	assert: print_string(24*hour) equals: "24h",
+	assert: print_string(36*hour) equals: "36h",
+	assert: print_string(86400*second) equals: "24h",
+	assert: print_string(86401*second) equals: "24h1s",
+
+	assert: print_string(-2*hour - 3*minute - 4*second - 500*millisecond) equals: "-2h3m4.5s",
+}
