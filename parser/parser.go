@@ -54,7 +54,10 @@ func importsOnly(path string, r io.Reader) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	_p := _NewParser(string(data))
+	_p, err := _NewParser(string(data))
+	if err != nil {
+		return nil, err
+	}
 	_p.data = &Parser{offs: 1}
 	if pos, perr := _ImportsOnlyAccepts(_p, 0); pos < 0 {
 		_, t := _ImportsOnlyFail(_p, 0, perr)
@@ -80,7 +83,10 @@ func (p *Parser) Parse(path string, r io.Reader) error {
 		return err
 	}
 	path = strings.TrimPrefix(path, p.TrimPathPrefix)
-	_p := _NewParser(string(data))
+	_p, err := _NewParser(string(data))
+	if err != nil {
+		return err
+	}
 	_p.data = p
 	if pos, perr := _FileAccepts(_p, 0); pos < 0 {
 		_, t := _FileFail(_p, 0, perr)
@@ -114,7 +120,10 @@ func (p *Parser) ParseFile(path string) error {
 }
 
 func ParseExpr(str string) (Expr, error) {
-	_p := _NewParser(str)
+	_p, err := _NewParser(str)
+	if err != nil {
+		return nil, err
+	}
 	_p.data = New()
 	if pos, perr := _ExprAccepts(_p, 0); pos < 0 {
 		_, t := _ExprFail(_p, 0, perr)
