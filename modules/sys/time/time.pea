@@ -1,0 +1,12 @@
+import "time"
+
+func wall_ns() int64
+func monotonic_ns() int64
+
+Func now() time#point {
+	return: time#epoch + wall_ns()*time#nanosecond
+}
+
+Func monotonic() time#duration {
+	return: monotonic_ns()*time#nanosecond
+}
