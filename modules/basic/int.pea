@@ -3,6 +3,15 @@ Const max_uint32 := uint32 :: 4294967295
 
 // Increases the value of n by one.
 Func ++(n &int) { n := n + 1 }
+Func ++(n &int8) { n := n + 1 }
+Func ++(n &int16) { n := n + 1 }
+Func ++(n &int32) { n := n + 1 }
+Func ++(n &int64) { n := n + 1 }
+Func ++(n &uint) { n := n + 1 }
+Func ++(n &uint8) { n := n + 1 }
+Func ++(n &uint16) { n := n + 1 }
+Func ++(n &uint32) { n := n + 1 }
+Func ++(n &uint64) { n := n + 1 }
 
 test int_inc {
 	n := -3,
@@ -22,6 +31,15 @@ test int_inc {
 
 // Decreases the value of n by one.
 Func --(n &int) { n := n - 1 }
+Func --(n &int8) { n := n - 1 }
+Func --(n &int16) { n := n - 1 }
+Func --(n &int32) { n := n - 1 }
+Func --(n &int64) { n := n - 1 }
+Func --(n &uint) { n := n - 1 }
+Func --(n &uint8) { n := n - 1 }
+Func --(n &uint16) { n := n - 1 }
+Func --(n &uint32) { n := n - 1 }
+Func --(n &uint64) { n := n - 1 }
 
 test int_dec {
 	n := 3,
