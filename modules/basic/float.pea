@@ -132,30 +132,32 @@ Func +=(p printer, f float64) printer {
 	return: p
 }
 
-// add_fraction adds the fractional part of a float64 to the printer.
-// This routine is like +=(printer, uint64), but adapted to 32 bits,
-// and it strips zero suffixes.
 func add_fraction(p printer, u uint32) {
-	// 10 bytes is big enough for both base 10 uint32.
-	bs := [uint8] :: new(10, uint8 :: 0),
-	i := bs.length - 1,
-	while: { u >= 10 } do: {
-		u_next := u / 10,
-		bs[i] := uint8 :: u - u_next*10 + '0',
-		u := u_next,
+	width := 9,
+	while: {u % 10 = 0 && {width > 0}} do: {
+		u := u / 10.0,
+		--width,
+	},
+	buf := [uint8] :: new(16, uint8 :: 0),
+	i := buf.length,
+	while: {width > 0} do: {
 		--i,
+		--width,
+		buf[i] := (uint8 :: u % 10) + '0',
+		u := u / 10.0,
 	},
-	bs[i] := uint8 :: u + '0',
-	while: { bs.length > 0 && {bs[bs.length-1] = '0'} } do: {
-		bs := bs[0, bs.length-1]
-	},
-	add_bytes(p, bs[i, bs.length])
+	add_bytes(p, buf[i, buf.length])
 }
 
 test print_float64 {
 	assert: print_string(0.0 / 0.0) equals: "NaN",
 	assert: print_string(1.0 / 0.0) equals: "Inf",
 	assert: print_string(-1.0 / 0.0) equals: "-Inf",
+	assert: print_string(0.05) equals: "0.05",
+	assert: print_string(5.04e8) equals: "5.04e8",
+	assert: print_string(0.000000001) equals: "0.000000001",
+	assert: print_string(0.000000003) equals: "0.000000003",
+	assert: print_string(0.000000009) equals: "0.000000009",
 	assert: print_string(0) equals: "0",
 	assert: print_string(-0) equals: "0",
 	assert: print_string(1) equals: "1",
