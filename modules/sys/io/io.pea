@@ -1,0 +1,7 @@
+// A system-dependent, opaque identifier for an I/O endpoint.
+// Many system resources can be represented as a descripton:
+// for example streams, files, network connections, and so forth.
+Type descriptor := _descriptor
+
+// A generic, readable/writable byte stream.
+Type stream := _stream

@@ -1,0 +1,35 @@
+Import "basic"
+import "io"
+import "sys/internal"
+
+type _descriptor := internal#descriptor
+
+type _stream descriptor
+
+// The process's standard input stream.
+Const stdin := stream :: 0
+
+// The process's standard output stream.
+Const stdout := stream :: 1
+
+// The process's standard error stream.
+Const stderr := stream :: 2
+
+// Returns the stream's descriptor.
+Func descriptor(s stream) descriptor { return: descriptor :: s }
+
+// Closes the stream.
+// Future operations on the stream will return an error.
+Func close(s stream) error option {
+	return: close(descriptor(s))
+}
+
+// Reads at most d.length bytes from the stream into d.
+Func read(s stream, d [uint8]) io#read_result {
+	return: read(descriptor(s), d)
+}
+
+// Writes at most d.length bytes from d into the stream.
+Func write(s stream, d [uint8]) io#write_result {
+	return: write(descriptor(s), d)
+}

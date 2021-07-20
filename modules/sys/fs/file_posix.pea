@@ -1,19 +1,8 @@
 Import "basic"
+import "//sys/io"
 import "fs"
 import "io"
-
-// These functions return errno values.
-// The values of the constants are not standardized,
-// so we use functions to return the value from C.
-func posix_eacces() int32
-func posix_eexist() int32
-func posix_enoent() int32
-func posix_enotdir() int32
-
-// posix_strerror_r is the C stub for strerror_r.
-// The buffer is filled with the error string.
-// The end of the string is marked by a 0 terminator byte.
-func posix_strerror_r(errno int32, buf [uint8])
+import "sys/internal"
 
 // These functions return the flags for open.
 // The values of the constants are not standardized,
@@ -30,12 +19,9 @@ func posix_o_excl() int32
 // Negative integer returns are negative errno values.
 // These functions handle EINTR, so it will never be returned.
 func posix_open(path string, flags int32, perm int32) int32
-func posix_close(fd int32) int32
-func posix_read(fd int32, buf [uint8]) int64
-func posix_write(fd int32, buf [uint8]) int64
 func posix_unlink(path string) int32
 // returns the directory pointer by the dir argument on success.
-func posix_fdopendir(fd int32, dir &dir) int32
+func posix_fdopendir(fd sys#io#descriptor, dir &dir) int32
 func posix_closedir(dir dir) int32
 // returns 0 and an empty name on end-of-directory
 func posix_readdir(dir dir, name &[uint8]) int32
@@ -43,23 +29,11 @@ func posix_mkdir(path string, perm int32) int32
 func posix_rmdir(path string) int32
 
 type _file &[
-	.fd int32,
+	.fd sys#io#descriptor,
 	.dir dir option,
 ]
 
 type dir &int
-
-func errno_error(errno int32) error {
-	buf := [uint8] :: new(128, uint8 :: 0),
-	posix_strerror_r(errno, buf),
-	for: 0 to: buf.length do: (i) {
-		if: buf[i] = 0 then: {
-			return: new(string :: buf[0, i])
-		}
-	},
-	panic("unterminated error string"),
-	return: new("")
-}
 
 // Opens a file at a local filesystem path with given options.
 Func open(path string, opts open_options) file fs#open_result {
@@ -85,34 +59,20 @@ Func open(path string, opts open_options) file fs#open_result {
 	},
 	perms := int32 :: opts.permissions,
 	fd := posix_open(path, flags, perms),
-	if: fd = -posix_eexist() then: {
-		return: [exists? errno_error(-fd)]
+	if: fd = -internal#eexist() then: {
+		return: [exists? internal#errno_error(-fd)]
 	},
-	if: fd = -posix_enoent() then: {
-		err := errno_error(-fd),
+	if: fd = -internal#enoent() then: {
+		err := internal#errno_error(-fd),
 		return: [does_not_exist? err]
 	},
-	if: fd = -posix_eacces() then: {
-		return: [permission_denied? errno_error(-fd)]
+	if: fd = -internal#eacces() then: {
+		return: [permission_denied? internal#errno_error(-fd)]
 	},
 	if: fd < 0 then: {
-		return: [unknown_error? errno_error(-fd)]
+		return: [unknown_error? internal#errno_error(-fd)]
 	},
-	return: [ok? [.fd fd, .dir none()]]
-}
-
-// Closes an open file.
-// An error is returned if called on an already closed file.
-Func close(f file) error option {
-	res := f.dir some? (d dir) {
-		posix_closedir(d)
-	} none? {
-		posix_close(f.fd)
-	},
-	if: res < 0 then: {
-		return: some(errno_error(-res))
-	},
-	return: none()
+	return: [ok? [.fd sys#io#descriptor :: fd, .dir none()]]
 }
 
 // Removes a file or empty directory
@@ -130,36 +90,31 @@ Func remove(path string) error option {
 	// In that case, unlink was intended, so return the error from unlink.
 	// Otherwise, rmdir was intended, so return the error from rmdir.
 	// See: https://golang.org/src/os/file_unix.go?s=9160:9190#L312.
-	if: r1 = -posix_enotdir() then: {
-		return: some(errno_error(-r0))
+	if: r1 = -internal#enotdir() then: {
+		return: some(internal#errno_error(-r0))
 	},
-	return: some(errno_error(-r1))
+	return: some(internal#errno_error(-r1))
+}
+
+// Returns the file's descriptor.
+Func descriptor(f file) sys#io#descriptor { return: f.fd }
+
+// Closes an open file.
+// An error is returned if called on an already closed file.
+Func close(f file) error option {
+	return: close(descriptor(f))
 }
 
 // Reads at most buf.length bytes from an open file into buf.
 Func read(f file, buf [uint8]) io#read_result {
-	n := posix_read(f.fd, buf),
-	if: n < 0 then: {
-		return: [error? errno_error(int32 :: -n)]
-	},
-	if: n = 0 then: {
-		return: [end?]
-	},
-	return: [ok? int :: n]
+	return: read(descriptor(f), buf)
 }
 
 // Writes at most buf.length bytes from buf to an open file.
 // If fewer than buf.length bytes are written,
 // a non-none error is returned.
 Func write(f file, buf [uint8]) io#write_result {
-	n := posix_write(f.fd, buf),
-	if: n < 0 then: {
-		return: [.n 0, .error some(errno_error(int32 :: -n))]
-	},
-	if: n < (int64 :: buf.length) then: {
-		return: [.n int :: n, .error some(error :: new("short write"))]
-	},
-	return: [.n int :: n, .error none()]
+	return: write(descriptor(f), buf)
 }
 
 Func read_dir(f file) fs#read_dir_result {
@@ -169,7 +124,7 @@ Func read_dir(f file) fs#read_dir_result {
 		d := dir :: 0,
 	 	res := posix_fdopendir(f.fd, d),
 	 	if: res < 0 then: {
-	 		return: [error? errno_error(-res)]
+	 		return: [error? internal#errno_error(-res)]
 	 	},
 	 	f.dir := some(d),
 	 	d
@@ -179,7 +134,7 @@ Func read_dir(f file) fs#read_dir_result {
 		buf := [uint8] :: [],
 		res := posix_readdir(dir, buf),
 		if: res < 0 then: {
-			return: [error? errno_error(-res)]
+			return: [error? internal#errno_error(-res)]
 		},
 		if: buf.length = 0 then: {
 			return: [eof?]
@@ -194,5 +149,5 @@ Func mkdir(path string, perm int32) error option {
 	if: res = 0 then: {
 		return: none()
 	},
-	return: some(errno_error(-res))
+	return: some(internal#errno_error(-res))
 }

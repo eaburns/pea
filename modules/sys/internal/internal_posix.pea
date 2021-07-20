@@ -1,0 +1,63 @@
+Import "basic"
+import "io"
+
+// These functions return errno values.
+// The values of the constants are not standardized,
+// so we use functions to return the value from C.
+Func eacces() int32
+Func eexist() int32
+Func enoent() int32
+Func enotdir() int32
+
+// strerror_r is the C stub for strerror_r.
+// The buffer is filled with the error string.
+// The end of the string is marked by a 0 terminator byte.
+func strerror_r(errno int32, buf [uint8])
+
+Func errno_error(errno int32) error {
+	buf := [uint8] :: new(128, uint8 :: 0),
+	strerror_r(errno, buf),
+	for: 0 to: buf.length do: (i) {
+		if: buf[i] = 0 then: {
+			return: new(string :: buf[0, i])
+		}
+	},
+	panic("unterminated error string"),
+	return: new("")
+}
+
+Type descriptor int32
+
+func close(fd int32) int32
+func read(fd int32, buf [uint8]) int64
+func write(fd int32, buf [uint8]) int64
+
+Func close(fd descriptor) error option {
+	res := close(int32 :: fd),
+	if: res < 0 then: {
+		return: some(errno_error(-res))
+	},
+	return: none()
+}
+
+Func read(fd descriptor, buf [uint8]) io#read_result {
+	n := read(int32 :: fd, buf),
+	if: n < 0 then: {
+		return: [error? errno_error(int32 :: -n)]
+	},
+	if: n = 0 then: {
+		return: [end?]
+	},
+	return: [ok? int :: n]
+}
+
+Func write(fd descriptor, buf [uint8]) io#write_result {
+	n := write(int32 :: fd, buf),
+	if: n < 0 then: {
+		return: [.n 0, .error some(errno_error(int32 :: -n))]
+	},
+	if: n < (int64 :: buf.length) then: {
+		return: [.n int :: n, .error some(error :: new("short write"))]
+	},
+	return: [.n int :: n, .error none()]
+}
