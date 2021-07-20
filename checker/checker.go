@@ -15,6 +15,8 @@ import (
 
 // Check does semantic checking, and returns a *Mod on success.
 func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.Files, []error) {
+	modPath = strings.TrimPrefix(filepath.Clean(modPath), "/")
+
 	var errs []Error
 	idNames := make(map[string]loc.Loc)
 	defs := make(map[parser.Def]Def)

@@ -3,6 +3,7 @@ package checker
 import (
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/eaburns/pea/loc"
 	"github.com/eaburns/pea/parser"
@@ -40,7 +41,7 @@ func (imp *defaultImporter) Files() loc.Files {
 }
 
 func (imp *defaultImporter) Load(path string) (*Mod, error) {
-	path = filepath.Clean(path)
+	path = strings.TrimPrefix(filepath.Clean(path), "/")
 	if mod, ok := imp.loaded[path]; ok {
 		return mod, nil
 	}
