@@ -1,10 +1,15 @@
 Import "basic"
-import "fs"
 import "io"
 import "sort"
 
-// A file or directory on the local filesystem.
+// An entry in the file system.
+Type entry [file? file, dir? dir]
+
+// A file on the local file system.
 Type file := _file
+
+// A directory on the local file system.
+Type dir := _dir
 
 // Options for opening a file.
 Type open_options := [
@@ -18,7 +23,7 @@ Type open_options := [
 
 // Returns a new open options
 // with all bools false and permissions 0.
-Func new() open_options {
+Func open_options() open_options {
 	return: [
 		.read false,
 		.write false,
@@ -29,34 +34,78 @@ Func new() open_options {
 	]
 }
 
-// Opens a file at a local filesystem path for read only.
-Func open(path string) file fs#open_result {
-	opts := open_options :: new(),
+// The result of opening a file.
+Type F open_result [
+	ok? F,
+	exists? error,
+	does_not_exist? error,
+	permission_denied? error,
+	is_directory? error,
+	not_directory? error,
+	unknown_error? error,
+]
+
+// Returns the opened file if there was no error,
+// otherwise returns the result of calling e with the error.
+Func error?(res F open_result, e (error){F}) F {
+	return: res ok? (file F){
+		file
+	} exists? (err){
+		e(err)
+	} does_not_exist? (err){
+		e(err)
+	} permission_denied? (err){
+		e(err)
+	} is_directory? (err){
+		e(err)
+	} not_directory? (err){
+		e(err)
+	} unknown_error? (err){
+		e(err)
+	}
+}
+
+// Returns the opened file or panics if there was an error.
+Func must(res F open_result) F {
+	return: res error? (e) { panic(print_string(e)) }
+}
+
+// The result of reading from a directory.
+Type read_dir_result [ok? string, eof?, error? error]
+
+// Opens a file at a local file system path for read only.
+Func open_file(path string) file open_result {
+	opts := open_options(),
 	opts.read := true,
-	return: open(path, opts)
+	return: open_file(path, opts)
 }
 
 // Creates or opens and truncates
-// a file at a local filesystem path
+// a file at a local file system path
 // for write only with permissions 0666.
-Func create(path string) file fs#open_result {
-	opts := open_options :: new(),
+Func create_file(path string) file open_result {
+	opts := open_options(),
 	opts.write := true,
 	opts.create := true,
 	opts.truncate := true,
 	opts.permissions := 438, // 0666
-	return: open(path, opts)
+	return: open_file(path, opts)
+}
+
+// Creates a directory with permissions 0755.
+Func create_dir(path string) error option {
+	return: create_dir(path, 493) // 0755
 }
 
 test create_write_read_delete {
 	path := "./some_test_file",
 	bytes := [uint8] :: ['h', 'e', 'l','l', 'o'],
 
-	w := must(create(path)),
+	w := must(create_file(path)),
 	assert: must(write(w, bytes)) equals: bytes.length,
 	assert_ok: close(w),
 
-	r := must(open(path)),
+	r := must(open_file(path)),
 	assert: must(io#read_all(r)) equals: bytes,
 	assert_ok: close(r),
 
@@ -64,17 +113,17 @@ test create_write_read_delete {
 }
 
 func touch(path string) error option {
-	return: close(create(path) error? (e){ return: some(e) })
+	return: close(create_file(path) error? (e){ return: some(e) })
 }
 
-test mkdir_read_rmdir {
+test create_dir_read_remove {
 	path := "./mkdir_read_rmdir/",
-	assert_ok: mkdir(path, 493), // 0755
+	assert_ok: create_dir(path),
 	assert_ok: touch(path + "a"),
 	assert_ok: touch(path + "b"),
 	assert_ok: touch(path + "c"),
 
-	r := must(open(path)),
+	r := must(open_dir(path)),
 	ents := [string] :: [],
 	while: {
 		read_dir(r) ok? (ent string) {
@@ -95,5 +144,30 @@ test mkdir_read_rmdir {
 	assert_ok: remove(path + "a"),
 	assert_ok: remove(path + "b"),
 	assert_ok: remove(path + "c"),
+	assert_ok: remove(path),
+}
+
+test open_entry {
+	path := "./open_entry/",
+	assert_ok: create_dir(path),
+	assert_ok: touch(path + "file"),
+
+	ent := open(path) error? (err){ panic(print_string("open failed: ", err)) },
+	ent file? (f file) {
+		close(f),
+		panic("got file, expected dir")
+	} dir? (d dir) {
+		close(d)
+	},
+
+	ent := open(path + "file") error? (err){ panic(print_string("open failed: ", err)) },
+	ent file? (f file) {
+		close(f),
+	} dir? (d dir) {
+		close(d),
+		panic("got dir, expected file")
+	},
+
+	assert_ok: remove(path + "file"),
 	assert_ok: remove(path),
 }

@@ -12,6 +12,7 @@ void sys__internal__eacces(int32_t *ret) { *ret = EACCES; }
 void sys__internal__eexist(int32_t *ret) { *ret = EEXIST; }
 void sys__internal__enoent(int32_t *ret) { *ret = ENOENT; }
 void sys__internal__enotdir(int32_t *ret) { *ret = ENOTDIR; }
+void sys__internal__eisdir(int32_t *ret) { *ret = EISDIR; }
 
 void sys__internal__strerror_r(int32_t n, struct pea_string* buf) {
 	strerror_r(n, buf->data, buf->length);

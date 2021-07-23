@@ -1,103 +1,107 @@
 Import "basic"
 import "//sys/io"
-import "fs"
 import "io"
 import "sys/internal"
 
-// These functions return the flags for open.
-// The values of the constants are not standardized,
-// so we use functions to return the value from C.
-func posix_o_rdonly() int32
-func posix_o_wronly() int32
-func posix_o_rdwr() int32
-func posix_o_append() int32
-func posix_o_create() int32
-func posix_o_trunc() int32
-func posix_o_excl() int32
+func o_rdonly() int32
+func o_wronly() int32
+func o_rdwr() int32
+func o_append() int32
+func o_create() int32
+func o_trunc() int32
+func o_excl() int32
+func o_directory() int32
 
-// These are the C routines for file operations.
-// Negative integer returns are negative errno values.
-// These functions handle EINTR, so it will never be returned.
-func posix_open(path string, flags int32, perm int32) int32
-func posix_unlink(path string) int32
-// returns the directory pointer by the dir argument on success.
-func posix_fdopendir(fd sys#io#descriptor, dir &dir) int32
-func posix_closedir(dir dir) int32
+func fstat(fd int32, is_dir &int32)int32
+func open(path string, flags int32, perm int32) int32
+func unlink(path string) int32
+func fdopendir(fd int32, dir &DIR) int32
+func closedir(dir DIR) int32
 // returns 0 and an empty name on end-of-directory
-func posix_readdir(dir dir, name &[uint8]) int32
-func posix_mkdir(path string, perm int32) int32
-func posix_rmdir(path string) int32
+func readdir(dir DIR, name &[uint8]) int32
+func mkdir(path string, perm int32) int32
+func rmdir(path string) int32
 
-type _file &[
-	.fd sys#io#descriptor,
-	.dir dir option,
-]
+func open_result_error(errno int32) T open_result {
+	if: errno = internal#eexist() then: {
+		return: [exists? internal#errno_error(errno)]
+	},
+	if: errno = internal#enoent() then: {
+		return: [does_not_exist? internal#errno_error(errno)]
+	},
+	if: errno = internal#eacces() then: {
+		return: [permission_denied? internal#errno_error(errno)]
+	},
+	if: errno = internal#eisdir() then: {
+		return: [is_directory? internal#errno_error(errno)]
+	},
+	if: errno = internal#enotdir() then: {
+		return: [not_directory? internal#errno_error(errno)]
+	},
+	return: [unknown_error? internal#errno_error(errno)]
+}
 
-type dir &int
-
-// Opens a file at a local filesystem path with given options.
-Func open(path string, opts open_options) file fs#open_result {
+func open_options_flags(opts open_options) int32 {
 	flags := int32 :: 0,
 	if: opts.read && opts.write then: {
-		flags := posix_o_rdwr()
+		flags := o_rdwr()
 	} else: {
 		if: opts.read then: {
-			flags := posix_o_rdonly()
+			flags := o_rdonly()
 		},
 		if: opts.write then: {
-			flags := posix_o_wronly()
+			flags := o_wronly()
 		}
 	},
 	if: opts.create then: {
-		flags := flags | posix_o_create()
+		flags := flags | o_create()
 	},
 	if: opts.truncate then: {
-		flags := flags | posix_o_trunc()
+		flags := flags | o_trunc()
 	},
 	if: opts.exclusive then: {
-		flags := flags | posix_o_excl()
+		flags := flags | o_excl()
 	},
-	perms := int32 :: opts.permissions,
-	fd := posix_open(path, flags, perms),
-	if: fd = -internal#eexist() then: {
-		return: [exists? internal#errno_error(-fd)]
-	},
-	if: fd = -internal#enoent() then: {
-		err := internal#errno_error(-fd),
-		return: [does_not_exist? err]
-	},
-	if: fd = -internal#eacces() then: {
-		return: [permission_denied? internal#errno_error(-fd)]
-	},
-	if: fd < 0 then: {
-		return: [unknown_error? internal#errno_error(-fd)]
-	},
-	return: [ok? [.fd sys#io#descriptor :: fd, .dir none()]]
+	return: flags
 }
 
-// Removes a file or empty directory
-// at a path in the local filesystem.
-Func remove(path string) error option {
-	r0 := posix_unlink(path),
-	if: r0 = 0 then: {
-		return: none()
+// Opens an entry at a local file system path for read only.
+Func open(path string) entry open_result {
+	fd := open(path, o_rdonly(), 0),
+	if: fd < 0 then: {
+		return: open_result_error(-fd)
 	},
-	r1 := posix_rmdir(path),
-	if: r1 = 0 then: {
-		return: none()
+	is_dir := int32 :: 0,
+	stat_result := fstat(fd, is_dir),
+	if: stat_result < 0 then: {
+		return: open_result_error(-stat_result)
 	},
-	// rmdir will return ENOTDIR on both osx and Linux if the file is not a directory.
-	// In that case, unlink was intended, so return the error from unlink.
-	// Otherwise, rmdir was intended, so return the error from rmdir.
-	// See: https://golang.org/src/os/file_unix.go?s=9160:9190#L312.
-	if: r1 = -internal#enotdir() then: {
-		return: some(internal#errno_error(-r0))
+	if: is_dir = 0 then: {
+		return: [ok? [file? file :: fd]]
 	},
-	return: some(internal#errno_error(-r1))
+	dir := DIR :: 0,
+	res := fdopendir(fd, dir),
+	if: res < 0 then: {
+		return: open_result_error(-res)
+	},
+	return: [ok? [dir? [.fd internal#descriptor :: fd, .dir dir]]]
+}
+
+type _file  sys#io#descriptor
+
+// Opens a file at a local file system path with given options.
+Func open_file(path string, opts open_options) file open_result {
+	flags := open_options_flags(opts),
+	perms := int32 :: opts.permissions,
+	fd := open(path, flags, perms),
+	if: fd < 0 then: {
+		return: open_result_error(-fd)
+	},
+	return: [ok? file :: fd]
 }
 
 // Returns the file's descriptor.
-Func descriptor(f file) sys#io#descriptor { return: f.fd }
+Func descriptor(f file) sys#io#descriptor { return: sys#io#descriptor :: f }
 
 // Closes an open file.
 // An error is returned if called on an already closed file.
@@ -117,22 +121,46 @@ Func write(f file, buf [uint8]) io#write_result {
 	return: write(descriptor(f), buf)
 }
 
-Func read_dir(f file) fs#read_dir_result {
-	dir := f.dir some? (d dir) {
-		d
-	} none? {
-		d := dir :: 0,
-	 	res := posix_fdopendir(f.fd, d),
-	 	if: res < 0 then: {
-	 		return: [error? internal#errno_error(-res)]
-	 	},
-	 	f.dir := some(d),
-	 	d
+type _dir [
+	.fd internal#descriptor,
+	.dir &DIR,
+]
+
+// DIR is to be treated as an opaque address.
+// TODO: make DIR be &[.] once flowgraph crash is fixed.
+type DIR &int
+
+// Opens a directory for reading.
+Func open_dir(path string) dir open_result {
+	flags := o_directory() | o_rdonly(),
+	fd := open(path, flags, 0),
+	if: fd < 0 then: {
+		return: open_result_error(-fd)
 	},
+
+	dir := DIR :: 0,
+	res := fdopendir(fd, dir),
+	if: res < 0 then: {
+		return: open_result_error(-res)
+	},
+	return: [ok? [.fd internal#descriptor :: fd, .dir dir]]
+}
+
+// Closes an open directory.
+Func close(d dir) error option {
+	res := closedir(d.dir),
+	if: res < 0 then: {
+		return: some(internal#errno_error(-res))
+	},
+	return: none()
+}
+
+// Reads the next entry from a directory.
+Func read_dir(d dir) read_dir_result {
 	ent := "",
 	while: {ent = "" || ent = "." || ent = ".."} do: {
 		buf := [uint8] :: [],
-		res := posix_readdir(dir, buf),
+		res := readdir(d.dir, buf),
 		if: res < 0 then: {
 			return: [error? internal#errno_error(-res)]
 		},
@@ -144,10 +172,32 @@ Func read_dir(f file) fs#read_dir_result {
 	return: [ok? ent]
 }
 
-Func mkdir(path string, perm int32) error option {
-	res := posix_mkdir(path, perm),
+// Creates a directory with the given permissions.
+Func create_dir(path string, perm int32) error option {
+	res := mkdir(path, perm),
 	if: res = 0 then: {
 		return: none()
 	},
 	return: some(internal#errno_error(-res))
+}
+
+// Removes a file or empty directory
+// at a path in the local file system.
+Func remove(path string) error option {
+	r0 := unlink(path),
+	if: r0 = 0 then: {
+		return: none()
+	},
+	r1 := rmdir(path),
+	if: r1 = 0 then: {
+		return: none()
+	},
+	// rmdir will return ENOTDIR on both osx and Linux if the file is not a directory.
+	// In that case, unlink was intended, so return the error from unlink.
+	// Otherwise, rmdir was intended, so return the error from rmdir.
+	// See: https://golang.org/src/os/file_unix.go?s=9160:9190#L312.
+	if: r1 = -internal#enotdir() then: {
+		return: some(internal#errno_error(-r0))
+	},
+	return: some(internal#errno_error(-r1))
 }

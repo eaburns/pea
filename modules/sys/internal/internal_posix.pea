@@ -8,6 +8,7 @@ Func eacces() int32
 Func eexist() int32
 Func enoent() int32
 Func enotdir() int32
+Func eisdir() int32
 
 // strerror_r is the C stub for strerror_r.
 // The buffer is filled with the error string.
