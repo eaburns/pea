@@ -1,3 +1,6 @@
+Import "basic"
+import "io"
+
 // A system-dependent, opaque identifier for an I/O endpoint.
 // Many system resources can be represented as a descripton:
 // for example streams, files, network connections, and so forth.
@@ -5,3 +8,12 @@ Type descriptor := _descriptor
 
 // A generic, readable/writable byte stream.
 Type stream := _stream
+
+test pipe {
+	written := [uint8] :: ['h', 'e', 'l', 'l', 'o'],
+	pipe := must(create_pipe()),
+	must(write(pipe.write, written)),
+	assert_ok: close(pipe.write),
+	assert: must(io#read_all(pipe.read)) equals: written,
+	assert_ok: close(pipe.read),
+}

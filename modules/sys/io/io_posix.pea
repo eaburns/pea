@@ -2,6 +2,8 @@ Import "basic"
 import "io"
 import "sys/internal"
 
+func create_pipe(read &descriptor, write &descriptor) int32
+
 type _descriptor := internal#descriptor
 
 type _stream descriptor
@@ -32,4 +34,15 @@ Func read(s stream, d [uint8]) io#read_result {
 // Writes at most d.length bytes from d into the stream.
 Func write(s stream, d [uint8]) io#write_result {
 	return: write(descriptor(s), d)
+}
+
+// Creates a new, unnamed pipe and returns the read and write streams.
+Func create_pipe() [.read stream, .write stream] or_error {
+	r := descriptor :: -1,
+	w := descriptor :: -1,
+	res := create_pipe(r, w),
+	if: res < 0 then: {
+		return: error(internal#errno_error(-res))
+	},
+	return: ok([.read stream :: r, .write stream :: w])
 }
