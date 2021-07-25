@@ -1,3 +1,4 @@
+Import "assert"
  Import "basic"
  Import "container/vector"
 

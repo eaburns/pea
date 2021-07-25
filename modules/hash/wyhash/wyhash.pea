@@ -18,6 +18,7 @@ The abseil implementation has the following notice:
 	See the License for the specific language governing permissions and
 	limitations under the License.
 */
+Import "assert"
 Import "basic"
 
 const salt := [uint64] :: [

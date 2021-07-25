@@ -1,3 +1,4 @@
+Import "assert"
 Import "basic"
 
 Type T cursor := T _cursor

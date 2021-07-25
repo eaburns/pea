@@ -51,8 +51,8 @@ Func error?(o T or_error, f (error){T}) T {
 }
 
 test error_question {
-	assert: (int or_error :: ok(1)) error? (e) {5} equals: 1,
-	assert: (int or_error :: error("foo")) error? (e) {5} equals: 5,
+	assert_true: ((int or_error :: ok(1)) error? (e) {5}) = 1,
+	assert_true: ((int or_error :: error("foo")) error? (e) {5}) = 5,
 }
 
 // Calls k with the ok? case value if the case of o is ok?.
@@ -88,9 +88,9 @@ Func +=(p printer, t_or T or_error) printer : +=(printer, T)printer {
 }
 
 test print_or_error {
-	assert: print_string(int or_error :: error("oops")) equals: "error(oops)",
-	assert: print_string(ok(1)) equals: "ok(1)",
-	assert: print_string(ok("Hello, World!")) equals: "ok(Hello, World!)",
+	assert_true: print_string(int or_error :: error("oops")) = "error(oops)",
+	assert_true: print_string(ok(1)) = "ok(1)",
+	assert_true: print_string(ok("Hello, World!")) = "ok(Hello, World!)",
 }
 
 // Returns a new error option with the none? case.

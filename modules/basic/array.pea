@@ -15,29 +15,29 @@ Func new(n int, f (int){T}) [T] {
 
 test array_new_func {
 	a := [int] :: new(0, (_ int){1}),
-	assert: a.length equals: 0,
+	assert_true: a.length = 0,
 
 	a := [int] :: new(1, (_ int){1}),
-	assert: a.length equals: 1,
-	assert: a[0] equals: 1,
+	assert_true: a.length = 1,
+	assert_true: a[0] = 1,
 
 	a := [int] :: new(3, (_ int){1}),
-	assert: a.length equals: 3,
-	assert: a[0] equals: 1,
-	assert: a[1] equals: 1,
-	assert: a[2] equals: 1,
+	assert_true: a.length = 3,
+	assert_true: a[0] = 1,
+	assert_true: a[1] = 1,
+	assert_true: a[2] = 1,
 
 	a := [int] :: new(3, (i int){i}),
-	assert: a.length equals: 3,
-	assert: a[0] equals: 0,
-	assert: a[1] equals: 1,
-	assert: a[2] equals: 2,
+	assert_true: a.length = 3,
+	assert_true: a[0] = 0,
+	assert_true: a[1] = 1,
+	assert_true: a[2] = 2,
 
 	a := [int] :: new(3, (i int){-1-i}),
-	assert: a.length equals: 3,
-	assert: a[0] equals: -1,
-	assert: a[1] equals: -2,
-	assert: a[2] equals: -3,
+	assert_true: a.length = 3,
+	assert_true: a[0] = -1,
+	assert_true: a[1] = -2,
+	assert_true: a[2] = -3,
 }
 
 // Returns whether two arrays are equal.
@@ -173,8 +173,8 @@ Func copy(a [T]) [T] {
 }
 
 test array_copy {
-	assert: copy([int] :: []) equals: [int] :: [],
-	assert: copy([1, 2, 3]) equals: [1, 2, 3],
+	assert_true: copy([int] :: []) = ([int] :: []),
+	assert_true: copy([1, 2, 3]) = [1, 2, 3],
 
 	// Check that modifying the original doesn't affect the copy.
 	a := [1, 2, 3],
@@ -182,9 +182,9 @@ test array_copy {
 	a[0] := 0,
 	a[1] := 1,
 	a[2] := 2,
-	assert: c[0] equals: 1,
-	assert: c[1] equals: 2,
-	assert: c[2] equals: 3,
+	assert_true: c[0] = 1,
+	assert_true: c[1] = 2,
+	assert_true: c[2] = 3,
 
 	// Check that modifying the copy doesn't affect the original.
 	a := [1, 2, 3],
@@ -192,9 +192,9 @@ test array_copy {
 	c[0] := 0,
 	c[1] := 1,
 	c[2] := 2,
-	assert: a[0] equals: 1,
-	assert: a[1] equals: 2,
-	assert: a[2] equals: 3,
+	assert_true: a[0] = 1,
+	assert_true: a[1] = 2,
+	assert_true: a[2] = 3,
 }
 
 // Returns the concatenation of two arrays.
@@ -219,13 +219,13 @@ Func +(a [T], b [T]) [T] {
 
 test array_plus {
 	empty := [int] :: [],
-	assert: empty + empty equals: empty,
-	assert: empty + [1] equals: [1],
-	assert: [1] + empty equals: [1],
-	assert: [1] + [2] equals: [1, 2],
-	assert: [1, 2] + [3] equals: [1, 2, 3],
-	assert: [1] + [2, 3] equals: [1, 2, 3],
-	assert: [1, 2] + [3, 4] equals: [1, 2, 3, 4],
+	assert_true: empty + empty = empty,
+	assert_true: empty + [1] = [1],
+	assert_true: [1] + empty = [1],
+	assert_true: [1] + [2] = [1, 2],
+	assert_true: [1, 2] + [3] = [1, 2, 3],
+	assert_true: [1] + [2, 3] = [1, 2, 3],
+	assert_true: [1, 2] + [3, 4] = [1, 2, 3, 4],
 }
 
 // Calls f(a[i]) for each element of the arra
@@ -239,15 +239,15 @@ Func for:each:(a [T], f (T){}) {
 test array_for_each {
 	i := 0,
 	for: [int] :: [] each: (_) { ++i },
-	assert: i equals: 0,
+	assert_true: i = 0,
 
 	i := 0,
 	array := ["Hello", ", ", "World", "!"],
 	for: array each: (elem) {
-		assert: string :: elem equals: array[i],
+		assert_true: elem = array[i],
 		++i
 	},
-	assert: i equals: array.length,
+	assert_true: i = array.length,
 }
 
 // Adds the string representation of the array
@@ -264,12 +264,12 @@ Func +=(p printer, a [T]) printer : +=(printer, T)printer {
 }
 
 test print_array {
-	assert: print_string([int] :: []) equals: "[]",
-	assert: print_string([1]) equals: "[1]",
-	assert: print_string([1, 2]) equals: "[1, 2]",
-	assert: print_string(["hello", "world"]) equals: "[hello, world]",
+	assert_true: print_string([int] :: []) = "[]",
+	assert_true: print_string([1]) = "[1]",
+	assert_true: print_string([1, 2]) = "[1, 2]",
+	assert_true: print_string(["hello", "world"]) = "[hello, world]",
 	// TODO: recursive printer += should be OK, but is currently disallowed,
 	// because string([[int]]) would need to instantiate string([int]),
 	// which is excluded from the scope.
-	// assert: print_string([[1, 2, 3], [4, 5, 6]]) equals: "[[1, 2, 3], [4, 5, 6]]",
+	// assert_true: print_string([[1, 2, 3], [4, 5, 6]]) = "[[1, 2, 3], [4, 5, 6]]",
 }

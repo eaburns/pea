@@ -7,17 +7,17 @@ Func ++(n &int) { n := n + 1 }
 test int_inc {
 	n := -3,
 	++n,
-	assert: n equals: -2,
+	assert_true: n = -2,
 	++n,
-	assert: n equals: -1,
+	assert_true: n = -1,
 	++n,
-	assert: n equals: 0,
+	assert_true: n = 0,
 	++n,
-	assert: n equals: 1,
+	assert_true: n = 1,
 	++n,
-	assert: n equals: 2,
+	assert_true: n = 2,
 	++n,
-	assert: n equals: 3,
+	assert_true: n = 3,
 }
 
 // Decreases the value of n by one.
@@ -26,17 +26,17 @@ Func --(n &int) { n := n - 1 }
 test int_dec {
 	n := 3,
 	--n,
-	assert: n equals: 2,
+	assert_true: n = 2,
 	--n,
-	assert: n equals: 1,
+	assert_true: n = 1,
 	--n,
-	assert: n equals: 0,
+	assert_true: n = 0,
 	--n,
-	assert: n equals: -1,
+	assert_true: n = -1,
 	--n,
-	assert: n equals: -2,
+	assert_true: n = -2,
 	--n,
-	assert: n equals: -3,
+	assert_true: n = -3,
 }
 
 // Assigns the result of x OP y to x,
@@ -96,31 +96,31 @@ Func %=(x &uint64, y uint64) { x := x % y }
 test plus_equals {
 	i := 3,
 	i += 5,
-	assert: i equals: 8,
+	assert_true: i = 8,
 }
 
 test minus_equals {
 	i := 3,
 	i -= 5,
-	assert: i equals: -2,
+	assert_true: i = -2,
 }
 
 test times_equals {
 	i := 3,
 	i *= 5,
-	assert: i equals: 15,
+	assert_true: i = 15,
 }
 
 test divide_equals {
 	i := 15,
 	i /= 5,
-	assert: i equals: 3,
+	assert_true: i = 3,
 }
 
 test mod_equals {
 	i := 18,
 	i %= 5,
-	assert: i equals: 3,
+	assert_true: i = 3,
 }
 
 // Calls f with each value from start (inclusive)
@@ -135,19 +135,19 @@ Func for:to:do:(start int, end int, f (int){}) {
 test for_to_do {
 	iters := 0,
 	for: 0 to: -1 do: (_){++iters},
-	assert: iters equals: 0,
+	assert_true: iters = 0,
 
 	iters := 0,
 	for: 0 to: 0 do: (_){++iters},
-	assert: iters equals: 1,
+	assert_true: iters = 1,
 
 	iters := 0,
 	for: 0 to: 1 do: (_){++iters},
-	assert: iters equals: 2,
+	assert_true: iters = 2,
 
 	iters := 0,
 	for: -1 to: 1 do: (_){++iters},
-	assert: iters equals: 3,
+	assert_true: iters = 3,
 
 	iters := 0,
 	inds := [int] :: new(11, -100),
@@ -155,18 +155,18 @@ test for_to_do {
 		inds[iters] := i,
 		++iters,
 	},
-	assert: iters equals: 11,
-	assert: inds[0] equals: -5,
-	assert: inds[1] equals: -4,
-	assert: inds[2] equals: -3,
-	assert: inds[3] equals: -2,
-	assert: inds[4] equals: -1,
-	assert: inds[5] equals: 0,
-	assert: inds[6] equals: 1,
-	assert: inds[7] equals: 2,
-	assert: inds[8] equals: 3,
-	assert: inds[9] equals: 4,
-	assert: inds[10] equals: 5,
+	assert_true: iters = 11,
+	assert_true: inds[0] = -5,
+	assert_true: inds[1] = -4,
+	assert_true: inds[2] = -3,
+	assert_true: inds[3] = -2,
+	assert_true: inds[4] = -1,
+	assert_true: inds[5] = 0,
+	assert_true: inds[6] = 1,
+	assert_true: inds[7] = 2,
+	assert_true: inds[8] = 3,
+	assert_true: inds[9] = 4,
+	assert_true: inds[10] = 5,
 }
 
 // Calls f with each value from start (inclusive)
@@ -181,19 +181,19 @@ Func for:down_to:do:(start int, end int, f (int){}) {
 test for_down_to_do {
 	iters := 0,
 	for: -1 down_to: 0 do: (_){++iters},
-	assert: iters equals: 0,
+	assert_true: iters = 0,
 
 	iters := 0,
 	for: 0 down_to: 0 do: (_){++iters},
-	assert: iters equals: 1,
+	assert_true: iters = 1,
 
 	iters := 0,
 	for: 1 down_to: 0 do: (_){++iters},
-	assert: iters equals: 2,
+	assert_true: iters = 2,
 
 	iters := 0,
 	for: 1 down_to: -1 do: (_){++iters},
-	assert: iters equals: 3,
+	assert_true: iters = 3,
 
 	iters := 0,
 	inds := [int] :: new(11, -100),
@@ -201,18 +201,18 @@ test for_down_to_do {
 		inds[iters] := i,
 		++iters,
 	},
-	assert: iters equals: 11,
-	assert: inds[0] equals: 5,
-	assert: inds[1] equals: 4,
-	assert: inds[2] equals: 3,
-	assert: inds[3] equals: 2,
-	assert: inds[4] equals: 1,
-	assert: inds[5] equals: 0,
-	assert: inds[6] equals: -1,
-	assert: inds[7] equals: -2,
-	assert: inds[8] equals: -3,
-	assert: inds[9] equals: -4,
-	assert: inds[10] equals: -5,
+	assert_true: iters = 11,
+	assert_true: inds[0] = 5,
+	assert_true: inds[1] = 4,
+	assert_true: inds[2] = 3,
+	assert_true: inds[3] = 2,
+	assert_true: inds[4] = 1,
+	assert_true: inds[5] = 0,
+	assert_true: inds[6] = -1,
+	assert_true: inds[7] = -2,
+	assert_true: inds[8] = -3,
+	assert_true: inds[9] = -4,
+	assert_true: inds[10] = -5,
 }
 
 // Adds the string representation to the printer and returns the printer.
@@ -238,11 +238,10 @@ func add_uint64(p printer, u uint64) printer {
 }
 
 test print_uint64 {
-	assert: print_string(uint64 :: 0) equals: "0",
-	assert: print_string(uint64 :: 1) equals: "1",
-	assert: print_string(uint64 :: 12345) equals: "12345",
-	assert: print_string(uint64 :: 18446744073709551615)
-		equals: "18446744073709551615",
+	assert_true: print_string(uint64 :: 0) = "0",
+	assert_true: print_string(uint64 :: 1) = "1",
+	assert_true: print_string(uint64 :: 12345) = "12345",
+	assert_true: print_string(uint64 :: 18446744073709551615) = "18446744073709551615",
 }
 
 // Adds the string representation to the printer and returns the printer.
@@ -262,15 +261,13 @@ func add_int64(p printer, d int64) printer {
 }
 
 test print_int64 {
-	assert: print_string(int64 :: 0) equals: "0",
-	assert: print_string(int64 :: 1) equals: "1",
-	assert: print_string(int64 :: -1) equals: "-1",
-	assert: print_string(int64 :: 12345) equals: "12345",
-	assert: print_string(int64 :: -12345) equals: "-12345",
-	assert: print_string(int64 :: 9223372036854775807)
-		equals: "9223372036854775807",
-	assert: print_string(int64 :: -9223372036854775808)
-		equals: "-9223372036854775808",
+	assert_true: print_string(int64 :: 0) = "0",
+	assert_true: print_string(int64 :: 1) = "1",
+	assert_true: print_string(int64 :: -1) = "-1",
+	assert_true: print_string(int64 :: 12345) = "12345",
+	assert_true: print_string(int64 :: -12345) = "-12345",
+	assert_true: print_string(int64 :: 9223372036854775807) = "9223372036854775807",
+	assert_true: print_string(int64 :: -9223372036854775808) = "-9223372036854775808",
 }
 
 // This test checks for a regression in the compiler
@@ -280,5 +277,5 @@ test print_int64_return_copy {
 	p := printer :: new(),
 	q := p += 5,
 	q += "boo",
-	assert: string :: reset(p) equals: "5boo",
+	assert_true: (string :: reset(p)) = "5boo",
 }

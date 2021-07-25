@@ -1,3 +1,4 @@
+Import "assert"
 Import "basic"
 
 Type T ring_buffer := T _ring_buffer

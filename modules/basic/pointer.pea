@@ -23,6 +23,6 @@ Func +=(p printer, t T pointer) printer : +=(printer, T) printer {
 }
 
 test print_pointer {
-	assert: print_string(&1) equals: "1",
-	assert: print_string(&"hello") equals: "hello",
+	assert_true: print_string(&1) = "1",
+	assert_true: print_string(&"hello") = "hello",
 }

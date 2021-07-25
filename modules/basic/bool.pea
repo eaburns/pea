@@ -141,11 +141,11 @@ Func while:do:(cond (){bool}, f (){}) {
 test while_do {
 	iters := 0,
 	while: {false} do: {++iters},
-	assert: iters equals: 0,
+	assert_true: iters = 0,
 
 	iters := 0,
 	while: {iters < 10} do: {++iters},
-	assert: iters equals: 10,
+	assert_true: iters = 10,
 }
 
 // Calls f(), then continually calls cond() until it returns false.
@@ -160,11 +160,11 @@ Func do:while:(f (){}, cond (){bool}) {
 test do_while {
 	iters := 0,
 	do: {++iters} while: {false},
-	assert: iters equals: 1,
+	assert_true: iters = 1,
 
 	iters := 0,
 	do: {++iters} while: {iters < 10},
-	assert: iters equals: 10,
+	assert_true: iters = 10,
 }
 
 // Adds the string representation of a bool to the printer
@@ -178,6 +178,6 @@ Func +=(p printer, b bool) printer {
 }
 
 test print_bool {
-	assert: print_string(true) equals: "true",
-	assert: print_string(false) equals: "false",
+	assert_true: print_string(true) = "true",
+	assert_true: print_string(false) = "false",
 }

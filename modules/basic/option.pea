@@ -116,14 +116,14 @@ Func while:some:(cond (){T option}, f (T){}) {
 test while_some {
 	iters := 0,
 	while: {int option :: none()} some: (_){++iters},
-	assert: iters equals: 0,
+	assert_true: iters = 0,
 
 	iters := 0,
 	while: {iters < 10 true? {some(iters)} false? {none()}} some: (i){
-		assert: i equals: iters,
+		assert_true: i = iters,
 		++iters
 	},
-	assert: iters equals: 10,
+	assert_true: iters = 10,
 }
 
 // Continually calls cond() until it returns an option in the some? case.
@@ -138,13 +138,13 @@ Func while:none:(cond (){T option}, f (){}) {
 test while_none {
 	iters := 0,
 	while: {int option :: some(1)} none: (){++iters},
-	assert: iters equals: 0,
+	assert_true: iters = 0,
 
 	iters := 0,
 	while: {iters < 10 true? {int option :: none()} false? {some(iters)}} none: (){
 		++iters
 	},
-	assert: iters equals: 10,
+	assert_true: iters = 10,
 }
 
 // Adds the string representation of the option to the printer
@@ -158,10 +158,10 @@ Func +=(p printer, o T option) printer : +=(printer, T)printer {
 }
 
 test print_option {
-	assert: print_string(some(5)) equals: "some(5)",
-	assert: print_string(some("Hello, World!")) equals: "some(Hello, World!)",
-	assert: print_string(some([1, 2, 3])) equals: "some([1, 2, 3])",
-	assert: print_string(int option :: none()) equals: "none()",
-	assert: print_string(string option :: none()) equals: "none()",
-	assert: print_string([int] option :: none()) equals: "none()",
+	assert_true: print_string(some(5)) = "some(5)",
+	assert_true: print_string(some("Hello, World!")) = "some(Hello, World!)",
+	assert_true: print_string(some([1, 2, 3])) = "some([1, 2, 3])",
+	assert_true: print_string(int option :: none()) = "none()",
+	assert_true: print_string(string option :: none()) = "none()",
+	assert_true: print_string([int] option :: none()) = "none()",
 }

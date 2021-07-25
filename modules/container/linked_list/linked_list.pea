@@ -1,3 +1,4 @@
+Import "assert"
 Import "basic"
 
 Type T linked_list := T _linked_list

@@ -1,3 +1,4 @@
+Import "assert"
 Import "basic"
 import "io"
 import "sort"
