@@ -147,21 +147,3 @@ test while_none {
 	assert_true: iters = 10,
 }
 
-// Adds the string representation of the option to the printer
-// and returns the printer.
-Func +=(p printer, o T option) printer : +=(printer, T)printer {
-	return: o some? (t T) {
-		p += "some(" += t += ")",
-	} none? {
-		p += "none()"
-	}
-}
-
-test print_option {
-	assert_true: print_string(some(5)) = "some(5)",
-	assert_true: print_string(some("Hello, World!")) = "some(Hello, World!)",
-	assert_true: print_string(some([1, 2, 3])) = "some([1, 2, 3])",
-	assert_true: print_string(int option :: none()) = "none()",
-	assert_true: print_string(string option :: none()) = "none()",
-	assert_true: print_string([int] option :: none()) = "none()",
-}

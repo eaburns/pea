@@ -1,5 +1,6 @@
 Import "assert"
 Import "basic"
+Import "print"
 import "hash/wyhash"
 
 // TODO: create new hash.state for each init.

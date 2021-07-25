@@ -1,5 +1,6 @@
 Import "assert"
 Import "basic"
+Import "print"
 import "io"
 
 // A system-dependent, opaque identifier for an I/O endpoint.

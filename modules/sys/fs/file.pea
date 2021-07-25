@@ -1,6 +1,7 @@
 Import "assert"
 Import "basic"
 import "io"
+Import "print"
 import "sort"
 
 // An entry in the file system.
@@ -68,7 +69,7 @@ Func error?(res F open_result, e (error){F}) F {
 
 // Returns the opened file or panics if there was an error.
 Func must(res F open_result) F {
-	return: res error? (e) { panic(print_string(e)) }
+	return: res error? (e) { panic(print#string(e)) }
 }
 
 // The result of reading from a directory.
@@ -135,7 +136,7 @@ test create_dir_read_remove {
 		} eof? {
 			false
 		} error? (err) {
-			panic(print_string(err))
+			panic(print#string(err))
 		}
 	} do: {},
 	sort#sort: ents,
@@ -153,7 +154,7 @@ test open_entry {
 	assert_ok: create_dir(path),
 	assert_ok: touch(path + "file"),
 
-	ent := open(path) error? (err){ panic(print_string("open failed: ", err)) },
+	ent := open(path) error? (err){ panic(print#string("open failed: ", err)) },
 	ent file? (f file) {
 		close(f),
 		panic("got file, expected dir")
@@ -161,7 +162,7 @@ test open_entry {
 		close(d)
 	},
 
-	ent := open(path + "file") error? (err){ panic(print_string("open failed: ", err)) },
+	ent := open(path + "file") error? (err){ panic(print#string("open failed: ", err)) },
 	ent file? (f file) {
 		close(f),
 	} dir? (d dir) {

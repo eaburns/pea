@@ -1,4 +1,6 @@
+Import "assert"
 Import "basic"
+Import "print"
 
 // The result of a read operation.
 Type read_result [
@@ -32,7 +34,7 @@ Func error?(res write_result, e (error){int}) int {
 // Returns the number of bytes written;
 // panics if there was an error.
 Func must(res write_result) int {
-	return: res error? (e error) { panic(print_string(e)) }
+	return: res error? (e error) { panic(print#string(e)) }
 }
 
 // Reads from a reader until its end

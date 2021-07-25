@@ -12,12 +12,6 @@ Func message(err error) string {
 	return: err.msg
 }
 
-// Adds the error's message to the printer
-// and returns the printer.
-Func +=(p printer, err error) printer {
-	return: p += err.msg,
-}
-
 // An error or some value of type T.
 Type T or_error [error? error, ok? T]
 
@@ -40,7 +34,7 @@ Func error(msg string) T or_error {
 // Panics if the case of o is no the error? case,
 // and returns the ok? value if it is the ok? case.
 Func must(o T or_error) T {
-	return: o ok? (t T){ t } error? (e){ panic(print_string(e)) }
+	return: o ok? (t T){ t } error? (e){ panic(message(e)) }
 }
 
 // If o is the ok? case, returns the ok? value,
@@ -77,22 +71,6 @@ Func if:error:ok:(o T or_error, e (error){}, k (T){}) {
 	o ok? k error? e
 }
 
-// Adds the string representation of the or_error to the printer
-// and returns the printer.
-Func +=(p printer, t_or T or_error) printer : +=(printer, T)printer {
-	return: t_or ok? (t T) {
-		p += "ok(" += t += ")"
-	} error? (e) {
-		p += "error(" += e += ")"
-	}
-}
-
-test print_or_error {
-	assert_true: print_string(int or_error :: error("oops")) = "error(oops)",
-	assert_true: print_string(ok(1)) = "ok(1)",
-	assert_true: print_string(ok("Hello, World!")) = "ok(Hello, World!)",
-}
-
 // Returns a new error option with the none? case.
 Func ok() error option {
 	return: none()
@@ -117,7 +95,7 @@ Func error?(o error option, e (error){}) {
 
 // Panics if the case of o is some?.
 Func must(o error option) {
-	if: o some: (e){ panic(print_string(e)) }
+	if: o some: (e){ panic(message(e)) }
 }
 
 // Calls k() if the case of o is none?.

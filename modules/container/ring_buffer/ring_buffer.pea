@@ -1,5 +1,6 @@
 Import "assert"
 Import "basic"
+Import "print"
 
 Type T ring_buffer := T _ring_buffer
 type T _ring_buffer := &[
@@ -44,10 +45,10 @@ Func .length(r T ring_buffer) int {
 
 Func [](r T ring_buffer, i int) &T {
 	if: i < 0 then: {
-		panic(print_string("index out of bounds: ", i, " < 0"))
+		panic(print#string("index out of bounds: ", i, " < 0"))
 	},
 	if: i >= r.n then: {
-		panic(print_string("index out of bounds: ", i, " >= ", r.n))
+		panic(print#string("index out of bounds: ", i, " >= ", r.n))
 	},
 	return: r.data[index(r, i)]
 }
@@ -68,16 +69,16 @@ test index {
 
 Func [](r T ring_buffer, s int, e int) T ring_buffer {
 	if: s < 0 then: {
-		panic(print_string("start index out of bounds: ", s, " < 0"))
+		panic(print#string("start index out of bounds: ", s, " < 0"))
 	},
 	if: e > r.n then: {
-		panic(print_string("end index out of bounds: ", e, " >= ", r.n))
+		panic(print#string("end index out of bounds: ", e, " >= ", r.n))
 	},
 	if: s > e then: {
-		panic(print_string("start index is greater than end: ", s, " > ", e))
+		panic(print#string("start index is greater than end: ", s, " > ", e))
 	},
-	print(print_string("start=", r.start, " end=", r.end, "\n")),
-	print(print_string("s=", s, " e=", e)),
+	print(print#string("start=", r.start, " end=", r.end, "\n")),
+	print(print#string("s=", s, " e=", e)),
 	print("\n"),
 	return: [.n e - s, .start index(r, s), .end index(r, e), .data r.data]
 }

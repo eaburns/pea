@@ -20,6 +20,7 @@ The abseil implementation has the following notice:
 */
 Import "assert"
 Import "basic"
+Import "print"
 
 const salt := [uint64] :: [
 	// TODO: fix hex constants when supported correctly by llvm backend.
@@ -173,7 +174,7 @@ func =(a [.hi uint64, .lo uint64], b [.hi uint64, .lo uint64]) bool {
 	return: a.hi = b.hi && { a.lo = b.lo }
 }
 
-func +=(p printer, x [.hi uint64, .lo uint64]) printer {
+func +=(p print#printer, x [.hi uint64, .lo uint64]) print#printer {
 	return: p += "[.hi " += x.hi += ", .lo " += x.lo += "]"
 }
 

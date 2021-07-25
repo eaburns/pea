@@ -1,5 +1,6 @@
 Import "assert"
 Import "basic"
+Import "print"
 
 Type T vector := T _vector
 type T _vector := &[.n int, .data [T]]
@@ -39,10 +40,10 @@ Func .length(v T vector) int {
 
 Func [](v T vector, i int) &T {
 	if: i < 0 then: {
-		panic(print_string("index out of bounds: ", i, " < 0"))
+		panic(print#string("index out of bounds: ", i, " < 0"))
 	},
 	if: i >= v.n then: {
-		panic(print_string("index out of bounds: ", i, " >= ", v.n))
+		panic(print#string("index out of bounds: ", i, " >= ", v.n))
 	},
 	return: v.data[i]
 }
@@ -56,13 +57,13 @@ test index {
 
 Func [](v T vector, s int, e int) T vector {
 	if: s < 0 then: {
-		panic(print_string("start index out of bounds: ", s, " < 0"))
+		panic(print#string("start index out of bounds: ", s, " < 0"))
 	},
 	if: e > v.n then: {
-		panic(print_string("end index out of bounds: ", e, " >= ", v.n))
+		panic(print#string("end index out of bounds: ", e, " >= ", v.n))
 	},
 	if: s > e then: {
-		panic(print_string("start index is greater than end: ", s, " > ", e))
+		panic(print#string("start index is greater than end: ", s, " > ", e))
 	},
 	return: [.n e-s, .data v.data[s, e]]
 }

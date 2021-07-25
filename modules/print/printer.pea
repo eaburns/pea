@@ -1,3 +1,5 @@
+Import "basic"
+
 // A string printer.
 // Printer is used for converting values of other types
 // into human-readable strings.
@@ -231,12 +233,12 @@ test printer_copy {
 }
 
 // Returns the string resulting from printing t to a printer.
-Func print_string(t T) string : +=(printer, T)printer {
+Func string(t T) string : +=(printer, T)printer {
 	return: reset((printer :: new()) += t)
 }
 
 // Returns the string resulting from printing t then u to a printer.
-Func print_string(t T, u U) string :
+Func string(t T, u U) string :
 	+=(printer, T)printer,
 	+=(printer, U)printer,
 {
@@ -244,7 +246,7 @@ Func print_string(t T, u U) string :
 }
 
 // Returns the string resulting from printing t then u then v to a printer.
-Func print_string(t T, u U, v V) string :
+Func string(t T, u U, v V) string :
 	+=(printer, T)printer,
 	+=(printer, U)printer,
 	+=(printer, V)printer,
@@ -253,7 +255,7 @@ Func print_string(t T, u U, v V) string :
 }
 
 // Returns the string resulting from printing t then u then v then w to a printer.
-Func print_string(t T, u U, v V, w W) string :
+Func string(t T, u U, v V, w W) string :
 	+=(printer, T)printer,
 	+=(printer, U)printer,
 	+=(printer, V)printer,
@@ -265,7 +267,7 @@ Func print_string(t T, u U, v V, w W) string :
 // Returns the string resulting from printing t then u then v then w then x to a printer.
 // TODO: variadic arguments.
 // TODO: Go-like interfaces.
-Func print_string(t T, u U, v V, w W, x X) string :
+Func string(t T, u U, v V, w W, x X) string :
 	+=(printer, T)printer,
 	+=(printer, U)printer,
 	+=(printer, V)printer,

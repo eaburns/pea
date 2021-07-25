@@ -144,9 +144,3 @@ test string_plus {
 	assert_true: "abc" + "def" = "abcdef",
 	assert_true: "こんにち" + "は" = "こんにちは",
 }
-
-// Adds the string to the printer and returns the printer.
-Func +=(p printer, s string) printer {
-	add_string(p, s),
-	return: p
-}

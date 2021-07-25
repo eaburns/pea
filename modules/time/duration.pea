@@ -1,5 +1,6 @@
 Import "assert"
 Import "basic"
+Import "print"
 
 // A duration of time.
 Type duration := _duration
@@ -144,7 +145,7 @@ test duration_division {
 	assert: (500*millisecond)/second equals: 0.5,
 }
 
-// Adds the string representation of the duration to the printer and returns the printer.
+// Adds the string representation of the duration to the print#printer and returns the print#printer.
 // Duration strings are sequences of numbers and unit suffixes.
 // Unit suffixes are:
 // 	"ns" for nanoseconds
@@ -160,7 +161,7 @@ test duration_division {
 // the durations is printed as the integer number of hours, if non-zero,
 // the integer number of minutes, if non-zero,
 // and the floating point number of seconds, if non-zero.
-Func +=(p printer, d duration) printer {
+Func +=(p print#printer, d duration) print#printer {
 	if: d.ns < 0 then: {
 		p += "-",
 		d.ns := -d.ns
@@ -190,7 +191,7 @@ Func +=(p printer, d duration) printer {
 		d -= s*second,
 		p += s,
 		if: d.ns > 0 then: {
-			f := print_string(d / second),
+			f := print#string(d / second),
 			p += f[1,f.length], // trim leading 0.
 		},
 		p += "s",
@@ -199,35 +200,35 @@ Func +=(p printer, d duration) printer {
 }
 
 test duration_string {
-	assert: print_string(1*nanosecond) equals: "1ns",
-	assert: print_string(1*microsecond) equals: "1μs",
-	assert: print_string(1*millisecond) equals: "1ms",
-	assert: print_string(500*millisecond + 1*nanosecond) equals: "500.000001ms",
-	assert: print_string(1*second) equals: "1s",
-	assert: print_string(1*minute) equals: "1m",
-	assert: print_string(1*hour) equals: "1h",
-	assert: print_string(2*nanosecond) equals: "2ns",
-	assert: print_string(2*microsecond) equals: "2μs",
-	assert: print_string(2*millisecond) equals: "2ms",
-	assert: print_string(2*second) equals: "2s",
-	assert: print_string(2*minute) equals: "2m",
-	assert: print_string(2*hour) equals: "2h",
-	assert: print_string(2*hour + 3*minute + 4*second + 500*millisecond) equals: "2h3m4.5s",
-	assert: print_string(2*millisecond + 500*microsecond) equals: "2.5ms",
-	assert: print_string(2*microsecond + 500*nanosecond) equals: "2.5μs",
-	assert: print_string(1000000000*nanosecond) equals: "1s",
-	assert: print_string(1000000*microsecond) equals: "1s",
-	assert: print_string(1000*millisecond) equals: "1s",
-	assert: print_string(60*second) equals: "1m",
-	assert: print_string(60*minute) equals: "1h",
-	assert: print_string(24*hour) equals: "24h",
-	assert: print_string(36*hour) equals: "36h",
-	assert: print_string(86400*second) equals: "24h",
-	assert: print_string(86401*second) equals: "24h1s",
-	assert: print_string(86401*second) equals: "24h1s",
+	assert: print#string(1*nanosecond) equals: "1ns",
+	assert: print#string(1*microsecond) equals: "1μs",
+	assert: print#string(1*millisecond) equals: "1ms",
+	assert: print#string(500*millisecond + 1*nanosecond) equals: "500.000001ms",
+	assert: print#string(1*second) equals: "1s",
+	assert: print#string(1*minute) equals: "1m",
+	assert: print#string(1*hour) equals: "1h",
+	assert: print#string(2*nanosecond) equals: "2ns",
+	assert: print#string(2*microsecond) equals: "2μs",
+	assert: print#string(2*millisecond) equals: "2ms",
+	assert: print#string(2*second) equals: "2s",
+	assert: print#string(2*minute) equals: "2m",
+	assert: print#string(2*hour) equals: "2h",
+	assert: print#string(2*hour + 3*minute + 4*second + 500*millisecond) equals: "2h3m4.5s",
+	assert: print#string(2*millisecond + 500*microsecond) equals: "2.5ms",
+	assert: print#string(2*microsecond + 500*nanosecond) equals: "2.5μs",
+	assert: print#string(1000000000*nanosecond) equals: "1s",
+	assert: print#string(1000000*microsecond) equals: "1s",
+	assert: print#string(1000*millisecond) equals: "1s",
+	assert: print#string(60*second) equals: "1m",
+	assert: print#string(60*minute) equals: "1h",
+	assert: print#string(24*hour) equals: "24h",
+	assert: print#string(36*hour) equals: "36h",
+	assert: print#string(86400*second) equals: "24h",
+	assert: print#string(86401*second) equals: "24h1s",
+	assert: print#string(86401*second) equals: "24h1s",
 
-	assert: print_string(-2*hour - 3*minute - 4*second - 500*millisecond) equals: "-2h3m4.5s",
+	assert: print#string(-2*hour - 3*minute - 4*second - 500*millisecond) equals: "-2h3m4.5s",
 
-	assert: print_string(5*second + 30*nanosecond) equals: "5.00000003s",
-	assert: print_string(86401*second+30*nanosecond) equals: "24h1.00000003s",
+	assert: print#string(5*second + 30*nanosecond) equals: "5.00000003s",
+	assert: print#string(86401*second+30*nanosecond) equals: "24h1.00000003s",
 }

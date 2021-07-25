@@ -1,5 +1,6 @@
 Import "assert"
 Import "basic"
+Import "print"
 
 // An absolute point in time.
 // The current implementation supports nanosecond precision.
@@ -74,13 +75,13 @@ test point_as_string {
 	t := epoch + 365*24*hour + 1*second,
 
 	// Human-readable duration since the epoch.
-	assert: print_string(t - epoch) equals: "8760h1s",
+	assert: print#string(t - epoch) equals: "8760h1s",
 
 	// Seconds from epoch — "Unix seconds"
-	assert: print_string(int64 :: (t - epoch) / second) equals: "31536001",
+	assert: print#string(int64 :: (t - epoch) / second) equals: "31536001",
 
 	// Miliseconds from epoch — "Unix milliseconds"
-	assert: print_string(int64 :: (t - epoch) / millisecond) equals: "31536001000",
+	assert: print#string(int64 :: (t - epoch) / millisecond) equals: "31536001000",
 
 	// and so-forth…
 }

@@ -15,14 +15,3 @@ Func &(t &T) T pointer {
 Func *(t T pointer) &T {
 	return: (&T :: t)
 }
-
-// Adds the string representation of the pointer value to the printer
-// and returns the printer.
-Func +=(p printer, t T pointer) printer : +=(printer, T) printer {
-	return: p += (T :: (&T :: t))
-}
-
-test print_pointer {
-	assert_true: print_string(&1) = "1",
-	assert_true: print_string(&"hello") = "hello",
-}

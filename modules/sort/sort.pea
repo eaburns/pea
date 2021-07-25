@@ -1,6 +1,7 @@
 Import "assert"
- Import "basic"
- Import "container/vector"
+Import "basic"
+Import "container/vector"
+Import "print"
 
 Func sort:by:(ts C, less (&T, &T){bool}) :
 	.length(C)int,
@@ -76,7 +77,7 @@ func =(a &ref_cmp_type, b &ref_cmp_type)bool {
 	return: a.x = b.x && a.y = b.y
 }
 
-func +=(p printer, x ref_cmp_type) printer {
+func +=(p print#printer, x ref_cmp_type) print#printer {
 	return: p += "[.x " += x.x += ", .y " += x.y += "]"
 }
 

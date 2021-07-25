@@ -249,27 +249,3 @@ test array_for_each {
 	},
 	assert_true: i = array.length,
 }
-
-// Adds the string representation of the array
-// to the printer and returns the printer.
-Func +=(p printer, a [T]) printer : +=(printer, T)printer {
-	p += "[",
-	for: 0 to: a.length - 1 do: (i) {
-		if: i > 0 then: {
-			p += ", "
-		},
-		p += a[i]
-	},
-	return: p += "]",
-}
-
-test print_array {
-	assert_true: print_string([int] :: []) = "[]",
-	assert_true: print_string([1]) = "[1]",
-	assert_true: print_string([1, 2]) = "[1, 2]",
-	assert_true: print_string(["hello", "world"]) = "[hello, world]",
-	// TODO: recursive printer += should be OK, but is currently disallowed,
-	// because string([[int]]) would need to instantiate string([int]),
-	// which is excluded from the scope.
-	// assert_true: print_string([[1, 2, 3], [4, 5, 6]]) = "[[1, 2, 3], [4, 5, 6]]",
-}

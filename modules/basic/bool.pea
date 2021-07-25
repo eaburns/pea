@@ -166,18 +166,3 @@ test do_while {
 	do: {++iters} while: {iters < 10},
 	assert_true: iters = 10,
 }
-
-// Adds the string representation of a bool to the printer
-// and then returns the printer.
-Func +=(p printer, b bool) printer {
-	return: b true? {
-		p += "true"
-	} false? {
-		p += "false"
-	},
-}
-
-test print_bool {
-	assert_true: print_string(true) = "true",
-	assert_true: print_string(false) = "false",
-}
