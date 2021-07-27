@@ -986,20 +986,24 @@ func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	switch fun := parserCall.Fun.(type) {
 	case parser.Ident:
 		ids := x.find(fun.Name)
-		return resolveIDCall(x, fun, parserCall, want, ids)
+		return resolveIDCall(x, nil, fun, parserCall, want, ids)
 	case *parser.ModSel:
 		imp := x.findMod(fun.Mod.Name)
 		if imp == nil {
 			return nil, []Error{notFound(fun.Mod.Name, fun.L)}
 		}
+		var addMod *Import
+		if !imp.Exp {
+			addMod = imp
+		}
 		ids := imp.find(fun.Name.Name)
-		return resolveIDCall(x, fun.Name, parserCall, want, ids)
+		return resolveIDCall(x, addMod, fun.Name, parserCall, want, ids)
 	default:
 		return checkExprCall(x, parserCall, want)
 	}
 }
 
-func resolveIDCall(x scope, parserID parser.Ident, parserCall *parser.Call, want Type, ids []id) (Expr, []Error) {
+func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *parser.Call, want Type, ids []id) (Expr, []Error) {
 	funcs, notes := filterToFuncs(ids, parserID.L)
 	funcs, ns := filterByArity(funcs, len(parserCall.Args))
 	notes = append(notes, ns...)
@@ -1036,7 +1040,7 @@ func resolveIDCall(x scope, parserID parser.Ident, parserCall *parser.Call, want
 		notes = append(notes, ns...)
 	}
 
-	funcs, ns = filterIfaceConstraints(x, parserCall.L, funcs)
+	funcs, ns = filterIfaceConstraints(x, parserCall.L, mod, funcs)
 	notes = append(notes, ns...)
 
 	switch {
@@ -1275,11 +1279,11 @@ func filterUngroundReturns(funcs []Func) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func filterIfaceConstraints(x scope, l loc.Loc, funcs []Func) ([]Func, []note) {
+func filterIfaceConstraints(x scope, l loc.Loc, mod *Import, funcs []Func) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		if note := instIface(x, l, f); note != nil {
+		if note := instIface(x, l, mod, f); note != nil {
 			notes = append(notes, note)
 			continue
 		}

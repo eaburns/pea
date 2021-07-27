@@ -2756,6 +2756,38 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 		},
+		{
+			name: "consider called function mod for iface functions",
+			src: `
+				import "foo"
+			`,
+			call: "foo#needs_bar(5)",
+			want: `foo#needs_bar(int)`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Func needs_bar(x T) : bar(T) {}
+					Func bar(i int) {}
+				`,
+			},
+		},
+		{
+			name: "consider called function mod for iface functions, fails",
+			src: `
+				import "foo"
+			`,
+			call: "foo#needs_bar(5)",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Func needs_bar(x T) : bar(T)string {}
+					Func bar(i int) {}
+				`,
+			},
+			// Verify that foo#bar(int) is considered,
+			// but its type is wrong, so it still errors.
+			err: `foo#bar\(int\): cannot convert returned \[\.\] to string`,
+		},
 	}
 	for _, test := range tests {
 		test := test

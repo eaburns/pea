@@ -316,7 +316,7 @@ func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Typ
 	}
 }
 
-func instIface(x scope, l loc.Loc, fun Func) note {
+func instIface(x scope, l loc.Loc, addMod *Import, fun Func) note {
 	f, ok := fun.(*FuncInst)
 	if !ok {
 		return nil
@@ -329,7 +329,7 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 	var notes []note
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
-		fun, note := findIfaceFunc(x, l, f.Def, f.IfaceArgs[i].(*FuncDecl))
+		fun, note := findIfaceFunc(x, l, f.Def, addMod, f.IfaceArgs[i].(*FuncDecl))
 		if note != nil {
 			notes = append(notes, note)
 		} else {
@@ -345,10 +345,14 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 	return nil
 }
 
-func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, decl *FuncDecl) (Func, note) {
+func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *FuncDecl) (Func, note) {
+	ids := x.find(decl.Name)
+	if addMod != nil {
+		ids = append(ids, addMod.find(decl.Name)...)
+	}
 	var notFoundNotes []note
 	var funcs []Func
-	for _, id := range x.find(decl.Name) {
+	for _, id := range ids {
 		switch id.(type) {
 		case *Builtin:
 		case *FuncInst:
@@ -419,7 +423,7 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
 			return newNote("%s: cannot convert argument %s to %s", f, p, t).setLoc(t)
 		}
 	}
-	return instIface(x, l, f)
+	return instIface(x, l, nil, f)
 }
 
 func canonicalFuncInst(f *FuncInst) *FuncInst {
