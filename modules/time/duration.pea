@@ -1,6 +1,6 @@
 Import "assert"
 Import "basic"
-Import "print"
+import "print"
 
 // A duration of time.
 Type duration := _duration

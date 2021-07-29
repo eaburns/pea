@@ -1,6 +1,6 @@
 Import "assert"
 Import "basic"
-Import "print"
+import "print"
 
 Type T cursor := T _cursor
 type T _cursor [

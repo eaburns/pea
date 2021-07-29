@@ -1,7 +1,7 @@
 Import "assert"
 Import "basic"
-Import "print"
 import "hash/wyhash"
+import "print"
 
 // TODO: create new hash.state for each init.
 const state := uint64 :: 19840923

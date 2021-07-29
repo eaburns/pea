@@ -1,6 +1,6 @@
 Import "assert"
 Import "basic"
-Import "print"
+import "print"
 
 Type T ring_buffer := T _ring_buffer
 type T _ring_buffer := &[

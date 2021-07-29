@@ -1,6 +1,6 @@
 Import "assert"
 Import "basic"
-Import "print"
+import "print"
 
 // An absolute point in time.
 // The current implementation supports nanosecond precision.

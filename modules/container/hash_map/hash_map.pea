@@ -1,7 +1,7 @@
 Import "assert"
 Import "basic"
 Import "hash"
-Import "print"
+import "print"
 
 Type (K, V) hash_map := (K, V) _hash_map
 type (K, V) _hash_map &[

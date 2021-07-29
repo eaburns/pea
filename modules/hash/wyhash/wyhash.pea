@@ -20,7 +20,7 @@ The abseil implementation has the following notice:
 */
 Import "assert"
 Import "basic"
-Import "print"
+import "print"
 
 const salt := [uint64] :: [
 	// TODO: fix hex constants when supported correctly by llvm backend.

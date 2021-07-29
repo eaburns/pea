@@ -1,6 +1,6 @@
 Import "assert"
 Import "basic"
-Import "print"
+import "print"
 
 Type T vector := T _vector
 type T _vector := &[.n int, .data [T]]

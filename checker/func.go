@@ -366,6 +366,11 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *Fu
 		}
 		funcs = append(funcs, id.(Func))
 	}
+
+	fs, ns := ifaceADLookup(x, addMod, decl)
+	funcs = append(funcs, fs...)
+	notFoundNotes = append(notFoundNotes, ns...)
+
 	var n int
 	for _, f := range funcs {
 		if note := unifyFunc(x, l, f, decl.Type()); note != nil {
@@ -397,6 +402,37 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *Fu
 		}
 		return fun, nil
 	}
+}
+
+func ifaceADLookup(x scope, addMod *Import, decl *FuncDecl) ([]Func, []note) {
+	file := x.file()
+	imports := make(map[string]*Import)
+	for _, imp := range file.Imports {
+		if !imp.Exp {
+			imports[imp.Path] = imp
+		}
+	}
+
+	var funcs []Func
+	var notes []note
+	seen := map[*Import]bool{addMod: true}
+	for _, typ := range decl.Parms {
+		defType, ok := typ.(*DefType)
+		if !ok {
+			continue
+		}
+		imp, ok := imports[defType.Def.Mod]
+		if !ok || seen[imp] || defType.Def.Mod == file.Mod.Path {
+			continue
+		}
+		seen[imp] = true
+		ids := imp.find(decl.Name)
+		fs, ns := filterToFuncs(ids, decl.L)
+		funcs = append(funcs, fs...)
+		notes = append(notes, ns...)
+	}
+
+	return funcs, notes
 }
 
 func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {

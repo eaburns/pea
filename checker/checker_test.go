@@ -1481,6 +1481,84 @@ func TestIfaceInst(t *testing.T) {
 			`,
 			err: "failed to instantiate",
 		},
+		{
+			name: "argument-dependent lookup",
+			src: `
+				import "foo"
+				// foo is not capital Imported,
+				// but we get foo#+ still with ADL.
+				func f(a T) : +(T, T, T)T
+				func main() { f(foo#t()) }
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t int
+						Func t() t { return: t :: 0 }
+						Func +(a t, b t, c t) t { return: a + b + c }
+					`,
+				},
+			},
+			want: "foo#+(foo#t, foo#t, foo#t)foo#t",
+		},
+		{
+			name: "argument-dependent lookup, recursive iface inst",
+			src: `
+				import "foo"
+				import "bar"
+				func f(a T, b U) : foo(T, U)
+				func main() { f(foo#t(), bar#u()) }
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t int
+						Func t() t { return: t :: 0 }
+						Func foo(_ T, _ U) : bar(U) {}
+					`,
+				},
+				{
+					path: "bar",
+					src: `
+						Type u int
+						Func u() u { return: u :: 0 }
+						Func bar(_ u) {}
+					`,
+				},
+			},
+			want: "foo#foo(foo#t, bar#u)",
+		},
+		{
+			name: "argument-dependent lookup fails no non-argument type mod",
+			src: `
+				import "foo"
+				import "bar"
+				func f(a T) : +(T, T, T)T
+				func main() { f(foo#t()) }
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t int
+						Func t() t { return: t :: 0 }
+					`,
+				},
+				{
+					path: "bar",
+					src: `
+						import "foo"
+						// bar#+ is not found with ADL,
+						// because bar# is not in any parameter types
+						// of the call to f().
+						Func +(a foo#t, b foo#t, c foo#t) foo#t { return: a + b + c }
+					`,
+				},
+			},
+			err: `\+\(foo#t, foo#t, foo#t\)foo#t: not found`,
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -1511,13 +1589,14 @@ func TestIfaceInst(t *testing.T) {
 
 func TestOverloadResolution(t *testing.T) {
 	tests := []struct {
-		name     string
-		src      string
-		call     string
-		ret      string // or ""
-		want     string
-		err      string
-		otherMod testMod
+		name      string
+		src       string
+		call      string
+		ret       string // or ""
+		want      string
+		err       string
+		otherMod  testMod
+		otherMods []testMod
 	}{
 		{
 			name: "not callable",
@@ -2757,6 +2836,34 @@ func TestOverloadResolution(t *testing.T) {
 			},
 		},
 		{
+			name: "no-adl because non-argument mod",
+			src: `
+				import "foo"
+				import "bar"
+			`,
+			call: "f(bar#t())",
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+					import "bar"
+					// This function is not found by ADL,
+					// because the foo# is not a module
+					// in any of the involved arguments.
+					Func f(_ bar#t) {}
+				`,
+				},
+				{
+					path: "bar",
+					src: `
+					Type t int
+					Func t() t { return: t :: 0 }
+				`,
+				},
+			},
+			err: "f: not found",
+		},
+		{
 			name: "consider called function mod for iface functions",
 			src: `
 				import "foo"
@@ -2802,7 +2909,7 @@ func TestOverloadResolution(t *testing.T) {
 				src = fmt.Sprintf("%s\nvar zz := (){} :: { _ := (%s) }\n", test.src, test.call)
 			}
 			t.Log(src)
-			mod, errs := check("test", []string{src}, []testMod{test.otherMod})
+			mod, errs := check("test", []string{src}, append(test.otherMods, test.otherMod))
 			switch {
 			case test.err == "" && len(errs) == 0:
 				expr := findVarDef(t, "zz", mod).Expr.(*Call).Args[1]

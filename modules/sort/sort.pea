@@ -1,7 +1,7 @@
 Import "assert"
 Import "basic"
 Import "container/vector"
-Import "print"
+import "print"
 
 Func sort:by:(ts C, less (&T, &T){bool}) :
 	.length(C)int,

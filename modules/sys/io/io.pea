@@ -1,7 +1,7 @@
 Import "assert"
 Import "basic"
-Import "print"
 import "io"
+import "print"
 
 // A system-dependent, opaque identifier for an I/O endpoint.
 // Many system resources can be represented as a descripton:
