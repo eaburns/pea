@@ -1,4 +1,5 @@
 // The maximum value of a uint32.
+// TODO: move max_uint32 to a common int module.
 Const max_uint32 := uint32 :: 4294967295
 
 // Increases the value of n by one.

@@ -467,15 +467,11 @@ test times {
 	assert: nanosecond * (int64 :: 10.0e9) equals: second * 10,
 	assert: (nanosecond+nanosecond) * (int64 :: 10.0e9) equals: second * 20,
 
-	// TODO: rename max_u32 to max_uint32 when unexported name conflict is fixed.
-	// Currently calling this max_uint32 conflicts with an unexported name in basic.
-	// However, the name is not exported, so we shouldn't conflict.
-	max_u32 := int64 :: 4294967295,
 	// Gracefully handle would-be overflow of uint32 nanoseconds.
-	assert: (nanosecond+nanosecond) * max_u32
+	assert: (nanosecond+nanosecond) * (int64 :: max_uint32)
 		equals: (duration :: [
-			.s max_u32*(int64 :: 2) / 1.0e9,
-			.ns uint32 :: max_u32*(int64 :: 2) % 2.0e9,
+			.s (int64 :: max_uint32)*(int64 :: 2) / 1.0e9,
+			.ns uint32 :: (int64 :: max_uint32)*(int64 :: 2) % 2.0e9,
 		]),
 
 	// 9007199254740993 is the first int that cannot be represented by float64.
