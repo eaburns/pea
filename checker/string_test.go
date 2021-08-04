@@ -126,7 +126,7 @@ func TestString(t *testing.T) {
 			`,
 			otherMod: testMod{
 				path: "foo/bar/pair",
-				src:  "type (X, Y) pair [.x X, .y Y]",
+				src:  "Type (X, Y) pair [.x X, .y Y]",
 			},
 			want: "(int, string) pair#pair",
 		},

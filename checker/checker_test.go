@@ -1288,7 +1288,7 @@ func TestTypeResolution(t *testing.T) {
 				var t foo#bar
 			`,
 			otherMods: []testMod{
-				{path: "foo", src: "type bar [.x int]"},
+				{path: "foo", src: "Type bar [.x int]"},
 			},
 			want: "foo#bar",
 		},
@@ -1299,7 +1299,7 @@ func TestTypeResolution(t *testing.T) {
 				var t bar
 			`,
 			otherMods: []testMod{
-				{path: "foo", src: "type bar [.x int]"},
+				{path: "foo", src: "Type bar [.x int]"},
 			},
 			want: "foo#bar",
 		},
@@ -1311,7 +1311,7 @@ func TestTypeResolution(t *testing.T) {
 				var t bar
 			`,
 			otherMods: []testMod{
-				{path: "foo", src: "type bar [.x int]"},
+				{path: "foo", src: "Type bar [.x int]"},
 			},
 			want: "bar",
 		},
@@ -1323,8 +1323,8 @@ func TestTypeResolution(t *testing.T) {
 				var t bar
 			`,
 			otherMods: []testMod{
-				{path: "foo", src: "type bar [.x int]"},
-				{path: "baz", src: "type bar [.y string]"},
+				{path: "foo", src: "Type bar [.x int]"},
+				{path: "baz", src: "Type bar [.y string]"},
 			},
 			err: "type bar is ambiguous",
 		},
@@ -1336,8 +1336,8 @@ func TestTypeResolution(t *testing.T) {
 				var t foo#bar
 			`,
 			otherMods: []testMod{
-				{path: "foo", src: "type bar [.x int]"},
-				{path: "baz", src: "type bar [.y string]"},
+				{path: "foo", src: "Type bar [.x int]"},
+				{path: "baz", src: "Type bar [.y string]"},
 			},
 			want: "foo#bar",
 		},
@@ -1349,8 +1349,8 @@ func TestTypeResolution(t *testing.T) {
 				var t baz#bar
 			`,
 			otherMods: []testMod{
-				{path: "foo", src: "type bar [.x int]"},
-				{path: "baz", src: "type bar [.y string]"},
+				{path: "foo", src: "Type bar [.x int]"},
+				{path: "baz", src: "Type bar [.y string]"},
 			},
 			want: "baz#bar",
 		},
@@ -1915,6 +1915,21 @@ func TestOverloadResolution(t *testing.T) {
 			},
 			call: "make_foo().x",
 			want: "built-in .x(&other#foo)&int",
+		},
+		{
+			name: "built-in selector, other mod unexported fails",
+			src: `
+				import "other"
+				func make_foo() other#foo
+			`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					type foo [.x int, .y int]
+				`,
+			},
+			call: "make_foo().x",
+			err:  "foo: not found",
 		},
 		{
 			name: "built-in selector, other mod opaque struct fails",
@@ -2660,7 +2675,7 @@ func TestOverloadResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					func bar()int
+					Func bar()int
 				`,
 			},
 			want: "foo#bar()int",
@@ -2675,8 +2690,8 @@ func TestOverloadResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					func bar()int
-					func bar()float64
+					Func bar()int
+					Func bar()float64
 				`,
 			},
 			want: "foo#bar()float64",
@@ -2690,8 +2705,8 @@ func TestOverloadResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					func bar(_ int, _ int)
-					func bar(_ int)
+					Func bar(_ int, _ int)
+					Func bar(_ int)
 				`,
 			},
 			want: "foo#bar(int, int)",
@@ -2705,8 +2720,8 @@ func TestOverloadResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					func bar(_ int)
-					func bar(_ string)
+					Func bar(_ int)
+					Func bar(_ string)
 				`,
 			},
 			want: "foo#bar(int)",
@@ -2720,8 +2735,8 @@ func TestOverloadResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					func bar(_ int)string
-					func bar(_ int)float64
+					Func bar(_ int)string
+					Func bar(_ int)float64
 				`,
 			},
 			err: "bar: ambiguous call",
@@ -3025,8 +3040,22 @@ func TestIDResolution(t *testing.T) {
 			`,
 			otherMod: testMod{
 				path: "foo",
+				src:  "Var x := int :: 5",
+			},
+		},
+		{
+			name: "simple module selector but unexported",
+			src: `
+				import "foo"
+				func main() {
+					_ := foo#x
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
 				src:  "var x := int :: 5",
 			},
+			err: "x: not found",
 		},
 		{
 			name: "mod selector not ambiguous with current mod ID",
@@ -3039,7 +3068,7 @@ func TestIDResolution(t *testing.T) {
 			`,
 			otherMod: testMod{
 				path: "foo",
-				src:  "var x := int :: 5",
+				src:  "Var x := int :: 5",
 			},
 		},
 		{
@@ -3053,8 +3082,8 @@ func TestIDResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					func x()int
-					func x()float64
+					Func x()int
+					Func x()float64
 				`,
 			},
 		},
@@ -3069,8 +3098,8 @@ func TestIDResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					var x := int :: 5
-					func x()float64
+					Var x := int :: 5
+					Func x()float64
 				`,
 			},
 		},
@@ -3085,8 +3114,8 @@ func TestIDResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					var x := int :: 5
-					func x()float64
+					Var x := int :: 5
+					Func x()float64
 				`,
 			},
 		},
@@ -3101,8 +3130,8 @@ func TestIDResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					var x := int :: 5
-					func x()float64
+					Var x := int :: 5
+					Func x()float64
 				`,
 			},
 			err: "x is ambiguous",
@@ -3118,8 +3147,8 @@ func TestIDResolution(t *testing.T) {
 			otherMod: testMod{
 				path: "foo",
 				src: `
-					func x()int
-					func x()float64
+					Func x()int
+					Func x()float64
 				`,
 			},
 			err: "x is ambiguous",
@@ -4252,7 +4281,7 @@ func TestEq(t *testing.T) {
 			`,
 			otherMod: testMod{
 				path: "other",
-				src:  "type different_mods int",
+				src:  "Type different_mods int",
 			},
 			Typ:  "different_mods",
 			Diff: []string{"other#different_mods"},
@@ -4264,7 +4293,7 @@ func TestEq(t *testing.T) {
 			`,
 			otherMod: testMod{
 				path: "other",
-				src:  "type different_mods int",
+				src:  "Type different_mods int",
 			},
 			Typ:  "different_mods_alias",
 			Same: []string{"other#different_mods"},
@@ -4276,7 +4305,7 @@ func TestEq(t *testing.T) {
 			`,
 			otherMod: testMod{
 				path: "other",
-				src:  "type T other_type := [.x T]",
+				src:  "Type T other_type := [.x T]",
 			},
 			Typ: "int cross_mod_alas",
 			Same: []string{

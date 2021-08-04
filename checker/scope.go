@@ -111,7 +111,7 @@ func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 }
 
 func (m *Mod) findType(args []Type, name string, l loc.Loc) []Type {
-	if t := findTypeInDefs(m.Defs, args, name, l); t != nil {
+	if t := findTypeInDefs(m.Defs, args, name, false, l); t != nil {
 		return []Type{t}
 	}
 	if t := findBuiltInType(args, name, l); t != nil {
@@ -121,7 +121,7 @@ func (m *Mod) findType(args []Type, name string, l loc.Loc) []Type {
 }
 
 func (i *Import) findType(args []Type, name string, l loc.Loc) []Type {
-	if t := findTypeInDefs(i.Defs, args, name, l); t != nil {
+	if t := findTypeInDefs(i.Defs, args, name, true, l); t != nil {
 		return []Type{t}
 	}
 	return nil
@@ -186,10 +186,10 @@ func findTypeVar(parms []TypeParm, args []Type, name string, l loc.Loc) *TypeVar
 	return nil
 }
 
-func findTypeInDefs(defs []Def, args []Type, name string, l loc.Loc) Type {
+func findTypeInDefs(defs []Def, args []Type, name string, exportedOnly bool, l loc.Loc) Type {
 	for _, def := range defs {
 		d, ok := def.(*TypeDef)
-		if !ok || d.Name != name || len(d.Parms) != len(args) {
+		if !ok || d.Name != name || len(d.Parms) != len(args) || exportedOnly && !d.Exp {
 			continue
 		}
 		return &DefType{Name: name, Args: args, Def: d, L: l}
@@ -201,7 +201,7 @@ func (m *Mod) find(name string) []id {
 	if name == "_" {
 		return nil
 	}
-	ids := findInDefs(m.Defs, name)
+	ids := findInDefs(m.Defs, name, false)
 	if strings.HasPrefix(name, ".") {
 		// Add a template select type to be filled in with concrete types
 		// or rejected when its 0th parameter is unified.
@@ -290,7 +290,7 @@ func splitCaseNames(str string) []string {
 	return names
 }
 
-func (i *Import) find(name string) []id { return findInDefs(i.Defs, name) }
+func (i *Import) find(name string) []id { return findInDefs(i.Defs, name, true) }
 
 func (f *File) find(name string) []id {
 	ids := f.Mod.find(name)
@@ -376,7 +376,7 @@ func (o *localScope) find(name string) []id {
 	return ids
 }
 
-func findInDefs(defs []Def, name string) []id {
+func findInDefs(defs []Def, name string, exportedOnly bool) []id {
 	if name == "_" {
 		return nil
 	}
@@ -384,10 +384,16 @@ func findInDefs(defs []Def, name string) []id {
 	for _, def := range defs {
 		switch def := def.(type) {
 		case *VarDef:
+			if exportedOnly && !def.Exp {
+				continue
+			}
 			if def.Name == name {
 				ids = append(ids, def)
 			}
 		case *FuncDef:
+			if exportedOnly && !def.Exp {
+				continue
+			}
 			if def.Name != name {
 				continue
 			}
