@@ -2,34 +2,6 @@ Import "assert"
 Import "basic"
 import "print"
 
-test point_to_civil {
-	// Here's an example of how to convert a time point to a civil
-	// in  UTC (minus leap seconds); just use normal().
-	point_to_civil_utc := (p point){
-		// TODO: handle infinite points in point_to_civil_utc.
-		// Clamp them to max/min.
-		p.d.s < 0 true? {
-			normal(1970, 1, 1, 0, 0, p.d.s + 1, (int64 :: p.d.ns) - (int64 :: 1.0e9)),
-		} false? {
-			normal(1970, 1, 1, 0, 0, p.d.s, int64 :: p.d.ns),
-		}
-	},
-	assert: point_to_civil_utc(epoch) equals: civil(1970, 1, 1),
-
-	assert: point_to_civil_utc([.d -nanosecond])
-		equals: civil(1970, 1, 1, 0, 0, 0, -1),
-
-	assert: point_to_civil_utc([.d -second])
-		equals: civil(1970, 1, 1, 0, 0, -1),
-
-	// Max time point.
-	assert: point_to_civil_utc([.d max_duration])
-		equals: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9-1)),
-	// Min time point:
-	assert: point_to_civil_utc([.d min_duration])
-		equals: civil(-292277022657, 1, 27, 8, 29, 52, 0),
-}
-
 // A civil time represented as years, months, days, hours, minutes, seconds, and nanoseconds, following the Gregorian Calendar.
 Type civil := _civil
 

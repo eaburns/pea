@@ -15,6 +15,18 @@ type _point [.d duration]
 // Other time points can be created by adding or subtracting durations from epoch.
 Const epoch := point :: [.d zero_duration]
 
+// Positive infinity time point.
+Const infinite_point := point :: [.d infinite_duration]
+
+// Negative infinity time point.
+Const negative_infinite_point := point :: [.d -infinite_duration]
+
+// The minimum representable, finite time point.
+Const min_point := point :: [.d min_duration]
+
+// The maximum representable, finite time point.
+Const max_point := point :: [.d max_duration]
+
 // Returns the time point t+d or respectively t-d.
 Func +(t point, d duration) point { return: [.d t.d + d] }
 Func -(t point, d duration) point { return: [.d t.d - d] }
