@@ -843,7 +843,7 @@ func (g *gen) writeValue(v flowgraph.Value) {
 	case *flowgraph.Parm:
 		g.write(`%"`, v.Def.Name, `"`)
 	case *flowgraph.Int:
-		g.write(v.Text)
+		g.write(v.Val.String())
 	case *flowgraph.Float:
 		g.write(v.Text)
 		if !strings.ContainsRune(v.Text, '.') {

@@ -1,0 +1,4 @@
+func print_int(_ int)
+
+// 15
+func main() { print_int(0xF) }

@@ -286,9 +286,9 @@ func (interp *Interp) step() {
 			}
 		case 64:
 			if instr.T.Unsigned {
-				x = Uint64(mustParseUint(instr.Text, 64))
+				x = Uint64(mustParseUint(instr.Val.String(), 64))
 			} else {
-				x = Int64(mustParseInt(instr.Text, 64))
+				x = Int64(mustParseInt(instr.Val.String(), 64))
 			}
 		default:
 			panic(fmt.Sprintf("bad int size: %d", instr.T.Size))

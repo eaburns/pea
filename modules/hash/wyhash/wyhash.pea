@@ -23,20 +23,11 @@ Import "basic"
 import "print"
 
 const salt := [uint64] :: [
-	// TODO: fix hex constants when supported correctly by llvm backend.
-	/* // absl constants
-	2611923443488327891, // 0x243F6A8885A308D3,
-	1376283091369227076, // 0x13198A2E03707344,
-	11820040416388919760, // 0xA4093822299F31D0,
-	589684135938649225, // 0x082EFA98EC4E6C89,
-	4983270260364809079, // 0x452821E638D01377,
-	*/
-	// default constants
-	11562461410679940143, // 0xa0761d6478bd642f
-	16646288086500911323, // 0xe7037ed1a0b428db
-	10285213230658275043, // 0x8ebc6af09c88c6e3
-	6384245875588680899, // 0x589965cc75374cc3
-	2129725606500045391, // 0x1d8e4e27c47d124f
+	0xa0761d6478bd642f,
+	0xe7037ed1a0b428db,
+	0x8ebc6af09c88c6e3,
+	0x589965cc75374cc3,
+	0x1d8e4e27c47d124f,
 ]
 
 Func hash(seed uint64, data T) uint64 :
@@ -152,21 +143,17 @@ which has the following notice:
 	- xxHash source repository : https://github.com/Cyan4973/xxHash
 */
 func mul64to128(a uint64, b uint64) [.hi uint64, .lo uint64] {
-	// TODO: use 0xFFFFFFFF literal instead of FFFFFFFF variable.
-	// LLVM interprets 0xFFFFFFFF as a double literal.
-	// We need to change the llvm backend to emit it in base 10.
-	FFFFFFFF := uint64 :: 4294967295,
-	a_lo := a & FFFFFFFF,
+	a_lo := a & 0xFFFFFFFF,
 	a_hi := a >> 32,
-	b_lo := b & FFFFFFFF,
+	b_lo := b & 0xFFFFFFFF,
 	b_hi := b >> 32,
 	lo_lo := a_lo * b_lo,
 	hi_lo := a_hi * b_lo,
 	lo_hi := a_lo * b_hi,
 	hi_hi := a_hi * b_hi,
-	cross := (lo_lo >> 32) + (hi_lo & FFFFFFFF) + lo_hi,
+	cross := (lo_lo >> 32) + (hi_lo & 0xFFFFFFFF) + lo_hi,
 	upper := (hi_lo >> 32) + (cross >> 32) + hi_hi,
-	lower := (cross << 32) | (lo_lo & FFFFFFFF),
+	lower := (cross << 32) | (lo_lo & 0xFFFFFFFF),
 	return: [.hi upper, .lo lower]
 }
 

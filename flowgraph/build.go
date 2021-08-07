@@ -720,7 +720,7 @@ func (bb *blockBuilder) expr(expr checker.Expr) (*blockBuilder, Value) {
 	case *checker.IntLit:
 		t := bb.buildType(expr.T).(*AddrType).Elem
 		a := bb.alloc(t)
-		bb.store(a, bb.intLit(expr.Text, t))
+		bb.store(a, bb.checkerIntLit(expr, t))
 		return bb, a
 	case *checker.FloatLit:
 		t := bb.buildType(expr.T).(*AddrType).Elem
@@ -1713,6 +1713,19 @@ func (bb *blockBuilder) intLit(text string, typ Type) *Int {
 		panic(fmt.Sprintf("got %s, want IntType", typ))
 	}
 	v := &Int{Text: text, T: *t, L: bb.L}
+	if _, ok := v.Val.SetString(text, 0); !ok {
+		panic("impossible")
+	}
+	bb.addValue(v)
+	return v
+}
+
+func (bb *blockBuilder) checkerIntLit(lit *checker.IntLit, typ Type) *Int {
+	t, ok := typ.(*IntType)
+	if !ok {
+		panic(fmt.Sprintf("got %s, want IntType", typ))
+	}
+	v := &Int{Text: lit.Text, Val: lit.Val, T: *t, L: bb.L}
 	bb.addValue(v)
 	return v
 }

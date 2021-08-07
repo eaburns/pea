@@ -2,6 +2,7 @@ package flowgraph
 
 import (
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/eaburns/pea/loc"
@@ -544,6 +545,7 @@ type Int struct {
 	value
 	Text string
 	T    IntType
+	Val  big.Int
 	L    loc.Loc
 }
 
