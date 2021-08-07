@@ -1,0 +1,115 @@
+Import "assert"
+Import "basic"
+import "print"
+import "unicode"
+
+// Returns the first rune in the string and its byte width.
+// If the string is empty, the replacement character ('\uFFFD') is return and width 0.
+// If there is any other error, the replacement character is returned and width 1.
+Func decode(s S) [.rune rune, .width int] : .length(S)int, [](S, int)uint8 {
+	if: s.length < 1 then: {
+		return: [.rune unicode#replacement, .width 0]
+	},
+	info := rune_info(s[0]) some? (i [.width int, .mask rune, .min rune]){i} none? {
+		return: [.rune unicode#replacement, .width 1]
+	},
+	if: s.length < info.width then: {
+		return: [.rune unicode#replacement, .width 1]
+	},
+	r := (rune :: s[0]) & info.mask,
+	for: 1 to: info.width-1 do: (i) {
+		si := rune :: s[i],
+		if: si < 0x80 || si > 0xBF then: {
+			return: [.rune unicode#replacement, .width 1]
+		},
+		r := (r << 6) | si&0x3F,
+	},
+	if: r < info.min || r > unicode#max then: {
+		return: [.rune unicode#replacement, .width 1]
+	},
+	return: [.rune r, .width info.width]
+}
+
+// Returns the rune width, 0-byte mask, and min value given the 0th byte.
+func rune_info(s0 uint8) [.width int, .mask rune, .min rune] option {
+	if: (s0&(uint8 :: 1<<7)) = 0 then: {
+		return: some([.width 1, .mask rune :: 0x7F, .min rune :: 0])
+	},
+	if: (s0&(uint8 :: 1<<6)) = 0 then: {
+		return: none()	// 10xx xxxx are invalid.
+	},
+	if: (s0&(uint8 :: 1<<5)) = 0 then: {
+		return: some([.width 2, .mask rune :: 0x1F, .min rune :: 0x80])
+	},
+	if: (s0&(uint8 :: 1<<4)) = 0 then: {
+		return: some([.width 3, .mask rune :: 0xF, .min rune :: 0x800])
+	},
+	if: (s0&0xF8) = 0xF0 then: {
+		return: some([.width 4, .mask rune :: 0x7, .min rune :: 0x10000])
+	},
+	return: none()
+}
+
+func +=(p print#printer, d [.rune rune, .width int]) print#printer {
+	return: p += "[.rune " += d.rune += ", .width " += d.width += "]"
+}
+
+func =(a [.rune rune, .width int], b [.rune rune, .width int])bool {
+	return: a.rune = b.rune && a.width = b.width
+}
+
+test decode {
+	assert: decode("") equals: [.rune unicode#replacement, .width 0],
+	assert: decode("hello") equals: [.rune 'h', .width 1],
+	assert: decode("áá") equals: [.rune 'á', .width 2],
+	assert: decode("☺☹") equals: [.rune '☺', .width 3],
+	assert: decode("🂡🂡") equals: [.rune '🂡', .width 4],
+
+	assert: decode([uint8] :: [0x0]) equals: [.rune 0x0, .width 1],
+	// Largest unicode codepoint.
+	assert: decode([uint8] :: [0xF4, 0x8F, 0xBF, 0xBF]) equals: [.rune unicode#max, .width 4],
+}
+
+test decode_errors {
+	// 10xx xxxx is invalid
+	assert_error: decode([uint8] :: [0x80]),
+	assert_error: decode([uint8] :: [0x81]),
+	assert_error: decode([uint8] :: [0x8F]),
+	assert_error: decode([uint8] :: [0xB0]),
+	assert_error: decode([uint8] :: [0xB1]),
+	assert_error: decode([uint8] :: [0xBF]),
+	assert_error: decode([uint8] :: [0x90]),
+	assert_error: decode([uint8] :: [0x91]),
+	assert_error: decode([uint8] :: [0x9F]),
+
+	// Invalid continuation bytes.
+	assert_error: decode([uint8] :: [0xB0, 0xFF]),
+	assert_error: decode([uint8] :: [0xD0, 0xFF, 0xFF]),
+	assert_error: decode([uint8] :: [0xF0, 0xFF, 0xFF, 0xFF]),
+
+	// Missing continuation bytes.
+	assert_error: decode([uint8] :: [0xB0]),
+	assert_error: decode([uint8] :: [0xD0,]),
+	assert_error: decode([uint8] :: [0xD0, 0xFF]),
+	assert_error: decode([uint8] :: [0xF0]),
+	assert_error: decode([uint8] :: [0xF0, 0xFF]),
+	assert_error: decode([uint8] :: [0xF0, 0xFF, 0xFF]),
+
+	// Too large.
+	assert_error: decode([uint8] :: [0xF4, 0x9F, 0xBF, 0xBF]),
+
+	// Bad byte 0 — too many 1s.
+	assert_error: decode([uint8] :: [0xFF, 0x8F, 0xBF, 0xBF, 0xBF, 0xBF]),
+
+	// Overlongs:
+	// 'a' encoded in 4 bytes.
+	assert_error: decode([uint8] :: [0xF0, 0x80, 0x81, 0xA1]),
+	// 'a' encoded in 3 bytes.
+	assert_error: decode([uint8] :: [0xE0, 0x81, 0xA1]),
+	// € (3 bytes) encoded in 4 bytes.
+	assert_error: decode([uint8] :: [0xF0, 0x82, 0x82, 0xAC]),
+}
+
+func assert_error:(r [.rune rune, .width int]) {
+	assert: r equals: [.rune unicode#replacement, .width 1],
+}

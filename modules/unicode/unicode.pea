@@ -1,0 +1,4 @@
+Import "basic"
+
+Const replacement := rune :: '\uFFFD'
+Const max := rune :: 0x10FFFF

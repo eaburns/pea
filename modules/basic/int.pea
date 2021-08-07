@@ -1,3 +1,6 @@
+// An alias for int32 for use with unicode code points.
+Type rune := int32
+
 // The maximum value of a uint32.
 // TODO: move max_uint32 to a common int module.
 Const max_uint32 := uint32 :: 4294967295
