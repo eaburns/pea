@@ -59,8 +59,23 @@ test int_dec {
 }
 
 // Assigns the result of x OP y to x,
-// where OP is +, -, *, /, or %,
+// where OP is |, &, ^, +, -, *, /, or %,
 // as denoted by the operator name.
+Func |=(x &int, y int) { x := x | y }
+Func |=(x &int8, y int8) { x := x | y }
+Func |=(x &int16, y int16) { x := x | y }
+Func |=(x &int32, y int32) { x := x | y }
+Func |=(x &int64, y int64) { x := x | y }
+Func &=(x &int, y int) { x := x & y }
+Func &=(x &int8, y int8) { x := x & y }
+Func &=(x &int16, y int16) { x := x & y }
+Func &=(x &int32, y int32) { x := x & y }
+Func &=(x &int64, y int64) { x := x & y }
+Func ^=(x &int, y int) { x := x ^ y }
+Func ^=(x &int8, y int8) { x := x ^ y }
+Func ^=(x &int16, y int16) { x := x ^ y }
+Func ^=(x &int32, y int32) { x := x ^ y }
+Func ^=(x &int64, y int64) { x := x ^ y }
 Func +=(x &int, y int) { x := x + y }
 Func +=(x &int8, y int8) { x := x + y }
 Func +=(x &int16, y int16) { x := x + y }
@@ -111,6 +126,24 @@ Func %=(x &uint8, y uint8) { x := x % y }
 Func %=(x &uint16, y uint16) { x := x % y }
 Func %=(x &uint32, y uint32) { x := x % y }
 Func %=(x &uint64, y uint64) { x := x % y }
+
+test or_equals {
+	i := 0x2,
+	i |= 0x1,
+	assert_true: i = 0x3,
+}
+
+test and_equals {
+	i := 0x1,
+	i &= 0x3,
+	assert_true: i = 0x1,
+}
+
+test xor_equals {
+	i := 0x7,
+	i ^= 0x2,
+	assert_true: i = 0x5,
+}
 
 test plus_equals {
 	i := 3,
