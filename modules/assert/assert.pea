@@ -92,14 +92,9 @@ Func assert:error:(o T or_error, msg string) : +=(print#printer, T)print#printer
 	}
 }
 
-// Panics if the the number of elements in c is not want.length,
-// or if for any i, the ith element in the order of for:each:
-// is not equal to the ith element of want.
-Func assert:elements:(c C, want [T]) :
-	for:each:(C, (T){}),
-	=(T,T)bool,
-	+=(print#printer, T)print#printer,
-{
+// We don't use the second argument, but we need an argument to define T.
+// TODO: remove this hack if we ever allow iface declarations to define type parms.
+func array(c C, _ [T]) [T] : for:each:(C, (T){}) {
 	i := 0,
 	array := [T] :: [],
 	for: c each: (t) {
@@ -113,8 +108,101 @@ Func assert:elements:(c C, want [T]) :
 		array[i] := t,
 		++i,
 	},
-	got := array[0, i],
+	return: array[0, i],
+}
+
+// Panics if the the number of elements in c is not want.length,
+// or if for any i, the ith element in the order of for:each:
+// is not equal to the ith element of want.
+Func assert:elements:(c C, want [T]) :
+	for:each:(C, (T){}),
+	=(T,T)bool,
+	+=(print#printer, T)print#printer,
+{
+	got := array(c, want),
 	if: got != want then: {
 		panic(print#string("got ", got, ", wanted ", want))
 	}
+}
+
+// Panics if the elements in c are not a permutation of the elements in want.
+Func assert:unordered_elements:(c C, want [T]) :
+	for:each:(C, (T){}),
+	=(T,T)bool,
+	+=(print#printer, T)print#printer,
+{
+	got := array(c, want),
+	unmatch := quadratic_unmatched(got, want),
+	if: unmatch.left.length = 0 && unmatch.right.length = 0 then: {
+		return()
+	},
+	p := print#new(),
+	p += "got elements " += got,
+	p += " wanted " += want,
+	for: unmatch.left each: (i) {
+		p += "\n	element "  += i += " (" += got[i] += ") unexpected",
+	},
+	for: unmatch.right each: (i) {
+		p += "\n	expected element "  += i += " (" += want[i] += ") unmatched",
+	},
+	panic(reset(p))
+}
+
+func quadratic_unmatched(left [T], right [T]) [.left [int], .right [int]] : =(T, T)bool {
+	left_matched := [bool] :: new(left.length, false),
+	right_matched := [bool] :: new(right.length, false),
+	for: 0 to: left.length-1 do: (i) {
+		j := 0,
+		while: {j < right.length && !left_matched[i]} do: {
+			if: !right_matched[j] && left[i] = right[j] then: {
+				left_matched[i] := true,
+				right_matched[j] := true,
+			},
+			++j
+		}
+	},
+
+	i := 0,
+	left_unmatched := [int] :: new(left.length, -1),
+	for: 0 to: left_matched.length-1 do: (j) {
+		if: !left_matched[j] then: {
+			left_unmatched[i] := j,
+			++i,
+		}
+	},
+	left_unmatched := left_unmatched[0, i],
+
+	i := 0,
+	right_unmatched := [int] :: new(right.length, -1),
+	for: 0 to: right_matched.length-1 do: (j) {
+		if: !right_matched[j] then: {
+			right_unmatched[i] := j,
+			++i,
+		}
+	},
+	right_unmatched := right_unmatched[0, i],
+
+	return: [.left left_unmatched, .right right_unmatched]
+}
+
+func =(a [.left [int], .right [int]], b [.left [int], .right [int]]) bool {
+	return: a.left = b.left && a.right = b.right
+}
+
+func +=(p print#printer, x [.left [int], .right [int]]) print#printer {
+	return: p += "[.left " += x.left += ", .right " += x.right += "]"
+}
+
+test unordered_elements {
+	assert: [int] :: [] unordered_elements: [int] :: [],
+	assert: [1] unordered_elements: [1],
+	assert: [1, 2] unordered_elements: [1, 2],
+	assert: [1, 2] unordered_elements: [2, 1],
+	assert: [5, 6, 7] unordered_elements: [7, 5, 6],
+
+	assert: quadratic_unmatched([6, 7, 8], []) equals: [.left [0, 1, 2], .right []],
+	assert: quadratic_unmatched([int] :: [], [6, 7, 8]) equals: [.left [], .right [0, 1, 2]],
+	assert: quadratic_unmatched([1, 2, 3], [6, 7, 8]) equals: [.left [0, 1, 2], .right [0, 1, 2]],
+	assert: quadratic_unmatched([5, 6, 7], [6, 7, 8]) equals: [.left [0], .right [2]],
+	assert: quadratic_unmatched([4, 5, 6], [6, 7, 8]) equals: [.left [0, 1], .right [1, 2]],
 }
