@@ -1745,10 +1745,14 @@ func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []Er
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
+		var typ Type
+		if expr != nil {
+			typ = expr.Type()
+		}
 		lit.Fields = append(lit.Fields, expr)
 		lit.Struct.Fields = append(lit.Struct.Fields, FieldDef{
 			Name: parserField.Name.Name,
-			Type: expr.Type(),
+			Type: typ,
 			L:    parserField.L,
 		})
 	}
