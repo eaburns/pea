@@ -3,31 +3,83 @@ Import "basic"
 import "print"
 import "unicode"
 
-// Returns the first rune in the string and its byte width.
-// If the string is empty, the replacement character ('\uFFFD') is return and width 0.
-// If there is any other error, the replacement character is returned and width 1.
-Func decode(s S) [.rune rune, .width int] : .length(S)int, [](S, int)uint8 {
-	if: s.length < 1 then: {
-		return: [.rune unicode#replacement, .width 0]
+// Calls f for each rune decoded starting at the beginning of s.
+Func for:runes:(s S, f (rune){}) : .length(S)int, [](S, int)uint8, [](S, int, int)S {
+	while: {decode(s)} some: (rw) {
+		s := s[rw.width, s.length],
+		f(rw.rune)
 	},
-	info := rune_info(s[0]) some? (i [.width int, .mask rune, .min rune]){i} none? {
-		return: [.rune unicode#replacement, .width 1]
+}
+
+test for_runes {
+	i := 0,
+	for: "1☺☹a" runes: (r) {
+		if: i = 0 then: {
+			assert: r equals: '1',
+		},
+		if: i = 1 then: {
+			assert: r equals: '☺',
+		},
+		if: i = 2 then: {
+			assert: r equals: '☹',
+		},
+		if: i = 3 then: {
+			assert: r equals: 'a',
+		},
+		if: i > 3 then: {
+			panic("too much")
+		},
+		++i
+	},
+
+	i := 0,
+	for: [uint8] :: [49, 226, 152, 186, 226, 152, 185, 97] runes: (r) {
+		if: i = 0 then: {
+			assert: r equals: '1',
+		},
+		if: i = 1 then: {
+			assert: r equals: '☺',
+		},
+		if: i = 2 then: {
+			assert: r equals: '☹',
+		},
+		if: i = 3 then: {
+			assert: r equals: 'a',
+		},
+		if: i > 3 then: {
+			panic("too much")
+		},
+		++i
+	},
+}
+
+// Returns the first rune in the string and its byte width.
+// If the string is empty, none() is returned.
+// If there is any other error, the replacement character is returned and width 1.
+Func decode(s S) [.rune rune, .width int] option : .length(S)int, [](S, int)uint8 {
+	if: s.length < 1 then: {
+		return: none()
+	},
+	info := rune_info(s[0]) some? (i [.width int, .mask rune, .min rune]){
+		i
+	} none? {
+		return: some([.rune unicode#replacement, .width 1])
 	},
 	if: s.length < info.width then: {
-		return: [.rune unicode#replacement, .width 1]
+		return: some([.rune unicode#replacement, .width 1])
 	},
 	r := (rune :: s[0]) & info.mask,
 	for: 1 to: info.width-1 do: (i) {
 		si := rune :: s[i],
 		if: si < 0x80 || si > 0xBF then: {
-			return: [.rune unicode#replacement, .width 1]
+			return: some([.rune unicode#replacement, .width 1])
 		},
 		r := (r << 6) | si&0x3F,
 	},
 	if: r < info.min || r > unicode#max then: {
-		return: [.rune unicode#replacement, .width 1]
+		return: some([.rune unicode#replacement, .width 1])
 	},
-	return: [.rune r, .width info.width]
+	return: some([.rune r, .width info.width])
 }
 
 // Returns the rune width, 0-byte mask, and min value given the 0th byte.
@@ -59,15 +111,15 @@ func =(a [.rune rune, .width int], b [.rune rune, .width int])bool {
 }
 
 test decode {
-	assert: decode("") equals: [.rune unicode#replacement, .width 0],
-	assert: decode("hello") equals: [.rune 'h', .width 1],
-	assert: decode("áá") equals: [.rune 'á', .width 2],
-	assert: decode("☺☹") equals: [.rune '☺', .width 3],
-	assert: decode("🂡🂡") equals: [.rune '🂡', .width 4],
+	assert_none: decode(""),
+	assert: decode("hello") some: [.rune 'h', .width 1],
+	assert: decode("áá") some: [.rune 'á', .width 2],
+	assert: decode("☺☹") some: [.rune '☺', .width 3],
+	assert: decode("🂡🂡") some: [.rune '🂡', .width 4],
 
-	assert: decode([uint8] :: [0x0]) equals: [.rune 0x0, .width 1],
+	assert: decode([uint8] :: [0x0]) some: [.rune 0x0, .width 1],
 	// Largest unicode codepoint.
-	assert: decode([uint8] :: [0xF4, 0x8F, 0xBF, 0xBF]) equals: [.rune unicode#max, .width 4],
+	assert: decode([uint8] :: [0xF4, 0x8F, 0xBF, 0xBF]) some: [.rune unicode#max, .width 4],
 }
 
 test decode_errors {
@@ -110,6 +162,6 @@ test decode_errors {
 	assert_error: decode([uint8] :: [0xF0, 0x82, 0x82, 0xAC]),
 }
 
-func assert_error:(r [.rune rune, .width int]) {
-	assert: r equals: [.rune unicode#replacement, .width 1],
+func assert_error:(r [.rune rune, .width int] option) {
+	assert: r some: [.rune unicode#replacement, .width 1],
 }
