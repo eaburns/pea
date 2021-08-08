@@ -583,6 +583,10 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 				continue
 			}
 			// If not all cases are convered, the return is the empty struct.
+			// In this case we know the argument types, so we ground.
+			// In the case that the return is not [.], we don't know the argument
+			// return types until after checking the 1st argument,
+			// so we don't ground parameters yet in that case.
 			s.Ret = &StructType{}
 			goto ground_parms
 		}

@@ -56,7 +56,6 @@ test if_some {
 
 // Calls n() if the case of o is none?.
 Func if:none:(o T option, n (){}) {
-	// TODO: for some?none?, why can't T be inferred?
 	o some? (_ T){} none? n
 }
 
