@@ -164,6 +164,65 @@ Func >=(a [T], b [T]) bool : >(T,T)bool, =(T, T)bool {
 	return: a > b || {a = b}
 }
 
+// Sets all elements of a to t.
+Func fill:with:(a [T], t T) {
+	for: 0 to: a.length-1 do: (i) {
+		a[i] := t
+	},
+}
+
+test fill_with {
+	a := [int] :: [],
+	fill: a with: -1,
+	// Just don't crash.
+
+	a := [1],
+	fill: a with: 0,
+	assert_true: a[0] = 0,
+
+	a := [1, 2, 3],
+	fill: a with: 0,
+	assert_true: a[0] = 0,
+	assert_true: a[1] = 0,
+	assert_true: a[2] = 0,
+}
+
+// Copies elements from b into a up to the minimim of their lengths.
+Func copy:from:(a [T], b [T]) {
+	n := a.length < b.length true? {a.length} false? {b.length},
+	for: 0 to: n-1 do: (i) {
+		a[i] := b[i],
+	}
+}
+
+test array_copy_to {
+	a := [int] :: [],
+	b := [int] :: [],
+	copy: a from: b,
+	// Just don't crash.
+
+	b := [1],
+	// Just don't crash.
+	copy: a from: b,
+
+	b := [1],
+	a := [0],
+	copy: a from: b,
+	assert_true: a[0] = 1,
+
+	b := [1],
+	a := [0, 2],
+	copy: a from: b,
+	assert_true: a[0] = 1,
+	assert_true: a[1] = 2,
+
+	b := [],
+	a := [0, 2],
+	copy: a from: b,
+	assert_true: a[0] = 0,
+	assert_true: a[1] = 2,
+}
+
 // Returns a copy of the array.
 Func copy(a [T]) [T] {
 	if: a.length = 0 then: {
