@@ -793,6 +793,8 @@ func (bb *blockBuilder) buildStaticCall(call *checker.Call) (*blockBuilder, Valu
 	if !funcBuilder.Type.Ret.isEmpty() {
 		ret = bb.alloc(funcBuilder.Type.Ret)
 		args = append(args, ret)
+	} else {
+		ret = bb.null(&AddrType{Elem: funcBuilder.Type.Ret})
 	}
 	bb.call(funcVal, args)
 	return bb, ret
@@ -816,6 +818,8 @@ func (bb *blockBuilder) buildIndirectCall(call *checker.Call) (*blockBuilder, Va
 	if !funcType.Ret.isEmpty() {
 		ret = bb.alloc(funcType.Ret)
 		args = append(args, ret)
+	} else {
+		ret = bb.null(&AddrType{Elem: funcType.Ret})
 	}
 	bb.call(funcVal, args)
 	return bb, ret
@@ -1091,12 +1095,17 @@ func (bb *blockBuilder) buildOp(call *checker.Call) (*blockBuilder, Value) {
 		// Panic breaks control flow, so end the block.
 		bb.done = true
 	}
-	if typ.isEmpty() {
-		return bb, nil
+	var ret Value
+	if !typ.isEmpty() {
+		ret = bb.alloc(typ)
+		bb.store(ret, op)
+	} else if !bb.done {
+		// If the basic block isn't being marked complete
+		// (i.e, not return or panic), and the op returns [.],
+		// then return a null [.] reference.
+		ret = bb.null(&AddrType{Elem: typ})
 	}
-	a := bb.alloc(typ)
-	bb.store(a, op)
-	return bb, a
+	return bb, ret
 }
 
 func (bb *blockBuilder) buildAssign(call *checker.Call) (*blockBuilder, Value) {
@@ -1494,18 +1503,20 @@ func (bb *blockBuilder) strLit(lit *checker.StrLit) Value {
 	return a
 }
 
-func (bb *blockBuilder) store(dst, src Value) *Store {
-	if addr, ok := dst.Type().(*AddrType); !ok {
+func (bb *blockBuilder) store(dst, src Value) {
+	addr, ok := dst.Type().(*AddrType)
+	if !ok {
 		panic(fmt.Sprintf("store to non-address type %s", dst.Type()))
-	} else if !addr.Elem.eq(src.Type()) {
-		panic(fmt.Sprintf("store type mismatch: got %s, want %s", src.Type(), addr.Elem))
+	}
+	if !addr.Elem.eq(src.Type()) {
+		panic(fmt.Sprintf("store type mismatch: got %s, want %s",
+			src.Type(), addr.Elem))
 	}
 	if !src.Type().isSmall() {
 		panic(fmt.Sprintf("store from non-small type %s", src.Type()))
 	}
 	r := &Store{Dst: dst, Src: src, L: bb.L}
 	bb.addInstr(r)
-	return r
 }
 
 func (bb *blockBuilder) copy(dst, src Value) *Copy {

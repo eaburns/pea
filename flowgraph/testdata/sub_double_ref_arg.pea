@@ -1,0 +1,15 @@
+// hello
+func main() {
+	str_ref := &string :: "hello",
+	foo(str_ref)
+}
+
+func foo(s S) : bar(&S) {
+	// When substituting &string for S, this becomes &&string.
+	// While &&string itself is invalid, &S is ok even when S=&string,
+	// becasue it behaves like a named type.
+	bar(&S :: s)
+}
+
+func bar(s &string) {print(s)}
+

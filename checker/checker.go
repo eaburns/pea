@@ -1552,13 +1552,24 @@ func idToExpr(id id, l loc.Loc) Expr {
 	case *BlockCap:
 		return deref(&Cap{Def: id, T: refType(id.T), L: l})
 	case Func:
-		return wrapCallInBlock(id, l)
+		return wrapCallInBlock(id, id.groundRet(), l)
 	default:
 		panic(fmt.Sprintf("impossible id type: %T", id))
 	}
 }
 
-func wrapCallInBlock(fun Func, l loc.Loc) Expr {
+// Convert a Func f into a block literal of the form
+// 	(p…){ res := f(p…), res }
+// where p… are parameters with the same type as f.
+//
+// The call is assigned to a varible,
+// and that variable is the result of the block.
+// This allows wantRet to have one more reference
+// than the normal result of calling fun.Ret.
+// This reference feature is needed by iface call substitution,
+// where the return of an iface function may need to have
+// up to one additional reference added to it.
+func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 	var parms []Type
 	for i := 0; i < fun.arity(); i++ {
 		p := fun.groundParm(i)
@@ -1567,31 +1578,50 @@ func wrapCallInBlock(fun Func, l loc.Loc) Expr {
 		}
 		parms = append(parms, p)
 	}
-	ret := fun.groundRet()
-	if ret == nil {
-		panic(fmt.Sprintf("impossible: %s\n", fun))
+	call := &Call{
+		Func: fun,
+		Args: make([]Expr, len(parms)),
+		T:    &RefType{Type: fun.groundRet(), L: l},
+		L:    l,
 	}
-	typ := &FuncType{Parms: parms, Ret: ret, L: l}
-	blk := &BlockLit{Ret: typ.Ret, T: refType(typ), L: l}
-	call := &Call{Func: fun, T: &RefType{Type: typ.Ret, L: l}, L: l}
-	call.Args = make([]Expr, len(typ.Parms))
-	expr := deref(call)
-	for isRefType(expr.Type()) {
-		expr = deref(expr)
+	localDef := &LocalDef{
+		Name: "ret",
+		T:    call.Type(),
+		L:    l,
 	}
-	expr, err := convert(expr, typ.Ret, false)
+	assign := &Call{
+		Func: &Builtin{
+			Op:    Assign,
+			Parms: []Type{refType(localDef.T), call.Type()},
+			Ret:   call.Type(),
+		},
+		Args: []Expr{
+			&Local{Def: localDef, T: refType(localDef.T), L: l},
+			call,
+		},
+		T: &StructType{L: l},
+		L: l,
+	}
+	local := deref(&Local{Def: localDef, T: refType(localDef.T), L: l})
+	result, err := convert(local, wantRet, false)
 	if err != nil {
-		panic("impossible")
+		panic(fmt.Sprintf("impossible: %s", err))
 	}
-	blk.Exprs = []Expr{expr}
-	blk.Parms = make([]ParmDef, len(typ.Parms))
-	for i := range typ.Parms {
+	blk := &BlockLit{
+		Parms:  make([]ParmDef, len(parms)),
+		Locals: []*LocalDef{localDef},
+		Ret:    wantRet,
+		Exprs:  []Expr{assign, result},
+		T:      refType(&FuncType{Parms: parms, Ret: wantRet, L: l}),
+		L:      l,
+	}
+	for i := range parms {
 		blk.Parms[i].Name = fmt.Sprintf("x%d", i)
-		blk.Parms[i].T = typ.Parms[i]
+		blk.Parms[i].T = parms[i]
 		blk.Parms[i].L = l
 		call.Args[i] = deref(&Parm{
 			Def: &blk.Parms[i],
-			T:   refType(typ.Parms[i]),
+			T:   refType(parms[i]),
 			L:   l,
 		})
 	}

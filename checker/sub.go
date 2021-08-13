@@ -167,7 +167,27 @@ func (c *Call) subExpr(bindings bindings) Expr {
 	args := subExprs(bindings, c.Args)
 	for i := range args {
 		var err Error
-		args[i], err = convert(args[i], fun.groundParm(i), false)
+		// Here we explicit=true to allow re-converting
+		// an explicit convert argument
+		// into the type of the iface function parameter
+		// in the case tha the iface argument has parameters
+		// differing from the iface declaration in reference count.
+		// For example:
+		/*
+			func foo(s S) : bar(&S) {
+				bar(&S :: s)
+			}
+			func bar(_ &string)
+			func main() {
+				str_ref := &string :: "",
+				foo(str_ref)
+			}
+		*/
+		// when passing (&S :: s) to bar, it will be &&string
+		// coming out of an explicit convert.
+		// We need to be able to convert it back to &string
+		// to pass to bar(&string).
+		args[i], err = convert(args[i], fun.groundParm(i), true)
 		if err != nil {
 			// The conversion should always succeed,
 			// because iface instantiation only binds
@@ -175,21 +195,70 @@ func (c *Call) subExpr(bindings bindings) Expr {
 			panic(fmt.Sprintf("bad arg convert in Call.subExpr: %s", err))
 		}
 	}
-	call := &Call{
-		Func: fun,
+	// The return type of fun may have too few refs
+	// for normal implicit conversion to retType.
+	// Consider:
+	/*
+		func foo(s S) &S : [](S, int, int)S {
+			return: &S :: s[5, 6]
+		}
+		func main() {
+			str_ref := &string :: "",
+			foo(str_ref)
+		}
+	*/
+	// When S=&string, then [] is bound to built-in [](string,int,int)string.
+	// The call s[5, 6] will return a string,
+	// which can be referenced 1 time resulting in &string.
+	// The conversion &S would try to convert string to &&string,
+	// which is not normally possible.
+	//
+	// However, type variables like S should behave like a def types.
+	// It's possible to take a reference to a call returning a def type S.
+	// So we should be able to take the reference here.
+	//
+	// We need to add a new variable to introduce the extra indirection.
+	//
+	// But this is a call expression, how do we introduce
+	// a variable without affecting order of oprerations?
+	//
+	// We do it by wrapping the called function in a block,
+	// and having that block introduce the variable as a local.
+	// This is exactly what wrapCallInBlock does.
+	// The above becomes:
+	/*
+		func foo(s S) &S : [](S, int, int)S {
+			return: &S :: {
+				ret := s[5, 6], // ret introduces the extra &.
+				ret, // &string return can convert to &&string.
+			}()
+		}
+		func main() {
+			str_ref := &string :: "",
+			foo(str_ref)
+		}
+	*/
+	// Which looks like this when &string is substituted for S:
+	/*
+		func foo(s &string) &&string {
+			return: &&string :: {
+				ret := s[5, 6],	// ret type is &string
+				// wrapCallInBlock converts to the desired return type,
+				// in this case, convert ret (type string) to &string.
+				// It's fine to reference-convert a local,
+				// so this is OK.
+				&string :: ret, // block returns &string
+			}() // return is &string, which can be refed 1 time to &&string.
+		}
+	*/
+	retType := subType(bindings.Types, c.T)
+	expr := wrapCallInBlock(fun, retType.(*RefType).Type, c.L)
+	return &Call{
+		Func: &ExprFunc{Expr: expr, FuncType: expr.Type().(*FuncType)},
 		Args: args,
-		T:    refType(fun.groundRet()),
+		T:    refType(retType),
 		L:    c.L,
 	}
-	retType := subType(bindings.Types, c.T)
-	expr, err := convert(call, retType, false)
-	if err != nil {
-		// The conversion should always succeed,
-		// because iface instantiation only binds
-		// functions where returns implicitly convert.
-		panic(fmt.Sprintf("bad ret convert in Call.subExpr: %s", err))
-	}
-	return expr
 }
 
 func (c *Convert) subExpr(bindings bindings) Expr {

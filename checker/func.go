@@ -443,13 +443,6 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
 	if f.arity() != len(funcType.Parms) {
 		return newNote("%s: parameter mismatch", f).setLoc(f)
 	}
-	if note := f.unifyRet(funcType.Ret); note != nil {
-		return note
-	}
-	r := funcType.Ret
-	if t := f.groundRet(); !canImplicitConvert(t, r) {
-		return newNote("%s: cannot convert returned %s to %s", f, t, r).setLoc(t)
-	}
 	for i := 0; i < f.arity(); i++ {
 		p := funcType.Parms[i]
 		if note := f.unifyParm(i, p); note != nil {
@@ -458,6 +451,41 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
 		if t := f.groundParm(i); !canImplicitConvert(p, t) {
 			return newNote("%s: cannot convert argument %s to %s", f, p, t).setLoc(t)
 		}
+	}
+
+	// Some implementations of unifyRet (Builtin for example)
+	// assume that the parameters were unified first.
+	// So make sure to do unifyRet after unifyParm.
+	if note := f.unifyRet(funcType.Ret); note != nil {
+		return note
+	}
+	// Allowing any implicit convert here can lead to normally illegal
+	// reference conversions. Consider:
+	/*
+		func foo(s S) &S : [](S, int, int)S {
+			return: &S :: s[5, 6]
+		}
+
+		func main() {
+			str_ref := &string :: "",
+			foo(str_ref)
+		}
+	*/
+	// The when substituting &string for S,
+	// the iface argument would be the built-in
+	// [](string, int, int)string.
+	// The return of s[5, 6] is a defer of &string, type string.
+	// We cannot convert string to &S=&&string.
+	// to a variable and returning that variable.
+	// These are fixed during substitution.
+	// Calls are substituted to be a call to a block literal
+	// that makes the underlying call, assigning its result.
+	// Then the assigned variable is returned with conversion
+	// to the iface return type.
+	// This extra variable allows the additional reference to be added.
+	if t := f.groundRet(); !canImplicitConvert(t, funcType.Ret) {
+		return newNote("%s: cannot convert returned %s to %s",
+			f, t, funcType.Ret).setLoc(t)
 	}
 	return instIface(x, l, nil, f)
 }

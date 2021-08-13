@@ -367,6 +367,48 @@ func TestSubFuncInst(t *testing.T) {
 	}
 }
 
+func TestSubFuncInst_DoubleRefReturn(t *testing.T) {
+	const src = `
+		func foo(s S) &S : [](S, int, int)S {
+			// If S=&string, this would lead to an impossible reference conversion.
+			// The iface argument would be the built-in [](string, int, int)string.
+			// So s[5, 6] would be a deref of the &string return.
+			// Converting string to &S=&&string is impossible.
+			// However, since [] is an iface function,
+			// it should be wrapped to allow for this.
+			return: &S :: s[5, 6]
+		}
+
+		func main() {
+			str_ref := &string :: "",
+			foo(str_ref)
+		}
+	`
+	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
+		t.Errorf("got %s, expected no errors", errs[0])
+	}
+}
+
+func TestSubFuncInst_DoubleRefArg(t *testing.T) {
+	const src = `
+		func foo(s S) : bar(&S) {
+			// When substituting &string for S
+			// this becomes &&string, but that's OK.
+			bar(&S :: s)
+		}
+
+		func bar(_ &string)
+
+		func main() {
+			str_ref := &string :: "",
+			foo(str_ref)
+		}
+	`
+	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
+		t.Errorf("got %s, expected no errors", errs[0])
+	}
+}
+
 func TestUnusedLocal(t *testing.T) {
 	const src = `
 		func testFunc(){
