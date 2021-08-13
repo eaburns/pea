@@ -3223,7 +3223,7 @@ func TestNestedImportName(t *testing.T) {
 	funcDef := main.Exprs[0].(*Convert).Expr.(*Call).Func.(*FuncInst).Def
 	const want = "github.com/eaburns/pea/modules/sys/net/tcp"
 	if funcDef.Mod != want {
-		t.Errorf("got %s, wanted %s", funcDef.Mod, want)
+		t.Errorf("got %s, want %s", funcDef.Mod, want)
 	}
 }
 
