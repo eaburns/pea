@@ -544,7 +544,7 @@ func instType(typ Type) Type {
 		}
 		var args []Type
 		for _, a := range typ.Args {
-			args = append(args, resolveAlias(a))
+			args = append(args, instType(resolveAlias(a)))
 		}
 		if typ.Inst = findInst(typ.Def, args); typ.Inst == nil {
 			typ.Inst = newInst(typ.Def, args)
