@@ -2834,6 +2834,24 @@ func TestOverloadResolution(t *testing.T) {
 			},
 		},
 		{
+			name: "adl only add mod once for multiple arg appearances",
+			src: `
+				import "foo"
+			`,
+			call: "bar(foo#new_x(), foo#new_y())",
+			want: `foo#bar(foo#x, foo#y)`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Type x int
+					Type y int
+					Func new_x()x {return: x :: 0}
+					Func new_y()y {return: y :: 0}
+					Func bar(_ x, _ y){}
+				`,
+			},
+		},
+		{
 			name: "no-adl because no external module type",
 			src: `
 				import "foo"

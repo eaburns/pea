@@ -1156,6 +1156,14 @@ func adLookup(x scope, parserID parser.Ident, arity int, args []Expr) ([]Func, [
 		return nil, nil
 	}
 
+	for _, prevArg := range args[:len(args)-1] {
+		dt, ok := prevArg.Type().(*DefType)
+		if ok && defType.Def.Mod == dt.Def.Mod {
+			// Already added by ADL on previous argument.
+			return nil, nil
+		}
+	}
+
 	file := x.file()
 	if defType.Def.Mod == file.Mod.Path {
 		return nil, nil
