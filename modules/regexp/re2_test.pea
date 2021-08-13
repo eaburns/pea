@@ -1,0 +1,262 @@
+Import "assert"
+Import "basic"
+import "container/vector"
+import "io"
+import "num/int"
+import "print"
+import "string"
+import "//sys/fs"
+
+/*
+Runs regexp test data from
+https://cs.opensource.google/go/go/+/refs/tags/go1.17.1:src/regexp/testdata/.
+
+The format consists of a series of test sets.
+Each test set consists of a sequence of strings
+followed by a series of regular expressions
+and their expected match result of each corresponding string.
+
+Lines beginning with # are comments.
+Lines beginning with a non-" character
+that are not the literal "strings\n" or "regexps\"
+are test names, which do not affect the outcome of the test
+but may be useful in test output.
+
+A line consisting only of "strings\" begins a test set.
+It is followed by 1 or more lines that contain quoted strings.
+A sequence of strings is terminated by a line
+consisting only of the string "regexps\n".
+This is followed by a sequence of regular expressions and matches.
+
+A regular expression and matches is
+a single quoted string that is the regular expression
+followed by N lines, one for each of the strings in this test.
+These lines are the expected matches for that string.
+
+Expected match lines have 4 fields, delimited by ;.
+Each such field is the expected match result for the regular expression
+in one of four conditions in order:
+	full match
+	partial match
+	longest full match
+	longest partial match
+Within each field is either a single - to denote no match, or
+a ` ` delimited sequence of match-index pairs
+corresponding to the expression match and then
+sub-expression match indices.
+These pairs are integers separated by -.
+
+Here's an example of the format:
+	# RE2 basic search tests built by make log
+	# Mon Nov 12 21:01:10 EST 2018
+	Regexp.SearchTests
+	strings
+	""
+	"a"
+	regexps
+	"a"
+	-;-;-;-
+	0-1;0-1;0-1;0-1
+	"(a)"
+	-;-;-;-
+	0-1 0-1;0-1 0-1;0-1 0-1;0-1 0-1
+In this example there are two strings: "" and "a".
+There are two regular expressions:
+"a", which is expected to have no match for string ""
+and is expected to have a 0-1 match for "a" for all of
+full match, partial match, longest match, and longest partial match;
+and "(a)", which is expected to have no match for string ""
+and is expected to have a 0-1 match
+and 0-1 sub-expression match for the string "a" for all of
+full match, partial match, longest match, and longest partial match;
+*/
+
+test re2_search {
+	run_re2_tests("modules/regexp/testdata/re2-search.txt")
+}
+
+test re2_exhaustive {
+	run_re2_tests("modules/regexp/testdata/re2-exhaustive.txt")
+}
+
+func run_re2_tests(path string) {
+	f := sys#fs#open_file(path) error? (e error){panic(message(e))},
+	in := io#read_buffer(f),
+
+	in_strings := false,
+	strs := string vector#vector :: new(),
+	forever: {
+		read_line(in) end? {
+			close(f),
+			return()
+		} error? (err) {
+			panic(message(err.error))
+		} ok? (line) {
+			if: line = "strings" then: {
+				if: in_strings then: {
+					panic("unexpected strings"),
+				},
+				in_strings := true,
+				clear: strs
+			} else: line = "regexps" then: {
+				if: !in_strings then: {
+					panic("unexpected regexps"),
+				},
+				in_strings := false
+			} else: line.length > 0 && line[0] = '#' then: {
+				// ignore comment
+			} else: line.length > 0 && line[0] != '"' then: {
+				// print test name.
+				print(print#string("name: ", line, "\n"))
+			} else: in_strings then: {
+				if: line.length < 2 || line[0] != '"' || line[line.length-1] != '"' then: {
+					panic("malformed string: [" + line + "]")
+				},
+				str := line[1, line.length-1], // strip "
+				str := unescape(str),
+				strs push_back: str
+			} else: {
+				if: line.length < 2 || line[0] != '"' || line[line.length-1] != '"' then: {
+					panic("malformed regexp: [" + line + "]")
+				},
+				regexp := line[1, line.length-1], // strip "
+				regexp := unescape(regexp),
+				run_regexp(in, regexp, strs),
+			}
+		}
+	},
+	panic("impossible")
+}
+
+func unescape(str string) string {
+	p := print#printer :: new(),
+	esc := false,
+	for: 0 to: str.length-1 do: (i){
+		b := str[i],
+		if: esc && b = (uint8 :: '\\') then: {
+			esc := false,
+			print#add_byte(p, b),
+		} else: b = (uint8 :: '\\') then: {
+			esc := true,
+		} else: esc then: {
+			esc := false,
+			if: b = 'n' then: {
+				print#add_byte(p, '\n'),
+			} else: b = '\\' then: {
+				print#add_byte(p, '\\'),
+			} else: b = '"' then: {
+				print#add_byte(p, '"'),
+			} else: {
+				panic(print#string("unknown escape: ", b))
+			}
+		} else: {
+			print#add_byte(p, b),
+		},
+	},
+	return: print#reset(p)
+}
+
+func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
+	// Ignore unsupported regexps.
+	if:
+		// bad char classes
+		string#contains(regexp, `[]`) ||
+		{string#contains(regexp, `[-`)} ||
+		{string#contains(regexp, `[^-`)} ||
+		{string#contains(regexp, `-]`)} ||
+		{string#contains(regexp, `[a-b-c]`)} ||
+		// non-cap group
+		string#contains(regexp, "(?") ||
+		// Perl classes
+		string#contains(regexp, "[:") ||
+		// unsupported escapes
+		{string#contains(regexp, `\B`)} ||
+		{string#contains(regexp, `\C`)} ||
+		{string#contains(regexp, `\D`)} ||
+		{string#contains(regexp, `\P`)} ||
+		{string#contains(regexp, `\S`)} ||
+		{string#contains(regexp, `\W`)} ||
+		{string#contains(regexp, `\b`)} ||
+		{string#contains(regexp, `\d`)} ||
+		{string#contains(regexp, `\p`)} ||
+		{string#contains(regexp, `\s`)} ||
+		{string#contains(regexp, `\w`)} ||
+		// hex
+		{string#contains(regexp, `\x`)} ||
+		// octal
+		{string#contains(regexp, `\0`)} ||
+		{string#contains(regexp, `\1`)} ||
+		{string#contains(regexp, `\2`)} ||
+		{string#contains(regexp, `\3`)} ||
+		{string#contains(regexp, `\4`)} ||
+		{string#contains(regexp, `\5`)} ||
+		{string#contains(regexp, `\6`)} ||
+		{string#contains(regexp, `\7`)} ||
+		{string#contains(regexp, `\8`)} ||
+		{string#contains(regexp, `\9`)}
+	then: {
+		for: strs each: (str){
+			read_line(in) end? {
+				panic("unexpected end of input")
+			} error? (err){
+				panic(message(err.error))
+			},
+		},
+		return()
+	},
+	re := compile(regexp) ok? (re regexp){re} error? (e){
+		panic(print#string("failed to compile [", regexp, "]: ", message(e))),
+	},
+	for: strs each: (str){
+		line := read_line(in) ok? (line string){
+			line
+		} end? {
+			panic("unexpected end of input")
+		} error? (err){
+			panic(message(err.error))
+		},
+
+		wants := string#split(line, ";"),
+		if: wants.length != 4 then: {
+			panic(print#string("malformed matches: [", line, "]")),
+		},
+		_ := wants[0], // full match
+		partial_match := wants[1],
+		_ := wants[2], // longest full match
+		_ := wants[3], // longest partial match
+		want := parse_want(partial_match),
+		got := exec(re, str),
+		if: want != got then: {
+			print(print#string("regexp=[", regexp, "], str=[", str, "]\n")),
+			print(print#string("	got=", got, ", want=", want, "\n")),
+			panic("fail"),
+		},
+	}
+}
+
+func parse_want(s string) [int64] {
+	if: s = "-" then: {
+		return: []
+	},
+	pairs := string#split(s, " "),
+	want := [int64] :: new(pairs.length*2, int64 :: 0),
+	n := 0,
+	for: pairs each: (pair){
+		fs := string#split(pair, "-"),
+		if: fs.length != 2 then: {
+			panic(print#string("malformed expectation: ", s)),
+		},
+		want[n] := int#parse_uint64(fs[0]) ok? (i uint64){
+			int64:: i
+		} error? (e){
+			panic(print#string("bad int: ", fs[0])),
+		},
+		want[n+1] := int#parse_uint64(fs[1]) ok? (i uint64){
+			int64:: i
+		} error? (e){
+			panic(print#string("bad int: ", fs[0])),
+		},
+		n += 2,
+	},
+	return: want
+}

@@ -1,0 +1,585 @@
+// Module regexp implements a regular expression language.
+// The language is inspired by rsc's regexp blog posts
+// (https://swtch.com/~rsc/regexp).
+//
+// The grammar is:
+// 	regexp = choice.
+// 	choice = concat [ "|" choice ].
+// 	concat = repeat [ concat ].
+// 	repeat = term { "*" | "+" | "?" }.
+// 	term = "." | "^" | "$" | "(" regexp ")" | charclass | literal.
+// 	charclass = "[" [ "^" ] ( classlit [ "-" classlit ] ) { classlit [ "-" classlit ] } "]".
+// 	A literal is any non-operator rune or an escaped sequence.
+// 	A classlit is any non-"]", non-"-" rune or an escape sequence.
+// The operators are:
+// 	| choice
+// 	* zero or more, prefer more
+// 	+ one or more, prefer more
+// 	? zero or one, prefer one
+// 	. any non-newline rune
+// 	^ beginning of input or line
+// 	$ end of input or line
+// 	( ) capturing group
+// 	[ ] character class (^ negates, - is a range)
+// The escape sequences are:
+// 	\a bell (\x07)
+// 	\t tab (\x09)
+// 	\n newline (\x0A)
+// 	\v vertical tab (\x0B)
+// 	\f form feed (\x0C)
+// 	\r carriage return (\x0D)
+// 	\· for any punctuation ·, is the literal ·
+Import "basic"
+import "container/ring_buffer"
+import "container/vector"
+import "unicode/utf8"
+
+// A compiled regular expression.
+Type regexp := _regexp
+
+type _regexp &[
+	.source string,
+	.prog instruction ring_buffer#ring_buffer,
+	.class char_class vector#vector,
+	.ncap int,
+]
+
+type char_class := char_range vector#vector
+
+type char_range [.start rune, .end rune]
+
+type instruction [
+	rune? rune,	// match the given rune
+	any?,	// any character
+	begin?,	// beginning of input
+	end?,	// end of input
+	class? int,	// char class index in prog
+	nclass? int,	// negated char class index in prog
+	jmp? int,	// jump instruction offset
+	fork? int,	// fork to (+1 is high priority, +n is low)
+	rfork? int,	// reverse-prio fork to (+n is high priority, +1 is low)
+	save? int,	// save position to sub-group index
+	match?,
+]
+
+// Returns the compiled regular expression or an error.
+Func compile(src string) regexp or_error {
+	src0 := src,
+	re := choice(src, 0) ok? (re regexp) {re} error? (e){
+		return: error(e)
+	},
+	re := group_prog(re),
+	re.prog push_back: [match?],
+	re.source := src0,
+	return: ok(re)
+}
+
+func choice(src &string, depth int) regexp or_error {
+	left := concat(src, depth) ok? (re regexp) {re} error? (e){
+		return: error(e)
+	},
+	if: peek(src) != '|' then: {
+		return: ok(left),
+	},
+	if: is_empty(left) then: {
+		return: error("unexpected |")
+	},
+	next(src), // consume '|'
+	return: choice(src, depth) error? (e error) {
+		regexp or_error :: error(e)
+	} ok? (right regexp) {
+		ok(choice_prog(left, right))
+	}
+}
+
+func concat(src &string, depth int) regexp or_error {
+	left := repeat(src, depth) ok? (re regexp) {re} error? (e){
+		return: error(e)
+	},
+	if: is_empty(left) then: {
+		return: ok(left)
+	},
+	return: concat(src, depth) error? (e error) {
+		regexp or_error :: error(e)
+	} ok? (right regexp) {
+		ok(cat_prog(left, right))
+	}
+}
+
+func repeat(src &string, depth int) regexp or_error {
+	re := term(src, depth) ok? (re regexp) {re} error? (e){
+		return: error(e)
+	},
+	if: is_empty(re) then: {
+		return: ok(re)
+	},
+	op := peek(src),
+	if: op = '*' || op = '+' || op = '?' then: {
+		next(src), // cosume op
+		re := rep_prog(re, op)
+	},
+	return: ok(re)
+}
+
+func term(src &string, depth int) regexp or_error {
+	r := peek(src),
+	if: r = eof then: {
+		return: ok(empty()),
+	} else: r = '|' then: {
+		return: ok(empty())
+	} else: r = ')' then: {
+		if: depth = 0 then: {
+			return: error("unopened )")
+		},
+		return: ok(empty())
+	} else: r = '*' then: {
+		return: error("unexpected *")
+	} else: r = '+' then: {
+		return: error("unexpected +")
+	} else: r = '?' then: {
+		return: error("unexpected ?")
+	},
+
+	next(src), // consume r
+	if: r = '.' then: {
+		return: ok(op_prog([any?]))
+	} else: r = '^' then: {
+		return: ok(op_prog([begin?]))
+	} else: r = '$' then: {
+		return: ok(op_prog([end?]))
+	} else: r = '(' then: {
+		return: group(src, depth)
+	} else: r = '[' then: {
+		return: char_class(src)
+	} else: r = '\\' then: {
+		r := escape(src) ok? (r rune){r} error? (e){return: error(e)}
+	},
+	return: ok(op_prog([rune? r]))
+}
+
+func group(src &string, depth int) regexp or_error {
+	re := choice(src, depth+1) ok? (re regexp) {re} error? (e){
+		return: error(e)
+	},
+	if: next(src) != ')' then: {
+		return: error("unclosed ("),
+	},
+	return: ok(group_prog(re))
+}
+
+func char_class(src &string) regexp or_error {
+	op := peek(src) = '^' true? {
+		next(src), // consume ^
+		instruction :: [nclass? 0]
+	} false? {
+		[class? 0]
+	},
+	p := rune :: -1,
+	class := char_class :: vector#new(),
+	while: {src.length > 0} do: {
+		r := next(src),
+		if: r = ']' then: {
+			if: p >= 0 then: {
+				class push_back: [.start p, .end p],
+			},
+			if: class.length = 0 then: {
+				return: error("empty character class"),
+			},
+			return: ok(char_class_prog(op, class))
+		} else: r = '-' then: {
+			if: p < 0 || peek(src) = ']' || peek(src) = '-' then: {
+				return: error("bad range")
+			},
+			r := next(src),
+			if: r = '\\' then: {
+				r := escape(src) ok? (r rune){r} error? (e){return: error(e)}
+			},
+			if: p >= r then: {
+				return: error("bad range"),
+			},
+			class push_back: [.start p, .end r],
+			p := -1
+		} else: {
+			if: r = '\\' then: {
+				r := escape(src) ok? (r rune){r} error? (e){return: error(e)},
+			},
+			if: p >= 0 then: {
+				class push_back: [.start p, .end p],
+			},
+			p := r,
+		},
+	},
+	return: error("unclosed [")
+}
+
+func choice_prog(left regexp, right regexp) regexp {
+	left.prog push_front: [fork? left.prog.length+2],
+	left.prog push_back: [jmp? right.prog.length+1],
+	return: cat_prog(left, right)
+}
+
+func cat_prog(left regexp, right regexp) regexp {
+	for: 0 to: right.prog.length-1 do: (i) {
+		right.prog[i] save? (s) {
+			right.prog[i] := [save? s + 2*left.ncap]
+		} class? (c) {
+			right.prog[i] := [class? c + left.class.length]
+		} nclass? (c) {
+			right.prog[i] := [nclass? c + left.class.length]
+		},
+		left.prog push_back: right.prog[i]
+	},
+	left.ncap += right.ncap,
+	// TODO: add vector#append(vector, vector)
+	for: right.class each: (c) {
+		left.class push_back: c
+	},
+	return: left
+}
+
+func rep_prog(re regexp, op rune) regexp {
+	if: op = '+' then: {
+		re.prog push_back: [rfork? -re.prog.length]
+	} else: op = '*' then: {
+		re.prog push_front: [fork? re.prog.length+2],
+		re.prog push_back: [rfork? -re.prog.length+1],
+	} else: op = '?' then: {
+		re.prog push_front: [fork? re.prog.length+1],
+	} else: {
+		panic("impossible")
+	},
+	return: re
+}
+
+func group_prog(re regexp) regexp {
+	for: 0 to: re.prog.length-1 do: (i) {
+		re.prog[i] save? (s) {
+			re.prog[i] := [save? s + 2]
+		},
+	},
+	re.prog push_front: [save? 0],
+	re.prog push_back: [save? 1],
+	++re.ncap,
+	return: re
+}
+
+func op_prog(op instruction) regexp {
+	re := empty(),
+	re.prog push_back: op,
+	return: re
+}
+
+func char_class_prog(op instruction, class char_class) regexp {
+	re := empty(),
+	re.prog push_back: op,
+	re.class push_back: class,
+	return: re
+}
+
+func is_empty(re &regexp) bool {
+	return: re.prog.length = 0
+}
+
+func empty() regexp {
+	return: [
+		.source "",
+		.prog ring_buffer#new(),
+		.class vector#new(),
+		.ncap 0,
+	]
+}
+
+func peek(src string) rune {
+	return: utf8#decode(src) none? {
+		rune :: -1
+	} some? (rw) {
+		rw.rune
+	}
+}
+
+func next(src &string) rune {
+	return: utf8#decode(src) none? {
+		rune :: -1
+	} some? (rw) {
+		src := src[rw.width, src.length],
+		rw.rune
+	}
+}
+
+func escape(src &string) rune or_error {
+	r := next(src),
+	if: r = eof then: {
+		return: error("incomplete escape sequence")
+	} else: r = 'a' then: {
+		return: ok(rune :: '\x07')
+	} else: r = 't' then: {
+		return: ok(rune :: '\t')
+	} else: r = 'n' then: {
+		return: ok(rune :: '\n')
+	} else: r = 'v' then: {
+		return: ok(rune :: '\x0B')
+	} else: r = 'f' then: {
+		return: ok(rune :: '\x0C')
+	} else: r = 'r' then: {
+		return: ok(rune :: '\x0D')
+	} else: (rune :: 33) <= r && r <= 64 ||
+		{ (rune :: 91) <= r && r <=  96 } ||
+		{ (rune :: 123) <= r && r <=  126 } then: {
+		// These are the ASCII punctuation ranges.
+		// TODO: handle escaping other unicode punctuation.
+		return: ok(rune :: r)
+	},
+	return: error("unknown escape sequence"),
+}
+
+// Options to exec().
+Type exec_options [
+	// Return the longest match instead of the first match.
+	.longest bool,
+	// Returns a match only if it matches the entire input.
+	.full bool
+]
+
+// Returns the default exec_options.
+Func default() exec_options {
+	return: [
+		.longest false,
+		.full false,
+	]
+}
+
+// A <rune, width> pair or the end of the input.
+Type read_result [
+	rune? [.rune rune, .width int],
+	end?,
+]
+
+// Implements read for byte-indexable, slicable types.
+Func read(s &S) read_result :
+	.length(S)int,
+	[](S, int)uint8,
+	[](S, int, int)S
+{
+	return: utf8#consume(s) some? (rw [.rune rune, .width int]){
+		read_result :: [rune? rw]
+	} none? {
+		[end?]
+	}
+}
+
+// Implements read for rune-indexable, slicable types.
+Func read(s &S) read_result :
+	.length(S)int,
+	[](S, int)rune,
+	[](S, int, int)S
+{
+	if: s.length = 0 then: {
+		return: [end?]
+	},
+	r := s[0],
+	s := s[1, s.length],
+	return: [rune? [.rune r, .width 1]]
+}
+
+// Executes the regular expression on a string and
+// returns the indices of s that match a regular expression
+// and its capturing subexpressions.
+//
+// The read function of S must consume the first rune of its argument,
+// returning the rune and the number of indices consumed.
+// For example, the read function for a utf8-encoded string
+// would return the first rune decoded and the number of its utf8 bytes.
+// However, the read function for an array of runes
+// would return the 0th element and the width 1, since each rune is 1 index.
+Func exec(re regexp, opts exec_options, s S) [int64] : read(&S)read_result {
+	return: exec(vm(re, opts), s)
+}
+
+// Executes the regular expression on a string and
+// returns the indices of s that match a regular expression
+// and its capturing subexpressions
+// using the default exec_options.
+Func exec(re regexp, s S) [int64] : read(&S)read_result {
+	return: exec(re, default(), s)
+}
+
+const eof := rune :: -1
+
+type vm &[
+	.re regexp,
+	.opts exec_options,
+	.at int64,
+	.cur_rune rune,
+	.next_rune rune,
+	.next_width int,
+	.seen [int64], // at for which each pc was last added to a thread
+	.run thread vector#vector,
+	.next_run thread vector#vector,
+	.free_mem [int64] vector#vector,
+	.match [int64],
+]
+
+type thread [.pc int, .mem [int64]]
+
+func vm(re regexp, opts exec_options) vm {
+	return: [
+		.re re,
+		.opts opts,
+		.at 0,
+		.cur_rune eof,
+		.next_rune eof,
+		.next_width 0,
+		.seen new(re.prog.length, int64 :: -1),
+		.run vector#new(),
+		.next_run vector#new(),
+		.free_mem vector#new(),
+		.match [],
+	]
+}
+
+func exec(vm vm, s S) [int64] : read(&S)read_result {
+	vm read: s, // prime next_rune and next_width.
+	vm add_thread: [.pc 0, .mem new_mem(vm)],
+	forever: {
+		vm read: s,
+		swap(vm.run, vm.next_run),
+		clear: vm.next_run,
+		for: vm.run each: (t) {
+			vm step: t,
+		},
+		if: vm.cur_rune = eof || vm.match != [] && vm.next_run.length = 0 then: {
+			if: vm.opts.full && vm.next_rune != eof then: {
+				return: []
+			},
+			return: vm.match
+		},
+		if: vm.match = [] && !vm.opts.full then: {
+			vm add_thread: [.pc 0, .mem new_mem(vm)],
+		},
+	},
+	panic("impossible"),
+	return: []
+}
+
+func read:(vm vm, s &S) : read(&S)read_result {
+	vm.cur_rune := vm.next_rune,
+	vm.at += (int64 :: vm.next_width),
+	read(s) rune? (rw [.rune rune, .width int]) {
+		vm.next_rune := rw.rune,
+		vm.next_width := rw.width,
+	} end? {
+		vm.next_rune := eof,
+		vm.next_width := 0
+	}
+}
+
+func step:(vm vm, t thread) {
+	if: !accepts(vm, vm.re.prog[t.pc]) then: {
+		vm.free_mem push_back: t.mem,
+		return()
+	},
+	vm add_thread: [.pc t.pc+1, .mem t.mem],
+}
+
+func accepts(vm vm, instr instruction) bool {
+	instr rune? (r rune) {
+		return: vm.cur_rune = r
+	} any? {
+		return: vm.cur_rune != '\n' && vm.cur_rune != eof
+	} class? (i) {
+		return: class_accepts(vm.cur_rune, vm.re.class[i], false)
+	} nclass? (i) {
+		return: class_accepts(vm.cur_rune, vm.re.class[i], true)
+	},
+	// This is impossible; accepts is only called with a consuming instruction.
+	// All the other instructions are non-consuming.
+	panic("impossible"),
+	return: false
+}
+
+func class_accepts(r rune, class char_class, neg bool) bool {
+	if: r = eof then: {
+		return: false
+	},
+	for: class each: (range) {
+		if: range.start <= r && r <= range.end then: {
+			return: !neg
+		},
+	},
+	return: neg
+}
+
+func add_thread:(vm vm, t thread) {
+	if: vm.seen[t.pc] = vm.at then: {
+		vm.free_mem push_back: t.mem,
+		return()
+	},
+	vm.seen[t.pc] := vm.at,
+	vm.re.prog[t.pc] rune? (_ rune) {
+		vm.next_run push_back: [.pc t.pc, .mem t.mem]
+	} any? {
+		vm.next_run push_back: [.pc t.pc, .mem t.mem]
+	} class? (_){
+		vm.next_run push_back: [.pc t.pc, .mem t.mem]
+	} nclass? (_){
+		vm.next_run push_back: [.pc t.pc, .mem t.mem]
+	} jmp? (delta){
+		vm add_thread: [.pc t.pc+delta, .mem t.mem],
+	} fork? (delta){
+		mem2 := clone_mem(vm, t.mem),
+		vm add_thread: [.pc t.pc+1, .mem t.mem],
+		vm add_thread: [.pc t.pc+delta, .mem mem2],
+	} rfork? (delta){
+		mem2 := clone_mem(vm, t.mem),
+		vm add_thread: [.pc t.pc+delta, .mem t.mem],
+		vm add_thread: [.pc t.pc+1, .mem mem2],
+	} save? (i){
+		t.mem[i] := vm.at,
+		vm add_thread: [.pc t.pc+1, .mem t.mem],
+	} begin? {
+		if: vm.cur_rune != eof then: {
+			vm.free_mem push_back: t.mem,
+			return(),
+		},
+		vm add_thread: [.pc t.pc+1, .mem t.mem],
+	} end? {
+		if: vm.next_rune != eof then: {
+			vm.free_mem push_back: t.mem,
+			return(),
+		},
+		vm add_thread: [.pc t.pc+1, .mem t.mem],
+	} match? {
+		if: !vm.opts.longest then: {
+			// For first match, terminate all lower-priority threads.
+			clear: vm.run
+		},
+		if: vm.match = [] then: {
+			vm.match := t.mem,
+			return()
+		},
+		if: t.mem[0] <= vm.match[0] && t.mem[1] > vm.match[1] then: {
+			vm.free_mem push_back: vm.match,
+			vm.match := t.mem,
+			return(),
+		},
+		vm.free_mem push_back: t.mem
+	},
+}
+
+func new_mem(vm vm) [int64] {
+	if: vm.free_mem.length = 0 then: {
+		return: new(2*vm.re.ncap, int64 :: -1)
+	},
+	m := pop_back(vm.free_mem),
+	fill: m with: -1,
+	return: m
+}
+
+func clone_mem(vm vm, init [int64]) [int64] {
+	if: vm.free_mem.length = 0 then: {
+		return: copy(init)
+	},
+	m := pop_back(vm.free_mem),
+	copy: m from: init,
+	return: m
+}

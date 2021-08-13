@@ -1,0 +1,185 @@
+Import "assert"
+Import "basic"
+import "container/ring_buffer"
+import "container/vector"
+import "print"
+import "unicode/utf8"
+
+test parse_error {
+	assert: compile("?") error: "unexpected ?",
+	assert: compile("*") error: "unexpected *",
+	assert: compile("+") error: "unexpected +",
+	assert: compile("|xyz") error: "unexpected |",
+	assert: compile("abc||") error: "unexpected |",
+	assert: compile("(") error: "unclosed (",
+	assert: compile("(()") error: "unclosed (",
+	assert: compile(")") error: "unopened )",
+	assert: compile("())") error: "unopened )",
+	assert: compile("[") error: "unclosed [",
+	assert: compile("[]") error: "empty character class",
+	assert: compile("[^]") error: "empty character class",
+	assert: compile("[-z]") error: "bad range",
+	assert: compile("[a-]") error: "bad range",
+	assert: compile("[^-z]") error: "bad range",
+	assert: compile("[a-z-Z]") error: "bad range",
+	assert: compile("[z-a]") error: "bad range",
+
+	assert_ok: compile(""),
+	assert_ok: compile("abc"),
+	assert_ok: compile("[\-a]"),
+	assert_ok: compile("[[-\]]"),
+	assert_ok: compile("[\]]"),
+	assert_ok: compile("[[]"),
+
+	// Go's regexp package is permissive on character classes;
+	// it allows these, treating them in a relatively reasonable way.
+	assert: compile("[]a]") error: "empty character class",
+	assert: compile("[-a]") error: "bad range" ,
+	assert: compile("[a-]") error: "bad range",
+	assert: compile("[^-a]") error: "bad range",
+	assert: compile("[a-b-c]") error: "bad range",
+}
+
+test find_simple {
+	re := must(compile("(a|b)*")),
+	print(print#string(re, "\n")),
+	assert: exec(re, "abcdef") equals: [0, 2, 1, 2],
+
+	re := must(compile("")),
+	assert: exec(re, "") equals: [0, 0],
+	assert: exec(re, "xyz") equals: [0, 0],
+
+	re := must(compile("abc")),
+	assert: exec(re, "") equals: [],
+	assert: exec(re, "xyz") equals: [],
+	assert: exec(re, "abcdef") equals: [0, 3],
+
+	re := must(compile("a*")),
+	assert: exec(re, "") equals: [0, 0],
+	assert: exec(re, "xyz") equals: [0, 0],
+	assert: exec(re, "abcdef") equals: [0, 1],
+	assert: exec(re, "aaaa") equals: [0, 4],
+
+	re := must(compile("a?")),
+	assert: exec(re, "") equals: [0, 0],
+	assert: exec(re, "xyz") equals: [0, 0],
+	assert: exec(re, "abcdef") equals: [0, 1],
+	assert: exec(re, "aaaa") equals: [0, 1],
+
+	re := must(compile("a|b")),
+	assert: exec(re, "") equals: [],
+	assert: exec(re, "xyz") equals: [],
+	assert: exec(re, "abcdef") equals: [0, 1],
+	assert: exec(re, "aaaa") equals: [0, 1],
+	assert: exec(re, "bbcdef") equals: [0, 1],
+	assert: exec(re, "bbbb") equals: [0, 1],
+
+	re := must(compile("(a|b)*")),
+	assert: exec(re, "") equals: [0, 0, -1, -1],
+	assert: exec(re, "xyz") equals: [0, 0, -1, -1],
+	assert: exec(re, "abcdef") equals: [0, 2, 1, 2],
+	assert: exec(re, "aaaa") equals: [0, 4, 3, 4],
+	assert: exec(re, "bbcdef") equals: [0, 2, 1, 2],
+	assert: exec(re, "baabbaab") equals: [0, 8, 7, 8],
+
+	re := must(compile("x(y)z")),
+	assert: exec(re, "abcxyz123") equals: [3, 6, 4, 5],
+	re := must(compile("^x(y)z")),
+	assert: exec(re, "abcxyz123") equals: [],
+	re := must(compile("x(y)z$")),
+	assert: exec(re, "abcxyz123") equals: [],
+}
+
+test find_first_or_longest {
+	longest := exec_options :: default(),
+	longest.longest := true,
+
+	re := must(compile("(a|a*)")),
+	assert: exec(re, "aa") equals: [0, 1, 0, 1],
+	assert: exec(re, longest, "aa") equals: [0, 2, 0, 2],
+
+	re := must(compile("(a*|a)")),
+	assert: exec(re, "aa") equals: [0, 2, 0, 2],
+	assert: exec(re, longest, "aa") equals: [0, 2, 0, 2],
+
+	re := must(compile("((a)|(a))|((a*)|(a))")),
+	assert: exec(re, "aa") equals: [0, 1, 0, 1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1],
+	assert: exec(re, longest, "aa") equals: [0, 2, -1, -1, -1, -1, -1, -1, 0, 2, 0, 2, -1, -1],
+}
+
+test find_partial_or_full {
+	full := exec_options :: default(),
+	full.full := true,
+
+	re := must(compile("abc")),
+	assert: exec(re, "abc") equals: [0, 3],
+	assert: exec(re, full, "abc") equals: [0, 3],
+	assert: exec(re, "xyzabc") equals: [3, 6],
+	assert: exec(re, full, "xyzabc") equals: [],
+	assert: exec(re, "abcxyz") equals: [0, 3],
+	assert: exec(re, full, "abcxyz") equals: [],
+	assert: exec(re, "123abcxyz") equals: [3, 6],
+	assert: exec(re, full, "123abcxyz") equals: [],
+}
+
+test find_containers {
+	re := must(compile("abc")),
+	assert: exec(re, "abc") equals: [0, 3],
+	assert: exec(re, [uint8 :: 'a', 'b', 'c']) equals: [0, 3],
+	assert: exec(re, vector#new([uint8 :: 'a', 'b', 'c'])) equals: [0, 3],
+	assert: exec(re, ring_buffer#new([uint8 :: 'a', 'b', 'c'])) equals: [0, 3],
+	assert: exec(re, [rune :: 'a', 'b', 'c']) equals: [0, 3],
+	assert: exec(re, vector#new([rune :: 'a', 'b', 'c'])) equals: [0, 3],
+	assert: exec(re, ring_buffer#new([rune :: 'a', 'b', 'c'])) equals: [0, 3],
+
+	re := must(compile("☺")),
+	assert: exec(re, "☺") equals: [0, 3],
+	assert: exec(re, [uint8 :: '\xe2', '\x98', '\xba']) equals: [0, 3],
+	assert: exec(re, vector#new([uint8 :: '\xe2', '\x98', '\xba'])) equals: [0, 3],
+	assert: exec(re, ring_buffer#new([uint8 :: '\xe2', '\x98', '\xba'])) equals: [0, 3],
+	assert: exec(re, [rune :: '☺']) equals: [0, 1],
+	assert: exec(re, vector#new([rune :: '☺'])) equals: [0, 1],
+	assert: exec(re, ring_buffer#new([rune :: '☺'])) equals: [0, 1],
+}
+
+test do_not_consume_caller_argument {
+	// Internally find_matches consumes a prefix of the container.
+	// This should not consume the container passed in by the caller,
+	// but just a separate slice of that container.
+	re := must(compile("ab")),
+	v := vector#new([rune :: 'a', 'b', 'c']),
+	assert: exec(re, v) equals: [0, 2],
+	assert: v equals: vector#new([rune :: 'a', 'b', 'c']),
+}
+
+// TODO: move vector = and printing to the vector module.
+func =(a rune vector#vector, b rune vector#vector) bool {
+	if: a.length != b.length then: {
+		return: false
+	},
+	for: 0 to: a.length-1 do: (i) {
+		if: a[i] != b[i] then: {
+			return: false
+		}
+	},
+	return: true
+}
+func +=(p print#printer, v X vector#vector) print#printer :
+	+=(print#printer, X)print#printer,
+{
+	p += "[",
+	first := true,
+	for: v each: (r) {
+		if: first then: {
+			first := false,
+		} else: {
+			p += ", "
+		},
+		p += r
+	},
+	return: p += "]"
+}
+
+func =(a regexp, b regexp) bool {
+	return: a.source = b.source
+}

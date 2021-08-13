@@ -1,0 +1,55 @@
+Import "basic"
+import "container/ring_buffer"
+import "print"
+
+// Some printing functions useful for debugging.
+
+Func +=(p print#printer, re regexp) print#printer {
+	p += "source: " += re.source += "\n"
+		+= "prog:\n",
+	for: 0 to: re.prog.length-1 do: (i) {
+		instr := re.prog[i],
+		p += "\t" += i += ": " += instr += "\n",
+	},
+	return: p
+}
+
+func +=(p print#printer, instrs instruction ring_buffer#ring_buffer) print#printer {
+	p += "[",
+	first := true,
+	for: instrs each: (instr) {
+		if: first then: {
+			first := false,
+		} else: {
+			p += ", "
+		},
+		p += instr
+	},
+	return: p += "]"
+}
+
+func +=(p print#printer, instr instruction) print#printer {
+	return: instr rune? (r rune) {
+		p += "rune " += r
+	} any? {
+		p += "any"
+	} class? (i){
+		p += "class " += i
+	} nclass? (i){
+		p += "nclass " += i
+	} jmp? (delta){
+		p += "jmp " += delta
+	} fork? (delta){
+		p += "fork " += delta
+	} rfork? (delta){
+		p += "rfork " += delta
+	} save? (i){
+		p += "save " += i
+	} begin? {
+		p += "begin"
+	} end? {
+		p += "end"
+	} match? {
+		p += "match"
+	}
+}
