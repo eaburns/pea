@@ -49,6 +49,7 @@ func TestExpr(t *testing.T) {
 		{`"\U000065e5"`, &StrLit{Raw: false, Data: "\U000065e5"}},
 
 		{`'x'`, &CharLit{Rune: 'x'}},
+		{`'\\'`, &CharLit{Rune: '\\'}},
 		{`'\''`, &CharLit{Rune: '\''}},
 		{`'\t'`, &CharLit{Rune: '\t'}},
 		{`'\n'`, &CharLit{Rune: '\n'}},

@@ -18986,7 +18986,7 @@ func _EscAction(parser *_Parser, start int) (int, *string) {
 			pos += 2
 			node = func(
 				start, end int) string {
-				return "\\"
+				return "\\\\"
 			}(
 				start11, pos)
 		}

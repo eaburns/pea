@@ -410,7 +410,7 @@ Esc <-
 	"\\n" { return "\n" } /
 	"\\t" { return "\t" } /
 	"\\b" { return "\b"} /
-	"\\\\" { return "\\" } /
+	"\\\\" { return "\\\\" } /
 	"\\x" x0:(X X) { return string(interpHex(x0)) } /
 	"\\u" x1:(X X X X) { return string(interpHex(x1)) } /
 	"\\U" x2:(X X X X X X X X) { return string(interpHex(x2)) }
