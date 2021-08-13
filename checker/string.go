@@ -541,6 +541,8 @@ func (c ConvertKind) String() string {
 	switch c {
 	case Noop:
 		return "Noop"
+	case Drop:
+		return "Drop"
 	case Deref:
 		return "Deref"
 	case NumConvert:
