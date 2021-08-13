@@ -3,7 +3,7 @@ Import "basic"
 import "print"
 
 Type T vector := T _vector
-type T _vector := &[.n int, .data [T]]
+type T _vector &[.n int, .data [T]]
 
 Func new() T vector {
 	return: [.n 0, .data []]

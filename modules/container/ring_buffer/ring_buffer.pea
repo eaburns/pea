@@ -3,7 +3,7 @@ Import "basic"
 import "print"
 
 Type T ring_buffer := T _ring_buffer
-type T _ring_buffer := &[
+type T _ring_buffer &[
 	.n int,
 	.start int,
 	.end int,	// exclusive
