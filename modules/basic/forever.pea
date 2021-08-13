@@ -1,0 +1,5 @@
+// Calls f() repeatedly.
+Func forever:(f (){}) {
+	f(),
+	forever: f
+}
