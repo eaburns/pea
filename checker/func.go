@@ -416,7 +416,7 @@ func ifaceADLookup(x scope, addMod *Import, decl *FuncDecl) ([]Func, []note) {
 	var funcs []Func
 	var notes []note
 	seen := map[*Import]bool{addMod: true}
-	for _, typ := range decl.Parms {
+	for _, typ := range append(decl.Parms, decl.Ret) {
 		defType, ok := typ.(*DefType)
 		if !ok {
 			continue
