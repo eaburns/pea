@@ -38,6 +38,17 @@ Func .length(v T vector) int {
 	return: v.n
 }
 
+// Clears the vector, leaving it empty.
+Func clear:(v T vector) {
+	v.n := 0,
+}
+
+test clear {
+	v := string vector :: new(["Hello", "World", "!"]),
+	clear: v,
+	assert: v.length equals: 0,
+}
+
 Func [](v T vector, i int) &T {
 	if: i < 0 then: {
 		panic(print#string("index out of bounds: ", i, " < 0"))
@@ -147,5 +158,13 @@ test pop_back {
 }
 
 Func for:each:(v T vector, f (T){}) {
-	for: v.data[0, v.n] each: f
+	for_each(v, 0, f)
+}
+
+func for_each(v T vector, i int, f (T){}) {
+	if: i >= v.length then: {
+		return()
+	},
+	f(v[i]),
+	for_each(v, i+1, f),
 }
