@@ -1,0 +1,95 @@
+Import "assert"
+Import "basic"
+import "print"
+
+// Returns the index of the first occurrence of n in h.
+Func index(h S, n S) int option :
+	.length(S)int,
+	[](S, int)uint8,
+	[](S, int, int) S,
+	=(S, S)bool
+{
+	// Rabin-Karp based on http://www-igm.univ-mlv.fr/~lecroq/string/node5.html#SECTION0050.
+	if: h.length < n.length then: {
+		return: none(),
+	},
+	d := uint :: 1,
+	for: 1 to: n.length-1 do: (_) {
+		d := d << 1,
+	},
+	hh := uint:: 0,
+	hn := uint :: 0,
+	for: 0 to: n.length-1 do: (i) {
+		hh := (hh<<1) + (uint :: h[i]),
+		hn := (hn<<1) + (uint :: n[i]),
+	},
+	for: 0 to: h.length - n.length do: (i) {
+		if: hh = hn && {h[i,i+n.length] = n} then: {
+			return: some(i),
+		},
+		hh := ((hh - (uint :: h[i])*d)<<1) + (uint :: h[i+n.length]),
+	},
+	return: none()
+}
+
+test index {
+	assert: index("", "") some: 0,
+	assert: index("xyz", "") some: 0,
+	assert: index("xyz", "x") some: 0,
+	assert: index("xyz", "y") some: 1,
+	assert: index("xyz", "z") some: 2,
+	assert: index("xyz", "y") some: 1,
+	assert: index("xyz", "yz") some: 1,
+	assert: index("xyz", "xyz") some: 0,
+	assert: index("abcdef123def", "def") some: "abc".length,
+	assert: index("abcdef☺☹123def", "☺☹") some: "abcdef".length,
+	assert: index("abcdef☺☹123def", "123") some: "abcdef☺☹".length,
+
+	assert_none: index("", "xyz"),
+	assert_none: index("abc", "x"),
+	assert_none: index("abc", "ba"),
+	assert_none: index("abc", "xyz"),
+	assert_none: index("abcdef123def", "xyz"),
+	assert_none: index("abcdef☺☹123def", "xyz"),
+	assert_none: index("abcdef123def", "☺☹"),
+
+ 	// Make sure it works with [uint8] too.
+	assert: index([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['b', 'c']) some: 1,
+	assert_none: index([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['n']),
+}
+
+// Returns whether h contains n as a substring.
+Func contains(h S, n S) bool :
+	.length(S)int,
+	[](S, int)uint8,
+	[](S, int, int) S,
+	=(S, S)bool
+{
+	return: index(h, n) some? (_ int){true} none? {false}
+}
+
+test contains {
+	assert_true: contains("", ""),
+	assert_true: contains("xyz", ""),
+	assert_true: contains("xyz", "x"),
+	assert_true: contains("xyz", "y"),
+	assert_true: contains("xyz", "z"),
+	assert_true: contains("xyz", "y"),
+	assert_true: contains("xyz", "yz"),
+	assert_true: contains("xyz", "xyz"),
+	assert_true: contains("abcdef123def", "def"),
+	assert_true: contains("abcdef☺☹123def", "☺☹"),
+	assert_true: contains("abcdef☺☹123def", "123"),
+
+	assert_false: contains("", "xyz"),
+	assert_false: contains("abc", "x"),
+	assert_false: contains("abc", "ba"),
+	assert_false: contains("abc", "xyz"),
+	assert_false: contains("abcdef123def", "xyz"),
+	assert_false: contains("abcdef☺☹123def", "xyz"),
+	assert_false: contains("abcdef123def", "☺☹"),
+
+ 	// Make sure it works with [uint8] too.
+	assert_true: contains([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['b', 'c']),
+	assert_false: contains([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['n']),
+}
