@@ -2842,6 +2842,22 @@ func TestOverloadResolution(t *testing.T) {
 			},
 		},
 		{
+			name: "adl want type",
+			src: `
+				import "foo"
+			`,
+			call: "new_x()",
+			ret:  "foo#x",
+			want: "foo#new_x()foo#x",
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Type x int
+					Func new_x()x {return: x :: 0}
+				`,
+			},
+		},
+		{
 			name: "adl earlier arguments mismatch",
 			src: `
 				import "foo"
@@ -2890,6 +2906,22 @@ func TestOverloadResolution(t *testing.T) {
 					Func new_x()x {return: x :: 0}
 					Func new_y()y {return: y :: 0}
 					Func bar(_ x, _ y){}
+				`,
+			},
+		},
+		{
+			name: "adl only add mod once if named in tag call and arg",
+			src: `
+				import "foo"
+			`,
+			call: "foo#bar(foo#new_x())",
+			want: `foo#bar(foo#x)`,
+			otherMod: testMod{
+				path: "foo",
+				src: `
+					Type x int
+					Func new_x()x {return: x :: 0}
+					Func bar(_ x){}
 				`,
 			},
 		},

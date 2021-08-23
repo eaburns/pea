@@ -1004,6 +1004,10 @@ func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 }
 
 func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *parser.Call, want Type, ids []id) (Expr, []Error) {
+	if defType, ok := want.(*DefType); ok && mod == nil {
+		ids = append(ids, adModuleIDs(x, defType.Def.Mod, parserID.Name)...)
+	}
+
 	funcs, notes := filterToFuncs(ids, parserID.L)
 	funcs, ns := filterByArity(funcs, len(parserCall.Args))
 	notes = append(notes, ns...)
@@ -1026,9 +1030,12 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		// clearly not intended.
 		notes = append(notes, ns...)
 
-		fs, ns = adLookup(x, parserID, len(parserCall.Args), args)
-		funcs = append(funcs, fs...)
-		notes = append(notes, ns...)
+		if mod == nil {
+			// Do argument-dependent lookup if the call is not tagged with a module.
+			fs, ns = adLookup(x, parserID, len(parserCall.Args), args, want)
+			funcs = append(funcs, fs...)
+			notes = append(notes, ns...)
+		}
 	}
 
 	if want != nil {
@@ -1149,13 +1156,15 @@ func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.E
 	return arg, funcs, notes, errs
 }
 
-func adLookup(x scope, parserID parser.Ident, arity int, args []Expr) ([]Func, []note) {
+func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, want Type) ([]Func, []note) {
 	// Only called after args have been added, so args cannot be empty.
 	defType, ok := args[len(args)-1].Type().(*DefType)
 	if !ok {
 		return nil, nil
 	}
-
+	if dt, ok := want.(*DefType); ok && defType.Def.Mod == dt.Def.Mod {
+		return nil, nil
+	}
 	for _, prevArg := range args[:len(args)-1] {
 		dt, ok := prevArg.Type().(*DefType)
 		if ok && defType.Def.Mod == dt.Def.Mod {
@@ -1164,23 +1173,8 @@ func adLookup(x scope, parserID parser.Ident, arity int, args []Expr) ([]Func, [
 		}
 	}
 
-	file := x.file()
-	if defType.Def.Mod == file.Mod.Path {
-		return nil, nil
-	}
-	var ids []id
-	for _, imp := range file.Imports {
-		if imp.Path == defType.Def.Mod {
-			if imp.Exp {
-				return nil, nil
-			}
-			ids = imp.find(parserID.Name)
-			break
-		}
-	}
-
+	ids := adModuleIDs(x, defType.Def.Mod, parserID.Name)
 	funcs, notes := filterToFuncs(ids, parserID.L)
-
 	var ns []note
 	funcs, ns = filterByArity(funcs, arity)
 	notes = append(notes, ns...)
@@ -1190,6 +1184,27 @@ func adLookup(x scope, parserID parser.Ident, arity int, args []Expr) ([]Func, [
 		notes = append(notes, ns...)
 	}
 	return funcs, notes
+}
+
+// adModuleIDs returns IDs from a module for argument-dependent lookup.
+// If the importPath of the module is either the current module
+// or is capital Imported into the current module, nil is returned.
+// Otherwise, the IDs from the module matching idName are returned.
+func adModuleIDs(x scope, importPath, idName string) []id {
+	file := x.file()
+	if file.Mod.Path == importPath {
+		return nil
+	}
+	for _, imp := range file.Imports {
+		if imp.Path != importPath {
+			continue
+		}
+		if imp.Exp {
+			break
+		}
+		return imp.find(idName)
+	}
+	return nil
 }
 
 func checkArgsFallback(x scope, parserArgs []parser.Expr) []Error {
