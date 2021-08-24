@@ -122,7 +122,7 @@ test back {
 
 Func push_front(r T ring_buffer, t T) {
 	if: r.n = r.data.length then: {
-		grow(r, t)
+		grow(r, t, 1)
 	},
 	r.start := prev(r, r.start),
 	r.data[r.start] := t,
@@ -139,7 +139,7 @@ test push_front {
 
 Func push_back(r T ring_buffer, t T) {
 	if: r.n = r.data.length then: {
-		grow(r, t)
+		grow(r, t, 1)
 	},
 	r.data[r.end] := t,
 	r.end := next(r, r.end),
@@ -154,8 +154,95 @@ test push_back {
 	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 }
 
-func grow(r T ring_buffer, t T) {
-	data := [T] :: new((r.data.length+1) * 2, t),
+Func push_back(r T ring_buffer, ts C) : .length(C)int, [](C, int)T {
+	if: ts.length = 0 then: {
+		return()
+	},
+	if: r.n+ts.length > r.data.length then: {
+		grow(r, ts[0], ts.length)
+	},
+	assert_true: r.n+ts.length <= r.data.length,
+	r.n += ts.length,
+	n := 0,
+	if: r.start <= r.end then: {
+		n := min(r.data.length - r.end, ts.length),
+		for: 0 to: n-1 do: (i){
+			r.data[r.end] := ts[i],
+			++r.end
+		},
+		if: n >= ts.length then: {
+			return(), // done
+		},
+		r.end := 0, // wrap
+	},
+	for: n to: ts.length-1 do: (i){
+		r.data[r.end] := ts[i],
+		++r.end
+	},
+}
+
+// TODO: put min and max in a generic package.
+func min(a int, b int) int {
+	return: a < b true? {a} false? {b}
+}
+
+test push_back_array {
+	r := int ring_buffer :: new(),
+	push_back(r, [int] :: []),
+	assert: r elements: [int] :: [],
+
+	r := int ring_buffer :: new(),
+	push_back(r, [0]),
+	assert: r elements: [0],
+
+	r := int ring_buffer :: new(),
+	push_back(r, [0, 1]),
+	assert: r elements: [0, 1],
+
+	r := int ring_buffer :: new(),
+	push_back(r, [0, 1, 2, 3, 4]),
+	assert: r elements: [0, 1, 2, 3, 4],
+
+	r := int ring_buffer :: new([0, 1, 2]),
+	push_back(r, [3, 4, 5, 6, 7]),
+	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7],
+	push_back(r, [int] :: []),
+	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7],
+}
+
+test push_back_array_wraps_around {
+	r := int ring_buffer :: [
+		.n 4,
+		.start 2,
+		.end 6,
+		//  [] 0  1  2  3  4  5  6  7  8
+		//           s           e
+		.data [0, 0, 1, 2, 3, 4, 0, 0, 0],
+	],
+	push_back(r, [5, 6, 7, 8, 9]),
+	/*
+	[
+		.n 9,
+		.start 2
+		.end 2,
+		//  [] 0  1  2  3  4  5  6  7  8
+		//           s
+		//           e
+		.data [8, 9, 1, 2, 3, 4, 5, 6, 7],
+	]
+	*/
+	assert: r.n equals: 9,
+	assert: r.start equals: 2,
+	assert: r.end equals: 2,
+	assert: r.data equals: [8, 9, 1, 2, 3, 4, 5, 6, 7],
+}
+
+func grow(r T ring_buffer, t T, delta int) {
+	n := (r.data.length+1) * 2,
+	while: {n < r.n+delta} do: {
+		n *= 2,
+	},
+	data := [T] :: new(n, t),
 	start := data.length / 4,
 	end := start,
 	assert_true: data.length - start > r.n,
