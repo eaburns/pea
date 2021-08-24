@@ -77,9 +77,6 @@ Func [](r T ring_buffer, s int, e int) T ring_buffer {
 	if: s > e then: {
 		panic(print#string("start index is greater than end: ", s, " > ", e))
 	},
-	print(print#string("start=", r.start, " end=", r.end, "\n")),
-	print(print#string("s=", s, " e=", e)),
-	print("\n"),
 	return: [.n e - s, .start index(r, s), .end index(r, e), .data r.data]
 }
 
