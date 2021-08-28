@@ -1,0 +1,77 @@
+Import "assert"
+Import "basic"
+import "io"
+import "print"
+
+// A reader that reads from a string.
+Type S reader := S _reader
+
+type S _reader &[.str S]
+
+// Returns a new reader, reading from s.
+Func reader(s S)S reader : .length(S)int, [](S, int)uint8 {
+	return: [.str s]
+}
+
+// Reads up to the next d.length bytes of the string into d.
+// This function never returns the error? case.
+// This function never returns short reads,
+// unless there are insufficient bytes remaining in the string.
+Func read(r S reader, d [uint8])io#read_result :
+	.length(S)int,
+	[](S, int)uint8,
+	[](S, int, int)S,
+{
+	if: r.str.length = 0 then: {
+		return: [end?]
+	},
+	n := r.str.length < d.length true? {r.str.length} false? {d.length},
+	for: 0 to: n-1 do: (i){
+		d[i] := r.str[i],
+	},
+	r.str := r.str[n, r.str.length],
+	return: [ok? n],
+}
+
+test reader {
+	buf := [uint8] :: new(5, uint8 :: 0),
+
+	assert_end: read(reader(""), buf),
+	assert: buf equals: [uint8 :: 0, 0, 0, 0, 0],
+
+	assert: read(reader("foo"), buf) ok: "foo".length,
+	assert: buf equals: [uint8 :: 'f', 'o', 'o', 0, 0],
+
+	assert: read(reader("foobar"), buf) ok: buf.length,
+	assert: buf equals: [uint8 :: 'f', 'o', 'o', 'b', 'a'],
+
+	r := reader("foobar"),
+	assert: read(r, buf) ok: buf.length,
+	assert: buf equals: [uint8 :: 'f', 'o', 'o', 'b', 'a'],
+	fill: buf with: 0,
+	assert: read(r, buf) ok: 1,
+	assert: buf equals: [uint8 :: 'r', 0, 0, 0, 0],
+	assert_end: read(r, buf),
+}
+
+// TODO: make assert:ok: and assert_end: exported functions of io.
+
+func assert:ok:(res io#read_result, n int) {
+	res ok? (m int) {
+		if: m != n then: {
+			panic(print#string("got ok? ", m, ", expected ok? ", n)),
+		}
+	} error? (err) {
+		panic(print#string("got error? ", err, ", expected ok? ", n))
+	} end? {
+		panic(print#string("got end?, expected ok? ", n))
+	}
+}
+
+func assert_end:(res io#read_result) {
+	res ok? (n int) {
+		panic(print#string("got ok? ", n, ", expected end?"))
+	} error? (err) {
+		panic(print#string("got error? ", err, ", expected end?"))
+	}
+}
