@@ -1,0 +1,33 @@
+// [a?] [b?]
+// [a?] [b?]
+func main() {
+	a := [a?] :: [a?],
+	print_abc_no_inline(abc :: a),
+	print(" "),
+	b := [b?] :: [b?],
+	print_abc_no_inline(abc :: b),
+
+	print("\n"),
+
+	aa := [b?, a?] :: [a?],
+	print_abc_no_inline(abc :: aa),
+	print(" "),
+	bb := [b?, a?] :: [b?],
+	print_abc_no_inline(abc :: bb),
+}
+
+type abc [a?, b?, c? int]
+
+func print_abc_no_inline(x abc) {
+	x a? {
+		print("[a?]")
+	} b? {
+		print("[b?]"),
+	} c? (i){
+		print("[c? "),
+		print_int(i),
+		print("]"),
+	}
+}
+
+func print_int(_ int)

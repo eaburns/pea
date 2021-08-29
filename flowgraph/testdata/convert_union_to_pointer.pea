@@ -1,0 +1,22 @@
+// [a?] [b? 42]
+func main() {
+	a := [a?] :: [a?],
+	print_a_or_b_no_inline(a_or_b :: a),
+	print(" "),
+	b := [b? &int] :: [b? 42],
+	print_a_or_b_no_inline(a_or_b :: b),
+}
+
+type a_or_b [a?, b? &int]
+
+func print_a_or_b_no_inline(x a_or_b) {
+	x a? {
+		print("[a?]")
+	} b? (i){
+		print("[b? "),
+		print_int(i),
+		print("]"),
+	}
+}
+
+func print_int(_ int)

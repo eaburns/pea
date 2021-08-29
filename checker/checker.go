@@ -951,9 +951,23 @@ func convert(expr Expr, typ Type, explicit bool) (Expr, Error) {
 		if dstLitType := literalType(dstType); dstLitType != nil {
 			dstType = dstLitType
 		}
+		if isUnionSubsetConvertible(dstType, srcType) {
+			// Only consider union convert if the valpe types are not equal;
+			// if they are equal, then a noop convert is fine.
+			if !eqType(valueType(srcType), valueType(dstType)) {
+				return unionConvert(expr, typ, explicit), nil
+			}
+		}
 	} else if isLiteralType(dstType) {
 		if srcLitType := literalType(srcType); srcLitType != nil {
 			srcType = srcLitType
+		}
+		if isUnionSubsetConvertible(dstType, srcType) {
+			// Only consider union convert if the valpe types are not equal;
+			// if they are equal, then a noop convert is fine.
+			if !eqType(valueType(srcType), valueType(dstType)) {
+				return unionConvert(expr, typ, explicit), nil
+			}
 		}
 	}
 
@@ -980,6 +994,20 @@ func convert(expr Expr, typ Type, explicit bool) (Expr, Error) {
 		srcRefDepth--
 	}
 	return expr, nil
+}
+
+func unionConvert(expr Expr, typ Type, explicit bool) Expr {
+	if unionLit, ok := expr.(*UnionLit); ok {
+		unionLit.T = typ
+		return unionLit
+	}
+	return &Convert{
+		Kind:     UnionConvert,
+		Explicit: explicit,
+		Expr:     expr,
+		T:        typ,
+		L:        expr.Loc(),
+	}
 }
 
 func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
@@ -1668,6 +1696,10 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 		cvt.Expr = expr
 		cvt.Kind = Noop
 		return cvt, errs
+	}
+
+	if isUnionSubsetConvertible(literalType(typ), literalType(expr.Type())) {
+		return unionConvert(expr, typ, true), nil
 	}
 
 	switch basicKind(typ) {

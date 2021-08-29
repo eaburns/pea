@@ -422,6 +422,10 @@ const (
 
 	// NumConvert is a numeric conversion.
 	NumConvert
+
+	// UnionConvert converts a union value
+	// into a value of a superset union type.
+	UnionConvert
 )
 
 type Convert struct {

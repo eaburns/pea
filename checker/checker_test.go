@@ -1175,6 +1175,110 @@ func TestConversions(t *testing.T) {
 		{src: "type t [.x int]	type u [.x int]	func f(x u) { t :: x }"},
 
 		{
+			name: "union subset conversion literal is subset 1",
+			src: `
+				type a_or_b [a?, b? int]
+				func f(x [a?]) { a_or_b :: x }
+			`,
+		},
+		{
+			name: "union subset conversion literal is subset 2",
+			src: `
+				type a_or_b [a?, b? int]
+				func f(x [b? int]) { a_or_b :: x }
+			`,
+		},
+		{
+			name: "union subset conversion literal is superset 1",
+			src: `
+				func f(x [a?]) { [a?, b? int] :: x }
+			`,
+		},
+		{
+			name: "union subset conversion literal is superset 2",
+			src: `
+				func f(x [b? int]) { [a?, b? int] :: x }
+			`,
+		},
+		{
+			name: "union subset conversion fails case name mismatch",
+			src: `
+				type a_or_b [a?, b? int]
+				func f(x [c? float32]) { a_or_b :: x }
+			`,
+			err: `cannot convert x \(\[c\? float32\]\) to type a_or_b`,
+		},
+		{
+			name: "union subset conversion fails case type mismatch",
+			src: `
+				type a_or_b [a?, b? int]
+				func f(x [b? float32]) { a_or_b :: x }
+			`,
+			err: `cannot convert x \(\[b\? float32\]\) to type a_or_b`,
+		},
+		{
+			name: "union subset conversion fails typed untyped case mismatch 1",
+			src: `
+				type a_or_b [a?, b? int]
+				func f(x [b?]) { a_or_b :: x }
+			`,
+			err: `cannot convert x \(\[b\?\]\) to type a_or_b`,
+		},
+		{
+			name: "union subset conversion fails typed untyped case mismatch 2",
+			src: `
+				type a_or_b [a?, b? int]
+				func f(x [a? int]) { a_or_b :: x }
+			`,
+			err: `cannot convert x \(\[a\? int\]\) to type a_or_b`,
+		},
+		{
+			name: "union subset conversion fails superset",
+			src: `
+				type a_or_b [a?, b? int]
+				func f(x [a?, b? int, c?]) { a_or_b :: x }
+			`,
+			err: `cannot convert x \(\[a\?, b\? int, c\?\]\) to type a_or_b`,
+		},
+		{
+			name: "union subset conversion fails reference",
+			src: `
+				type a_or_b [a?, b? int]
+				func f(x &[a?]) { &a_or_b :: x }
+			`,
+			err: `cannot convert x \(&\[a\?\]\) to type &a_or_b`,
+		},
+		{
+			name: "union subset conversion fails for non-literals",
+			src: `
+				type a [a?]
+				type a_or_b [a?, b? int]
+				// Implicit conversion is not allowed here,
+				// because none of the types are literal.
+				func f(x a) { y := a_or_b :: [a?], y := x }
+			`,
+			err: `cannot convert argument x \(a\) to a_or_b`,
+		},
+		{
+			name: "union subset conversion for non-literals ok if explicit",
+			src: `
+				type a [a?]
+				type a_or_b [a?, b? int]
+				func f(x a) { a_or_b :: x }
+			`,
+		},
+		{
+			name: "union subset conversion cba",
+			src: `
+				type a_or_b_or_c [a?, b?, c?]
+				func f() {
+					cc := [c?, b?, a?] :: [c?],
+					_ := a_or_b_or_c :: cc,
+				}
+			`,
+		},
+
+		{
 			name: "explicit conversion of an explicit conversion is ok",
 			src:  "func f(x int) { int :: (&int :: x) }",
 		},

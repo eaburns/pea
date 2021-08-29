@@ -882,7 +882,7 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 	cases := make([]switchCase, len(sw.Cases))
 	for i, expr := range call.Args[1:] {
 		cas := sw.Cases[i]
-		cases[i].num = caseNum(sw.Union, cas)
+		cases[i].num = caseNum(sw.Union, cas.Name)
 		if cas.Type != nil {
 			union := unionBase.Type().(*AddrType).Elem.(*UnionType)
 			cases[i].def = caseDef(union, strings.TrimSuffix(cas.Name, "?"))
@@ -1280,6 +1280,8 @@ func (bb *blockBuilder) convert(cvt *checker.Convert) (*blockBuilder, Value) {
 			return bb, v
 		}
 		return bb, bb.op(NumConvert, dstType, v)
+	case checker.UnionConvert:
+		return bb.unionConvert(cvt)
 	default:
 		panic(fmt.Sprintf("impossible checker.Convert.Kind: %d", cvt.Kind))
 	}
@@ -1312,6 +1314,275 @@ func (bb *blockBuilder) buildStrConvert(cvt *checker.Convert) (*blockBuilder, Va
 	body.jump(cond)
 
 	return done, a
+}
+
+func (bb *blockBuilder) unionConvert(cvt *checker.Convert) (*blockBuilder, Value) {
+	dstType := bb.buildType(cvt.Type())
+	bb, src := bb.expr(cvt.Expr)
+
+	switch dstType := dstType.(type) {
+	case *AddrType:
+		return bb.unionConvertToAddr(dstType, src)
+	case *IntType:
+		return bb.unionConvertToInt(cvt, dstType, src)
+	case *StructType:
+		// The source could be an IntType, *AddrType pointer-style union,
+		// or an AddrType of a StructType union.
+		if _, ok := src.Type().(*IntType); ok {
+			return bb.unionConvertIntToUnion(cvt, dstType, src)
+		}
+		if isPointer(cvt.Expr.Type().(*checker.UnionType)) {
+			return bb.unionConvertAddrToUnion(cvt, dstType, src)
+		}
+		return bb.unionConvertUnionToUnion(cvt, dstType, src)
+	default:
+		panic(fmt.Sprintf("bad union type: %s", dstType))
+	}
+	panic("unimplemented")
+}
+
+func (bb *blockBuilder) unionConvertToAddr(dstType *AddrType, src Value) (*blockBuilder, Value) {
+	// The source is either the untyped case or the typed case.
+	// If it is the untyped case, it must be an IntType; this is the null case.
+	// If it is the typed case, it will be a StructType union with one data element;
+	// and we want to get a pointer to this data element.
+	if _, ok := src.Type().(*IntType); ok {
+		return bb, bb.null(dstType)
+	}
+
+	structAddrType, ok := src.Type().(*AddrType)
+	if !ok {
+		panic(fmt.Sprintf("impossible union convert src type: %s", src.Type()))
+	}
+	structType, ok := structAddrType.Elem.(*StructType)
+	if !ok || len(structType.Fields) != 2 {
+		panic(fmt.Sprintf("impossible union convert src type: %s", src.Type()))
+	}
+	unionField := bb.field(src, structType.Fields[1])
+	unionAddrType, ok := unionField.Type().(*AddrType)
+	if !ok {
+		panic(fmt.Sprintf("impossible union convert src type: %s", src.Type()))
+	}
+	unionType, ok := unionAddrType.Elem.(*UnionType)
+	if !ok || len(unionType.Cases) != 1 {
+		panic(fmt.Sprintf("impossible union convert src type: %s", src.Type()))
+	}
+	caseAddr := bb.Case(unionField, unionType.Cases[0])
+	if !caseAddr.Type().(*AddrType).Elem.eq(dstType) {
+		panic(fmt.Sprintf("impossible union convert: %s <- %s",
+			dstType, caseAddr.Type()))
+	}
+	return bb, bb.load(caseAddr)
+}
+
+func unionType(typ checker.Type) *checker.UnionType {
+	switch typ := typ.(type) {
+	case *checker.UnionType:
+		return typ
+	case *checker.DefType:
+		return unionType(typ.Inst.Type)
+	case *checker.BasicType:
+		if typ.Kind == checker.Bool {
+			return &checker.UnionType{
+				Cases: []checker.CaseDef{
+					{Name: "false?"},
+					{Name: "true?"},
+				},
+			}
+		}
+		break
+	}
+	panic(fmt.Sprintf("not a union type: %s", typ))
+}
+
+func (bb *blockBuilder) unionConvertToInt(cvt *checker.Convert, dstType *IntType, src Value) (*blockBuilder, Value) {
+	// The source must be an IntType too.
+	if _, ok := src.Type().(*IntType); !ok {
+		panic(fmt.Sprintf("impossible union convert src type: %T", src.Type()))
+	}
+	dst := bb.alloc(dstType)
+	done := &blockBuilder{
+		fun:        bb.fun,
+		BasicBlock: &BasicBlock{Func: bb.fun.FuncDef},
+		L:          cvt.Loc(),
+	}
+	dstUnion := unionType(cvt.Type())
+	srcUnion := unionType(cvt.Expr.Type())
+	for srcNum := range srcUnion.Cases {
+		srcCase := &srcUnion.Cases[srcNum]
+		dstNum := caseNum(dstUnion, srcCase.Name)
+		if srcNum == len(srcUnion.Cases)-1 {
+			bb.store(dst, bb.intLit(strconv.Itoa(dstNum), dstType))
+			bb.jump(done)
+			break
+		}
+		yes := bb.fun.newBlock(cvt.Loc())
+		no := bb.fun.newBlock(cvt.Loc())
+		bb.ifEq(src, srcNum, yes, no)
+		yes.store(dst, yes.intLit(strconv.Itoa(dstNum), dstType))
+		yes.jump(done)
+		bb = no
+	}
+
+	bb.fun.mod.nextBlock++
+	done.Num = bb.fun.mod.nextBlock - 1
+	bb.fun.Blocks = append(bb.fun.Blocks, done.BasicBlock)
+	return done, done.load(dst)
+}
+
+func (bb *blockBuilder) unionConvertAddrToUnion(cvt *checker.Convert, dstType *StructType, src Value) (*blockBuilder, Value) {
+	srcUnion := unionType(cvt.Expr.Type())
+	dstUnion := unionType(cvt.Type())
+	if len(srcUnion.Cases) != 2 {
+		panic(fmt.Sprintf("impossible pointer union type: %s", srcUnion))
+	}
+	nullCaseNum := -1
+	nonNullCaseNum := -1
+	var nonNullCase *CaseDef
+	for i := range srcUnion.Cases {
+		srcCase := &srcUnion.Cases[i]
+		name := srcCase.Name
+		if srcCase.Type == nil {
+			nullCaseNum = caseNum(dstUnion, name)
+		} else {
+			nonNullCaseNum = caseNum(dstUnion, srcCase.Name)
+			nonNullCase = unionCase(dstType.Fields[1].Type.(*UnionType), name)
+		}
+	}
+	if nullCaseNum < 0 || nonNullCaseNum < 0 {
+		panic(fmt.Sprintf("impossible pointer union type: %s", srcUnion))
+	}
+
+	res := bb.alloc(dstType)
+	tag := bb.field(res, dstType.Fields[0])
+	tagIntType := tag.Type().(*AddrType).Elem
+	yes := bb.fun.newBlock(cvt.Loc())
+	no := bb.fun.newBlock(cvt.Loc())
+	done := bb.fun.newBlock(cvt.Loc())
+	bb.ifNull(src, yes, no)
+
+	yes.store(tag, yes.intLit(strconv.Itoa(nullCaseNum), tagIntType))
+	yes.jump(done)
+
+	no.store(tag, no.intLit(strconv.Itoa(nonNullCaseNum), tagIntType))
+	unionField := no.field(res, dstType.Fields[1])
+	valField := no.Case(unionField, nonNullCase)
+	no.store(valField, src)
+	no.jump(done)
+	return done, res
+}
+
+func (bb *blockBuilder) unionConvertIntToUnion(cvt *checker.Convert, dstType *StructType, src Value) (*blockBuilder, Value) {
+	if _, ok := src.Type().(*IntType); !ok {
+		panic(fmt.Sprintf("impossible union convert src type: %T", src.Type()))
+	}
+
+	res := bb.alloc(dstType)
+	tag := bb.field(res, dstType.Fields[0])
+	tagIntType := tag.Type().(*AddrType).Elem
+	done := &blockBuilder{
+		fun:        bb.fun,
+		BasicBlock: &BasicBlock{Func: bb.fun.FuncDef},
+		L:          cvt.Loc(),
+	}
+	dstUnion := unionType(cvt.Type())
+	srcUnion := unionType(cvt.Expr.Type())
+	for srcNum := range srcUnion.Cases {
+		srcCase := &srcUnion.Cases[srcNum]
+		dstNum := caseNum(dstUnion, srcCase.Name)
+		if srcNum == len(srcUnion.Cases)-1 {
+			bb.store(tag, bb.intLit(strconv.Itoa(dstNum), tagIntType))
+			bb.jump(done)
+			break
+		}
+		yes := bb.fun.newBlock(cvt.Loc())
+		no := bb.fun.newBlock(cvt.Loc())
+		bb.ifEq(src, srcNum, yes, no)
+		yes.store(tag, yes.intLit(strconv.Itoa(dstNum), tagIntType))
+		yes.jump(done)
+		bb = no
+	}
+	bb.fun.mod.nextBlock++
+	done.Num = bb.fun.mod.nextBlock - 1
+	bb.fun.Blocks = append(bb.fun.Blocks, done.BasicBlock)
+	return done, res
+}
+
+func (bb *blockBuilder) unionConvertUnionToUnion(cvt *checker.Convert, dstStructType *StructType, src Value) (*blockBuilder, Value) {
+	srcStructAddrType, ok := src.Type().(*AddrType)
+	if !ok {
+		panic(fmt.Sprintf("impossible union convert src type: %s", src.Type()))
+	}
+	srcStructType, ok := srcStructAddrType.Elem.(*StructType)
+	if !ok || len(srcStructType.Fields) != 2 {
+		panic(fmt.Sprintf("impossible union convert src type: %s", src.Type()))
+	}
+	srcUnionType, ok := srcStructType.Fields[1].Type.(*UnionType)
+	if !ok {
+		panic(fmt.Sprintf("impossible union convert src type: %s", src.Type()))
+	}
+
+	dstUnionType, ok := dstStructType.Fields[1].Type.(*UnionType)
+	if !ok {
+		panic(fmt.Sprintf("impossible union convert dst type: %s", dstStructType))
+	}
+
+	res := bb.alloc(dstStructType)
+	tag := bb.field(res, dstStructType.Fields[0])
+	srcTagField := bb.load(bb.field(src, srcStructType.Fields[0]))
+	tagIntType := tag.Type().(*AddrType).Elem
+	done := &blockBuilder{
+		fun:        bb.fun,
+		BasicBlock: &BasicBlock{Func: bb.fun.FuncDef},
+		L:          cvt.Loc(),
+	}
+	dstUnion := unionType(cvt.Type())
+	srcUnion := unionType(cvt.Expr.Type())
+	for srcNum := range srcUnion.Cases {
+		srcCase := &srcUnion.Cases[srcNum]
+		dstNum := caseNum(dstUnion, srcCase.Name)
+		if srcNum == len(srcUnion.Cases)-1 {
+			bb.store(tag, bb.intLit(strconv.Itoa(dstNum), tagIntType))
+			if c := unionCase(srcUnionType, srcCase.Name); c != nil {
+				srcUnionField := bb.field(src, srcStructType.Fields[1])
+				srcCaseAddr := bb.Case(srcUnionField, c)
+				dstCase := unionCase(dstUnionType, srcCase.Name)
+				dstUnionField := bb.field(res, dstStructType.Fields[1])
+				dstCaseAddr := bb.Case(dstUnionField, dstCase)
+				if dstCaseAddr.Type().(*AddrType).Elem.isSmall() {
+					bb.store(dstCaseAddr, bb.load(srcCaseAddr))
+				} else {
+					bb.copy(dstCaseAddr, srcCaseAddr)
+				}
+			}
+			bb.jump(done)
+			break
+		}
+		yes := bb.fun.newBlock(cvt.Loc())
+		no := bb.fun.newBlock(cvt.Loc())
+		bb.ifEq(srcTagField, srcNum, yes, no)
+		yes.store(tag, yes.intLit(strconv.Itoa(dstNum), tagIntType))
+		if c := unionCase(srcUnionType, srcCase.Name); c != nil {
+			srcUnionField := yes.field(src, srcStructType.Fields[1])
+			srcCaseAddr := yes.Case(srcUnionField, c)
+			dstCase := unionCase(dstUnionType, c.Name)
+			dstUnionField := yes.field(res, dstStructType.Fields[1])
+			dstCaseAddr := yes.Case(dstUnionField, dstCase)
+			if dstCaseAddr.Type().(*AddrType).Elem.isSmall() {
+				yes.store(dstCaseAddr, yes.load(srcCaseAddr))
+			} else {
+				yes.copy(dstCaseAddr, srcCaseAddr)
+			}
+		}
+		yes.jump(done)
+		bb = no
+	}
+
+	bb.fun.mod.nextBlock++
+	done.Num = bb.fun.mod.nextBlock - 1
+	bb.fun.Blocks = append(bb.fun.Blocks, done.BasicBlock)
+
+	return done, res
 }
 
 func (bb *blockBuilder) arrayLit(lit *checker.ArrayLit) (*blockBuilder, Value) {
@@ -1371,7 +1642,7 @@ func (bb *blockBuilder) unionLit(lit *checker.UnionLit) (*blockBuilder, Value) {
 	}
 	t := bb.buildType(lit.T).(*AddrType).Elem
 	a := bb.alloc(bb.buildType(lit.T).(*AddrType).Elem)
-	n := caseNum(lit.Union, lit.Case)
+	n := caseNum(lit.Union, lit.Case.Name)
 	switch t := t.(type) {
 	case *IntType:
 		bb.store(a, bb.intLit(strconv.Itoa(n), bb.fun.mod.intType()))
@@ -1388,7 +1659,7 @@ func (bb *blockBuilder) unionLit(lit *checker.UnionLit) (*blockBuilder, Value) {
 			break
 		}
 		data := bb.field(a, t.Fields[1])
-		c := unionCase(t.Fields[1].Type.(*UnionType), lit.Case)
+		c := unionCase(t.Fields[1].Type.(*UnionType), lit.Case.Name)
 		cas := bb.Case(data, c)
 		if c.Type.isSmall() {
 			bb.store(cas, v)
@@ -1401,23 +1672,25 @@ func (bb *blockBuilder) unionLit(lit *checker.UnionLit) (*blockBuilder, Value) {
 	return bb, a
 }
 
-func caseNum(u *checker.UnionType, cas *checker.CaseDef) int {
+func caseNum(u *checker.UnionType, name string) int {
 	for i := range u.Cases {
-		if &u.Cases[i] == cas {
+		if u.Cases[i].Name == name {
 			return i
 		}
 	}
 	panic("no such case")
 }
 
-func unionCase(u *UnionType, cas *checker.CaseDef) *CaseDef {
-	name := strings.TrimSuffix(cas.Name, "?")
+// unionCase returns the case of the UnionType with the given name
+// or nil if there is not typed case of that name.
+func unionCase(u *UnionType, name string) *CaseDef {
+	name = strings.TrimSuffix(name, "?")
 	for _, c := range u.Cases {
 		if c.Name == name {
 			return c
 		}
 	}
-	panic("no such case")
+	return nil
 }
 
 func (bb *blockBuilder) blockLit(lit *checker.BlockLit) (*blockBuilder, Value) {

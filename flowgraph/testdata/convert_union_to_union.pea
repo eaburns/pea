@@ -1,0 +1,53 @@
+// [a? hello] [b?] [c? 42]
+// [a? hello] [b?] [c? 42]
+// [a? hello] [b?] [c? 42]
+func main() {
+	a := [a? string] :: [a? "hello"],
+	print_abc_no_inline(abc :: a),
+	print(" "),
+	b := [b?] :: [b?],
+	print_abc_no_inline(abc :: b),
+	print(" "),
+	c := [c? int] :: [c? 42],
+	print_abc_no_inline(abc :: c),
+
+	print("\n"),
+
+	aa := [b?, a? string] :: [a? "hello"],
+	print_abc_no_inline(abc :: aa),
+	print(" "),
+	bb := [b?, a? string] :: [b?],
+	print_abc_no_inline(abc :: bb),
+	print(" "),
+	cc := [b?, c? int] :: [c? 42],
+	print_abc_no_inline(abc :: cc),
+
+	print("\n"),
+
+	aaa := [c? int, a? string, b?] :: [a? "hello"],
+	print_abc_no_inline(abc :: aaa),
+	print(" "),
+	bbb := [c? int, a? string, b?] :: [b?],
+	print_abc_no_inline(abc :: bbb),
+	print(" "),
+	ccc := [c? int, a? string, b?] :: [c? 42],
+	print_abc_no_inline(abc :: ccc),
+}
+
+type abc [a? string, b?, c? int]
+
+func print_abc_no_inline(x abc) {
+	x a? (s string){
+		print("[a? "),
+		print(s),
+		print("]"),
+	} b? {
+		print("[b?]"),
+	} c? (i){
+		print("[c? "),
+		print_int(i),
+		print("]"),
+	}
+}
+
+func print_int(_ int)

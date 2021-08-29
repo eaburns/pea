@@ -549,6 +549,8 @@ func (c ConvertKind) String() string {
 		return "NumConvert"
 	case StrConvert:
 		return "StrConvert"
+	case UnionConvert:
+		return "UnionConvert"
 	default:
 		panic("impossible ConvertKind")
 	}

@@ -1,0 +1,35 @@
+// [a?] [b? 42]
+// [a?] [b? 42]
+func main() {
+	// Pointer null is union tag 0, non-null is 1.
+	a := [a?, b? &int] :: [a?],
+	print_abc_no_inline(abc :: a),
+	print(" "),
+	b := [a?, b? &int] :: [b? 42],
+	print_abc_no_inline(abc :: b),
+
+	print("\n"),
+
+	// Pointer null is union tag 1, non-null is 0.
+	aa := [b? &int, a?] :: [a?],
+	print_abc_no_inline(abc :: aa),
+	print(" "),
+	bb := [b? &int, a?] :: [b? 42],
+	print_abc_no_inline(abc :: bb),
+}
+
+type abc [a?, b? &int, c?]
+
+func print_abc_no_inline(x abc) {
+	x a? {
+		print("[a?]")
+	} b? (i){
+		print("[b? "),
+		print_int(i),
+		print("]"),
+	} c? {
+		print("[c?]")
+	}
+}
+
+func print_int(_ int)
