@@ -129,7 +129,14 @@ func (interp *Interp) step() {
 		} else {
 			switch instr.Op {
 			case flowgraph.Eq:
-				yes = x.Val().(SignedInt).Int64() == int64(instr.X)
+				switch x.Val().(type) {
+				case SignedInt:
+					yes = x.Val().(SignedInt).Int64() == int64(instr.X)
+				case UnsignedInt:
+					yes = x.Val().(UnsignedInt).Uint64() == uint64(instr.X)
+				default:
+					panic(fmt.Sprintf("bad eq type: %T", x.Val()))
+				}
 			case flowgraph.Less:
 				yes = x.Val().(SignedInt).Int64() < int64(instr.X)
 			default:
@@ -298,9 +305,9 @@ func (interp *Interp) step() {
 		var x Val
 		switch instr.T.Size {
 		case 32:
-			x = Uint32(mustParseFloat(instr.Text, 32))
+			x = Float32(mustParseFloat(instr.Text, 32))
 		case 64:
-			x = Uint64(mustParseFloat(instr.Text, 64))
+			x = Float64(mustParseFloat(instr.Text, 64))
 		default:
 			panic(fmt.Sprintf("bad float size: %d", instr.T.Size))
 		}

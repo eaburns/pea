@@ -150,9 +150,9 @@ func newVal(typ flowgraph.Type) Val {
 	case *flowgraph.FloatType:
 		switch typ.Size {
 		case 32:
-			return Uint32(0)
+			return Float32(0)
 		case 64:
-			return Uint64(0)
+			return Float64(0)
 		default:
 			panic(fmt.Sprintf("bad float size: %d", typ.Size))
 		}
