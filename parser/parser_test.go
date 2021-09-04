@@ -240,6 +240,13 @@ func TestExpr(t *testing.T) {
 			},
 		},
 		{
+			`int::foo`,
+			&Convert{
+				Expr: Ident{Name: "foo"},
+				Type: &NamedType{Name: Ident{Name: "int"}},
+			},
+		},
+		{
 			`int :: foo`,
 			&Convert{
 				Expr: Ident{Name: "foo"},
@@ -339,6 +346,41 @@ func TestExpr(t *testing.T) {
 				},
 			},
 		},
+		{
+			`a foo: x`,
+			&Call{
+				Fun: Ident{Name: "foo:"},
+				Args: []Expr{
+					Ident{Name: "a"},
+					Ident{Name: "x"},
+				},
+			},
+		},
+		{
+			`a bar#foo: x`,
+			&Call{
+				Fun: &ModSel{
+					Mod:  Ident{Name: "bar"},
+					Name: Ident{Name: "foo:"},
+				},
+				Args: []Expr{
+					Ident{Name: "a"},
+					Ident{Name: "x"},
+				},
+			},
+		},
+		{
+			`a foo: x bar: y baz: z`,
+			&Call{
+				Fun: Ident{Name: "foo:bar:baz:"},
+				Args: []Expr{
+					Ident{Name: "a"},
+					Ident{Name: "x"},
+					Ident{Name: "y"},
+					Ident{Name: "z"},
+				},
+			},
+		},
 
 		{
 			`foo: x`,
@@ -369,6 +411,24 @@ func TestExpr(t *testing.T) {
 					Ident{Name: "x"},
 					Ident{Name: "y"},
 					Ident{Name: "z"},
+				},
+			},
+		},
+		{
+			`foo: x bar: (y baz: z)`,
+			&Call{
+				Fun: Ident{Name: "foo:bar:"},
+				Args: []Expr{
+					Ident{Name: "x"},
+					&SubExpr{
+						Expr: &Call{
+							Fun: Ident{Name: "baz:"},
+							Args: []Expr{
+								Ident{Name: "y"},
+								Ident{Name: "z"},
+							},
+						},
+					},
 				},
 			},
 		},

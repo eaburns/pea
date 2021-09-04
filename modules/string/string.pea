@@ -17,7 +17,7 @@ Func index(h S, n S) int option :
 	for: 1 to: n.length-1 do: (_) {
 		d := d << 1,
 	},
-	hh := uint:: 0,
+	hh := uint :: 0,
 	hn := uint :: 0,
 	for: 0 to: n.length-1 do: (i) {
 		hh := (hh<<1) + (uint :: h[i]),

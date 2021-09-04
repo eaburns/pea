@@ -167,7 +167,7 @@ Func read_dir(d dir) read_dir_result {
 		if: buf.length = 0 then: {
 			return: [eof?]
 		},
-		ent := string:: buf
+		ent := string :: buf
 	},
 	return: [ok? ent]
 }

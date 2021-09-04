@@ -185,18 +185,25 @@ AsgnOp "assignment operator" <- _ name:":=" {
 	return Ident{Name: name, L: l(parser, start, end)}
 }
 
-KwCall <- mod:ModTag? nameArgs:NameArg<Kwd, KwArg>+ {
-	return Expr(nary(l(parser, start, end), mod, nameArgs))
+KwCall <- arg0:KwArg mod:ModTag? args:NameArg<Kwd, KwArg>+ {
+	call := nary(l(parser, start, end), mod, args)
+	call.Args = append([]Expr{arg0}, call.Args...)
+	return Expr(call)
 }
-KwArg <- Cvt / CvtArg
+KwArg <- KwCall1 / KwArg1
+
+KwCall1 <- mod:ModTag? args:NameArg<Kwd, KwArg1>+ {
+	return Expr(nary(l(parser, start, end), mod, args))
+}
+KwArg1 <- Cvt / CvtArg
 
 Cvt <- typ:Type _ "::" expr:CvtArg {
 	return Expr(&Convert{Expr: expr, Type: typ, L: l(parser, start, end)})
 }
 CvtArg <- Switch / SwitchArg
 
-Switch <- arg0:SwitchArg mod:ModTag? nameArgs:NameArg<CaseId, SwitchArg>+ {
-	call := nary(l(parser, start, end), mod, nameArgs)
+Switch <- arg0:SwitchArg mod:ModTag? args:NameArg<CaseId, SwitchArg>+ {
+	call := nary(l(parser, start, end), mod, args)
 	call.Args = append([]Expr{arg0}, call.Args...)
 	return Expr(call)
 }
@@ -318,7 +325,7 @@ ModSel <-
 		})
 	}
 
-ModTag <- ids:(i:Id "#" { return Ident(i) })+ {
+ModTag <- ids:ModId+ {
 	return Ident(modTag(ids))
 }
 
@@ -334,10 +341,6 @@ Cases "cases" <- _ cases:CaseId+ {
 
 Kwds "keywords" <- _ keywords:Kwd+ {
 	return Ident{Name: catNames(keywords), L: l(parser, start, end)}
-}
-
-Kwd "keyword" <- _ id:Id ":" {
-	return Ident{Name: id.Name + ":", L: l(parser, start, end)}
 }
 
 ArrayLit <-
@@ -375,10 +378,6 @@ UnionLit <- _ "[" cas:CaseVal _ "]" {
 CaseVal <- _ name:CaseId v:Expr? {
 	var val Expr; if v != nil { val = *v }
 	return CaseVal{Name: name, Val: val, L: l(parser, start, end)}
-}
-
-CaseId "case id" <- _ id:Id "?" {
-	return Ident{Name: id.Name + "?", L: l(parser, start, end)}
 }
 
 BlkLit <- (_ "(" ps:BlkParms? _ ")")? _ "{" es:Exprs? _ "}" {
@@ -433,7 +432,19 @@ FloatLit <- _ text:(("+" / "-")? D+ "." D+ ([eE] [+\-]? D+)?) {
 	return Expr(&FloatLit{Text: text, L: l(parser, start, end)})
 }
 
-Id "identifier" <- _ !Reserved !TypeVar name:(("_" / L) ("_" / L / D)*) {
+Kwd "keyword" <- _ name:(("_" / L) ("_" / L / D)*) ":" !":" {
+	return Ident{Name: name+":", L: l(parser, start, end)}
+}
+
+CaseId "case id" <- _ name:(("_" / L) ("_" / L / D)*) "?" {
+	return Ident{Name: name+"?", L: l(parser, start, end)}
+}
+
+ModId "mod id" <- _ name:(("_" / L) ("_" / L / D)*) "#" {
+	return Ident{Name: name, L: l(parser, start, end)}
+}
+
+Id "identifier" <- _ !Reserved !TypeVar !Kwd !CaseId !ModId name:(("_" / L) ("_" / L / D)*) {
 	return Ident{Name: name, L: l(parser, start, end)}
 }
 
