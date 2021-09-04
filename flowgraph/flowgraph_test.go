@@ -63,7 +63,7 @@ func TestOptimize(t *testing.T) {
 	}
 }
 
-func runTest(f *flowgraph.Mod) string {
+func runTest(f *flowgraph.Mod) (ret string) {
 	var stdout strings.Builder
 	r := interp.New()
 	r.Out = &stdout
@@ -80,6 +80,11 @@ func runTest(f *flowgraph.Mod) string {
 	if main == nil {
 		panic("no main func")
 	}
+	defer func() {
+		if p := recover(); p != nil {
+			ret = "Panic: " + p.(string)
+		}
+	}()
 	r.Eval(main)
 	return stdout.String()
 }

@@ -1,0 +1,6 @@
+// Panic: divide by zero
+func main() {
+	x := 1,
+	y := 0,
+	x / y
+}

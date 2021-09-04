@@ -47,8 +47,14 @@ func TestLLVM(t *testing.T) {
 				t.Fatalf(err.Error())
 			}
 			got := runTest(t, f, locFiles)
-			if got != want {
-				t.Errorf("%s\ngot:\n%q\nwant:\n%q", path, got, want)
+			if strings.HasPrefix(want, "Panic: ") {
+				if !strings.HasPrefix(got, want) {
+					t.Errorf("%s\ngot:\n%q\nwant:\n%q", path, got, want)
+				}
+			} else {
+				if got != want {
+					t.Errorf("%s\ngot:\n%q\nwant:\n%q", path, got, want)
+				}
 			}
 		})
 	}
@@ -93,7 +99,7 @@ func runTest(t *testing.T, f *flowgraph.Mod, locFiles loc.Files) string {
 	if err := cmd.Run(); err != nil {
 		t.Log(stdout.String())
 		t.Log(stderr.String())
-		t.Fatalf("error running the command: %s", err)
+		t.Logf("error running the command: %s", err)
 	}
 	return stdout.String()
 }

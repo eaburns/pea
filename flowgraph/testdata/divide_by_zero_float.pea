@@ -1,0 +1,7 @@
+// No panic dividing by zero for floats.
+
+func main() {
+	x := float64 :: 1.5,
+	y := float64 :: 0.0,
+	x / y
+}

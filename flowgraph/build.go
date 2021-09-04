@@ -1089,7 +1089,24 @@ func (bb *blockBuilder) buildOp(call *checker.Call) (*blockBuilder, Value) {
 			args = append(args, v)
 		}
 	}
+
 	typ := bb.buildType(fun.Ret)
+	if _, ok := typ.(*IntType); ok && fun.Op == checker.Divide {
+		yes := bb.fun.newBlock(call.L)
+		no := bb.fun.newBlock(call.L)
+		bb.ifEq(args[1], 0, yes, no)
+		yes.op(Panic, nil, yes.strLit(&checker.StrLit{
+			Text: "divide by zero",
+			T: &checker.RefType{
+				Type: &checker.BasicType{Kind: checker.String, L: call.L},
+				L:    call.L,
+			},
+			L: call.L,
+		}))
+		yes.done = true
+		bb = no
+	}
+
 	op := bb.op(opMap[fun.Op], typ, args...)
 	if op.Op == Panic {
 		// Panic breaks control flow, so end the block.
