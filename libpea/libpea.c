@@ -42,7 +42,8 @@ void pea_abort() {
 	abort();
 }
 
-static void die(const char *msg, int err) {
+static void abort_errno(const char *msg, int err) {
+	puts("Panic: ");
 	char buf[256];
 	int n = strerror_r(err, buf, 256);
 	if (n != 0) {
@@ -66,7 +67,7 @@ static void create_frame_stack() {
 	if (err == 0) {
 		return;
 	}
-	die("failed to create frame stack key", err);
+	abort_errno("failed to create frame stack key", err);
 }
 
 // pea_new_frame returns a new frame used for long returning.
@@ -186,7 +187,7 @@ void pea_panic(struct pea_string* pstr, const char* file, int32_t line) {
 	if (test_panic_fd >= 0) {
 		FILE* test_panic_file = fdopen(test_panic_fd, "w");
 		if (test_panic_file == NULL) {
-			die("failed to open the test panic filedescr", errno);
+			abort_errno("failed to open the test panic filedescr", errno);
 		}
 		if (test_file_name != NULL) {
 			fprintf(test_panic_file, "%s:%d\n", test_file_name, test_file_line);
@@ -215,7 +216,7 @@ static void print_test_output(int fd) {
 	for (; ;) {
 		ssize_t n = read(fd, buf, 512);
 		if (n < 0 && errno != EAGAIN) {
-			die("failed to read", errno);
+			abort_errno("failed to read", errno);
 		}
 		if (n == 0) {
 			break;
@@ -239,22 +240,22 @@ int32_t pea_run_test(void(*test)(), const char* name) {
 	char out_file[] = "/tmp/pea.out.XXXXXX";
 	int out = mkstemp(out_file);
 	if (out < 0) {
-		die("failed to create the test output file", errno);
+		abort_errno("failed to create the test output file", errno);
 	}
 	char panic_file[] = "/tmp/pea.panic.XXXXXX";
 	int panic_out = mkstemp(panic_file);
 	if (panic_out < 0) {
-		die("failed to create the test panic output file", errno);
+		abort_errno("failed to create the test panic output file", errno);
 	}
 
 	pid_t kid = fork();
 	if (kid < 0) {
-		die("fork failed", errno);
+		abort_errno("fork failed", errno);
 	}
 	if (kid == 0) {
 		int in = open("/dev/null", O_RDONLY);
 		if (in < 0) {
-			die("failed to open /dev/null for reading", errno);
+			abort_errno("failed to open /dev/null for reading", errno);
 		}
 		dup2(in, STDIN_FILENO);
 		dup2(out, STDOUT_FILENO);
@@ -271,8 +272,7 @@ int32_t pea_run_test(void(*test)(), const char* name) {
 
 	int status = 0;
 	if (waitpid(kid, &status, 0) < 0) {
-		puts("wait failed");
-		pea_abort();
+		abort_errno("wait failed", errno);
 	}
 	if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		puts("ok");
@@ -284,7 +284,7 @@ int32_t pea_run_test(void(*test)(), const char* name) {
 	puts("FAILED");
 	panic_out = open(panic_file, O_RDONLY);
 	if (panic_out < 0) {
-		die("failed to open the test output file", errno);
+		abort_errno("failed to open the test output file", errno);
 	}
 	print_test_output(panic_out);
 	close(panic_out);
@@ -294,7 +294,7 @@ int32_t pea_run_test(void(*test)(), const char* name) {
 	close(out);
 	out = open(out_file, O_RDONLY);
 	if (out < 0) {
-		die("failed to open the test output file", errno);
+		abort_errno("failed to open the test output file", errno);
 	}
 	print_test_output(out);
 	close(out);
