@@ -123,6 +123,7 @@ func (g *gen) writeHeader(mod *flowgraph.Mod) {
 		"declare void @pea_set_test_call_loc(i8*, i32)\n",
 		"declare void @pea_panic(%string* nocapture, i8* nocapture, i32) readonly noreturn\n",
 		"declare %string* @pea_index_oob_string(", g.int(), ", ", g.int(), ")\n",
+		"declare %string* @pea_slice_oob_string(", g.int(), ", ", g.int(), ", ", g.int(), ")\n",
 		"declare void @pea_print(%string* nocapture) readonly\n",
 		"declare void @pea_print_int(i64)\n",
 		"declare void @llvm.memcpy.p0i8.p0i8.", g.int(), "(i8*, i8*, ", g.int(), ", i1)\n",
@@ -441,7 +442,11 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 				g.line(cond, " = icmp eq ", typeVal{r.Value}, ", ", r.X)
 			}
 		case flowgraph.Less:
-			g.line(cond, " = icmp slt ", typeVal{r.Value}, ", ", r.X)
+			if r.XValue == nil {
+				g.line(cond, " = icmp slt ", typeVal{r.Value}, ", ", r.X)
+			} else {
+				g.line(cond, " = icmp slt ", typeVal{r.Value}, ", ", r.XValue)
+			}
 		case flowgraph.LessEq:
 			g.line(cond, " = icmp sle ", typeVal{r.Value}, ", ", r.XValue)
 		default:
@@ -715,6 +720,8 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			g.line("call void @pea_print(", typeVal{r.Args[0]}, ")")
 		case flowgraph.IndexOOBString:
 			g.line(r, " = call %string* @pea_index_oob_string(", typeVal{r.Args[0]}, ", ", typeVal{r.Args[1]}, ")")
+		case flowgraph.SliceOOBString:
+			g.line(r, " = call %string* @pea_slice_oob_string(", typeVal{r.Args[0]}, ", ", typeVal{r.Args[1]}, ", ", typeVal{r.Args[2]}, ")")
 		default:
 			panic(fmt.Sprintf("unknown op: %s", r.Op))
 		}

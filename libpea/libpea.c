@@ -138,6 +138,18 @@ struct pea_string* pea_index_oob_string(intptr_t index, intptr_t length) {
 	return pstr;
 }
 
+// pea_slice_oob_string returns a slice-out-of-bounds panic string.
+struct pea_string* pea_slice_oob_string(intptr_t start, intptr_t end, intptr_t length) {
+	const int buf_size = 500;
+	char *buf = pea_malloc(buf_size);
+	int n = snprintf(buf, buf_size, "slice out of bounds: start=%ld, end=%ld, length=%ld",
+		(long int) start, (long int) end, (long int) length);
+	struct pea_string *pstr = pea_malloc(sizeof(struct pea_string));
+	pstr->data = buf;
+	pstr->length = n >= buf_size ? buf_size - 1 : n;
+	return pstr;
+}
+
 // test_panic_fd, if non-negative, as a file descriptor
 // to copy panic messages to in implementation of test failure output.
 // This is non-negative if executing a test.

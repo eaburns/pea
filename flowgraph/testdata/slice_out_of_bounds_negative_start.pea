@@ -1,0 +1,5 @@
+// Panic: slice out of bounds: start=-1, end=0, length=5
+func main() {
+	a := [int] :: [0, 1, 2, 3, 4],
+	a[-1, 0]
+}

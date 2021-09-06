@@ -168,6 +168,20 @@ func (mb *modBuilder) intType() *IntType {
 	return &IntType{Size: 64}
 }
 
+func (mb *modBuilder) stringType() *AddrType {
+	return &AddrType{
+		Elem: &StructType{
+			Name: "string",
+			Fields: []*FieldDef{
+				{Num: 0, Name: "length", Type: mb.intType()},
+				{Num: 1, Name: "data", Type: &ArrayType{
+					Elem: &IntType{Size: 8, Unsigned: true},
+				}},
+			},
+		},
+	}
+}
+
 func (mb *modBuilder) buildType(typ checker.Type) Type {
 	switch typ := typ.(type) {
 	case *checker.DefType:
@@ -1196,13 +1210,7 @@ func (bb *blockBuilder) buildIndex(call *checker.Call) (*blockBuilder, Value) {
 	// oob block.
 	arrayLenField = oob.field(base, arrayType.Fields[0])
 	arrayLen = oob.load(arrayLenField)
-	strType := &AddrType{
-		Elem: oob.buildType(&checker.BasicType{
-			Kind: checker.String,
-			L:    call.L,
-		}),
-	}
-	str := oob.op(IndexOOBString, strType, index, arrayLen)
+	str := oob.op(IndexOOBString, bb.fun.mod.stringType(), index, arrayLen)
 	oob.op(Panic, nil, str)
 	bb = inBounds
 
@@ -1228,7 +1236,26 @@ func (bb *blockBuilder) buildSlice(call *checker.Call) (*blockBuilder, Value) {
 	bb, base := bb.expr(call.Args[0])
 	bb, start := bb.expr(call.Args[1])
 	bb, end := bb.expr(call.Args[2])
+
 	arrayType := base.Type().(*AddrType).Elem.(*StructType)
+
+	// Bounds check.
+	positive := bb.fun.newBlock(call.L)
+	oob := bb.fun.newBlock(call.L)
+	notReversed := bb.fun.newBlock(call.L)
+	inBounds := bb.fun.newBlock(call.L)
+	bb.ifLess(start, 0, oob, positive)
+	positive.ifLessEq(start, end, notReversed, oob)
+	srcLenField := notReversed.field(base, arrayType.Fields[0])
+	srcLen := notReversed.load(srcLenField)
+	notReversed.ifLessValue(srcLen, end, oob, inBounds)
+	// oob block.
+	srcLenField = oob.field(base, arrayType.Fields[0])
+	srcLen = oob.load(srcLenField)
+	str := oob.op(SliceOOBString, bb.fun.mod.stringType(), start, end, srcLen)
+	oob.op(Panic, nil, str)
+	bb = inBounds
+
 	a := bb.alloc(arrayType)
 	// Note we write the data field first, then the length field.
 	// This is so that a Go translation of the output
@@ -1243,7 +1270,6 @@ func (bb *blockBuilder) buildSlice(call *checker.Call) (*blockBuilder, Value) {
 	dstData := bb.slice(bb.load(srcDataField), start)
 	dstDataField := bb.field(a, arrayType.Fields[1])
 	bb.store(dstDataField, dstData)
-	// TODO: bounds check
 	dstLen := bb.op(Minus, bb.fun.mod.intType(), end, start)
 	dstLenField := bb.field(a, arrayType.Fields[0])
 	bb.store(dstLenField, dstLen)
@@ -1875,6 +1901,19 @@ func (bb *blockBuilder) ifLess(v Value, x int, yes, no *blockBuilder) *If {
 		Yes:   yes.BasicBlock,
 		No:    no.BasicBlock,
 		L:     bb.L,
+	}
+	bb.addInstr(r)
+	return r
+}
+
+func (bb *blockBuilder) ifLessValue(v, x Value, yes, no *blockBuilder) *If {
+	r := &If{
+		Value:  v,
+		Op:     Less,
+		XValue: x,
+		Yes:    yes.BasicBlock,
+		No:     no.BasicBlock,
+		L:      bb.L,
 	}
 	bb.addInstr(r)
 	return r

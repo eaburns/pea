@@ -324,8 +324,6 @@ type If struct {
 	Op OpKind
 	// X and XValue are mutually exclusive.
 	// If XValue is non-nil, it is used, otherwise X.
-	//
-	// Currently XValue!=nil if-and-only-if Op==LessEq
 	X      int
 	XValue Value
 	Yes    *BasicBlock
@@ -610,6 +608,7 @@ const (
 	Panic
 	Print
 	IndexOOBString
+	SliceOOBString
 )
 
 type Op struct {

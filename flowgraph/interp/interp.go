@@ -145,7 +145,12 @@ func (interp *Interp) step() {
 				panic(fmt.Sprintf("bad eq type: %T", x.Val()))
 			}
 		case flowgraph.Less:
-			yes = x.Val().(SignedInt).Int64() < int64(instr.X)
+			if instr.XValue == nil {
+				yes = x.Val().(SignedInt).Int64() < int64(instr.X)
+			} else {
+				y := frame.vals[instr.XValue]
+				yes = x.Val().(SignedInt).Int64() < y.Val().(SignedInt).Int64()
+			}
 		case flowgraph.LessEq:
 			y := frame.vals[instr.XValue]
 			yes = x.Val().(SignedInt).Int64() <= y.Val().(SignedInt).Int64()
@@ -349,6 +354,13 @@ func (interp *Interp) step() {
 			length := frame.vals[instr.Args[1]].Val()
 			s := fmt.Sprintf("index out of bounds: index=%d, length=%d",
 				index.(SignedInt).Int64(), length.(SignedInt).Int64())
+			frame.vals[instr] = peaString(s)
+		case flowgraph.SliceOOBString:
+			start := frame.vals[instr.Args[0]].Val()
+			end := frame.vals[instr.Args[1]].Val()
+			length := frame.vals[instr.Args[2]].Val()
+			s := fmt.Sprintf("slice out of bounds: start=%d, end=%d, length=%d",
+				start.(SignedInt).Int64(), end.(SignedInt).Int64(), length.(SignedInt).Int64())
 			frame.vals[instr] = peaString(s)
 		default:
 			panic(fmt.Sprintf("unknown instruction: %s", instr))

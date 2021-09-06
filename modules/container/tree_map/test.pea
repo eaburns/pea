@@ -364,7 +364,7 @@ func check_invariants(m (K, V) tree_map, n (K, V) node, root bool, min K option,
 			}
 		}
 	},
-	if: n.keys.length = 0 then: {
+	if: n.n = 0 then: {
 		return: 1
 	},
 	prev := n.keys[0].k,
