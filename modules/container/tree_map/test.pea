@@ -193,14 +193,15 @@ test rotate_left {
 		.kids [
 			[
 				.n 1,
-				.keys [[.k 1, .v 1], x, x],
+				.keys [[.k 1, .v 1], x, x, x],
 				.kids [],
 			],
 			[
 				.n 3,
-				.keys [[.k 6, .v 6], [.k 7, .v 7], [.k 8, .v 8]],
+				.keys [[.k 6, .v 6], [.k 7, .v 7], [.k 8, .v 8], x],
 				.kids [],
 			],
+			empty,
 			empty,
 			empty,
 		],
@@ -212,14 +213,15 @@ test rotate_left {
 		.kids [
 			[
 				.n 2,
-				.keys [[.k 1, .v 1], [.k 5, .v 5], x],
+				.keys [[.k 1, .v 1], [.k 5, .v 5], x, x],
 				.kids [],
 			],
 			[
 				.n 2,
-				.keys [[.k 7, .v 7], [.k 8, .v 8], x],
+				.keys [[.k 7, .v 7], [.k 8, .v 8], x, x],
 				.kids [],
 			],
+			empty,
 			empty,
 			empty,
 		],
@@ -361,6 +363,9 @@ func check_invariants(m (K, V) tree_map, n (K, V) node, root bool, min K option,
 				panic(print#string(kv.k, " >= ", max)),
 			}
 		}
+	},
+	if: n.keys.length = 0 then: {
+		return: 1
 	},
 	prev := n.keys[0].k,
 	for: n.keys[1, n.n] each: (kv) {

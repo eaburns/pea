@@ -1184,8 +1184,29 @@ func (bb *blockBuilder) buildIndex(call *checker.Call) (*blockBuilder, Value) {
 	bb, base := bb.expr(call.Args[0])
 	bb, index := bb.expr(call.Args[1])
 	arrayType := base.Type().(*AddrType).Elem.(*StructType)
+
+	// Bounds check.
+	positive := bb.fun.newBlock(call.L)
+	oob := bb.fun.newBlock(call.L)
+	inBounds := bb.fun.newBlock(call.L)
+	bb.ifLess(index, 0, oob, positive)
+	arrayLenField := positive.field(base, arrayType.Fields[0])
+	arrayLen := positive.load(arrayLenField)
+	positive.ifLessEq(arrayLen, index, oob, inBounds)
+	// oob block.
+	arrayLenField = oob.field(base, arrayType.Fields[0])
+	arrayLen = oob.load(arrayLenField)
+	strType := &AddrType{
+		Elem: oob.buildType(&checker.BasicType{
+			Kind: checker.String,
+			L:    call.L,
+		}),
+	}
+	str := oob.op(IndexOOBString, strType, index, arrayLen)
+	oob.op(Panic, nil, str)
+	bb = inBounds
+
 	data := bb.field(base, arrayType.Fields[1])
-	// TODO: bounds check
 	elem := bb.index(bb.load(data), index)
 	switch typ := fun.Parms[0].(type) {
 	case *checker.ArrayType:
@@ -1854,6 +1875,19 @@ func (bb *blockBuilder) ifLess(v Value, x int, yes, no *blockBuilder) *If {
 		Yes:   yes.BasicBlock,
 		No:    no.BasicBlock,
 		L:     bb.L,
+	}
+	bb.addInstr(r)
+	return r
+}
+
+func (bb *blockBuilder) ifLessEq(v, x Value, yes, no *blockBuilder) *If {
+	r := &If{
+		Value:  v,
+		Op:     LessEq,
+		XValue: x,
+		Yes:    yes.BasicBlock,
+		No:     no.BasicBlock,
+		L:      bb.L,
 	}
 	bb.addInstr(r)
 	return r

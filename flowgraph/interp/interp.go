@@ -126,22 +126,31 @@ func (interp *Interp) step() {
 				panic(fmt.Sprintf("got If.Op=%s, expected =", instr.Op))
 			}
 			yes = x.Val().(Pointer).Elem == nil
-		} else {
-			switch instr.Op {
-			case flowgraph.Eq:
-				switch x.Val().(type) {
-				case SignedInt:
-					yes = x.Val().(SignedInt).Int64() == int64(instr.X)
-				case UnsignedInt:
-					yes = x.Val().(UnsignedInt).Uint64() == uint64(instr.X)
-				default:
-					panic(fmt.Sprintf("bad eq type: %T", x.Val()))
-				}
-			case flowgraph.Less:
-				yes = x.Val().(SignedInt).Int64() < int64(instr.X)
-			default:
-				panic(fmt.Sprintf("got If.Op=%s, expected = or <", instr.Op))
+			if yes {
+				frame.BasicBlock = instr.Yes
+			} else {
+				frame.BasicBlock = instr.No
 			}
+			frame.n = 0
+			return
+		}
+		switch instr.Op {
+		case flowgraph.Eq:
+			switch x.Val().(type) {
+			case SignedInt:
+				yes = x.Val().(SignedInt).Int64() == int64(instr.X)
+			case UnsignedInt:
+				yes = x.Val().(UnsignedInt).Uint64() == uint64(instr.X)
+			default:
+				panic(fmt.Sprintf("bad eq type: %T", x.Val()))
+			}
+		case flowgraph.Less:
+			yes = x.Val().(SignedInt).Int64() < int64(instr.X)
+		case flowgraph.LessEq:
+			y := frame.vals[instr.XValue]
+			yes = x.Val().(SignedInt).Int64() <= y.Val().(SignedInt).Int64()
+		default:
+			panic(fmt.Sprintf("got If.Op=%s, expected = or <", instr.Op))
 		}
 		if yes {
 			frame.BasicBlock = instr.Yes
@@ -335,11 +344,43 @@ func (interp *Interp) step() {
 			panic(goString(frame.vals[instr.Args[0]]))
 		case flowgraph.Print:
 			fmt.Fprintf(interp.Out, goString(frame.vals[instr.Args[0]]))
+		case flowgraph.IndexOOBString:
+			index := frame.vals[instr.Args[0]].Val()
+			length := frame.vals[instr.Args[1]].Val()
+			s := fmt.Sprintf("index out of bounds: index=%d, length=%d",
+				index.(SignedInt).Int64(), length.(SignedInt).Int64())
+			frame.vals[instr] = peaString(s)
 		default:
 			panic(fmt.Sprintf("unknown instruction: %s", instr))
 		}
 	default:
 		panic(fmt.Sprintf("unknown instruction: %T", instr))
+	}
+}
+
+func peaString(s string) *Obj {
+	bytes := make([]*Obj, len(s))
+	for i, b := range s {
+		bytes[i] = &Obj{val: Uint8(b)}
+	}
+	return &Obj{
+		val: Pointer{
+			Elem: &Obj{
+				val: Struct{
+					Fields: []Field{
+						{
+							Name: "length",
+							// TODO: figure out int size
+							Obj: &Obj{val: Int64(int64(len(s)))},
+						},
+						{
+							Name: "data",
+							Obj:  &Obj{val: Array{Elems: bytes}},
+						},
+					},
+				},
+			},
+		},
 	}
 }
 

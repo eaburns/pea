@@ -1,0 +1,5 @@
+// Panic: index out of bounds: index=50000, length=5
+func main() {
+	a := [int] :: [0, 1, 2, 3, 4],
+	a[50000]
+}

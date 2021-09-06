@@ -320,15 +320,26 @@ type If struct {
 	// Value must be an integer type or an address type.
 	// If Value is an address type Op must be Eq and X must be 0.
 	Value Value
-	// Op must be Eq or Less
-	Op  OpKind
-	X   int
-	Yes *BasicBlock
-	No  *BasicBlock
-	L   loc.Loc
+	// Op must be Eq, Less, or LessEq
+	Op OpKind
+	// X and XValue are mutually exclusive.
+	// If XValue is non-nil, it is used, otherwise X.
+	//
+	// Currently XValue!=nil if-and-only-if Op==LessEq
+	X      int
+	XValue Value
+	Yes    *BasicBlock
+	No     *BasicBlock
+	L      loc.Loc
 }
 
-func (r *If) Uses() []Value      { return []Value{r.Value} }
+func (r *If) Uses() []Value {
+	if r.XValue != nil {
+		return []Value{r.Value, r.XValue}
+	}
+	return []Value{r.Value}
+}
+
 func (r *If) Loc() loc.Loc       { return r.L }
 func (r *If) Out() []*BasicBlock { return []*BasicBlock{r.Yes, r.No} }
 
@@ -598,6 +609,7 @@ const (
 	NumConvert
 	Panic
 	Print
+	IndexOOBString
 )
 
 type Op struct {

@@ -23,12 +23,18 @@ Func index(h S, n S) int option :
 		hh := (hh<<1) + (uint :: h[i]),
 		hn := (hn<<1) + (uint :: n[i]),
 	},
-	for: 0 to: h.length - n.length do: (i) {
+	i := 0,
+	forever: {
 		if: hh = hn && {h[i,i+n.length] = n} then: {
 			return: some(i),
 		},
+		if: i+n.length >= h.length then: {
+			return: none()
+		},
 		hh := ((hh - (uint :: h[i])*d)<<1) + (uint :: h[i+n.length]),
+		++i
 	},
+	panic("unreachable"),
 	return: none()
 }
 

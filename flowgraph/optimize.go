@@ -1176,6 +1176,7 @@ func (o *Call) subValues(sub map[Value]Value) {
 
 func (o *If) subValues(sub map[Value]Value) {
 	subValue(sub, o, &o.Value)
+	subValue(sub, o, &o.XValue)
 }
 
 func (o *Jump) subValues(sub map[Value]Value) {}

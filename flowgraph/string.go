@@ -301,8 +301,13 @@ func (r *Call) buildString(s *strings.Builder) *strings.Builder {
 }
 
 func (r *If) buildString(s *strings.Builder) *strings.Builder {
-	fmt.Fprintf(s, "if x%d %s %d then %d else %d",
-		r.Value.Num(), r.Op, r.X, r.Yes.Num, r.No.Num)
+	if r.XValue == nil {
+		fmt.Fprintf(s, "if x%d %s %d then %d else %d",
+			r.Value.Num(), r.Op, r.X, r.Yes.Num, r.No.Num)
+	} else {
+		fmt.Fprintf(s, "if x%d %s x%d then %d else %d",
+			r.Value.Num(), r.Op, r.XValue.Num(), r.Yes.Num, r.No.Num)
+	}
 	return s
 }
 
@@ -472,6 +477,8 @@ func (v *Op) buildString(s *strings.Builder) *strings.Builder {
 		fmt.Fprintf(s, "panic(x%d)", v.Args[0].Num())
 	case v.Op == Print:
 		fmt.Fprintf(s, "print(x%d)", v.Args[0].Num())
+	case v.Op == IndexOOBString:
+		fmt.Fprintf(s, "x%d := index_oob_string(x%d, x%d)", v.Num(), v.Args[0].Num(), v.Args[1].Num())
 	case len(v.Args) == 1:
 		col := newCol(s, "x%d := %sx%d", v.Num(), v.Op, v.Args[0].Num())
 		col.addCol("// %s := %s%s", v.Type(), v.Op, v.Args[0].Type())

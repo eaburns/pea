@@ -244,8 +244,8 @@ func merge:at:(n (K, V) node, i int) {
 	left.n := left.n + right.n + 1,
 
 	n.kids[i] := left,
-	shift_left: n.keys from: i to:  n.n,
-	shift_left: n.kids from: i+1 to: n.n+1,
+	shift_left: n.keys from: i to: n.n-1,
+	shift_left: n.kids from: i+1 to: n.n,
 	--n.n
 }
 
