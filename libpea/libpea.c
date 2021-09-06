@@ -99,7 +99,7 @@ void pea_check_frame(void *frame_handle) {
 		p = p->next)
 		;
 	if (p == NULL) {
-		puts("long return across threads or to already-returned frame");
+		puts("Panic: long return across threads or to returned frame");
 		pea_abort();
 	}
 }

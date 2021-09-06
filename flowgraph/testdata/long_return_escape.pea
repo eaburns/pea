@@ -1,0 +1,25 @@
+/*
+The return value of a function may escape if it is saved for a long return. In the case of an actual escape, the long return will fail as a long return to an already returned frame. But the preceeding write to the return location must still write to live memory.
+
+The expected result is a panic about an un-caugh long return,
+and we explicitly do not want a write to a deleted object.
+*/
+
+// Panic: long return across threads or to returned frame
+func main() {
+	f_no_inline(),
+	x()
+}
+
+func f_no_inline() {
+	g_no_inline(),
+}
+
+func g_no_inline() int {
+	x := (){
+		return: 1,
+	},
+	return: 2
+}
+
+var x := (){} :: (){}

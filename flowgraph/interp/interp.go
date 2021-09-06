@@ -186,7 +186,7 @@ func (interp *Interp) step() {
 				break
 			}
 			if len(interp.stack) == 0 {
-				panic("long return to finished frame")
+				panic("long return across threads or to returned frame")
 			}
 		}
 		return
