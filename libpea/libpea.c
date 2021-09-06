@@ -24,6 +24,7 @@ void pea_print_stack() {
 	unw_cursor_t cursor;
 	unw_init_local(&cursor, &uc);
 	int i = 0;
+	puts("Stack:");
 	while (unw_step(&cursor) > 0) {
 		char buf[512];
 		unw_word_t offs;
@@ -35,6 +36,12 @@ void pea_print_stack() {
 	}
 }
 
+void pea_abort() {
+	pea_print_stack();
+	fflush(stdout);
+	abort();
+}
+
 static void die(const char *msg, int err) {
 	char buf[256];
 	int n = strerror_r(err, buf, 256);
@@ -43,8 +50,7 @@ static void die(const char *msg, int err) {
 	} else {
 		printf("%s: %s\n", msg, buf);
 	}
-	pea_print_stack();
-	abort();
+	pea_abort();
 }
 
 struct frame {
@@ -94,8 +100,7 @@ void pea_check_frame(void *frame_handle) {
 		;
 	if (p == NULL) {
 		puts("long return across threads or to already-returned frame");
-		pea_print_stack();
-		abort();
+		pea_abort();
 	}
 }
 
@@ -118,6 +123,7 @@ void pea_print(struct pea_string* pstr) {
 	for (int i = 0;  i< pstr->length; i++) {
 		putchar(pstr->data[i]);
 	}
+	fflush(stdout);
 }
 
 // test_panic_fd, if non-negative, as a file descriptor
@@ -169,9 +175,7 @@ void pea_panic(struct pea_string* pstr, const char* file, int32_t line) {
 	if (file != NULL) {
 		printf("%s:%d\n", file, line);
 	}
-	puts("Stack:");
-	pea_print_stack();
-	abort();
+	pea_abort();
 }
 
 // pea_print_int prints an int to standand output.
@@ -244,7 +248,7 @@ int32_t pea_run_test(void(*test)(), const char* name) {
 	int status = 0;
 	if (waitpid(kid, &status, 0) < 0) {
 		puts("wait failed");
-		abort();
+		pea_abort();
 	}
 	if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		puts("ok");
