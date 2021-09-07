@@ -1786,6 +1786,10 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Erro
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
+		if expr == nil {
+			// There was an error somewhere; it is reported elsewhere.
+			continue
+		}
 		lit.Elems = append(lit.Elems, expr)
 		if elemType == nil {
 			elemType = expr.Type()
