@@ -109,6 +109,12 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			if !ok {
 				continue
 			}
+			if defs[parserTypeDef] == nil {
+				// There was an error with this def;
+				// it was probably redefined.
+				// Just move along.
+				continue
+			}
 			typeDef := defs[parserTypeDef].(*TypeDef)
 			t, fs := _makeType(typeDef, parserTypeDef.Type, false)
 			if len(fs) > 0 {
@@ -139,6 +145,12 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 			switch parserDef := parserDef.(type) {
 			case *parser.TypeDef:
 				// Now all the types are built, so we can inst them.
+				if defs[parserDef] == nil {
+					// There was an error with this def;
+					// it was probably redefined.
+					// Just move along.
+					break
+				}
 				typeDef := defs[parserDef].(*TypeDef)
 				typeDef.Type = instType(typeDef.Type)
 			case *parser.VarDef:
