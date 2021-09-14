@@ -1,5 +1,10 @@
 Import "basic"
 
+// A map keyed on type K with values of type V,
+// implemented as a balanced tree.
+// Accessing an element by key (find, at:put:, and delete:)
+// has logarithmic time in the number of elements of the tree.
+// Interation with for:each: is done in increasing order of keys.
 Type (K, V) tree_map := (K, V) _tree_map
 type (K, V) _tree_map &[
 	.n int,
@@ -16,6 +21,7 @@ type (K, V) node &[
 	.kids [(K, V) node],
 ]
 
+// Returns a new, empty tree_map.
 Func new() (K, V) tree_map : <(K, K)bool, =(K, K)bool {
 	empty := (K, V) node :: [.n 0, .keys [], .kids []],
 	return: [
@@ -39,6 +45,12 @@ func .max_keys(m (K, V) tree_map) int {
 	return: m.min_keys*2
 }
 
+// Returns the number of key/value bindings in the map.
+Func .length(m (K, V) tree_map) int {
+	return: m.n
+}
+
+// Returns the value for key k if any.
 Func find(m (K, V) tree_map, k K) V option {
 	if: m.root.n = 0 then: {
 		return: none()
@@ -57,7 +69,8 @@ func find(m (K, V) tree_map, n (K, V) node, k K) V option {
 	return: find(m, n.kids[i], k)
 }
 
-Func bind(m (K, V) tree_map, k K, v V) V option {
+// Sets v as the value for to k, returning the previous binding if any.
+Func at:put:(m (K, V) tree_map, k K, v V) V option {
 	if: m.n = 0 then: {
 		m.n := 1,
 		m.root := [
@@ -91,7 +104,7 @@ type (K, V) upsert_result [
 	split? [.med [.k K, .v V], .right (K, V) node],
 ]
 
-Func upsert(m (K, V) tree_map, n (K, V) node, k K, v V) (K, V) upsert_result {
+func upsert(m (K, V) tree_map, n (K, V) node, k K, v V) (K, V) upsert_result {
 	i := find_key_index(m, n, k),
 	if: i < n.n && { m.eq(n.keys[i].k, k) } then: {
 		prev := n.keys[i].v,
@@ -136,7 +149,8 @@ func split_node(m (K, V) tree_map, n (K, V) node) (K, V) upsert_result {
 	return: [split? [.med med, .right right]]
 }
 
-Func delete(m (K, V) tree_map, k K) V option {
+// Removes the value for key k, returning the previous binding if any.
+Func delete:(m (K, V) tree_map, k K) V option {
 	v := delete(m, m.root, k),
 	if: v none: {
 		return: none()
@@ -249,7 +263,7 @@ func merge:at:(n (K, V) node, i int) {
 	--n.n
 }
 
-Func find_key_index(m (K, V) tree_map, n (K, V) node, k K) int {
+func find_key_index(m (K, V) tree_map, n (K, V) node, k K) int {
 	for: 0 to: n.n-1 do: (i) {
 		if: !m.pred(n.keys[i].k, k) then: {
 			return: i,
@@ -258,6 +272,8 @@ Func find_key_index(m (K, V) tree_map, n (K, V) node, k K) int {
 	return: n.n
 }
 
+// Calls f for each key/value binding in the map
+// in increasing order of the key value.
 Func for:each:(m (K, V) tree_map, f ([.key K, .val V]){}) {
 	for: m.root each: f
 }

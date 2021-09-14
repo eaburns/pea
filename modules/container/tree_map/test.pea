@@ -11,7 +11,7 @@ test insert_in_order {
 	i := 1,
 	m := (string, int) tree_map :: new(),
 	for: letters each: (letter) {
-		assert_none: bind(m, letter, i),
+		assert_none: (m at: letter put: i),
 		check_invariants(m),
 		++i,
 	},
@@ -48,7 +48,7 @@ test insert_in_order {
 test insert_random_order {
 	m := (string, int) tree_map :: new(),
 	for: perm each: (i) {
-		assert_none: bind(m, letters[i], i+1),
+		assert_none: (m at: letters[i] put: i+1),
 		check_invariants(m),
 	},
 	assert: m elements: [
@@ -85,12 +85,12 @@ test find {
 	m := (string, int) tree_map :: new(),
 	assert_none: find(m, "a"),
 
-	bind(m, "e", 5),
-	bind(m, "c", 3),
-	bind(m, "d", 4),
-	bind(m, "b", 2),
-	bind(m, "f", 6),
-	bind(m, "a", 1),
+	m at: "e" put: 5,
+	m at: "c" put: 3,
+	m at: "d" put: 4,
+	m at: "b" put: 2,
+	m at: "f" put: 6,
+	m at: "a" put: 1,
 
 	assert: find(m, "a") some: 1,
 	assert: find(m, "b") some: 2,
@@ -105,20 +105,20 @@ test find {
 
 test delete_not_found {
 	m := (string, int) tree_map :: new(),
-	assert_none: delete(m, "zzz"),
+	assert_none: (m delete: "zzz"),
 	check_invariants(m),
 
-	bind(m, "a", 1),
-	assert_none: delete(m, "zzz"),
+	m at: "a" put: 1,
+	assert_none: (m delete: "zzz"),
 	assert: m elements: [[.key "a", .val 1]],
 	check_invariants(m),
 }
 
 test delete_only_value {
 	m := (string, int) tree_map :: new(),
-	bind(m, "a", 1),
+	m at: "a" put: 1,
 	assert: m elements: [[.key "a", .val 1]],
-	assert: delete(m, "a") some: 1,
+	assert: (m delete: "a") some: 1,
 	assert: m elements: [[.key string, .val int]] :: [],
 	check_invariants(m),
 }
@@ -129,12 +129,12 @@ test delete_one {
 		j := 1,
 		m := (string, int) tree_map :: new(),
 		for: letters each: (letter) {
-			bind(m, letter, j),
+			m at: letter put: j,
 			++j,
 		},
 		print_tree(m),
 		print(print#string("deleting ", letter, "\n")),
-		assert: delete(m, letter) some: i,
+		assert: (m delete: letter) some: i,
 		++i,
 		check_invariants(m),
 	},
@@ -144,14 +144,14 @@ test delete_all {
 	i := 1,
 	m := (string, int) tree_map :: new(),
 	for: letters each: (letter) {
-		bind(m, letter, i),
+		m at: letter put: i,
 		++i,
 	},
 	print_tree(m),
 	i := 1,
 	for: letters each: (letter) {
 		print(print#string("deleting ", letter, "\n")),
-		assert: delete(m, letter) some: i,
+		assert: (m delete: letter) some: i,
 		++i,
 		check_invariants(m),
 	},
@@ -160,12 +160,12 @@ test delete_all {
 
 test for_each {
 	m := (string, int) tree_map :: new(),
-	bind(m, "e", 5),
-	bind(m, "c", 3),
-	bind(m, "d", 4),
-	bind(m, "b", 2),
-	bind(m, "f", 6),
-	bind(m, "a", 1),
+	m at: "e" put: 5,
+	m at: "c" put: 3,
+	m at: "d" put: 4,
+	m at: "b" put: 2,
+	m at: "f" put: 6,
+	m at: "a" put: 1,
 	assert: m elements: [
 		[.key "a", .val 1],
 		[.key "b", .val 2],
@@ -176,11 +176,17 @@ test for_each {
 	],
 }
 
-func +=(p print#printer, a [.key string, .val int])print#printer {
+func +=(p print#printer, a [.key K, .val V])print#printer :
+	+=(print#printer, K)print#printer,
+	+=(print#printer, V)print#printer,
+{
 	return: p += "[.key " += a.key += ", .val " += a.val += "]"
 }
 
-func =(a [.key string, .val int], b [.key string, .val int])bool {
+func =(a [.key K, .val V], b [.key K, .val V])bool :
+	=(K, K)bool,
+	=(V, V)bool,
+{
 	return: a.key = b.key && a.val = b.val
 }
 
