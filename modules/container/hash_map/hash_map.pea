@@ -3,6 +3,12 @@ Import "basic"
 Import "hash"
 import "print"
 
+// A map keyed on type K with values of type V,
+// implemented as a hash table.
+// Accessing an element by key (find, at:put:, and delete:)
+// is expected constant time.
+// Iteration with for:each: has a nondeterministic order,
+// so order of iteration should not be dependend on.
 Type (K, V) hash_map := (K, V) _hash_map
 type (K, V) _hash_map &[
 	.n int,
@@ -15,14 +21,23 @@ type (K, V) bucket := [(K, V) entry option]
 
 type (K, V) entry &[.k K, .v V]
 
+// Returns a new, empty hash_map.
 Func new() (K, V) hash_map : hash(K)uint64, =(K, K)bool{
 	return: [.n 0, .buckets [[]], .hash hash, .eq (=)]
 }
 
+test new {
+	m := (string, int) hash_map :: new(),
+	assert: m.length equals: 0,
+	assert_none: find(m, "hello"),
+}
+
+// Returns the number of key/value bindings in the map.
 Func .length(m (K, V) hash_map) int {
 	return: m.n
 }
 
+// Returns the value for key k if any.
 Func find(m (K, V) hash_map, k K) V option {
 	h := m.hash(k),
 	i := (int :: h) % m.buckets.length,
@@ -34,7 +49,8 @@ Func find(m (K, V) hash_map, k K) V option {
 	return: none()
 }
 
-Func bind(m (K, V) hash_map, k K, v V) V option {
+// Sets v as the value for to k, returning the previous binding if any.
+Func at:put:(m (K, V) hash_map, k K, v V) V option {
 	h := m.hash(k),
 	i := (int :: h) % m.buckets.length,
 	for: m.buckets[i] each_entry: (e) {
@@ -90,7 +106,8 @@ func append(b &(K, V) bucket, e (K, V) entry) {
 	b := b2
 }
 
-Func delete(m (K, V) hash_map, k K) V option {
+// Removes the value for key k, returning the previous binding if any.
+Func delete:(m (K, V) hash_map, k K) V option {
 	h := m.hash(k),
 	i := (int :: h) % m.buckets.length,
 	b := m.buckets[i],
@@ -106,6 +123,23 @@ Func delete(m (K, V) hash_map, k K) V option {
 	return: none()
 }
 
+test put_find {
+	m := (string, int) hash_map :: new(),
+	m at: "Hello" put: 5,
+	assert: find(m, "Hello") some: 5,
+	assert: m.length equals: 1,
+}
+
+test put_delete {
+	m := (string, int) hash_map :: new(),
+	m at: "Hello" put: 5,
+	assert: (m delete: "Hello") some: 5,
+	assert_none: find(m, "Hello"),
+	assert: m.length equals: 0,
+}
+
+// Calls f for each key/value binding in the map.
+// The order in which f is called is nondeterministic.
 Func for:each:(m (K, V) hash_map, f ([.key K, .val V]){}) {
 	for: m.buckets each: (bucket){
 		for: bucket each_entry: (e) {
@@ -118,25 +152,4 @@ func for:each_entry:(b (K, V) bucket, f ((K, V) entry){}) {
 	for: b each: (e) {
 		e some? f
 	}
-}
-
-test new {
-	m := (string, int) hash_map :: new(),
-	assert: m.length equals: 0,
-	assert_none: find(m, "hello"),
-}
-
-test bind_find {
-	m := (string, int) hash_map :: new(),
-	bind(m, "Hello", 5),
-	assert: find(m, "Hello") some: 5,
-	assert: m.length equals: 1,
-}
-
-test bind_delete {
-	m := (string, int) hash_map :: new(),
-	bind(m, "Hello", 5),
-	assert: delete(m, "Hello") some: 5,
-	assert_none: find(m, "Hello"),
-	assert: m.length equals: 0,
 }
