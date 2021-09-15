@@ -1,4 +1,4 @@
-// And optional T type.
+// An optional T type.
 // There is either some value of type T or none.
 Type T option [none?, some? T]
 
