@@ -2,6 +2,10 @@ Import "assert"
 Import "basic"
 import "print"
 
+// An ordered sequence of elements of type T.
+// A ring_buffer is implemented as a circular array.
+// Indexing and slicing are constant time.
+// Insertion and removal from the front or back are amortized constant time.
 Type T ring_buffer := T _ring_buffer
 type T _ring_buffer &[
 	.n int,
@@ -10,6 +14,7 @@ type T _ring_buffer &[
 	.data [T],
 ]
 
+// Returns a new, empty ring_buffer.
 Func new() T ring_buffer {
 	return: [.n 0, .start 0, .end 0, .data []]
 }
@@ -19,8 +24,9 @@ test new {
 	assert: r.length equals: 0,
 }
 
+// Returns a new ring buffer with elements copied from ts.
 Func new(ts [T]) T ring_buffer {
-	return: [.n ts.length, .start 0, .end ts.length, .data ts]
+	return: [.n ts.length, .start 0, .end ts.length, .data copy(ts)]
 }
 
 test new_array {
@@ -29,20 +35,25 @@ test new_array {
 	assert: r elements: [0, 1, 2, 3],
 }
 
-test new_array_shares_array {
+test new_array_copies_array {
 	a := [0, 1, 2, 3],
 	r := int ring_buffer :: new(a),
 	r[0] := 10,
 	r[1] := 9,
 	r[2] := 8,
 	r[3] := 7,
-	assert: a elements: [10, 9, 8, 7],
+	assert: a elements: [0, 1, 2, 3],
 }
 
+// Returns the number of elements in the ring_buffer.
 Func .length(r T ring_buffer) int {
 	return: r.n
 }
 
+// Returns a reference to the ith entry in the ring_buffer.
+//
+// This function panics if i is negative or
+// if i is greater or equal to the length of the ring_buffer.
 Func [](r T ring_buffer, i int) &T {
 	if: i < 0 then: {
 		panic(print#string("index out of bounds: ", i, " < 0"))
@@ -56,7 +67,7 @@ Func [](r T ring_buffer, i int) &T {
 test index {
 	r := string ring_buffer :: new(),
 	for: ["zero", "one", "two", "three", "four", "five", "six"] each: (s){
-		push_back(r, s),
+		r push_back: s,
 	},
 	assert: r[0] equals: "zero",
 	assert: r[1] equals: "one",
@@ -67,6 +78,12 @@ test index {
 	assert: r[6] equals: "six",
 }
 
+// Returns a slice of the ring_buffer from start (inclusive) to end (exclusive).
+// The returned slice refers to the same backing array as the sliced ring_buffer,
+// but on resizing either buffer, the backing arrays will no longer remain the same.
+//
+// This function panics if s is negative, if s is greater than e,
+// or if e is greater than the length of the ring_buffer.
 Func [](r T ring_buffer, s int, e int) T ring_buffer {
 	if: s < 0 then: {
 		panic(print#string("start index out of bounds: ", s, " < 0"))
@@ -94,6 +111,7 @@ test slice {
 	assert: r[0, 5] elements: ["Hello", ",", " ", "World", "!"],
 }
 
+// Returns the 0th element of the ring_buffer if it is not empty.
 Func .front(r T ring_buffer) T option {
 	return: r.n > 0 true? {
 		some(r.data[index(r, 0)])
@@ -107,6 +125,8 @@ test front {
 	assert: (int ring_buffer :: new([0, 1, 2])).front some: 0,
 }
 
+// Returns the (n-1th)th element of the ring_buffer if it is not empty,
+// where n is the length of the ring_buffer.
 Func .back(r T ring_buffer) T option {
 	return: r.n > 0 true? {
 		some(r.data[prev(r, r.end)])
@@ -120,7 +140,11 @@ test back {
 	assert: (int ring_buffer :: new([0, 1, 2])).back some: 2,
 }
 
-Func push_front(r T ring_buffer, t T) {
+// Inserts an element onto the front of the ring_buffer.
+//
+// This function operates in amortized constant time.
+// It may cause the ring_buffer to be resized.
+Func push_front:(r T ring_buffer, t T) {
 	if: r.n = r.data.length then: {
 		grow(r, t, 1)
 	},
@@ -132,12 +156,16 @@ Func push_front(r T ring_buffer, t T) {
 test push_front {
 	r := int ring_buffer :: new(),
 	for: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] each: (i) {
-		push_front(r, i),
+		r push_front: i,
 	},
 	assert: r elements: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
 }
 
-Func push_back(r T ring_buffer, t T) {
+// Inserts an element onto the back of the ring_buffer.
+//
+// This function operates in amortized constant time.
+// It may cause the ring_buffer to be resized.
+Func push_back:(r T ring_buffer, t T) {
 	if: r.n = r.data.length then: {
 		grow(r, t, 1)
 	},
@@ -149,12 +177,19 @@ Func push_back(r T ring_buffer, t T) {
 test push_back {
 	r := int ring_buffer :: new(),
 	for: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] each: (i) {
-		push_back(r, i),
+		r push_back: i,
 	},
 	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 }
 
-Func push_back(r T ring_buffer, ts C) : .length(C)int, [](C, int)T {
+// Appends all elements of ts onto the back of the ring_buffer.
+//
+// It may cause the ring_buffer to be resized.
+//
+// This function performs the same as calling push_back:
+// on each individual element of ts,
+// however it may save on the number of grow operations.
+Func push_back:(r T ring_buffer, ts C) : .length(C)int, [](C, int)T {
 	if: ts.length = 0 then: {
 		return()
 	},
@@ -188,25 +223,25 @@ func min(a int, b int) int {
 
 test push_back_array {
 	r := int ring_buffer :: new(),
-	push_back(r, [int] :: []),
+	r push_back: ([int] :: []),
 	assert: r elements: [int] :: [],
 
 	r := int ring_buffer :: new(),
-	push_back(r, [0]),
+	r push_back: [0],
 	assert: r elements: [0],
 
 	r := int ring_buffer :: new(),
-	push_back(r, [0, 1]),
+	r push_back: [0, 1],
 	assert: r elements: [0, 1],
 
 	r := int ring_buffer :: new(),
-	push_back(r, [0, 1, 2, 3, 4]),
+	r push_back: [0, 1, 2, 3, 4],
 	assert: r elements: [0, 1, 2, 3, 4],
 
 	r := int ring_buffer :: new([0, 1, 2]),
-	push_back(r, [3, 4, 5, 6, 7]),
+	r push_back: [3, 4, 5, 6, 7],
 	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7],
-	push_back(r, [int] :: []),
+	r push_back: ([int] :: []),
 	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7],
 }
 
@@ -219,7 +254,7 @@ test push_back_array_wraps_around {
 		//           s           e
 		.data [0, 0, 1, 2, 3, 4, 0, 0, 0],
 	],
-	push_back(r, [5, 6, 7, 8, 9]),
+	r push_back: [5, 6, 7, 8, 9],
 	/*
 	[
 		.n 9,
@@ -268,6 +303,9 @@ func grow(r T ring_buffer, t T, delta int) {
 	r.data := data
 }
 
+// Removes and returns the 0th element of the ring_buffer if any.
+//
+// This function operates in amortized constant time.
 Func pop_front(r T ring_buffer) T option {
 	if: r.n = 0 then: {
 		return: none()
@@ -293,6 +331,10 @@ test pop_front {
 	assert: r.length equals: 0,
 }
 
+// Removes and returns the (n-1)th element of the ring_buffer if any,
+// where in is the length of the ring_buffer.
+//
+// This function operates in amortized constant time.
 Func pop_back(r T ring_buffer) T option {
 	if: r.n = 0 then: {
 		return: none()
@@ -320,17 +362,17 @@ test pop_back {
 
 test push_pop_front_back {
 	r := string ring_buffer :: new(),
-	push_front(r, "three"),
-	push_back(r, "four"),
-	push_front(r, "two"),
+	r push_front: "three",
+	r push_back: "four",
+	r push_front: "two",
 	assert: r elements: ["two", "three", "four"],
 	assert: pop_back(r) some: "four",
 	assert: r elements: ["two", "three"],
-	push_back(r, "four"),
+	r push_back: "four",
 	assert: r elements: ["two", "three", "four"],
 	assert: pop_front(r) some: "two",
 	assert: r elements: ["three", "four"],
-	push_front(r, "one"),
+	r push_front: "one",
 	assert: r elements: ["one", "three", "four"],
 	assert: pop_back(r) some: "four",
 	assert: r elements: ["one", "three"],
@@ -342,6 +384,9 @@ test push_pop_front_back {
 	assert: r elements: [string] :: [],
 }
 
+// Calls f for each element of the ring_buffer,
+// in order from the 0th to the (n-1)th,
+// where in is the length of the ring_buffer.
 Func for:each:(r T ring_buffer, f (T){}) {
 	if: r.n = 0 then: {
 		return()
