@@ -2,9 +2,18 @@ Import "assert"
 Import "basic"
 import "print"
 
+// An ordered sequence of elements of type T.
+//
+// A vector is implemented as an underlying array,
+// possibly larger than the size of the vector,
+// and a count of the number number of element in the vector.
+//
+// Indexing and slicing are constant time.
+// Insertion and removal from the front or back are amortized constant time.
 Type T vector := T _vector
 type T _vector &[.n int, .data [T]]
 
+// Returns a new, empty vector.
 Func new() T vector {
 	return: [.n 0, .data []]
 }
@@ -14,8 +23,9 @@ test new {
 	assert: v.length equals: 0,
 }
 
+// Returns a new vector with elements copied from ts.
 Func new(a [T]) T vector {
-	return: [.n a.length, .data a]
+	return: [.n a.length, .data copy(a)]
 }
 
 test new_array {
@@ -24,21 +34,23 @@ test new_array {
 	assert: v elements: [0, 1, 2, 3],
 }
 
-test new_array_shares_array {
+test new_array_copies_array {
 	a := [0, 1, 2, 3],
 	v := int vector :: new(a),
 	v[0] := 10,
 	v[1] := 9,
 	v[2] := 8,
 	v[3] := 7,
-	assert: a equals: [10, 9, 8, 7],
+	assert: a equals: [0, 1, 2, 3],
 }
 
+// Returns the number of elements in the vector.
 Func .length(v T vector) int {
 	return: v.n
 }
 
 // Clears the vector, leaving it empty.
+// Capacity in the underlying array is retained.
 Func clear:(v T vector) {
 	v.n := 0,
 }
@@ -49,6 +61,10 @@ test clear {
 	assert: v.length equals: 0,
 }
 
+// Returns a reference to the ith entry in the vector.
+//
+// This function panics if i is negative or
+// if i is greater or equal to the length of the vector.
 Func [](v T vector, i int) &T {
 	if: i < 0 then: {
 		panic(print#string("index out of bounds: ", i, " < 0"))
@@ -66,6 +82,12 @@ test index {
 	assert: v[2] equals: "!",
 }
 
+// Returns a slice of the vector from start (inclusive) to end (exclusive).
+// The returned slice refers to the same backing array as the sliced vector,
+// but on resizing either vector, the backing arrays will no longer be the same.
+//
+// This function panics if s is negative, if s is greater than e,
+// or if e is greater than the length of the vector.
 Func [](v T vector, s int, e int) T vector {
 	if: s < 0 then: {
 		panic(print#string("start index out of bounds: ", s, " < 0"))
@@ -100,11 +122,17 @@ test slice_shares_orignial_array {
 	assert: v elements: ["Hello", "---", " ", "World", "!"],
 }
 
+// Returns the (n-1th)th element of the vector if it is not empty,
+// where n is the length of the vector.
 Func .back(v T vector) &T {
 	return: v[v.n-1]
 }
 
-Func push_back(v T vector, t T) {
+// Inserts an element onto the back of the vector.
+//
+// This function operates in amortized constant time.
+// It may cause the vector to be resized.
+Func push_back:(v T vector, t T) {
 	if: v.n >= v.data.length then: {
 		data := [T] :: new((v.data.length+1) * 2, t),
 		for: 0 to: v.data.length - 1 do: (i) {
@@ -120,19 +148,23 @@ test push_back {
 	v := int vector :: new(),
 	assert: v.length equals: 0,
 
-	push_back(v, 0),
+	v push_back: 0,
 	assert: v.length equals: 1,
 	assert: v elements: [0],
 
-	push_back(v, 1),
+	v push_back: 1,
 	assert: v.length equals: 2,
 	assert: v elements: [0, 1],
 
-	push_back(v, 2),
+	v push_back: 2,
 	assert: v.length equals: 3,
 	assert: v elements: [0, 1, 2],
 }
 
+// Removes and returns the (n-1)th element of the vector if any,
+// where in is the length of the vector.
+//
+// This function operates in amortized constant time.
 Func pop_back(v T vector) T {
 	if: v.n = 0 then: {
 		panic("pop_back from an empty vector")
@@ -157,6 +189,9 @@ test pop_back {
 	assert: v elements: [int] :: [],
 }
 
+// Calls f for each element of the vector,
+// in order from the 0th to the (n-1)th,
+// where in is the length of the vector.
 Func for:each:(v T vector, f (T){}) {
 	for_each(v, 0, f)
 }
