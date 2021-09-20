@@ -2,6 +2,13 @@ Import "assert"
 Import "basic"
 import "print"
 
+// An ordered sequence of elements of type T.
+// A linked_list is implemented as a circular, doubly-linked list.
+// Insertion, removal, and access from the front and back are constant time.
+//
+// Linked lists can be iterated over using the cursor type.
+// Cursors allow for constast time insertion before or after, and deletion of
+// any item in the list, as long as there is a cursor to it.
 Type T linked_list := T _linked_list
 type T _linked_list &[
 	.len int,
@@ -20,6 +27,7 @@ func same_node(x T node option, y T node option) bool {
 	return: x_addr = y_addr
 }
 
+// Returns a new empty linked_list.
 Func new() T linked_list {
 	return: [.len 0, .head none()],
 }
@@ -29,6 +37,7 @@ test new {
 	assert: string_list.length equals: 0,
 }
 
+// Returns the number of elements in the linked_list in constant time.
 Func .length(l T linked_list) int {
 	return: l.len
 }
@@ -53,7 +62,10 @@ func push(l T linked_list, t T) T node {
 	return: n
 }
 
-Func push_front(l T linked_list, t T) {
+// Inserts an element onto the front of the linked_list.
+//
+// This function operates in constant time.
+Func push_front:(l T linked_list, t T) {
 	l.head := some(push(l, t))
 }
 
@@ -62,20 +74,23 @@ test push_front {
 	assert: l elements: [string] :: [],
 	assert: l.length equals: 0,
 
-	push_front(l, "c"),
+	l push_front: "c",
 	assert: l elements: ["c"],
 	assert: l.length equals: 1,
 
-	push_front(l, "b"),
+	l push_front: "b",
 	assert: l elements: ["b", "c"],
 	assert: l.length equals: 2,
 
-	push_front(l, "a"),
+	l push_front: "a",
 	assert: l elements: ["a", "b", "c"],
 	assert: l.length equals: 3,
 }
 
-Func push_back(l T linked_list, t T) {
+// Inserts an element onto the back of the linked_list.
+//
+// This function operates in constant time.
+Func push_back:(l T linked_list, t T) {
 	push(l, t)
 }
 
@@ -84,15 +99,15 @@ test push_back {
 	assert: l elements: [string] :: [],
 	assert: l.length equals: 0,
 
-	push_back(l, "a"),
+	l push_back: "a",
 	assert: l elements: ["a"],
 	assert: l.length equals: 1,
 
-	push_back(l, "b"),
+	l push_back: "b",
 	assert: l elements: ["a", "b"],
 	assert: l.length equals: 2,
 
-	push_back(l, "c"),
+	l push_back: "c",
 	assert: l elements: ["a", "b", "c"],
 	assert: l.length equals: 3,
 }
@@ -109,6 +124,9 @@ func remove(l T linked_list, x T node) {
 	x.next := none(),
 }
 
+// Removes and returns the front element of the linked_list if any.
+//
+// This function operates in constant time.
 Func pop_front(l T linked_list) T option {
 	h :=  l.head some? (h T node) {
 		h
@@ -122,10 +140,10 @@ Func pop_front(l T linked_list) T option {
 
 test pop_front {
 	l := string linked_list :: new(),
-	push_back(l, "a"),
-	push_back(l, "b"),
-	push_back(l, "c"),
-	push_back(l, "d"),
+	l push_back: "a",
+	l push_back: "b",
+	l push_back: "c",
+	l push_back: "d",
 	assert: l.length equals: 4,
 	assert: l elements: ["a", "b", "c", "d"],
 
@@ -150,6 +168,9 @@ test pop_front {
 	assert: l elements: [string] :: [],
 }
 
+// Removes and returns the back element of the linked_list if any.
+//
+// This function operates in constant time.
 Func pop_back(l T linked_list) T option {
 	h :=  l.head some? (h T node) {
 		h
@@ -163,10 +184,10 @@ Func pop_back(l T linked_list) T option {
 
 test pop_back {
 	l := string linked_list :: new(),
-	push_back(l, "a"),
-	push_back(l, "b"),
-	push_back(l, "c"),
-	push_back(l, "d"),
+	l push_back: "a",
+	l push_back: "b",
+	l push_back: "c",
+	l push_back: "d",
 	assert: l elements: ["a", "b", "c", "d"],
 	assert: l.length equals: 4,
 
@@ -191,6 +212,7 @@ test pop_back {
 	assert: l.length equals: 0,
 }
 
+// Calls for each element of the linked_list in order.
 Func for:each:(l T linked_list, f (T){}) {
 	cur := l.head,
 	while: {cur} some: (n){

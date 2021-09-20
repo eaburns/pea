@@ -2,12 +2,23 @@ Import "assert"
 Import "basic"
 import "print"
 
+// A cursor pointing to either an element of a linked_list
+// or an "empty cursor" that points to no element.
+// The empty cursor represents iteration beyond
+// either end of the linked_list.
+//
+// Cursors allow for iterating over a linked list, forward or backwards.
+// They also alllow constant-time access to,
+// and insertion and removal before and after
+// the element at the cursor.
 Type T cursor := T _cursor
 type T _cursor [
 	.list T linked_list,
 	.node T node option,
 ]
 
+// Returns a reference to the value of the element at the cursor,
+// or none if the cursor is empty.
 Func .value(c T cursor) (&T) option {
 	return: c.node some? (n T node) {
 		some(&T :: n.value)
@@ -16,6 +27,8 @@ Func .value(c T cursor) (&T) option {
 	}
 }
 
+// Returns a cursor pointing to the front element of the linked_list,
+// or the empty cursor if the linked_list is empty.
 Func .front(l T linked_list) T cursor {
 	return: T cursor :: [.list l, .node l.head]
 }
@@ -23,12 +36,14 @@ Func .front(l T linked_list) T cursor {
 test front {
 	l := string linked_list :: new(),
 	assert_none: l.front.value,
-	push_back(l, "Hello"),
+	l push_back: "Hello",
 	assert: l.front.value some: "Hello",
-	push_back(l, "World"),
+	l push_back: "World",
 	assert: l.front.value some: "Hello",
 }
 
+// Returns a cursor pointing to the back element of the linked_list,
+// or the empty cursor if the linked_list is empty.
 Func .back(l T linked_list) T cursor {
 	return: l.head some? (h T node) {
 		t := h.prev some? (t T node) {t} none? {panic("impossible")},
@@ -41,12 +56,17 @@ Func .back(l T linked_list) T cursor {
 test back {
 	l := string linked_list :: new(),
 	assert_none: l.back.value,
-	push_back(l, "Hello"),
+	l push_back: "Hello",
 	assert: l.back.value some: "Hello",
-	push_back(l, "World"),
+	l push_back: "World",
 	assert: l.back.value some: "World",
 }
 
+// Advances the cursor to point to the next element of the linked_list.
+// Advancing a cursor that points to the back element of the linked_list
+// results in an empty cursor.
+// Advancing an empty cursor makes the cursor point to
+// the front element of the linked_list or remain empty if the list is empty.
 Func advance:(c &T cursor) {
 	if: c.node some: (n) {
 		if: same_node(n.next, c.list.head) then: {
@@ -69,7 +89,7 @@ test advance {
 	advance: cur,
 	assert_none: cur.value,
 
-	push_back(l, "Hello"),
+	l push_back: "Hello",
 
 	cur := l.front,
 	assert: cur.value some: "Hello",
@@ -79,7 +99,7 @@ test advance {
 	assert: cur.value some: "Hello",
 
 
-	push_back(l, "World"),
+	l push_back: "World",
 
 	cur := l.front,
 	assert: cur.value some: "Hello",
@@ -108,6 +128,11 @@ test advance {
 	assert: cur.value some: "Hello",
 }
 
+// Reverses the cursor to point to the preceding element of the linked_list.
+// Reversing a cursor that points to the front element of the linked_list
+// results in an empty cursor.
+// Reversing an empty cursor makes the cursor point to
+// the back element of the linked_list or remain empty if the list is empty.
 Func reverse:(c &T cursor) {
 	if: same_node(c.node, c.list.head) then: {
 		c.node := none(),
@@ -130,7 +155,7 @@ test reverse {
 	reverse: cur,
 	assert_none: cur.value,
 
-	push_back(l, "Hello"),
+	l push_back: "Hello",
 
 	cur := l.back,
 	assert: cur.value some: "Hello",
@@ -139,7 +164,7 @@ test reverse {
 	reverse: cur,
 	assert: cur.value some: "Hello",
 
-	push_back(l, "World"),
+	l push_back: "World",
 
 	cur := l.front,
 	assert: cur.value some: "Hello",
@@ -178,7 +203,7 @@ test advance_and_reverse {
 	reverse: cur,
 	assert_none: cur.value,
 
-	push_back(l, "Hello"),
+	l push_back: "Hello",
 
 	cur := l.front,
 	assert: cur.value some: "Hello",
@@ -187,7 +212,7 @@ test advance_and_reverse {
 	reverse: cur,
 	assert: cur.value some: "Hello",
 
-	push_back(l, "World"),
+	l push_back: "World",
 
 	cur := l.front,
 	assert: cur.value some: "Hello",
