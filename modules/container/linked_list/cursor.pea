@@ -420,3 +420,142 @@ test remove_and_reverse_last {
 	assert_none: c.value,
 	assert: l elements: [int] :: [],
 }
+
+// Inserts t into the linked_list before the element pointed to be the cursor.
+// If the cursor is the empty cursor then t is inserted at the back of the list.
+Func before:insert:(c T cursor, t T) {
+	n := c.node some? (n T node){n} none? {
+		c.list push_back: t,
+		return()
+	},
+	m := T node :: [.value t, .prev n.prev, .next some(n)],
+	n.prev some? (p T node){p.next := some(m)} none? {panic("impossible")},
+	n.prev := some(m),
+	if: same_node(some(n), c.list.head) then: {
+		c.list.head := some(m),
+		h := c.list.head some? (n T node) {n} none? {panic("no")},
+		print(print#string("new head: ", uint64 :: (uintref :: h), "\n")),
+	},
+	++c.list.len,
+}
+
+test before_insert_empty_list {
+	l := int linked_list :: new(),
+	c := l.front,
+	before: l.front insert: 1,
+	assert: l elements: [1],
+	assert: l.length equals: 1,
+}
+
+test before_insert_front {
+	l := int linked_list :: new(),
+	l push_back: 1,
+	l push_back: 2,
+	l push_back: 3,
+	before: l.front insert: 0,
+	assert: l.length equals: 4,
+	assert: l elements: [0, 1, 2, 3]
+}
+
+test before_insert {
+	l := int linked_list :: new(),
+	l push_back: 1,
+	l push_back: 2,
+	l push_back: 3,
+	c := l.front,
+	advance: c,
+	assert: c.value some: 2,
+	before: c insert: 0,
+	assert: l.length equals: 4,
+	assert: l elements: [1, 0, 2, 3]
+}
+
+test before_insert_back {
+	l := int linked_list :: new(),
+	l push_back: 1,
+	l push_back: 2,
+	l push_back: 3,
+	before: l.back insert: 4,
+	assert: l.length equals: 4,
+	assert: l elements: [1, 2, 4, 3]
+}
+
+test before_insert_end {
+	l := int linked_list :: new(),
+	l push_back: 1,
+	l push_back: 2,
+	l push_back: 3,
+	c := l.back,
+	advance: c,
+	assert_none: c.value,
+	before: c insert: 4,
+	assert: l.length equals: 4,
+	assert: l elements: [1, 2, 3, 4]
+}
+
+// Inserts t into the linked_list after the element pointed to be the cursor.
+// If the cursor is the empty cursor then t is inserted at the front of the list.
+Func after:insert:(c T cursor, t T) {
+	m := c.node some? (n T node){n} none? {
+		c.list push_front: t,
+		return()
+	},
+	n := T node :: [.value t, .prev c.node, .next m.next],
+	m.next some? (x T node){x.prev := some(n)} none? {panic("impossible")},
+	m.next := some(n),
+	++c.list.len,
+}
+
+test after_insert_empty_list {
+	l := int linked_list :: new(),
+	c := l.front,
+	after: l.front insert: 1,
+	assert: l.length equals: 1,
+	assert: l elements: [1],
+}
+
+test after_insert_front {
+	l := int linked_list :: new(),
+	l push_back: 1,
+	l push_back: 2,
+	l push_back: 3,
+	after: l.front insert: 0,
+	assert: l.length equals: 4,
+	assert: l elements: [1, 0, 2, 3]
+}
+
+test after_insert {
+	l := int linked_list :: new(),
+	l push_back: 1,
+	l push_back: 2,
+	l push_back: 3,
+	c := l.front,
+	advance: c,
+	assert: c.value some: 2,
+	after: c insert: 0,
+	assert: l.length equals: 4,
+	assert: l elements: [1, 2, 0, 3]
+}
+
+test after_insert_back {
+	l := int linked_list :: new(),
+	l push_back: 1,
+	l push_back: 2,
+	l push_back: 3,
+	after: l.back insert: 4,
+	assert: l.length equals: 4,
+	assert: l elements: [1, 2, 3, 4],
+}
+
+test after_insert_end {
+	l := int linked_list :: new(),
+	l push_back: 1,
+	l push_back: 2,
+	l push_back: 3,
+	c := l.back,
+	advance: c,
+	assert_none: c.value,
+	after: c insert: 4,
+	assert: l.length equals: 4,
+	assert: l elements: [4, 1, 2, 3]
+}

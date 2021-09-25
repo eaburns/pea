@@ -220,6 +220,6 @@ Func for:each:(l T linked_list, f (T){}) {
 		if: same_node(n.next, l.head) then: {
 			return()
 		},
-		cur := n.next
+		cur := n.next,
 	}
 }
