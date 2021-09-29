@@ -1,0 +1,50 @@
+Import "assert"
+Import "basic"
+import "print"
+
+Const max_uint8 := uint8 :: 255
+Const max_uint16 := uint16 :: 65535
+Const max_uint32 := uint32 :: 4294967295
+Const max_uint64 := uint64 :: 18446744073709551615
+Const max_int8 := int8 :: 127
+Const min_int8 := int8 :: -128
+Const max_int16 := int16 :: 32767
+Const min_int16 := int16 :: -32768
+Const max_int32 := int32 :: 2147483647
+Const min_int32 := int32 :: -2147483648
+Const max_int64 := int64 :: 9223372036854775807
+Const min_int64 := int64 :: -9223372036854775808
+
+// Returns a uint64 parsed from the string in base 10.
+Func parse_uint64(s string) uint64 or_error {
+	if: s.length = 0 then: {
+		return: error("unexpected end of input")
+	},
+	n := uint64 :: 0,
+	for: 0 to: s.length - 1 do: (i) {
+		if: s[i] < '0' || s[i] > '9' then: {
+			return: error(print#string("bad digit"))
+		},
+		d := uint64 :: s[i] - (uint8 :: '0'),
+		if: n > max_uint64/10 || {n*10 > max_uint64-d} then: {
+			return: error("too big")
+		},
+		n := n*10 + d,
+	},
+	return: ok(n),
+}
+
+test parse_uint64 {
+	assert: parse_uint64("0") ok: 0,
+	assert: parse_uint64("1") ok: 1,
+	assert: parse_uint64("2") ok: 2,
+	assert: parse_uint64("10") ok: 10,
+	assert: parse_uint64("12") ok: 12,
+	assert: parse_uint64("18446744073709551614") ok: max_uint64-1,
+	assert: parse_uint64("18446744073709551615") ok: max_uint64,
+
+	assert: parse_uint64("") error: "unexpected end of input",
+	assert: parse_uint64("abc") error: "bad digit",
+	assert: parse_uint64("123abc") error: "bad digit",
+	assert: parse_uint64("18446744073709551616") error: "too big",
+}
