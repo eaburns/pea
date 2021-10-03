@@ -41,7 +41,7 @@ func (imp *defaultImporter) Files() loc.Files {
 }
 
 func (imp *defaultImporter) Load(path string) (*Mod, error) {
-	path = strings.TrimPrefix(filepath.Clean(path), "/")
+	path = cleanImportPath(path)
 	if mod, ok := imp.loaded[path]; ok {
 		return mod, nil
 	}
@@ -75,3 +75,7 @@ func (imp *defaultImporter) Load(path string) (*Mod, error) {
 }
 
 func (imp *defaultImporter) Deps() []string { return imp.deps }
+
+func cleanImportPath(path string) string {
+	return strings.TrimPrefix(filepath.Clean(path), "/")
+}

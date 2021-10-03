@@ -2,7 +2,6 @@ package checker
 
 import (
 	"fmt"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -55,7 +54,7 @@ func newTestImporter(mods []testMod, files []*parser.File) *testImporter {
 func (imp *testImporter) Files() loc.Files { return imp.files }
 
 func (imp *testImporter) Load(path string) (*Mod, error) {
-	path = filepath.Clean(path)
+	path = cleanImportPath(path)
 	if mod, ok := imp.loaded[path]; ok {
 		return mod, nil
 	}
@@ -2942,6 +2941,23 @@ func TestOverloadResolution(t *testing.T) {
 					Type x int
 					Func new_x()x {return: x :: 0}
 					Func bar(_ int, _ string, _ x, _ int64){}
+				`,
+			},
+		},
+		{
+			name: "adl multi-elem-import path",
+			src: `
+				import "//foo/bar"
+				func baz(_ int, _ string, _ int, _ int32)
+			`,
+			call: "baz(5, \"hello\", foo#bar#new_x(), 12)",
+			want: "foo/bar#baz(int, string, bar#x, int64)",
+			otherMod: testMod{
+				path: "foo/bar",
+				src: `
+					Type x int
+					Func new_x()x {return: x :: 0}
+					Func baz(_ int, _ string, _ x, _ int64){}
 				`,
 			},
 		},
