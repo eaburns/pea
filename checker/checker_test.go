@@ -307,6 +307,41 @@ func TestRecursiveTypeParmFuncOK(t *testing.T) {
 	}
 }
 
+func TestRecursiveInstOK(t *testing.T) {
+	const src = `
+		func string(_ int) string
+		func string(a [T]) string : string(T) string {return: string(a[0])}
+		func main() {
+			// 10-nested array.
+			string([[[[[[[[[[5]]]]]]]]]])
+		}
+	`
+	if _, errs := check("test", []string{src}, nil); len(errs) != 0 {
+		t.Fatalf("expected 0 errors, got: %s", errs[0])
+	}
+}
+
+func TestRecursiveInstTooDeep(t *testing.T) {
+	doit = true
+	defer func() { doit = false }()
+	const src = `
+		func string(_ int) string
+		func string(a [T]) string : string(T) string {return: string(a[0])}
+		func main() {
+			// 11-nested array.
+			string([[[[[[[[[[[5]]]]]]]]]]])
+		}
+	`
+	_, errs := check("test", []string{src}, nil)
+	if len(errs) == 0 {
+		t.Fatalf("expected 1 error, got none")
+	}
+	// The "excluded" note is > the max error depth, currently 5.
+	if !strings.Contains(errs[0].Error(), "not found") {
+		t.Errorf("got %s, expected containing \"not found\"", errs[0])
+	}
+}
+
 func TestTooMuchSubstitution(t *testing.T) {
 	const src = `
 		func next1(t T) T : +(T, T)T, one()T { return: next2(t) }

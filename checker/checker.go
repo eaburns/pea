@@ -1231,7 +1231,7 @@ func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, want Type)
 // or is capital Imported into the current module, nil is returned.
 // Otherwise, the IDs from the module matching idName are returned.
 func adModuleIDs(x scope, importPath, idName string) []id {
-	file := x.file()
+	file := file(x)
 	if file.Mod.Path == importPath {
 		return nil
 	}

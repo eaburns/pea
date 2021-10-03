@@ -9,7 +9,7 @@ import (
 )
 
 type scope interface {
-	file() *File
+	up() scope
 	find(name string) []id
 	findMod(name string) *Import
 	findType(args []Type, name string, l loc.Loc) []Type
@@ -29,10 +29,13 @@ type blockLitScope struct {
 	*BlockLit
 }
 
-type excludeFunc struct {
+// ifaceLookup tracks the number of times
+// def is used during its own interface satisfaction.
+// A function can take part in satisfying its own interface,
+// but only to a limited recursion depth.
+type ifaceLookup struct {
 	parent scope
 	def    *FuncDef
-	notes  *[]note
 }
 
 type localScope struct {
@@ -40,16 +43,37 @@ type localScope struct {
 	*LocalDef
 }
 
-func (*Mod) file() *File             { return nil }
-func (*Import) file() *File          { return nil }
-func (f *File) file() *File          { return f }
-func (v *VarDef) file() *File        { return v.File.file() }
-func (t *TypeDef) file() *File       { return t.File.file() }
-func (f *FuncDef) file() *File       { return f.File.file() }
-func (t *TestDef) file() *File       { return t.File.file() }
-func (b *blockLitScope) file() *File { return b.parent.file() }
-func (e *excludeFunc) file() *File   { return e.parent.file() }
-func (o *localScope) file() *File    { return o.parent.file() }
+func file(s scope) *File {
+	for s != nil {
+		if f, ok := s.(*File); ok {
+			return f
+		}
+		s = s.up()
+	}
+	return nil
+}
+
+func recursiveIfaceDepth(s scope, d *FuncDef) int {
+	n := 0
+	for s != nil {
+		if f, ok := s.(*ifaceLookup); ok && f.def == d {
+			n++
+		}
+		s = s.up()
+	}
+	return n
+}
+
+func (*Mod) up() scope             { return nil }
+func (*Import) up() scope          { return nil }
+func (f *File) up() scope          { return f.Mod }
+func (v *VarDef) up() scope        { return v.File }
+func (t *TypeDef) up() scope       { return t.File }
+func (f *FuncDef) up() scope       { return f.File }
+func (t *TestDef) up() scope       { return t.File }
+func (b *blockLitScope) up() scope { return b.parent }
+func (e *ifaceLookup) up() scope   { return e.parent }
+func (o *localScope) up() scope    { return o.parent }
 
 func (*Mod) findMod(string) *Import    { return nil }
 func (*Import) findMod(string) *Import { return nil }
@@ -68,7 +92,7 @@ func (t *TypeDef) findMod(name string) *Import       { return t.File.findMod(nam
 func (f *FuncDef) findMod(name string) *Import       { return f.File.findMod(name) }
 func (t *TestDef) findMod(name string) *Import       { return t.File.findMod(name) }
 func (b *blockLitScope) findMod(name string) *Import { return b.parent.findMod(name) }
-func (e *excludeFunc) findMod(name string) *Import   { return e.parent.findMod(name) }
+func (e *ifaceLookup) findMod(name string) *Import   { return e.parent.findMod(name) }
 func (o *localScope) findMod(name string) *Import    { return o.parent.findMod(name) }
 
 func findBuiltInType(args []Type, name string, l loc.Loc) Type {
@@ -166,7 +190,7 @@ func (b *blockLitScope) findType(args []Type, name string, l loc.Loc) []Type {
 	return b.parent.findType(args, name, l)
 }
 
-func (e *excludeFunc) findType(args []Type, name string, l loc.Loc) []Type {
+func (e *ifaceLookup) findType(args []Type, name string, l loc.Loc) []Type {
 	return e.parent.findType(args, name, l)
 }
 
@@ -353,19 +377,8 @@ func (b *blockLitScope) find(name string) []id {
 	return b.parent.find(name)
 }
 
-func (e *excludeFunc) find(name string) []id {
-	ids := e.parent.find(name)
-	var n int
-	for _, id := range ids {
-		f, ok := id.(*FuncInst)
-		if ok && f.Def == e.def {
-			*e.notes = append(*e.notes, newNote("%s: is excluded from the scope", f).setLoc(f.Def))
-			continue
-		}
-		ids[n] = id
-		n++
-	}
-	return ids[:n]
+func (e *ifaceLookup) find(name string) []id {
+	return e.parent.find(name)
 }
 
 func (o *localScope) find(name string) []id {
@@ -510,7 +523,7 @@ func (b *blockLitScope) capture(id id) id {
 	}
 }
 
-func (e *excludeFunc) capture(id id) id { return e.parent.capture(id) }
+func (e *ifaceLookup) capture(id id) id { return e.parent.capture(id) }
 
 func (o *localScope) capture(id id) id {
 	if l, ok := id.(*LocalDef); ok && l == o.LocalDef {
@@ -543,7 +556,7 @@ func (b *blockLitScope) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
 	return local
 }
 
-func (e *excludeFunc) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
+func (e *ifaceLookup) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
 	return e.parent.newLocal(name, typ, l)
 }
 
@@ -577,7 +590,7 @@ func (f *FuncDef) useVar(l loc.Loc, used *VarDef) {
 
 func (t *TestDef) useVar(loc.Loc, *VarDef)           {}
 func (b *blockLitScope) useVar(l loc.Loc, v *VarDef) { b.parent.useVar(l, v) }
-func (e *excludeFunc) useVar(l loc.Loc, v *VarDef)   { e.parent.useVar(l, v) }
+func (e *ifaceLookup) useVar(l loc.Loc, v *VarDef)   { e.parent.useVar(l, v) }
 func (o *localScope) useVar(l loc.Loc, v *VarDef)    { o.parent.useVar(l, v) }
 
 func (*Mod) useFunc(loc.Loc, *FuncDef, *FuncDecl, *FuncDef)    {}
@@ -610,7 +623,7 @@ func (b *blockLitScope) useFunc(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *Fu
 	b.parent.useFunc(l, def, parm, arg)
 }
 
-func (e *excludeFunc) useFunc(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
+func (e *ifaceLookup) useFunc(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
 	e.parent.useFunc(l, def, parm, arg)
 }
 

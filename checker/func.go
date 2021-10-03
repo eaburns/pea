@@ -316,16 +316,17 @@ func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Typ
 	}
 }
 
+var doit = false
+
 func instIface(x scope, l loc.Loc, addMod *Import, fun Func) note {
 	f, ok := fun.(*FuncInst)
 	if !ok {
 		return nil
 	}
-	// Exclude notes: if instantiation fails,
-	// these notes explain functions excluded from the scope.
-	// But if instantiation is successful these should be ignored.
-	var excludeNotes []note
-	x = &excludeFunc{parent: x, def: f.Def, notes: &excludeNotes}
+	x = &ifaceLookup{parent: x, def: f.Def}
+	if recursiveIfaceDepth(x, f.Def) > 10 {
+		return newNote("%s: is excluded from the scope", f.Def).setLoc(f.Def)
+	}
 	var notes []note
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
@@ -337,7 +338,6 @@ func instIface(x scope, l loc.Loc, addMod *Import, fun Func) note {
 		}
 	}
 	if len(notes) > 0 {
-		notes = append(notes, excludeNotes...)
 		note := newNote("%s: failed to instantiate interface", fun).setLoc(fun)
 		note.setNotes(notes)
 		return note
@@ -405,7 +405,7 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *Fu
 }
 
 func ifaceADLookup(x scope, addMod *Import, decl *FuncDecl) ([]Func, []note) {
-	file := x.file()
+	file := file(x)
 	imports := make(map[string]*Import)
 	for _, imp := range file.Imports {
 		if !imp.Exp {
