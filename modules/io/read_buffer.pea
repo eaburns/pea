@@ -84,7 +84,8 @@ Type S read_line_result [
 ]
 
 
-// Reads the next line from the buffer and returns a copy of it as a string.
+// Reads the next line from the buffer and returns a copy of it as a string
+// with any trailing newline character removed.
 //
 // It is an error if a line is longer than the size of the buffer.
 //
@@ -100,7 +101,8 @@ Func read_line(r read_buffer) string read_line_result {
 }
 
 // Reads the next line from the buffer
-// and returns it as a slice of the internal buffer.
+// and returns it as a slice of the internal buffer
+// with any trailing newline removed.
 // The returned slice is invalidated by the next read on the buffer.
 //
 // It is an error if a line is longer than the size of the buffer.
@@ -110,7 +112,7 @@ Func read_line_slice(r read_buffer) [uint8] read_line_result {
 	forever: {
 		for: r.p to: r.n - 1 do: (i) {
 			if: r.data[i] = '\n' then: {
-				line := r.data[r.p, i+1],
+				line := r.data[r.p, i],
 				r.p := i+1,
 				return: [ok? line]
 			},
@@ -145,35 +147,35 @@ Func read_line_slice(r read_buffer) [uint8] read_line_result {
 test read_line {
 	assert_end: read_line_slice(read_buffer("")),
 	assert: read_line_slice(read_buffer("foo")) ok: ['f', 'o', 'o'],
-	assert: read_line_slice(read_buffer("foo\nbar")) ok: ['f', 'o', 'o', '\n'],
-	assert: read_line_slice(read_buffer("\nfoo\nbar")) ok: ['\n'],
+	assert: read_line_slice(read_buffer("foo\nbar")) ok: ['f', 'o', 'o'],
+	assert: read_line_slice(read_buffer("\nfoo\nbar")) ok: [],
 
 	b := read_buffer("hello\nworld"),
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o', '\n'],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
 	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	b := read_buffer("hello\nworld\n"),
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o', '\n'],
-	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd', '\n'],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
+	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	b := read_buffer("\nhello\nworld\n"),
-	assert: read_line_slice(b) ok: ['\n'],
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o', '\n'],
-	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd', '\n'],
+	assert: read_line_slice(b) ok: [],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
+	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	buf := [uint8] :: new("hello\nwo".length, uint8 :: 0),
 	b := read_buffer(string_reader :: [.str "hello\nworld\n"], buf),
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o', '\n'],
-	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd', '\n'],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
+	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	buf := [uint8] :: new("hello\nwo".length, uint8 :: 0),
 	b := read_buffer(string_reader :: [.str "hello\nworld\n"], buf),
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o', '\n'],
-	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd', '\n'],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
+	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	// Line is too big.
@@ -200,7 +202,7 @@ test read_read_line {
 	assert: read(b, d) ok: 1,
 	assert: d equals: ['h'],
 	// The 'h' is consumed by the preceeding read.
-	assert: read_line_slice(b) ok: ['e', 'l' , 'l', 'o', '\n'],
+	assert: read_line_slice(b) ok: ['e', 'l' , 'l', 'o'],
 	assert: read(b, d) ok: 1,
 	assert: d equals: ['w'],
 	// The 'w' is consumed by the preceeding read.
