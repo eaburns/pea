@@ -216,11 +216,6 @@ Func push_back:(r T ring_buffer, ts C) : .length(C)int, [](C, int)T {
 	},
 }
 
-// TODO: put min and max in a generic package.
-func min(a int, b int) int {
-	return: a < b true? {a} false? {b}
-}
-
 test push_back_array {
 	r := int ring_buffer :: new(),
 	r push_back: ([int] :: []),

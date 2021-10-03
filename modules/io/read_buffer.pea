@@ -44,11 +44,6 @@ Func read(r read_buffer, d [uint8])read_result {
 	return: [ok? n]
 }
 
-// TODO: put min and max in a generic package.
-func min(a int, b int)int {
-	return: a < b true? {a} false? {b}
-}
-
 test read_buffer {
 	buf := [uint8] :: new(5, uint8 :: 0),
 	r := read_buffer(string_reader :: [.str ""], [0, 0]),
@@ -217,7 +212,7 @@ func read(r string_reader, d [uint8])read_result {
 	if: r.str.length = 0 then: {
 		return: [end?]
 	},
-	n := r.str.length < d.length true? {r.str.length} false? {d.length},
+	n := min(r.str.length, d.length),
 	for: 0 to: n-1 do: (i){
 		d[i] := r.str[i],
 	},

@@ -189,8 +189,7 @@ test fill_with {
 
 // Copies elements from b into a up to the minimim of their lengths.
 Func copy:from:(a [T], b [T]) {
-	n := a.length < b.length true? {a.length} false? {b.length},
-	for: 0 to: n-1 do: (i) {
+	for: 0 to: min(a.length, b.length)-1 do: (i) {
 		a[i] := b[i],
 	}
 }
