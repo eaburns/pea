@@ -157,3 +157,63 @@ test count {
 	assert: count("abcdefabcab", "a☺bc") equals: 0,
 	assert: count("abcdefa☺bcab", "a☺bc") equals: 1,
 }
+
+// Returns an array of slices of s for all substrings split by occurrences of delim.
+// If delim is empty, then the return is an array of each unicode code point in s.
+// If s does not contain delim, then the return has one element containing s.
+Func split(s S, delim S) [S] :
+	.length(S)int,
+	[](S, int)uint8,
+	[](S, int, int) S,
+	=(S, S)bool
+{
+	n := 0,
+	if: delim.length = 0 then: {
+		fields := [S] :: new(count(s, delim)-1, s[0, 0]),
+		i := 0,
+		utf8#for: s runes: (_ rune, w int){
+			fields[n] := s[i, i+w],
+			i += w,
+			++n,
+		},
+		return: fields
+	},
+
+	fields := [S] :: new(count(s, delim)+1, s[0, 0]),
+	while: {index(s, delim)} some: (i) {
+		fields[n] := s[0, i],
+		++n,
+		s := s[i+delim.length, s.length],
+	},
+	fields[n] := s,
+	return: fields
+}
+
+test split {
+	assert: split("", "") equals: [],
+	assert: split("abc", "") equals: ["a", "b", "c"],
+	assert: split("a☺b☺c☺", "") equals: ["a", "☺", "b", "☺", "c", "☺"],
+	assert: split("☺☺☺", "") equals: ["☺", "☺", "☺"],
+
+	assert: split("", "a") equals: [""],
+	assert: split("", "☺") equals: [""],
+	assert: split("", "abc") equals: [""],
+	assert: split("", "☺☹") equals: [""],
+
+	assert: split("aaaa", "a") equals: ["", "", "", "", ""],
+	assert: split("☺☺☺☺", "☺") equals: ["", "", "", "", ""],
+	assert: split("abababab", "ab") equals: ["", "", "", "", ""],
+	assert: split("☺☹☺☹☺☹☺☹", "☺☹") equals: ["", "", "", "", ""],
+
+	assert: split("a,b,c", ",") equals: ["a", "b", "c"],
+	assert: split("a,b,c,", ",") equals: ["a", "b", "c", ""],
+	assert: split(",a,b,c,", ",") equals: ["", "a", "b", "c", ""],
+	assert: split(",a,,b,,c,", ",") equals: ["", "a", "", "b", "", "c", ""],
+
+	assert: split("abc123xyz", "123") equals: ["abc", "xyz"],
+	assert: split("123abc123123xyz123", "123") equals: ["", "abc", "", "xyz", ""],
+	assert: split("abc☺xyz", "☺") equals: ["abc", "xyz"],
+	assert: split("☺abc☺☺xyz☺", "☺") equals: ["", "abc", "", "xyz", ""],
+	assert: split("abc☺☺☺xyz", "☺☺☺") equals: ["abc", "xyz"],
+	assert: split("☺☺☺abc☺☺☺☺☺☺xyz☺☺☺", "☺☺☺") equals: ["", "abc", "", "xyz", ""],
+}
