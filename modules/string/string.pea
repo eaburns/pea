@@ -1,6 +1,7 @@
 Import "assert"
 Import "basic"
 import "print"
+import "unicode/utf8"
 
 // Returns the index of the first occurrence of n in h.
 Func index(h S, n S) int option :
@@ -98,4 +99,61 @@ test contains {
  	// Make sure it works with [uint8] too.
 	assert_true: contains([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['b', 'c']),
 	assert_false: contains([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['n']),
+}
+
+// Returns the number of non-overlapping occurrences of sub in s.
+// If sub is the empty string, count returns
+// the number of unicode code points in s plus 1.
+Func count(s S, sub S) int :
+	.length(S)int,
+	[](S, int)uint8,
+	[](S, int, int) S,
+	=(S, S)bool
+{
+	n := 0,
+	if: sub.length = 0 then: {
+		while: {utf8#consume(s)} some: (_) {
+			++n
+		},
+		return: n+1,
+	},
+	while: {index(s, sub)} some: (i) {
+		++n,
+		if: i+sub.length > s.length then: {
+			return: n
+		},
+		s := s[i+sub.length, s.length],
+	},
+	return: n
+}
+
+test count {
+	assert: count("", "") equals: 1,
+	assert: count("a", "") equals: 2,
+	assert: count("aa", "") equals: 3,
+	assert: count("☺", "") equals: 2,
+	assert: count("☺☺", "") equals: 3,
+
+	assert: count("", "a") equals: 0,
+	assert: count("xyz", "a") equals: 0,
+	assert: count("abc", "a") equals: 1,
+	assert: count("aaa", "a") equals: 3,
+
+	assert: count("", "☺") equals: 0,
+	assert: count("xyz", "☺") equals: 0,
+	assert: count("a☺b", "☺") equals: 1,
+	assert: count("a☺ba☺b", "☺") equals: 2,
+	assert: count("a☺ba☺", "☺") equals: 2,
+	assert: count("☺☺", "☺") equals: 2,
+
+	assert: count("", "abc") equals: 0,
+	assert: count("a", "abc") equals: 0,
+	assert: count("ab", "abc") equals: 0,
+	assert: count("abc", "abc") equals: 1,
+	assert: count("abcabc", "abc") equals: 2,
+	assert: count("abcdefabc", "abc") equals: 2,
+	assert: count("abcdefabcab", "abc") equals: 2,
+
+	assert: count("abcdefabcab", "a☺bc") equals: 0,
+	assert: count("abcdefa☺bcab", "a☺bc") equals: 1,
 }
