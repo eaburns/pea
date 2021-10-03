@@ -52,6 +52,20 @@ Func assert_ok:(o T or_error) {
 	}
 }
 
+// Panics if o is the error? case.
+Func assert:ok:(o T or_error, want T) :
+	=(T, T)bool,
+	+=(print#printer, T)print#printer,
+{
+	if: o ok: (got) {
+		if: !(got = want) then: {
+			panic(print#string("got ", got, ", wanted ", want)),
+		},
+	} error: (e){
+		panic(print#string("got error ", e, ", wanted OK"))
+	}
+}
+
 // Panics if o is the none? case.
 Func assert_error:(o error option) {
 	if: o ok: {
