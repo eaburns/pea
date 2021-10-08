@@ -36,6 +36,7 @@ type blockLitScope struct {
 type ifaceLookup struct {
 	parent scope
 	def    *FuncDef
+	inst   *FuncInst
 }
 
 type localScope struct {
@@ -62,6 +63,24 @@ func recursiveIfaceDepth(s scope, d *FuncDef) int {
 		s = s.up()
 	}
 	return n
+}
+
+// seenIfaceInst returns whether inst is already
+// under consideration for iface instantiation.
+// If it is, re-considering it will simply be a loop.
+// Without otherwise checking, the loop would
+// be unrolled the max recursiveIfaceDepth,
+// which can create exponential behavior.
+// Instead, we find these obvious loops
+// and cut them off immediately.
+func seenIfaceInst(s scope, inst *FuncInst) bool {
+	for s != nil {
+		if f, ok := s.(*ifaceLookup); ok && f.inst.eq(inst) {
+			return true
+		}
+		s = s.up()
+	}
+	return false
 }
 
 func (*Mod) up() scope             { return nil }

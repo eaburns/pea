@@ -316,17 +316,15 @@ func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Typ
 	}
 }
 
-var doit = false
-
 func instIface(x scope, l loc.Loc, addMod *Import, fun Func) note {
 	f, ok := fun.(*FuncInst)
 	if !ok {
 		return nil
 	}
-	x = &ifaceLookup{parent: x, def: f.Def}
-	if recursiveIfaceDepth(x, f.Def) > 10 {
+	if recursiveIfaceDepth(x, f.Def) >= 10 || seenIfaceInst(x, f) {
 		return newNote("%s: is excluded from the scope", f.Def).setLoc(f.Def)
 	}
+	x = &ifaceLookup{parent: x, def: f.Def, inst: f}
 	var notes []note
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.

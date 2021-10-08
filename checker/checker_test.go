@@ -322,8 +322,6 @@ func TestRecursiveInstOK(t *testing.T) {
 }
 
 func TestRecursiveInstTooDeep(t *testing.T) {
-	doit = true
-	defer func() { doit = false }()
 	const src = `
 		func string(_ int) string
 		func string(a [T]) string : string(T) string {return: string(a[0])}
