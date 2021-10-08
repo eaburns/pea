@@ -1,6 +1,6 @@
 Import "assert"
 Import "basic"
-import "print"
+Import "print"
 
 // An ordered sequence of elements of type T.
 //
@@ -67,10 +67,10 @@ test clear {
 // if i is greater or equal to the length of the vector.
 Func [](v T vector, i int) &T {
 	if: i < 0 then: {
-		panic(print#string("index out of bounds: ", i, " < 0"))
+		panic(print#string("index out of bounds: " ++ i ++ " < 0"))
 	},
 	if: i >= v.n then: {
-		panic(print#string("index out of bounds: ", i, " >= ", v.n))
+		panic(print#string("index out of bounds: " ++ i ++ " >= " ++ v.n))
 	},
 	return: v.data[i]
 }
@@ -90,13 +90,13 @@ test index {
 // or if e is greater than the length of the vector.
 Func [](v T vector, s int, e int) T vector {
 	if: s < 0 then: {
-		panic(print#string("start index out of bounds: ", s, " < 0"))
+		panic(print#string("start index out of bounds: " ++ s ++ " < 0"))
 	},
 	if: e > v.n then: {
-		panic(print#string("end index out of bounds: ", e, " >= ", v.n))
+		panic(print#string("end index out of bounds: " ++ e ++ " >= " ++ v.n))
 	},
 	if: s > e then: {
-		panic(print#string("start index is greater than end: ", s, " > ", e))
+		panic(print#string("start index is greater than end: " ++ s ++ " > " ++ e))
 	},
 	return: [.n e-s, .data v.data[s, e]]
 }

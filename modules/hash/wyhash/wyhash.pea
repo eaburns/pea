@@ -161,8 +161,8 @@ func =(a [.hi uint64, .lo uint64], b [.hi uint64, .lo uint64]) bool {
 	return: a.hi = b.hi && { a.lo = b.lo }
 }
 
-func +=(p print#printer, x [.hi uint64, .lo uint64]) print#printer {
-	return: p += "[.hi " += x.hi += ", .lo " += x.lo += "]"
+func print(p print#printer, x [.hi uint64, .lo uint64]) print#printer {
+	return: p ++ "[.hi " ++ x.hi ++ ", .lo " ++ x.lo ++ "]"
 }
 
 test mul64to128 {

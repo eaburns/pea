@@ -1,17 +1,17 @@
 Import "basic"
-import "print"
+Import "print"
 
 // Panics of a is not equal to b by the = function.
-Func assert:equals:(a T, b T) : =(T, T) bool, +=(print#printer, T)print#printer {
+Func assert:equals:(a T, b T) : =(T, T) bool, ++(print#printer, T)print#printer {
 	if: !(a = b) then: {
-		panic(print#string(a, " != ", b, " expected equal"))
+		panic(print#string(a ++ " != " ++ b ++ " expected equal"))
 	}
 }
 
 // Panics if o is the some? case.
-Func assert_none:(o T option) : +=(print#printer, T)print#printer {
+Func assert_none:(o T option) : ++(print#printer, T)print#printer {
 	if: o some: (t T) {
-		panic(print#string("got ", o, " wanted none()"))
+		panic(print#string("got " ++ o ++ " wanted none()"))
 	}
 }
 
@@ -19,64 +19,64 @@ Func assert_none:(o T option) : +=(print#printer, T)print#printer {
 // or if the some? case value of o
 // is not equal to b.
 Func assert:some:(o T option, b T) :
-	+=(print#printer, T)print#printer,
+	++(print#printer, T)print#printer,
 	=(T, T) bool,
 {
 	if: o some: (a T) {
 		if: !(a = b) then: {
-			panic(print#string(o, " != some(", b, ")"))
+			panic(print#string(o ++ " != some(" ++ b ++ ")"))
 		}
 	} none: {
-		panic(print#string(o, " != some(", b, ")"))
+		panic(print#string(o ++ " != some(" ++ b ++ ")"))
 	}
 }
 
 // Panics if o is not the some? case.
-Func assert_some:(o T option) : +=(print#printer, T)print#printer {
+Func assert_some:(o T option) : ++(print#printer, T)print#printer {
 	if: o none: {
-		panic(print#string(o, " != some(...)"))
+		panic(print#string(o ++ " != some(...)"))
 	}
 }
 
 // Panics if o is the some? case.
 Func assert_ok:(o error option) {
 	if: o error: (e){
-		panic(print#string("got error ", e, ", wanted OK"))
+		panic(print#string("got error " ++ e ++ " ++ wanted OK"))
 	}
 }
 
 // Panics if o is the error? case.
 Func assert_ok:(o T or_error) {
 	if: o error: (e){
-		panic(print#string("got error ", e, ", wanted OK"))
+		panic(print#string("got error " ++ e ++ " ++ wanted OK"))
 	}
 }
 
 // Panics if o is the error? case.
 Func assert:ok:(o T or_error, want T) :
 	=(T, T)bool,
-	+=(print#printer, T)print#printer,
+	++(print#printer, T)print#printer,
 {
 	if: o ok: (got) {
 		if: !(got = want) then: {
-			panic(print#string("got ", got, ", wanted ", want)),
+			panic(print#string("got " ++ got ++ " ++ wanted " ++ want)),
 		},
 	} error: (e){
-		panic(print#string("got error ", e, ", wanted OK"))
+		panic(print#string("got error " ++ e ++ " ++ wanted OK"))
 	}
 }
 
 // Panics if o is the none? case.
 Func assert_error:(o error option) {
 	if: o ok: {
-		panic(print#string("got OK, wanted an error"))
+		panic("got OK, wanted an error")
 	}
 }
 
 // Panics if o is the ok? case.
-Func assert_error:(o T or_error) : +=(print#printer, T)print#printer {
+Func assert_error:(o T or_error) : ++(print#printer, T)print#printer {
 	if: o ok: (t){
-		panic(print#string("got ", t, ", wanted an error"))
+		panic(print#string("got " ++ t ++ " ++ wanted an error"))
 	}
 }
 
@@ -85,10 +85,10 @@ Func assert_error:(o T or_error) : +=(print#printer, T)print#printer {
 // is not equal to msg.
 Func assert:error:(o error option, msg string) {
 	if: o ok: {
-		panic(print#string("got OK, wanted an error"))
+		panic("got OK, wanted an error")
 	} error: (e){
 		if: message(e) != msg then: {
-			panic(print#string("got error ", e, ", wanted ", msg))
+			panic(print#string("got error " ++ e ++ " ++ wanted " ++ msg))
 		}
 	}
 }
@@ -96,12 +96,12 @@ Func assert:error:(o error option, msg string) {
 // Panics if o is the ok? case
 // or if the error? case value's message
 // is not equal to msg.
-Func assert:error:(o T or_error, msg string) : +=(print#printer, T)print#printer {
+Func assert:error:(o T or_error, msg string) : ++(print#printer, T)print#printer {
 	if: o ok: (t){
-		panic(print#string("got ", t, ", wanted an error"))
+		panic(print#string("got " ++ t ++ " ++ wanted an error"))
 	} error: (e){
 		if: message(e) != msg then: {
-			panic(print#string("got error ", e, ", wanted ", msg))
+			panic(print#string("got error " ++ e ++ " ++ wanted " ++ msg))
 		}
 	}
 }
@@ -131,11 +131,11 @@ func array(c C, _ [T]) [T] : for:each:(C, (T){}) {
 Func assert:elements:(c C, want [T]) :
 	for:each:(C, (T){}),
 	=(T,T)bool,
-	+=(print#printer, T)print#printer,
+	++(print#printer, T)print#printer,
 {
 	got := array(c, want),
 	if: got != want then: {
-		panic(print#string("got ", got, ", wanted ", want))
+		panic(print#string("got " ++ got ++ " ++ wanted " ++ want))
 	}
 }
 
@@ -143,23 +143,21 @@ Func assert:elements:(c C, want [T]) :
 Func assert:unordered_elements:(c C, want [T]) :
 	for:each:(C, (T){}),
 	=(T,T)bool,
-	+=(print#printer, T)print#printer,
+	++(print#printer, T)print#printer,
 {
 	got := array(c, want),
 	unmatch := quadratic_unmatched(got, want),
 	if: unmatch.left.length = 0 && unmatch.right.length = 0 then: {
 		return()
 	},
-	p := print#new(),
-	p += "got elements " += got,
-	p += " wanted " += want,
+	p := print#new() ++ "got elements " ++ got ++ " wanted " ++ want,
 	for: unmatch.left each: (i) {
-		p += "\n	element "  += i += " (" += got[i] += ") unexpected",
+		p ++ "\n	element "  ++ i ++ " (" ++ got[i] ++ ") unexpected",
 	},
 	for: unmatch.right each: (i) {
-		p += "\n	expected element "  += i += " (" += want[i] += ") unmatched",
+		p ++ "\n	expected element "  ++ i ++ " (" ++ want[i] ++ ") unmatched",
 	},
-	panic(reset(p))
+	panic(print#string(p))
 }
 
 func quadratic_unmatched(left [T], right [T]) [.left [int], .right [int]] : =(T, T)bool {
@@ -203,8 +201,8 @@ func =(a [.left [int], .right [int]], b [.left [int], .right [int]]) bool {
 	return: a.left = b.left && a.right = b.right
 }
 
-func +=(p print#printer, x [.left [int], .right [int]]) print#printer {
-	return: p += "[.left " += x.left += ", .right " += x.right += "]"
+func print(p print#printer, x [.left [int], .right [int]]) print#printer {
+	return: p ++ "[.left " ++ x.left ++ ", .right " ++ x.right ++ "]"
 }
 
 test unordered_elements {

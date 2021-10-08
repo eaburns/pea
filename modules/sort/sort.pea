@@ -77,8 +77,8 @@ func =(a &ref_cmp_type, b &ref_cmp_type)bool {
 	return: a.x = b.x && a.y = b.y
 }
 
-func +=(p print#printer, x ref_cmp_type) print#printer {
-	return: p += "[.x " += x.x += ", .y " += x.y += "]"
+func print(p print#printer, x ref_cmp_type) print#printer {
+	return: p ++ "[.x " ++ x.x ++ ", .y " ++ x.y ++ "]"
 }
 
 test sort {

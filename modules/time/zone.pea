@@ -189,4 +189,4 @@ test civil_to_point {
 
 // Need to print points for the civil_to_point test.
 // Just print them as durations.
-func +=(p print#printer, t point) print#printer { return: p += t.d }
+func print(p print#printer, t point) print#printer { return: p ++ t.d }

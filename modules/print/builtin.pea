@@ -1,18 +1,18 @@
 Import "basic"
 
 // Adds the string to the printer and returns the printer.
-Func +=(p printer, s string) printer {
+Func print(p printer, s string) printer {
 	add_string(p, s),
 	return: p
 }
 
 // Adds the string representation of a bool to the printer
 // and then returns the printer.
-Func +=(p printer, b bool) printer {
+Func print(p printer, b bool) printer {
 	return: b true? {
-		p += "true"
+		p ++ "true"
 	} false? {
-		p += "false"
+		p ++ "false"
 	},
 }
 
@@ -23,15 +23,15 @@ test print_bool {
 
 // Adds the string representation of the array
 // to the printer and returns the printer.
-Func +=(p printer, a [T]) printer : +=(printer, T)printer {
-	p += "[",
+Func print(p printer, a [T]) printer : ++(printer, T)printer {
+	p ++ "[",
 	for: 0 to: a.length - 1 do: (i) {
 		if: i > 0 then: {
-			p += ", "
+			p ++ ", "
 		},
-		p += a[i]
+		p ++ a[i]
 	},
-	return: p += "]",
+	return: p ++ "]",
 }
 
 test print_array {
@@ -44,11 +44,11 @@ test print_array {
 }
 
 // Adds the string representation to the printer and returns the printer.
-Func +=(p printer, u uint) printer { return: add_uint64(p, uint64 :: u) }
-Func +=(p printer, u uint8) printer { return: add_uint64(p, uint64 :: u) }
-Func +=(p printer, u uint16) printer { return: add_uint64(p, uint64 :: u) }
-Func +=(p printer, u uint32) printer { return: add_uint64(p, uint64 :: u) }
-Func +=(p printer, u uint64) printer { return: add_uint64(p, u) }
+Func print(p printer, u uint) printer { return: add_uint64(p, uint64 :: u) }
+Func print(p printer, u uint8) printer { return: add_uint64(p, uint64 :: u) }
+Func print(p printer, u uint16) printer { return: add_uint64(p, uint64 :: u) }
+Func print(p printer, u uint32) printer { return: add_uint64(p, uint64 :: u) }
+Func print(p printer, u uint64) printer { return: add_uint64(p, u) }
 
 func add_uint64(p printer, u uint64) printer {
 	// 20 bytes is big enough for both base 10 uint64 and int64.
@@ -73,15 +73,15 @@ test print_uint64 {
 }
 
 // Adds the string representation to the printer and returns the printer.
-Func +=(p printer, d int) printer { return: add_int64(p, int64 :: d) }
-Func +=(p printer, d int8) printer { return: add_int64(p, int64 :: d) }
-Func +=(p printer, d int16) printer { return: add_int64(p, int64 :: d) }
-Func +=(p printer, d int32) printer { return: add_int64(p, int64 :: d) }
-Func +=(p printer, d int64) printer { return: add_int64(p, d) }
+Func print(p printer, d int) printer { return: add_int64(p, int64 :: d) }
+Func print(p printer, d int8) printer { return: add_int64(p, int64 :: d) }
+Func print(p printer, d int16) printer { return: add_int64(p, int64 :: d) }
+Func print(p printer, d int32) printer { return: add_int64(p, int64 :: d) }
+Func print(p printer, d int64) printer { return: add_int64(p, d) }
 
 func add_int64(p printer, d int64) printer {
 	return: d < 0 true? {
-		p += "-",
+		p ++ "-",
 		add_uint64(p, uint64 :: -d)
 	} false? {
 		add_uint64(p, uint64 :: d)
@@ -99,13 +99,13 @@ test print_int64 {
 }
 
 // This test checks for a regression in the compiler
-// where +=(printer, int64) was returning
+// where ++(printer, int64) was returning
 // a copy of the printer instead of a reference to it.
 test print_int64_return_copy {
 	p := printer :: new(),
-	q := p += 5,
-	q += "boo",
-	assert_true: (string :: reset(p)) = "5boo",
+	q := p ++ 5,
+	q ++ "boo",
+	assert_true: string(p) = "5boo",
 }
 
 
@@ -115,7 +115,7 @@ const max_neg_exp := float64 :: -1.0e-5
 
 // Adds the string representation of f to the printer
 // and returns the printer.
-Func +=(p printer, f float64) printer {
+Func print(p printer, f float64) printer {
 	// From https://blog.benoitblanchon.fr/lightweight-float-to-string/.
 	if: f != f then: {
 		add_string(p, "NaN"),
@@ -130,7 +130,7 @@ Func +=(p printer, f float64) printer {
 		return: p
 	},
 	if: f < 0 then: {
-		p += "-",
+		p ++ "-",
 		f := -f,
 	},
 	e := 0,
@@ -229,16 +229,16 @@ Func +=(p printer, f float64) printer {
 		},
 	},
 
-	p += i,
+	p ++ i,
 	if: d != 0 then: {
-		p += ".",
+		p ++ ".",
 		add_fraction(p, d)
 	},
 	if: e < 0 then: {
-		p += "e-" += -e
+		p ++ "e-" ++ -e
 	},
 	if: e > 0 then: {
-		p += "e" += e
+		p ++ "e" ++ e
 	},
 	return: p
 }
@@ -292,8 +292,8 @@ test print_float64 {
 
 // Adds the string representation of the pointer value to the printer
 // and returns the printer.
-Func +=(p printer, t T pointer) printer : +=(printer, T) printer {
-	return: p += (T :: (&T :: t))
+Func print(p printer, t T pointer) printer : ++(printer, T) printer {
+	return: p ++ (T :: (&T :: t))
 }
 
 test print_pointer {
@@ -303,11 +303,11 @@ test print_pointer {
 
 // Adds the string representation of the option to the printer
 // and returns the printer.
-Func +=(p printer, o T option) printer : +=(printer, T)printer {
+Func print(p printer, o T option) printer : ++(printer, T)printer {
 	return: o some? (t T) {
-		p += "some(" += t += ")",
+		p ++ "some(" ++ t ++ ")",
 	} none? {
-		p += "none()"
+		p ++ "none()"
 	}
 }
 
@@ -322,17 +322,17 @@ test print_option {
 
 // Adds the error's message to the printer
 // and returns the printer.
-Func +=(p printer, err error) printer {
-	return: p += message(err),
+Func print(p printer, err error) printer {
+	return: p ++ message(err),
 }
 
 // Adds the string representation of the or_error to the printer
 // and returns the printer.
-Func +=(p printer, t_or T or_error) printer : +=(printer, T)printer {
+Func print(p printer, t_or T or_error) printer : ++(printer, T)printer {
 	return: t_or ok? (t T) {
-		p += "ok(" += t += ")"
+		p ++ "ok(" ++ t ++ ")"
 	} error? (e) {
-		p += "error(" += e += ")"
+		p ++ "error(" ++ e ++ ")"
 	}
 }
 

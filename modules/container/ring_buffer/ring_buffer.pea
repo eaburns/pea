@@ -1,6 +1,6 @@
 Import "assert"
 Import "basic"
-import "print"
+Import "print"
 
 // An ordered sequence of elements of type T.
 // A ring_buffer is implemented as a circular array.
@@ -56,10 +56,10 @@ Func .length(r T ring_buffer) int {
 // if i is greater or equal to the length of the ring_buffer.
 Func [](r T ring_buffer, i int) &T {
 	if: i < 0 then: {
-		panic(print#string("index out of bounds: ", i, " < 0"))
+		panic(print#string("index out of bounds: " ++ i ++ " < 0"))
 	},
 	if: i >= r.n then: {
-		panic(print#string("index out of bounds: ", i, " >= ", r.n))
+		panic(print#string("index out of bounds: " ++ i ++ " >= " ++ r.n))
 	},
 	return: r.data[index(r, i)]
 }
@@ -86,13 +86,13 @@ test index {
 // or if e is greater than the length of the ring_buffer.
 Func [](r T ring_buffer, s int, e int) T ring_buffer {
 	if: s < 0 then: {
-		panic(print#string("start index out of bounds: ", s, " < 0"))
+		panic(print#string("start index out of bounds: " ++ s ++ " < 0"))
 	},
 	if: e > r.n then: {
-		panic(print#string("end index out of bounds: ", e, " >= ", r.n))
+		panic(print#string("end index out of bounds: " ++ e ++ " >= " ++ r.n))
 	},
 	if: s > e then: {
-		panic(print#string("start index is greater than end: ", s, " > ", e))
+		panic(print#string("start index is greater than end: " ++ s ++ " > " ++ e))
 	},
 	return: [.n e - s, .start index(r, s), .end index(r, e), .data r.data]
 }

@@ -1,0 +1,36 @@
+/*
+Printable types should implement
+	print(_ printer, _ T)printer
+
+All printable types have an operator ++(printer, T)printer
+that appends the type to the printer using its print function.
+
+The operator ++(T, U)printer for any printable types T and U
+will create a new printer, append t and then u to it and return it.
+
+The two ++ operators can be chained to populate a printer.
+For example, the following will create a new printer
+filled with the value "foo1bar3.14":
+	"foo" ++ 1 ++ "bar" ++ 3.14
+
+This is useful for functions like string(printer) and print(printer):
+	string("foo" ++ 1 ++ "bar" ++ 3.14),
+	print("foo" ++ 1 ++ "bar" ++ 3.14),
+*/
+Import "basic"
+
+// Returns a new printer containing the concatenation
+// of the string representation of t then u.
+Func ++(t T, u U)printer : ++(printer, T)printer, ++(printer, U)printer {
+	return: (printer :: new()) ++ t ++ u
+}
+
+// Adds the string representation of a printable type to the printer.
+Func ++(p printer, t T)printer : print(printer, T)printer {
+	return: print(p, t)
+}
+
+// Returns the default string representation of any printable type.
+Func string(t T)string : ++(printer, T)printer {
+	return: string((printer :: new()) ++ t)
+}

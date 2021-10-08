@@ -434,7 +434,6 @@ Func before:insert:(c T cursor, t T) {
 	if: same_node(some(n), c.list.head) then: {
 		c.list.head := some(m),
 		h := c.list.head some? (n T node) {n} none? {panic("no")},
-		print(print#string("new head: ", uint64 :: (uintref :: h), "\n")),
 	},
 	++c.list.len,
 }

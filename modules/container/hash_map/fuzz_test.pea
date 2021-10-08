@@ -15,11 +15,11 @@ Some fuzz tests created with the following Go program:
 		fmt.Println(`Import "hash"`)
 		fmt.Println(`import "print"`)
 		fmt.Println(`
-	func +=(p print#printer, a [.key K, .val V])print#printer :
-		+=(print#printer, K)print#printer,
-		+=(print#printer, V)print#printer,
+	func print(p print#printer, a [.key K, .val V])print#printer :
+		++(print#printer, K)print#printer,
+		++(print#printer, V)print#printer,
 	{
-		return: p += "[.key " += a.key += ", .val " += a.val += "]"
+		return: p ++ "[.key " ++ a.key ++ ", .val " ++ a.val ++ "]"
 	}
 
 	func =(a [.key K, .val V], b [.key K, .val V])bool :
@@ -70,11 +70,11 @@ Import "basic"
 Import "hash"
 import "print"
 
-func +=(p print#printer, a [.key K, .val V])print#printer :
-	+=(print#printer, K)print#printer,
-	+=(print#printer, V)print#printer,
+func print(p print#printer, a [.key K, .val V])print#printer :
+	++(print#printer, K)print#printer,
+	++(print#printer, V)print#printer,
 {
-	return: p += "[.key " += a.key += ", .val " += a.val += "]"
+	return: p ++ "[.key " ++ a.key ++ ", .val " ++ a.val ++ "]"
 }
 
 func =(a [.key K, .val V], b [.key K, .val V])bool :

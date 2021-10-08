@@ -524,25 +524,25 @@ test duration_division {
 // the durations is printed as the integer number of hours, if non-zero;
 // the integer number of minutes, if non-zero;
 // and the floating point number of seconds, if non-zero.
-Func +=(p print#printer, d duration) print#printer {
+Func print(p print#printer, d duration) print#printer {
 	if: is_infinite(d) then: {
 		if: d.s < 0 then: {
-			p += "-",
+			p ++ "-",
 		},
-		return: p += "infinity",
+		return: p ++ "infinity",
 	},
 	if: d.s = 0 then: {
 		if: d < zero_duration then: {
-			p += "-",
+			p ++ "-",
 			d := -d
 		},
 		if: d < microsecond then: {
-			return: p += d.ns += "ns"
+			return: p ++ d.ns ++ "ns"
 		},
 		if: d < millisecond then: {
-			return: p += d/microsecond += "μs"
+			return: p ++ d/microsecond ++ "μs"
 		},
-		return: p += d/millisecond += "ms"
+		return: p ++ d/millisecond ++ "ms"
 	},
 
 	// Instead of doing arithmetic in durations,
@@ -555,7 +555,7 @@ Func +=(p print#printer, d duration) print#printer {
 	if: d.s >= 0 then: {
 		s := uint64 :: d.s,
 	} else: {
-		p += "-",
+		p ++ "-",
 		if: d.s = min_int64 then: {
 			s := (uint64 :: max_int64)+1,
 		} else: {
@@ -569,20 +569,20 @@ Func +=(p print#printer, d duration) print#printer {
 	if: s >= 3600 then: {
 		h := s/3600,
 		s -= h*3600,
-		p += h += "h",
+		p ++ h ++ "h",
 	},
 	if: s >= 60 then: {
 		m := s/60,
 		s -= m*60,
-		p += m += "m",
+		p ++ m ++ "m",
 	},
 	if: s > 0 || d.ns > 0 then: {
-		p += s,
+		p ++ s,
 		if: d.ns > 0 then: {
 			f := print#string((float64 :: d.ns) / (float64 :: ns_per_sec)),
-			p += f[1,f.length], // trim leading 0.
+			p ++ f[1,f.length], // trim leading 0.
 		},
-		p += "s",
+		p ++ "s",
 	},
 	return: p
 }

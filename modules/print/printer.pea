@@ -1,11 +1,6 @@
 Import "basic"
 
-// A string printer.
-// Printer is used for converting values of other types
-// into human-readable strings.
-// All types T implementing +=(printer, T)printer
-// can be used to add the string representation of the type
-// to the printer.
+// A string printer used for converting values into human-readable strings.
 Type printer := _printer
 type _printer &[.n int, .data [uint8]]
 
@@ -42,16 +37,16 @@ test printer_add_byte {
 }
 
 test printer_add_byte_grow {
-	bytes := [uint8] :: new(min_printer_len*2, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len*2, (i int){uint8 :: i + '0'}),
 
 	p := printer :: new(),
 	n := 0,
-	for: bytes each: (b) {
+	for: bs each: (b) {
 		add_byte(p, b),
 		++n,
 		assert_true: p.n = n,
 		assert_true: p.n <= p.data.length,
-		assert_true: p.data[0, p.n] = bytes[0, n],
+		assert_true: p.data[0, p.n] = bs[0, n],
 	}
 }
 
@@ -87,23 +82,23 @@ test printer_add_bytes {
 }
 
 test printer_add_bytes_grow {
-	bytes := [uint8] :: new(min_printer_len-1, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len-1, (i int){uint8 :: i + '0'}),
 	p := printer :: new(),
-	add_bytes(p, bytes),
-	assert_true: p.n = bytes.length,
-	assert_true: p.data[0, p.n] = bytes,
+	add_bytes(p, bs),
+	assert_true: p.n = bs.length,
+	assert_true: p.data[0, p.n] = bs,
 
-	bytes := [uint8] :: new(min_printer_len, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len, (i int){uint8 :: i + '0'}),
 	p := printer :: new(),
-	add_bytes(p, bytes),
-	assert_true: p.n = bytes.length,
-	assert_true: p.data[0, p.n] = bytes,
+	add_bytes(p, bs),
+	assert_true: p.n = bs.length,
+	assert_true: p.data[0, p.n] = bs,
 
-	bytes := [uint8] :: new(min_printer_len+1, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len+1, (i int){uint8 :: i + '0'}),
 	p := printer :: new(),
-	add_bytes(p, bytes),
-	assert_true: p.n = bytes.length,
-	assert_true: p.data[0, p.n] = bytes,
+	add_bytes(p, bs),
+	assert_true: p.n = bs.length,
+	assert_true: p.data[0, p.n] = bs,
 }
 
 // Adds a string to the end of a printer's string.
@@ -138,26 +133,26 @@ test printer_add_string {
 }
 
 test printer_add_string_grow {
-	bytes := [uint8] :: new(min_printer_len-1, (i int){uint8 :: i + '0'}),
-	str := string :: bytes,
+	bs := [uint8] :: new(min_printer_len-1, (i int){uint8 :: i + '0'}),
+	str := string :: bs,
 	p := printer :: new(),
 	add_string(p, str),
 	assert_true: p.n = str.length,
-	assert_true: p.data[0, p.n] = bytes,
+	assert_true: p.data[0, p.n] = bs,
 
-	bytes := [uint8] :: new(min_printer_len, (i int){uint8 :: i + '0'}),
-	str := string :: bytes,
+	bs := [uint8] :: new(min_printer_len, (i int){uint8 :: i + '0'}),
+	str := string :: bs,
 	p := printer :: new(),
 	add_string(p, str),
 	assert_true: p.n = str.length,
-	assert_true: p.data[0, p.n] = bytes,
+	assert_true: p.data[0, p.n] = bs,
 
-	bytes := [uint8] :: new(min_printer_len+1, (i int){uint8 :: i + '0'}),
-	str := string :: bytes,
+	bs := [uint8] :: new(min_printer_len+1, (i int){uint8 :: i + '0'}),
+	str := string :: bs,
 	p := printer :: new(),
 	add_string(p, str),
 	assert_true: p.n = str.length,
-	assert_true: p.data[0, p.n] = bytes,
+	assert_true: p.data[0, p.n] = bs,
 }
 
 func grow(p printer, delta int) {
@@ -175,7 +170,7 @@ func grow(p printer, delta int) {
 
 // Returns the printer's string as an array of uint8s
 // and resets the printer to empty.
-Func reset(p printer) [uint8] {
+Func bytes(p printer) [uint8] {
 	b := p.data[0, p.n],
 	p.n := 0,
 	p.data := new(min_printer_len, uint8 :: 0),
@@ -184,18 +179,18 @@ Func reset(p printer) [uint8] {
 
 test printer_reset_bytes {
 	p := printer :: new(),
-	assert_true: ([uint8] :: reset(p)) = [],
+	assert_true: bytes(p) = [],
 	assert_true: p.n = 0,
 
 	p := printer :: new(),
 	add_bytes(p, ['a', 'b', 'c']),
-	assert_true: ([uint8] :: reset(p)) = ['a', 'b', 'c'],
+	assert_true: bytes(p) = ['a', 'b', 'c'],
 	assert_true: p.n = 0,
 	assert_true: p.data = new(min_printer_len, uint8 :: 0),
 
 	p := printer :: new(),
 	add_bytes(p, ['a', 'b', 'c']),
-	orig := [uint8] :: reset(p),
+	orig := bytes(p),
 	assert_true: orig = ['a', 'b', 'c'],
 	add_bytes(p, ['x', 'y', 'z']),
 	// Modifying p doesn't modify the array returned from reset.
@@ -203,76 +198,36 @@ test printer_reset_bytes {
 }
 
 // Returns the printer's string and resets the printer to empty.
-Func reset(p printer) string {
-	return: string :: ([uint8] :: reset(p))
+Func string(p printer) string {
+	return: string :: bytes(p)
+}
+
+// Prints the contents of the printer to standard output and clears the printer.
+Func print(p printer) {
+	print(string(p))
 }
 
 test printer_reset_string {
 	p := printer :: new(),
-	assert_true: (string :: reset(p)) = "",
+	assert_true: string(p) = "",
 	assert_true: p.n = 0,
 
 	p := printer :: new(),
 	add_bytes(p, ['a', 'b', 'c']),
-	assert_true: (string :: reset(p)) = "abc",
+	assert_true: string(p) = "abc",
 	assert_true: p.n = 0,
 	assert_true: p.data = new(min_printer_len, uint8 :: 0),
 }
 
 test printer_copy {
 	p0 := printer :: new(),
-	p0 += "a",
+	p0 ++ "a",
 	p1 := p0,
-	p1 += "b",
-	p0 += "c",
-	assert_true: (string :: reset(p0)) = "abc",
+	p1 ++ "b",
+	p0 ++ "c",
+	assert_true: string(p0) = "abc",
 	assert_true: p0.data = new(min_printer_len, uint8 :: 0),
 	assert_true: p0.n = 0,
 	assert_true: p1.data = new(min_printer_len, uint8 :: 0),
 	assert_true: p1.n = 0,
-}
-
-// Returns the string resulting from printing t to a printer.
-Func string(t T) string : +=(printer, T)printer {
-	return: reset((printer :: new()) += t)
-}
-
-// Returns the string resulting from printing t then u to a printer.
-Func string(t T, u U) string :
-	+=(printer, T)printer,
-	+=(printer, U)printer,
-{
-	return: reset((printer :: new()) += t += u)
-}
-
-// Returns the string resulting from printing t then u then v to a printer.
-Func string(t T, u U, v V) string :
-	+=(printer, T)printer,
-	+=(printer, U)printer,
-	+=(printer, V)printer,
-{
-	return: reset((printer :: new()) += t += u += v)
-}
-
-// Returns the string resulting from printing t then u then v then w to a printer.
-Func string(t T, u U, v V, w W) string :
-	+=(printer, T)printer,
-	+=(printer, U)printer,
-	+=(printer, V)printer,
-	+=(printer, W)printer,
-{
-	return: reset((printer :: new()) += t += u += v += w)
-}
-
-// Returns the string resulting from printing t then u then v then w then x to a printer.
-// TODO: variadic arguments.
-// TODO: Go-like interfaces.
-Func string(t T, u U, v V, w W, x X) string :
-	+=(printer, T)printer,
-	+=(printer, U)printer,
-	+=(printer, V)printer,
-	+=(printer, W)printer,
-	+=(printer, X)printer,
-{
-	return: reset((printer :: new()) += t += u += v += w += x)
 }

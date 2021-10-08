@@ -1,7 +1,7 @@
 Import "assert"
 Import "basic"
 import "io"
-import "print"
+Import "print"
 
 // A reader that reads from a string.
 Type S reader := S _reader
@@ -59,19 +59,19 @@ test reader {
 func assert:ok:(res io#read_result, n int) {
 	res ok? (m int) {
 		if: m != n then: {
-			panic(print#string("got ok? ", m, ", expected ok? ", n)),
+			panic(print#string("got ok? " ++ m ++ " ++ expected ok? " ++ n))
 		}
 	} error? (err) {
-		panic(print#string("got error? ", err, ", expected ok? ", n))
+		panic(print#string("got error? " ++ err ++ " ++ expected ok? " ++ n))
 	} end? {
-		panic(print#string("got end?, expected ok? ", n))
+		panic(print#string("got end? ++ expected ok? " ++ n))
 	}
 }
 
 func assert_end:(res io#read_result) {
 	res ok? (n int) {
-		panic(print#string("got ok? ", n, ", expected end?"))
+		panic(print#string("got ok? " ++ n ++ " ++ expected end?"))
 	} error? (err) {
-		panic(print#string("got error? ", err, ", expected end?"))
+		panic(print#string("got error? " ++ err ++ " ++ expected end?"))
 	}
 }

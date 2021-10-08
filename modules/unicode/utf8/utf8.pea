@@ -171,8 +171,8 @@ func rune_info(s0 uint8) [.width int, .mask rune, .min rune] option {
 	return: none()
 }
 
-func +=(p print#printer, d [.rune rune, .width int]) print#printer {
-	return: p += "[.rune " += d.rune += ", .width " += d.width += "]"
+func print(p print#printer, d [.rune rune, .width int]) print#printer {
+	return: p ++ "[.rune " ++ d.rune ++ ", .width " ++ d.width ++ "]"
 }
 
 func =(a [.rune rune, .width int], b [.rune rune, .width int])bool {

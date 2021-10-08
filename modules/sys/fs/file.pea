@@ -1,7 +1,7 @@
 Import "assert"
 Import "basic"
+Import "print"
 import "io"
-import "print"
 import "sort"
 
 // An entry in the file system.
@@ -101,14 +101,14 @@ Func create_dir(path string) error option {
 
 test create_write_read_delete {
 	path := "./some_test_file",
-	bytes := [uint8] :: ['h', 'e', 'l','l', 'o'],
+	bs := [uint8] :: ['h', 'e', 'l','l', 'o'],
 
 	w := must(create_file(path)),
-	assert: must(write(w, bytes)) equals: bytes.length,
+	assert: must(write(w, bs)) equals: bs.length,
 	assert_ok: close(w),
 
 	r := must(open_file(path)),
-	assert: must(io#read_all(r)) equals: bytes,
+	assert: must(io#read_all(r)) equals: bs,
 	assert_ok: close(r),
 
 	assert_ok: remove(path)
@@ -154,7 +154,7 @@ test open_entry {
 	assert_ok: create_dir(path),
 	assert_ok: touch(path + "file"),
 
-	ent := open(path) error? (err){ panic(print#string("open failed: ", err)) },
+	ent := open(path) error? (err){ panic(print#string("open failed: " ++ err)) },
 	ent file? (f file) {
 		close(f),
 		panic("got file, expected dir")
@@ -162,7 +162,7 @@ test open_entry {
 		close(d)
 	},
 
-	ent := open(path + "file") error? (err){ panic(print#string("open failed: ", err)) },
+	ent := open(path + "file") error? (err){ panic(print#string("open failed: " ++ err)) },
 	ent file? (f file) {
 		close(f),
 	} dir? (d dir) {

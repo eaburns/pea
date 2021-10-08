@@ -1,11 +1,11 @@
 Import "assert"
 Import "basic"
+Import "print"
+import "//sys/fs"
 import "container/vector"
 import "io"
 import "num/int"
-import "print"
 import "string"
-import "//sys/fs"
 
 /*
 Runs regexp test data from
@@ -107,7 +107,7 @@ func run_re2_tests(path string) {
 				// ignore comment
 			} else: line.length > 0 && line[0] != '"' then: {
 				// print test name.
-				print(print#string("name: ", line, "\n"))
+				print#print("name: " ++ line ++ "\n")
 			} else: in_strings then: {
 				if: line.length < 2 || line[0] != '"' || line[line.length-1] != '"' then: {
 					panic("malformed string: [" + line + "]")
@@ -147,13 +147,13 @@ func unescape(str string) string {
 			} else: b = '"' then: {
 				print#add_byte(p, '"'),
 			} else: {
-				panic(print#string("unknown escape: ", b))
+				panic(print#string("unknown escape: " ++ b))
 			}
 		} else: {
 			print#add_byte(p, b),
 		},
 	},
-	return: print#reset(p)
+	return: print#string(p)
 }
 
 func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
@@ -205,7 +205,7 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
 		return()
 	},
 	re := compile(regexp) ok? (re regexp){re} error? (e){
-		panic(print#string("failed to compile [", regexp, "]: ", message(e))),
+		panic(print#string("failed to compile [" ++ regexp ++ "]: " ++ message(e))),
 	},
 	for: strs each: (str){
 		line := read_line(in) ok? (line string){
@@ -218,7 +218,7 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
 
 		wants := string#split(line, ";"),
 		if: wants.length != 4 then: {
-			panic(print#string("malformed matches: [", line, "]")),
+			panic(print#string("malformed matches: [" ++ line ++ "]")),
 		},
 		_ := wants[0], // full match
 		partial_match := wants[1],
@@ -227,8 +227,8 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
 		want := parse_want(partial_match),
 		got := exec(re, str),
 		if: want != got then: {
-			print(print#string("regexp=[", regexp, "], str=[", str, "]\n")),
-			print(print#string("	got=", got, ", want=", want, "\n")),
+			print#print("regexp=[" ++ regexp ++ "], str=[" ++ str ++ "]\n"),
+			print#print("	got=" ++ got ++ ", want=" ++  want ++ "\n"),
 			panic("fail"),
 		},
 	}
@@ -244,17 +244,17 @@ func parse_want(s string) [int64] {
 	for: pairs each: (pair){
 		fs := string#split(pair, "-"),
 		if: fs.length != 2 then: {
-			panic(print#string("malformed expectation: ", s)),
+			panic(print#string("malformed expectation: " ++ s)),
 		},
 		want[n] := int#parse_uint64(fs[0]) ok? (i uint64){
 			int64:: i
 		} error? (e){
-			panic(print#string("bad int: ", fs[0])),
+			panic(print#string("bad int: " ++ fs[0])),
 		},
 		want[n+1] := int#parse_uint64(fs[1]) ok? (i uint64){
 			int64:: i
 		} error? (e){
-			panic(print#string("bad int: ", fs[0])),
+			panic(print#string("bad int: " ++ fs[0])),
 		},
 		n += 2,
 	},

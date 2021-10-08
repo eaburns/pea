@@ -533,23 +533,23 @@ test greater_equal {
 // 	and NN is the sub-second fraction.
 // If the HH, mm, SS, and NN are all 0, then they are not printed, nor is the T.
 // If the subsecond fraction is 0, then it is not printed.
-Func +=(p print#printer, c civil) print#printer {
-	p += zero_pad4(c.year) += "-"
-		+= zero_pad2(int64 :: c.month) += "-"
-		+= zero_pad2(int64 :: c.day),
+Func print(p print#printer, c civil) print#printer {
+	p ++ zero_pad4(c.year) ++ "-"
+		++ zero_pad2(int64 :: c.month) ++ "-"
+		++ zero_pad2(int64 :: c.day),
 	if: c.hh = 0 && c.mm = 0 && c.ss = 0 && c.nn = 0 then: {
 		return: p
 	},
-	p += "T"
-		+= zero_pad2(int64 :: c.hour) += ":"
-		+= zero_pad2(int64 :: c.minute) += ":"
-		+= zero_pad2(int64 :: c.second),
+	p ++ "T"
+		++ zero_pad2(int64 :: c.hour) ++ ":"
+		++ zero_pad2(int64 :: c.minute) ++ ":"
+		++ zero_pad2(int64 :: c.second),
 	if: c.nn = 0 then: {
 		return: p
 	},
 	frac := print#string(((float64 :: c.nanosecond) / 1.0e9)),
 	frac := frac[1, frac.length], // trim leading "0"
-	return: p += frac
+	return: p ++ frac
 }
 
 test print_civil {
@@ -921,19 +921,19 @@ func zero_pad4(i int64) zero_pad { return: [.i i, .width 4] }
 func zero_pad2(i int64) zero_pad { return: [.i i, .width 2] }
 func zero_padN(i int64, width int) zero_pad { return: [.i i, .width width] }
 
-func +=(p print#printer, x zero_pad) print#printer {
+func print(p print#printer, x zero_pad) print#printer {
 	if: x.i < 0 then: {
-		p += "-",
+		p ++ "-",
 		x.i := -x.i,
 	},
 	tens := int64 :: 10,
 	for: 1 to: x.width-1 do: (_){
 		if: x.i < tens then: {
-			p += "0"
+			p ++ "0"
 		},
 		tens := tens * (int64 :: 10),
 	},
-	return: p += x.i,
+	return: p ++ x.i,
 }
 
 test zero_pad {
