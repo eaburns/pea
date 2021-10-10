@@ -15,7 +15,7 @@ type Error interface {
 
 	setNotes([]note)
 	note(string, ...interface{}) note
-	done(files loc.Files, maxDepth int)
+	done(*checker)
 }
 
 func newError(locer loc.Locer, f string, vs ...interface{}) Error {
@@ -48,24 +48,38 @@ func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 }
 
 type note interface {
+	verbose(bool)
+	isVerbose() bool
 	setNotes([]note)
 	setLoc(x interface{}) note
-	buildString(files loc.Files, mustIdent bool, maxDepth, depth int, s *strings.Builder)
+	buildString(c *checker, mustIdent bool, depth int, s *strings.Builder)
 }
 
 func newNote(f string, vs ...interface{}) note {
 	return &_error{msg: fmt.Sprintf(f, vs...)}
 }
 
+func markVerbose(notes []note) {
+	for i := range notes {
+		notes[i].verbose(true)
+	}
+}
+
 type _error struct {
 	msg   string
 	loc   loc.Loc
 	notes []note
+
+	// v is whether this note should be displayed
+	// only in verbose mode.
+	v bool
 }
 
 func (e *_error) Error() string      { return e.msg }
 func (e *_error) String() string     { return e.msg }
 func (e *_error) Loc() loc.Loc       { return e.loc }
+func (e *_error) verbose(b bool)     { e.v = b }
+func (e *_error) isVerbose() bool    { return e.v }
 func (e *_error) setNotes(ns []note) { e.notes = ns }
 
 func (e *_error) setLoc(x interface{}) note {
@@ -80,36 +94,49 @@ func (e *_error) note(f string, vs ...interface{}) note {
 	return e.notes[len(e.notes)-1]
 }
 
-func (e *_error) done(files loc.Files, maxDepth int) {
+func (e *_error) done(c *checker) {
 	var s strings.Builder
-	s.WriteString(files.Location(e.loc).String())
+	s.WriteString(c.importer.Files().Location(e.loc).String())
 	s.WriteString(": ")
 	s.WriteString(e.msg)
+	i := 0
 	for _, n := range e.notes {
+		if n.isVerbose() && !c.verboseNotes {
+			continue
+		}
 		s.WriteRune('\n')
-		n.buildString(files, true, 1, maxDepth, &s)
+		n.buildString(c, true, 1, &s)
+		e.notes[i] = n
+		i++
 	}
+	e.notes = e.notes[:i]
 	e.msg = s.String()
 }
 
-func (e *_error) buildString(files loc.Files, mustIdent bool, depth, maxDepth int, s *strings.Builder) {
-	if depth > maxDepth {
-		return
-	}
+func (e *_error) buildString(c *checker, mustIdent bool, depth int, s *strings.Builder) {
 	s.WriteString(strings.Repeat("\t", depth))
 	s.WriteString(e.msg)
 	if e.loc != (loc.Loc{}) {
 		s.WriteString(" (")
-		s.WriteString(files.Location(e.loc).String())
+		s.WriteString(c.importer.Files().Location(e.loc).String())
 		s.WriteRune(')')
 	}
 	mustIdent = mustIdent || len(e.notes) > 1
+	if c.maxErrorDepth >= 0 && depth+1 > c.maxErrorDepth {
+		s.WriteRune('\n')
+		s.WriteString(strings.Repeat("\t", depth+1))
+		s.WriteRune('…')
+		return
+	}
 	for _, n := range e.notes {
+		if n.isVerbose() && !c.verboseNotes {
+			continue
+		}
 		s.WriteRune('\n')
 		if mustIdent {
-			n.buildString(files, false, depth+1, maxDepth, s)
+			n.buildString(c, false, depth+1, s)
 		} else {
-			n.buildString(files, true, depth, maxDepth, s)
+			n.buildString(c, true, depth, s)
 		}
 	}
 }

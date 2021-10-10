@@ -94,7 +94,7 @@ func loadMod(path string) (*checker.Mod, error) {
 	if err := p.ParseFile(path); err != nil {
 		return nil, err
 	}
-	c, _, errs := checker.Check("main", p.Files, nil)
+	c, _, errs := checker.Check("main", p.Files)
 	if len(errs) > 0 {
 		return nil, errs[0]
 	}

@@ -13,8 +13,47 @@ import (
 	"github.com/eaburns/pea/parser"
 )
 
+type checker struct {
+	importer      Importer
+	maxErrorDepth int
+	verboseNotes  bool
+}
+
+// Option is an option to Check.
+type Option func(*checker)
+
+// UseImporter returns an Option that sets the importer to use for checking.
+// By default checker uses an importer loads modules from the current directory.
+func UseImporter(imp Importer) Option {
+	return func(c *checker) { c.importer = imp }
+}
+
+// MaxErrorDepth returns an Option that sets the max nesting depth for reported errors.
+// A value of -1 indicates no maximum depth.
+func MaxErrorDepth(m int) Option {
+	return func(c *checker) { c.maxErrorDepth = m }
+}
+
+// VerboseNotes returns an Option that sets whether to
+// suppresses truncation of error notes.
+// Notes can be truncated to those most likely to be relevant.
+// If VerboseNotes is true, there is no truncation.
+// By default VerboseNotes is false.
+func VerboseNotes(b bool) Option {
+	return func(c *checker) { c.verboseNotes = b }
+}
+
 // Check does semantic checking, and returns a *Mod on success.
-func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.Files, []error) {
+func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.Files, []error) {
+	checker := checker{
+		importer:      NewImporter(".", files),
+		maxErrorDepth: 3,
+		verboseNotes:  false,
+	}
+	for _, opt := range opts {
+		opt(&checker)
+	}
+
 	modPath = cleanImportPath(modPath)
 
 	var errs []Error
@@ -22,14 +61,11 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	defs := make(map[parser.Def]Def)
 	typeNames := make(map[string]loc.Loc)
 	mod := &Mod{Path: modPath}
-	if importer == nil {
-		importer = NewImporter(".", files)
-	}
 	var importedMods []*Mod
 	for _, parserFile := range files {
 		var imports []*Import
 		for _, parserImport := range parserFile.Imports {
-			m, err := importer.Load(parserImport.Path)
+			m, err := checker.importer.Load(parserImport.Path)
 			if err != nil {
 				errs = append(errs, newError(parserImport.L, err.Error()))
 				continue
@@ -82,7 +118,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				continue
 			}
 			typeNames[name] = parserTypeDef.L
-			parms, fs := makeTypeParms(importer.Files(), parserTypeDef.TypeParms)
+			parms, fs := makeTypeParms(checker.importer.Files(), parserTypeDef.TypeParms)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 			}
@@ -186,7 +222,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 				}
 			case *parser.FuncDef:
 				origErrorCount := len(errs)
-				typeParms := findTypeParms(importer.Files(), parserDef)
+				typeParms := findTypeParms(checker.importer.Files(), parserDef)
 				funDef := &FuncDef{
 					File:      file,
 					Mod:       modPath,
@@ -260,7 +296,7 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 	if len(errs) > 0 {
 		var es []error
 		for _, err := range errs {
-			err.done(importer.Files(), 5)
+			err.done(&checker)
 			es = append(es, err)
 		}
 		return nil, nil, es
@@ -302,9 +338,9 @@ func Check(modPath string, files []*parser.File, importer Importer) (*Mod, loc.F
 		return nil, nil, []error{errors.New("too much substitution")}
 	}
 
-	mod.Deps = importer.Deps()
+	mod.Deps = checker.importer.Deps()
 
-	return mod, importer.Files(), nil
+	return mod, checker.importer.Files(), nil
 }
 
 func importName(path string) string {
@@ -1051,6 +1087,9 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	funcs, notes := filterToFuncs(ids, parserID.L)
 	funcs, ns := filterByArity(funcs, len(parserCall.Args))
 	notes = append(notes, ns...)
+	if len(funcs) > 0 {
+		markVerbose(notes)
+	}
 
 	var args []Expr
 	for i, parserArg := range parserCall.Args {
@@ -1061,13 +1100,6 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		}
 		funcs = fs
 		args = append(args, arg)
-		// TODO: add a verbosity option.
-		// It would prevent this from appending, and instead overwrite.
-		// That way when no functions remain, we will print only the notes
-		// from those functions that made it all the way to the last argument
-		// before being filtered. This will be much less noisy
-		// than printing every single function, which prints much that are
-		// clearly not intended.
 		notes = append(notes, ns...)
 
 		if mod == nil {
@@ -1075,6 +1107,9 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 			fs, ns = adLookup(x, parserID, len(parserCall.Args), args, want)
 			funcs = append(funcs, fs...)
 			notes = append(notes, ns...)
+		}
+		if len(funcs) > 0 {
+			markVerbose(notes)
 		}
 	}
 
@@ -1085,6 +1120,9 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	} else {
 		funcs, ns = filterUngroundReturns(funcs)
 		notes = append(notes, ns...)
+	}
+	if len(funcs) > 0 {
+		markVerbose(notes)
 	}
 
 	funcs, ns = filterIfaceConstraints(x, parserCall.L, mod, funcs)
@@ -1503,8 +1541,8 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []i
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
-			if n := unifyFunc(x, parserID.L, id.(Func), want); n != nil {
-				notFoundNotes = append(notFoundNotes, n)
+			if fail := unifyFunc(x, parserID.L, id.(Func), want); fail != nil {
+				notFoundNotes = append(notFoundNotes, fail.note)
 				continue
 			}
 		}

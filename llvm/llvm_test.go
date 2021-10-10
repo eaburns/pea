@@ -109,7 +109,7 @@ func loadMod(path string) (*flowgraph.Mod, loc.Files, error) {
 	if err := p.ParseFile(path); err != nil {
 		return nil, nil, err
 	}
-	c, locFiles, errs := checker.Check("main", p.Files, nil)
+	c, locFiles, errs := checker.Check("main", p.Files)
 	if len(errs) > 0 {
 		return nil, nil, errs[0]
 	}

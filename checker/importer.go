@@ -76,7 +76,7 @@ func (imp *defaultImporter) Load(path string) (*Mod, error) {
 	for _, f := range p.Files {
 		imp.files = append(imp.files, f)
 	}
-	mod, _, errs := Check(path, p.Files, imp)
+	mod, _, errs := Check(path, p.Files, UseImporter(imp))
 	if len(errs) > 0 {
 		return nil, errs[0]
 	}

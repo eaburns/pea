@@ -393,7 +393,7 @@ func buildFlowGraph(mod *Mod) (*flowgraph.Mod, loc.Files, []error) {
 		}
 	}
 	imp := checker.NewImporterTemplateParser(*root, p)
-	m, locFiles, errs := checker.Check(mod.Path, p.Files, imp)
+	m, locFiles, errs := checker.Check(mod.Path, p.Files, checker.UseImporter(imp))
 	if len(errs) > 0 {
 		return nil, nil, errs
 	}

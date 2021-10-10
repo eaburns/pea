@@ -127,7 +127,7 @@ func check(t *testing.T, src string) *checker.Mod {
 	if err := p.Parse("", strings.NewReader(src)); err != nil {
 		t.Fatalf("failed to parse: %s", err)
 	}
-	mod, _, errs := checker.Check("test", p.Files, nil)
+	mod, _, errs := checker.Check("test", p.Files)
 	if len(errs) > 0 {
 		t.Fatalf("failed to checke: %s", errs[0])
 	}

@@ -368,11 +368,15 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *Fu
 	fs, ns := ifaceADLookup(x, addMod, decl)
 	funcs = append(funcs, fs...)
 	notFoundNotes = append(notFoundNotes, ns...)
+	if len(funcs) > 0 {
+		markVerbose(notFoundNotes)
+	}
 
 	var n int
+	var unifyFails []*unifyFuncFailure
 	for _, f := range funcs {
-		if note := unifyFunc(x, l, f, decl.Type()); note != nil {
-			notFoundNotes = append(notFoundNotes, note)
+		if fail := unifyFunc(x, l, f, decl.Type()); fail != nil {
+			unifyFails = append(unifyFails, fail)
 			continue
 		}
 		funcs[n] = f
@@ -381,6 +385,18 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *Fu
 	funcs = funcs[:n]
 	switch {
 	case len(funcs) == 0:
+		maxParms := -1
+		for _, fail := range unifyFails {
+			if fail.parms > maxParms {
+				maxParms = fail.parms
+			}
+		}
+		for _, fail := range unifyFails {
+			if fail.parms < maxParms {
+				fail.note.verbose(true)
+			}
+			notFoundNotes = append(notFoundNotes, fail.note)
+		}
 		note := newNote("%s: not found", decl).setLoc(decl.L)
 		note.setNotes(notFoundNotes)
 		return nil, note
@@ -433,21 +449,40 @@ func ifaceADLookup(x scope, addMod *Import, decl *FuncDecl) ([]Func, []note) {
 	return funcs, notes
 }
 
-func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
+type unifyFuncFailure struct {
+	note note
+	// parms is the number of parameters that successfully unified.
+	// -1 means none attempted (arity is wrong)
+	// len(Parms) means that all parameters succeeded, but the return failed.
+	//
+	// This is used to implement non-verbose note truncation.
+	// When unifying multiple funcs, notes are only reported
+	// for the failures with the max params value.
+	parms int
+}
+
+func unifyFunc(x scope, l loc.Loc, f Func, typ Type) *unifyFuncFailure {
 	funcType, ok := valueType(literalType(typ)).(*FuncType)
 	if !ok {
-		return newNote("%s: not a function", typ).setLoc(f)
+		return &unifyFuncFailure{
+			note:  newNote("%s: not a function", typ).setLoc(f),
+			parms: -1,
+		}
 	}
 	if f.arity() != len(funcType.Parms) {
-		return newNote("%s: parameter mismatch", f).setLoc(f)
+		return &unifyFuncFailure{
+			note:  newNote("%s: parameter mismatch", f).setLoc(f),
+			parms: -1,
+		}
 	}
 	for i := 0; i < f.arity(); i++ {
 		p := funcType.Parms[i]
 		if note := f.unifyParm(i, p); note != nil {
-			return note
+			return &unifyFuncFailure{note: note, parms: i}
 		}
 		if t := f.groundParm(i); !canImplicitConvert(p, t) {
-			return newNote("%s: cannot convert argument %s to %s", f, p, t).setLoc(t)
+			note := newNote("%s: cannot convert argument %s to %s", f, p, t).setLoc(t)
+			return &unifyFuncFailure{note: note, parms: i}
 		}
 	}
 
@@ -455,7 +490,7 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
 	// assume that the parameters were unified first.
 	// So make sure to do unifyRet after unifyParm.
 	if note := f.unifyRet(funcType.Ret); note != nil {
-		return note
+		return &unifyFuncFailure{note: note, parms: f.arity()}
 	}
 	// Allowing any implicit convert here can lead to normally illegal
 	// reference conversions. Consider:
@@ -482,10 +517,15 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) note {
 	// to the iface return type.
 	// This extra variable allows the additional reference to be added.
 	if t := f.groundRet(); !canImplicitConvert(t, funcType.Ret) {
-		return newNote("%s: cannot convert returned %s to %s",
+		note := newNote("%s: cannot convert returned %s to %s",
 			f, t, funcType.Ret).setLoc(t)
+		return &unifyFuncFailure{note: note, parms: f.arity()}
 	}
-	return instIface(x, l, nil, f)
+
+	if note := instIface(x, l, nil, f); note != nil {
+		return &unifyFuncFailure{note: note, parms: f.arity()}
+	}
+	return nil
 }
 
 func canonicalFuncInst(f *FuncInst) *FuncInst {
