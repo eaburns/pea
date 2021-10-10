@@ -19,10 +19,21 @@ type Importer interface {
 }
 
 type defaultImporter struct {
-	modRoot string
-	files   loc.Files
-	loaded  map[string]*Mod
-	deps    []string
+	modRoot        string
+	files          loc.Files
+	loaded         map[string]*Mod
+	deps           []string
+	trimPathPrefix string
+}
+
+// NewImporterTemplateParser returns a new importer that importes modules from the given root.
+// It is created starting with the loc.Files as templateParser,
+// and any internal parses it creates copy the TrimPathPrefix
+// from templateParser too.
+func NewImporterTemplateParser(modRoot string, templateParser *parser.Parser) Importer {
+	imp := NewImporter(modRoot, templateParser.Files).(*defaultImporter)
+	imp.trimPathPrefix = templateParser.TrimPathPrefix
+	return imp
 }
 
 func NewImporter(modRoot string, files []*parser.File) Importer {
@@ -52,6 +63,7 @@ func (imp *defaultImporter) Load(path string) (*Mod, error) {
 		return nil, err
 	}
 	p := parser.NewWithOffset(imp.files.Len() + 1)
+	p.TrimPathPrefix = imp.trimPathPrefix
 	for _, fileInfo := range fileInfos {
 		if filepath.Ext(fileInfo.Name()) != ".pea" {
 			continue
