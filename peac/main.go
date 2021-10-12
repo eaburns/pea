@@ -36,19 +36,11 @@ func main() {
 	case len(args) > 1:
 		usage("only one module path is supported")
 	}
-	mod, err := load(*root, args[0])
+	m, err := load(*root, args[0])
 	if err != nil {
-		die("%s", err)
+		fail(fmt.Errorf("%s", err))
 	}
-	if *v {
-		printDeps(mod)
-	}
-	if errs := compile(mod, *test); len(errs) > 0 {
-		for _, err := range errs {
-			fmt.Println(err)
-		}
-		os.Exit(1)
-	}
+	m.compile()
 }
 
 func usage(msg string) {
@@ -58,16 +50,15 @@ func usage(msg string) {
 	os.Exit(1)
 }
 
-func die(f string, vs ...interface{}) {
-	fmt.Printf(f+"\n", vs...)
-	os.Exit(1)
-}
-
 type Mod struct {
 	Path     string
 	FullPath string
 	SrcFiles []string
 	Deps     []*Mod
+}
+
+func (m *Mod) binFile() string {
+	return filepath.Join(m.FullPath, filepath.Base(m.Path))
 }
 
 func load(rootDir, modPath string) (*Mod, error) {
@@ -134,98 +125,93 @@ func load(rootDir, modPath string) (*Mod, error) {
 	return ld(modPath)
 }
 
-func printDeps(mod *Mod) {
-	seen := make(map[*Mod]bool)
-	var print func(*Mod, string)
-	print = func(mod *Mod, indent string) {
-		fmt.Printf("%s%s", indent, mod.Path)
-		if needsUpdate(mod) {
-			fmt.Printf("*\n")
-		} else {
-			fmt.Printf("\n")
-		}
-		if seen[mod] {
-			if len(mod.Deps) > 0 {
-				fmt.Printf("%s...\n", indent)
-			}
-			return
-		}
-		seen[mod] = true
-		for _, dep := range mod.Deps {
-			print(dep, indent+"\t")
-		}
-	}
-	print(mod, "")
-}
+func (m *Mod) compile() {
+	aFiles := m.compileDeps()
 
-func compile(mod *Mod, testMain bool) []error {
-	seen := make(map[*Mod]bool)
-	var oFiles []string
-	var buildObjFiles func(*Mod, bool) (bool, []error)
-	buildObjFiles = func(mod *Mod, testMain bool) (bool, []error) {
-		if seen[mod] {
-			return false, nil
+	var fg *flowgraph.Mod
+	var locs loc.Files
+	aFile := m.binFile() + ".a"
+	// The change time depends on not only the source files,
+	// but the latest time that any dependency has changed also,
+	// since type-parameterized function changes in a dependency
+	// can change the .a file for the dependent.
+	if modTime(aFile).After(lastChange(append(aFiles, m.SrcFiles...))) {
+		if *v {
+			fmt.Printf("---- %s: archive up-to-date\n", m.Path)
 		}
-		oFiles = append(oFiles, objFile(mod))
-		seen[mod] = true
-		// TODO: don't always recompile on testMain, but check if it needs updating.
-		upToDate := !testMain && !needsUpdate(mod)
-		for _, dep := range mod.Deps {
-			changed, errs := buildObjFiles(dep, false)
-			if len(errs) > 0 {
-				return false, errs
-			}
-			if changed {
-				upToDate = false
-			}
+	} else {
+		if *v {
+			fmt.Printf("---- %s: building archive\n", m.Path)
 		}
-		if upToDate {
-			if *v {
-				fmt.Println("---- up-to-date mod", mod.Path)
-			}
-			return false, nil
-		}
-		return true, compile1(mod, testMain)
+		fg, locs = m.flowgraph()
+		m.compileA(fg, locs)
 	}
-	changed, errs := buildObjFiles(mod, testMain)
-	if len(errs) > 0 {
-		return errs
-	}
-	if filepath.Base(mod.Path) != "main" && !testMain {
-		return nil
+	aFiles = append(aFiles, aFile)
+
+	if !*test && m.Path != "main" {
+		return
 	}
 
-	binFile := filepath.Join(mod.FullPath, filepath.Base(mod.Path))
-	if testMain {
+	binFile := m.binFile()
+	if *test {
 		binFile += ".test"
 	}
-	if !changed && modTime(binFile).After(time.Time{}) {
+	if modTime(binFile).After(lastChange(aFiles)) {
 		if *v {
-			if testMain {
-				fmt.Println("---- up-to-date test binary", mod.Path)
+			if *test {
+				fmt.Printf("---- %s: test binary up-to-date\n", m.Path)
 			} else {
-				fmt.Println("---- up-to-date binary", mod.Path)
+				fmt.Printf("---- %s: binary up-to-date\n", m.Path)
 			}
 		}
-		return nil
+		return
 	}
 	if *v {
-		if testMain {
-			fmt.Println("---- linking test binary", mod.Path)
+		if *test {
+			fmt.Printf("---- %s: building test binary\n", m.Path)
 		} else {
-			fmt.Println("---- linking binary", mod.Path)
+			fmt.Printf("---- %s: building binary\n", m.Path)
 		}
 	}
-	if testMain {
-		testOFile := filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".test.pea.o")
-		oFiles = append([]string{testOFile}, oFiles...)
-		defer os.Remove(testOFile)
-	} else if filepath.Base(mod.Path) == "main" {
-		mainOFile := filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".main.pea.o")
-		oFiles = append([]string{mainOFile}, oFiles...)
-		defer os.Remove(mainOFile)
+	if fg == nil {
+		fg, locs = m.flowgraph()
 	}
-	args := append(oFiles, []string{
+
+	llFile := m.binFile() + ".main.ll"
+	f, err := os.Create(llFile)
+	if err != nil {
+		fail(fmt.Errorf("failed to create output file: %s", err))
+	}
+	w := bufio.NewWriter(f)
+	if *test {
+		llvm.GenerateTestMain(w, fg, locs)
+	} else {
+		var main *flowgraph.FuncDef
+		for _, fun := range fg.Funcs {
+			if fun.Mod == "main" && fun.Name == "main" {
+				main = fun
+			}
+		}
+		if main == nil {
+			fail(fmt.Errorf("no main function"))
+		}
+		llvm.GenerateMain(w, fg, main, locs)
+	}
+	w.Flush()
+	if err := f.Close(); err != nil {
+		fail(fmt.Errorf("failed to close output file: %s", err))
+	}
+	defer os.Remove(llFile)
+	oFile := m.binFile() + ".main.o"
+	if err := compileLL(llFile, oFile); err != nil {
+		fail(fmt.Errorf("%s", err))
+	}
+	defer os.Remove(oFile)
+	link(binFile, append([]string{oFile}, aFiles...))
+}
+
+func link(binFile string, objs []string) {
+	args := append(objs, []string{
 		"-g",
 		"-o", binFile,
 		"-pthread",
@@ -233,182 +219,129 @@ func compile(mod *Mod, testMain bool) []error {
 		filepath.Join(*libpea, "libpea.a"),
 	}...)
 	if err := run("clang", args...); err != nil {
-		die("%s", err)
+		fail(fmt.Errorf("%s", err))
 	}
-	return nil
 }
 
-func compile1(mod *Mod, testMain bool) []error {
-	if *v {
-		fmt.Println("---- compiling mod", mod.Path)
+func (m *Mod) compileDeps() []string {
+	var aFiles []string
+	seen := make(map[*Mod]bool)
+	for _, d := range m.Deps {
+		aFiles = append(aFiles, d._compileDeps(seen)...)
 	}
+	return aFiles
+}
+
+func (m *Mod) _compileDeps(seen map[*Mod]bool) []string {
+	if seen[m] {
+		return nil
+	}
+	seen[m] = true
+	var aFiles []string
+	for _, d := range m.Deps {
+		aFiles = append(aFiles, d._compileDeps(seen)...)
+	}
+	aFile := m.binFile() + ".a"
+	// The change time depends on not only the source files,
+	// but the latest time that any dependency has changed also,
+	// since type-parameterized function changes in a dependency
+	// can change the .a file for the dependent.
+	if modTime(aFile).After(lastChange(append(aFiles, m.SrcFiles...))) {
+		if *v {
+			fmt.Printf("---- %s: up-to-date\n", m.Path)
+		}
+	} else {
+		if *v {
+			fmt.Printf("---- %s: building\n", m.Path)
+		}
+		m.compileA(m.flowgraph())
+	}
+	return append(aFiles, aFile)
+}
+
+func (m *Mod) compileA(fg *flowgraph.Mod, locs loc.Files) {
 	var oFiles []string
-
-	fg, locFiles, errs := buildFlowGraph(mod)
-	if len(errs) > 0 {
-		return errs
-	}
-
-	oFile := filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".pea.o")
-	compilePeaDefs(mod, fg, locFiles, oFile)
-	defer os.Remove(oFile)
-	oFiles = append(oFiles, oFile)
-
-	if testMain {
-		oFile = filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".test.pea.o")
-		compilePeaTestMain(mod, fg, locFiles, oFile)
-	} else if filepath.Base(mod.Path) == "main" {
-		oFile = filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".main.pea.o")
-		compilePeaMain(mod, fg, locFiles, oFile)
-	}
-
-	for _, file := range mod.SrcFiles {
+	for _, file := range m.SrcFiles {
 		switch filepath.Ext(file) {
 		case ".c":
 			oFile := strings.TrimSuffix(file, ".c") + ".o"
 			if err := run("clang", "-g", "-o", oFile, "-c", file); err != nil {
-				return []error{err}
+				fail(err)
 			}
 			defer os.Remove(oFile)
 			oFiles = append(oFiles, oFile)
 		case ".ll":
 			oFile := strings.TrimSuffix(file, ".ll") + ".ll.o"
 			if err := compileLL(file, oFile); err != nil {
-				return []error{err}
+				fail(err)
 			}
 			defer os.Remove(oFile)
 			oFiles = append(oFiles, oFile)
-		default:
-			continue
 		}
 	}
-	if err := run("llvm-ar", append([]string{"cr", objFile(mod)}, oFiles...)...); err != nil {
-		die("%s", err)
-	}
-	return nil
-}
 
-func compilePeaDefs(mod *Mod, fg *flowgraph.Mod, locFiles loc.Files, oFile string) {
-	llFile := strings.TrimSuffix(oFile, "o") + "ll"
-	if *v {
-		fmt.Println("defs file: ", llFile)
-	}
+	llFile := m.binFile() + ".ll"
 	f, err := os.Create(llFile)
 	if err != nil {
-		die("failed to create output file: %s", err)
+		fail(fmt.Errorf("failed to create output file: %s", err))
 	}
 	w := bufio.NewWriter(f)
-	llvm.GenerateDefs(w, fg, locFiles)
+	llvm.GenerateDefs(w, fg, locs)
 	w.Flush()
 	if err := f.Close(); err != nil {
-		die("failed to close output file: %s", err)
+		fail(fmt.Errorf("failed to close output file: %s", err))
 	}
 	defer os.Remove(llFile)
-
+	oFile := m.binFile() + ".o"
 	if err := compileLL(llFile, oFile); err != nil {
-		die("%s", err)
+		fail(fmt.Errorf("%s", err))
+	}
+	defer os.Remove(oFile)
+	oFiles = append(oFiles, oFile)
+
+	aFile := m.binFile() + ".a"
+	if err := run("llvm-ar", append([]string{"cr", aFile}, oFiles...)...); err != nil {
+		fail(fmt.Errorf("%s", err))
 	}
 }
 
-func compilePeaTestMain(mod *Mod, fg *flowgraph.Mod, locFiles loc.Files, oFile string) {
-	llFile := strings.TrimSuffix(oFile, "o") + "ll"
-	if *v {
-		fmt.Println("test main file: ", llFile)
-	}
-	f, err := os.Create(llFile)
-	if err != nil {
-		die("failed to create output file: %s", err)
-	}
-	w := bufio.NewWriter(f)
-	llvm.GenerateTestMain(w, fg, locFiles)
-	w.Flush()
-	if err := f.Close(); err != nil {
-		die("failed to close output file: %s", err)
-	}
-	defer os.Remove(llFile)
-
-	if err := compileLL(llFile, oFile); err != nil {
-		die("%s", err)
-	}
-}
-
-func compilePeaMain(mod *Mod, fg *flowgraph.Mod, locFiles loc.Files, oFile string) {
-	llFile := strings.TrimSuffix(oFile, "o") + "ll"
-	if *v {
-		fmt.Println("main file: ", llFile)
-	}
-	f, err := os.Create(llFile)
-	if err != nil {
-		die("failed to create output file: %s", err)
-	}
-	w := bufio.NewWriter(f)
-	var main *flowgraph.FuncDef
-	for _, fun := range fg.Funcs {
-		if fun.Mod == "main" && fun.Name == "main" {
-			main = fun
-		}
-	}
-	if main == nil {
-		die("no main function")
-	}
-	llvm.GenerateMain(w, fg, main, locFiles)
-	w.Flush()
-	if err := f.Close(); err != nil {
-		die("failed to close output file: %s", err)
-	}
-	defer os.Remove(llFile)
-
-	if err := compileLL(llFile, oFile); err != nil {
-		die("%s", err)
-	}
-}
-
-func buildFlowGraph(mod *Mod) (*flowgraph.Mod, loc.Files, []error) {
-	var files []string
-	for _, file := range mod.SrcFiles {
+func (m *Mod) flowgraph() (fg *flowgraph.Mod, locs loc.Files) {
+	var peaFiles []string
+	for _, file := range m.SrcFiles {
 		if filepath.Ext(file) == ".pea" {
-			files = append(files, file)
+			peaFiles = append(peaFiles, file)
 		}
 	}
-	if len(files) == 0 {
-		return nil, nil, []error{fmt.Errorf("module %s has no pea source files", mod.Path)}
-	}
-	if *v {
-		fmt.Print("pea files: ")
-		for i, file := range files {
-			if i > 0 {
-				fmt.Print(", ")
-			}
-			fmt.Print(file)
-		}
-		fmt.Println("")
+	if len(peaFiles) == 0 {
+		fail(fmt.Errorf("module %s has no pea source files", m.Path))
 	}
 	p := parser.New()
 	if wd, err := os.Getwd(); err == nil {
 		p.TrimPathPrefix = wd + "/"
 	}
-	for _, file := range files {
+	for _, file := range peaFiles {
 		if err := p.ParseFile(file); err != nil {
-			return nil, nil, []error{err}
+			fail(err)
 		}
 	}
 	imp := checker.NewImporterTemplateParser(*root, p)
-	m, locFiles, errs := checker.Check(mod.Path, p.Files, checker.UseImporter(imp))
+	opts := []checker.Option{checker.UseImporter(imp)}
+	checkMod, locs, errs := checker.Check(m.Path, p.Files, opts...)
 	if len(errs) > 0 {
-		return nil, nil, errs
+		fail(errs...)
 	}
-	return flowgraph.Build(m), locFiles, nil
+	return flowgraph.Build(checkMod), locs
 }
 
 func compileLL(file, oFile string) error {
 	sFile := strings.TrimSuffix(file, ".ll") + ".ll.s"
 	if err := run("llc", file, "-o", sFile); err != nil {
-		die("%s", err)
+		fail(fmt.Errorf("%s", err))
 	}
 	defer os.Remove(sFile)
 
 	if err := run("clang", "-g", "-o", oFile, "-c", sFile); err != nil {
-		die("%s", err)
+		fail(fmt.Errorf("%s", err))
 	}
 	return nil
 }
@@ -427,20 +360,12 @@ func run(cmd string, args ...string) error {
 	return nil
 }
 
-func needsUpdate(mod *Mod) bool {
-	return modTime(objFile(mod)).Before(latestChange(mod))
-}
-
-func objFile(mod *Mod) string {
-	return filepath.Join(mod.FullPath, filepath.Base(mod.Path)+".a")
-}
-
-func latestChange(mod *Mod) time.Time {
-	if len(mod.SrcFiles) == 0 {
+func lastChange(files []string) time.Time {
+	if len(files) == 0 {
 		return time.Time{}
 	}
-	latest := modTime(mod.SrcFiles[0])
-	for _, file := range mod.SrcFiles[1:] {
+	latest := modTime(files[0])
+	for _, file := range files[1:] {
 		t := modTime(file)
 		if t.After(latest) {
 			latest = t
@@ -454,9 +379,16 @@ func modTime(file string) time.Time {
 	case os.IsNotExist(err):
 		return time.Time{}
 	case err != nil:
-		die("failed to get modtime for %s: %s", file, err)
+		fail(fmt.Errorf("failed to get modtime for %s: %s", file, err))
 		panic("unreachable")
 	default:
 		return fileInfo.ModTime()
 	}
+}
+
+func fail(errs ...error) {
+	for _, err := range errs {
+		fmt.Println(err)
+	}
+	os.Exit(1)
 }
