@@ -142,7 +142,7 @@ func (mb *modBuilder) topoSortFuncs() {
 		for f := range fb.outRefs {
 			refs = append(refs, f)
 		}
-		sort.Slice(refs, func(i, j int) bool { return refs[i].Name < refs[j].Name })
+		sort.Slice(refs, func(i, j int) bool { return refs[i].SourceName < refs[j].SourceName })
 		for _, f := range refs {
 			sortFunc(f)
 		}
