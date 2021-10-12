@@ -292,7 +292,7 @@ func (g *gen) declarePanicLocStrings(mod *flowgraph.Mod) {
 }
 
 func (g *gen) declareTestCallLocStrings(mod *flowgraph.Mod) {
-	var calls []*flowgraph.Call
+	callFileNum := make(map[string]int)
 	for _, f := range mod.Funcs {
 		if !f.Test {
 			continue
@@ -303,16 +303,17 @@ func (g *gen) declareTestCallLocStrings(mod *flowgraph.Mod) {
 				if !ok {
 					continue
 				}
-				g.callNum[c] = len(calls)
-				calls = append(calls, c)
+				path := g.files.Location(c.L).Path
+				if i, ok := callFileNum[path]; ok {
+					g.callNum[c] = i
+					continue
+				}
+				i := len(callFileNum)
+				callFileNum[path] = i
+				g.callNum[c] = i
+				g.write("@call_file", i, " = private unnamed_addr constant [", len(path)+1, " x i8] c", quote(path+"\x00"), "\n")
 			}
 		}
-	}
-	for _, c := range calls {
-		i := g.callNum[c]
-		l := g.files.Location(c.L)
-		n := len(l.Path) + 1
-		g.write("@call_file", i, " = private unnamed_addr constant [", n, " x i8] c", quote(l.Path+"\x00"), "\n")
 	}
 }
 
