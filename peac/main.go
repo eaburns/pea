@@ -22,6 +22,7 @@ var (
 	libpea = flag.String("libpea", "", "path to libpea source directory")
 	root   = flag.String("root", "", "module root directory (required)")
 	test   = flag.Bool("test", false, "whether to compile a test binary")
+	dumpFG = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
 	v      = flag.Bool("v", false, "print the dependency graph")
 )
 
@@ -130,6 +131,12 @@ func (m *Mod) compile() {
 
 	var fg *flowgraph.Mod
 	var locs loc.Files
+	if *dumpFG {
+		if fg == nil {
+			fg, locs = m.flowgraph()
+		}
+		fmt.Println(fg)
+	}
 	aFile := m.binFile() + ".a"
 	// The change time depends on not only the source files,
 	// but the latest time that any dependency has changed also,
@@ -143,7 +150,9 @@ func (m *Mod) compile() {
 		if *v {
 			fmt.Printf("---- %s: building archive\n", m.Path)
 		}
-		fg, locs = m.flowgraph()
+		if fg == nil {
+			fg, locs = m.flowgraph()
+		}
 		m.compileA(fg, locs)
 	}
 	aFiles = append(aFiles, aFile)
