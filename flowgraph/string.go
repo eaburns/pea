@@ -470,6 +470,12 @@ func (o OpKind) String() string {
 
 func (v *Op) buildString(s *strings.Builder) *strings.Builder {
 	switch {
+	case v.Op == IndexOOBString:
+		col := newCol(s, "x%d := index_oob(x%d, x%d)", v.Num(), v.Args[0].Num(), v.Args[1].Num())
+		col.addCol("// %s", v.Type())
+	case v.Op == SliceOOBString:
+		col := newCol(s, "x%d := slice_oob(x%d, x%d, x%d)", v.Num(), v.Args[0].Num(), v.Args[1].Num(), v.Args[2].Num())
+		col.addCol("// %s", v.Type())
 	case v.Op == NumConvert:
 		col := newCol(s, "x%d := %s(x%d)", v.Num(), v.Type(), v.Args[0].Num())
 		col.addCol("// %s", v.Type())
@@ -486,7 +492,7 @@ func (v *Op) buildString(s *strings.Builder) *strings.Builder {
 		col := newCol(s, "x%d := x%d %s x%d", v.Num(), v.Args[0].Num(), v.Op, v.Args[1].Num())
 		col.addCol("// %s := %s %s %s", v.Type(), v.Args[0].Type(), v.Op, v.Args[1].Type())
 	default:
-		panic("impossible")
+		panic(fmt.Sprintf("bad op: %s", v.Op))
 	}
 	return s
 }
