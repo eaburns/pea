@@ -23,5 +23,6 @@ libpea/vendor/libunwind-11.0.0.src/test/cmake_install.cmake
 libpea/vendor/libunwind-11.0.0.src/test/lit.site.cfg
 modules/**/*.a
 modules/**/*.o
+modules/**/*.pea_cache
 modules/**/*.test
 peac/peac
