@@ -268,7 +268,7 @@ func (g *gen) writeTestMain(mod *flowgraph.Mod) {
 }
 
 func (g *gen) declarePanicLocStrings(mod *flowgraph.Mod) {
-	var panics []*flowgraph.Op
+	panicFileNum := make(map[string]int)
 	for _, f := range mod.Funcs {
 		for _, b := range f.Blocks {
 			for _, r := range b.Instrs {
@@ -276,16 +276,18 @@ func (g *gen) declarePanicLocStrings(mod *flowgraph.Mod) {
 				if !ok || p.Op != flowgraph.Panic {
 					continue
 				}
-				g.panicNum[p] = len(panics)
-				panics = append(panics, p)
+				path := g.files.Location(p.L).Path
+				if i, ok := panicFileNum[path]; ok {
+					g.panicNum[p] = i
+					continue
+				}
+
+				i := len(panicFileNum)
+				panicFileNum[path] = i
+				g.panicNum[p] = i
+				g.write("@panic_file", i, " = private unnamed_addr constant [", len(path)+1, " x i8] c", quote(path+"\x00"), "\n")
 			}
 		}
-	}
-	for _, p := range panics {
-		i := g.panicNum[p]
-		l := g.files.Location(p.L)
-		n := len(l.Path) + 1
-		g.write("@panic_file", i, " = private unnamed_addr constant [", n, " x i8] c", quote(l.Path+"\x00"), "\n")
 	}
 }
 
