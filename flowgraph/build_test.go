@@ -38,12 +38,12 @@ func TestBuildType(t *testing.T) {
 		{
 			src:  "type t &[none?, some? [.x int, .next t]]",
 			typ:  "t",
-			want: "*struct{tag int64; data union{some struct{x int64; next *struct{}}}}",
+			want: "*test.t",
 		},
 		{
 			src:  "type t [none?, some? &[.x int, .next t]]",
 			typ:  "t",
-			want: "*struct{x int64; next *struct{}}",
+			want: "*test.t",
 		},
 		{
 			src:  "type t [none?, some? [.x int, .next &t]]",

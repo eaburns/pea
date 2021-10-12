@@ -235,6 +235,14 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			var ret Type = inner
 			fixDefAddrType(make(map[Type]bool), &ret, t)
 			mb.typeDef[typ.Inst] = inner
+			if s, ok := inner.Elem.(*StructType); ok && s.Mod == "" && s.Name == "" {
+				s.Mod = typ.Def.Mod
+				s.Name = typ.Def.Name
+				for _, a := range typ.Args {
+					s.Args = append(s.Args, mb.buildType(a))
+				}
+				mb.Types = append(mb.Types, s)
+			}
 			return ret
 		default:
 			mb.typeDef[typ.Inst] = inner
