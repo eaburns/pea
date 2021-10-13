@@ -343,13 +343,7 @@ func (m *Mod) flowgraph() (fg *flowgraph.Mod, locs loc.Files) {
 }
 
 func compileLL(file, oFile string) error {
-	sFile := strings.TrimSuffix(file, ".ll") + ".ll.s"
-	if err := run("llc", file, "-o", sFile); err != nil {
-		fail(fmt.Errorf("%s", err))
-	}
-	defer os.Remove(sFile)
-
-	if err := run("clang", "-g", "-o", oFile, "-c", sFile); err != nil {
+	if err := run("llc", file, "-filetype", "obj", "-o", oFile); err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
 	return nil
