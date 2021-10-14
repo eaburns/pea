@@ -354,6 +354,14 @@ func escapesConservative(tr tracer, a *Alloc) bool {
 			}
 			tr.tr("x%d escapes: non-read-only index x%d", a.Num(), u.Num())
 			return true
+		case *Call:
+			for i, arg := range u.Args {
+				if arg != a || byValue(u, i) {
+					continue
+				}
+				tr.tr("x%d escapes: call %s non-by value argument %d", a.Num(), u, i)
+				return true
+			}
 		default:
 			tr.tr("x%d escapes: used by %s", a.Num(), u)
 			return true
@@ -361,6 +369,11 @@ func escapesConservative(tr tracer, a *Alloc) bool {
 	}
 	tr.tr("x%d does not escape", a.Num())
 	return false
+}
+
+func byValue(c *Call, i int) bool {
+	f, ok := c.Func.(*Func)
+	return ok && f.Def.Parms[i].ByValue
 }
 
 // moveAllocsToStack computes leaks and moves allocations to the stack
