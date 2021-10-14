@@ -19,11 +19,13 @@ import (
 )
 
 var (
-	libpea = flag.String("libpea", "", "path to libpea source directory")
-	root   = flag.String("root", "", "module root directory (required)")
-	test   = flag.Bool("test", false, "whether to compile a test binary")
-	dumpFG = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
-	v      = flag.Bool("v", false, "print the dependency graph")
+	libpea       = flag.String("libpea", "", "path to libpea source directory")
+	root         = flag.String("root", "", "module root directory (required)")
+	test         = flag.Bool("test", false, "whether to compile a test binary")
+	v            = flag.Bool("v", false, "print commands executed")
+	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
+	traceESC     = flag.Bool("trace-esc", false, "whether to trace escape analysis")
+	printNAllocs = flag.Bool("print-nallocs", false, "whether to print the number of non-stack allocs")
 )
 
 func main() {
@@ -131,11 +133,28 @@ func (m *Mod) compile() {
 
 	var fg *flowgraph.Mod
 	var locs loc.Files
-	if *dumpFG {
-		if fg == nil {
-			fg, locs = m.flowgraph()
+	if *dumpFG || *traceESC || *printNAllocs {
+		var opts []flowgraph.Option
+		if *traceESC {
+			opts = append(opts, flowgraph.TraceEscape)
 		}
-		fmt.Println(fg)
+		fg, locs = m.flowgraph(opts...)
+		if *printNAllocs {
+			n := 0
+			for _, f := range fg.Funcs {
+				for _, b := range f.Blocks {
+					for _, r := range b.Instrs {
+						if a, ok := r.(*flowgraph.Alloc); ok && !a.Stack {
+							n++
+						}
+					}
+				}
+			}
+			fmt.Printf("%d non-stack allocations\n", n)
+		}
+		if *dumpFG {
+			fmt.Println(fg)
+		}
 	}
 	aFile := m.binFile() + ".a"
 	// The change time depends on not only the source files,
@@ -314,7 +333,7 @@ func (m *Mod) compileA(fg *flowgraph.Mod, locs loc.Files) {
 	}
 }
 
-func (m *Mod) flowgraph() (fg *flowgraph.Mod, locs loc.Files) {
+func (m *Mod) flowgraph(fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs loc.Files) {
 	var peaFiles []string
 	for _, file := range m.SrcFiles {
 		if filepath.Ext(file) == ".pea" {
@@ -334,12 +353,12 @@ func (m *Mod) flowgraph() (fg *flowgraph.Mod, locs loc.Files) {
 		}
 	}
 	imp := checker.NewImporterTemplateParser(*root, p)
-	opts := []checker.Option{checker.UseImporter(imp)}
-	checkMod, locs, errs := checker.Check(m.Path, p.Files, opts...)
+	checkOpts := []checker.Option{checker.UseImporter(imp)}
+	checkMod, locs, errs := checker.Check(m.Path, p.Files, checkOpts...)
 	if len(errs) > 0 {
 		fail(errs...)
 	}
-	return flowgraph.Build(checkMod), locs
+	return flowgraph.Build(checkMod, fgOpts...), locs
 }
 
 func compileLL(file, oFile string) error {

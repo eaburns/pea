@@ -11,10 +11,11 @@ import (
 )
 
 var (
-	opt         = flag.Bool("opt", true, "whether to optimize")
-	root        = flag.String("root", ".", "module root directory")
-	traceEsc    = flag.Bool("esc", false, "whether to trace escape analysis")
-	traceInline = flag.Bool("inl", false, "whether to trace function inlining")
+	opt          = flag.Bool("opt", true, "whether to optimize")
+	root         = flag.String("root", ".", "module root directory")
+	traceEsc     = flag.Bool("esc", false, "whether to trace escape analysis")
+	printNAllocs = flag.Bool("print-nallocs", false, "whether to print the number of non-stack allocs")
+	traceInline  = flag.Bool("inl", false, "whether to trace function inlining")
 )
 
 func main() {
@@ -57,4 +58,17 @@ func main() {
 	}
 	g := flowgraph.Build(m, options...)
 	fmt.Println(g.String())
+	if *printNAllocs {
+		n := 0
+		for _, f := range g.Funcs {
+			for _, b := range f.Blocks {
+				for _, r := range b.Instrs {
+					if a, ok := r.(*flowgraph.Alloc); ok && !a.Stack {
+						n++
+					}
+				}
+			}
+		}
+		fmt.Printf("%d non-stack allocations\n", n)
+	}
 }
