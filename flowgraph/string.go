@@ -27,6 +27,7 @@ func (r *Return) String() string     { return r.buildString(new(strings.Builder)
 func (v *Frame) String() string      { return v.buildString(new(strings.Builder)).String() }
 func (v *Alloc) String() string      { return v.buildString(new(strings.Builder)).String() }
 func (v *Load) String() string       { return v.buildString(new(strings.Builder)).String() }
+func (v *BitCast) String() string    { return v.buildString(new(strings.Builder)).String() }
 func (v *Func) String() string       { return v.buildString(new(strings.Builder)).String() }
 func (v *String) String() string     { return v.buildString(new(strings.Builder)).String() }
 func (v *Var) String() string        { return v.buildString(new(strings.Builder)).String() }
@@ -355,6 +356,12 @@ func (v *Alloc) buildString(s *strings.Builder) *strings.Builder {
 
 func (v *Load) buildString(s *strings.Builder) *strings.Builder {
 	col := newCol(s, "x%d := *x%d", v.Num(), v.Addr.Num())
+	col.addCol("// %s", v.Type())
+	return s
+}
+
+func (v *BitCast) buildString(s *strings.Builder) *strings.Builder {
+	col := newCol(s, "x%d := (%s) x%d", v.Num(), v.Type(), v.Src.Num())
 	col.addCol("// %s", v.Type())
 	return s
 }

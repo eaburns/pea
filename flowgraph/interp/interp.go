@@ -225,6 +225,8 @@ func (interp *Interp) step() {
 		}
 	case *flowgraph.Load:
 		frame.vals[instr] = frame.vals[instr.Addr].Val().(Pointer).Elem
+	case *flowgraph.BitCast:
+		frame.vals[instr] = frame.vals[instr.Src]
 	case *flowgraph.Func:
 		frame.vals[instr] = &Obj{val: Func{Def: instr.Def}}
 	case *flowgraph.String:

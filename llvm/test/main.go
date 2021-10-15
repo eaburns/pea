@@ -36,7 +36,7 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	m, locFiles, errs := checker.Check("main", p.Files, nil)
+	m, locFiles, errs := checker.Check("main", p.Files)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			fmt.Println(err)

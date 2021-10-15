@@ -1333,7 +1333,23 @@ func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 func (bb *blockBuilder) convert(cvt *checker.Convert) (*blockBuilder, Value) {
 	switch cvt.Kind {
 	case checker.Noop:
-		return bb.expr(cvt.Expr)
+		bb, expr := bb.expr(cvt.Expr)
+
+		dst := bb.buildType(cvt.Type())
+		if !dst.isSmall() {
+			// If the no-op convert converts one non-small type to another,
+			// the non-small types are being passed around by address,
+			// so we need to make this an address-type too.
+			dst = &AddrType{Elem: dst}
+		}
+		// We use string equality here, because .eq()
+		// checks for structural equality, but llvm
+		// requires types to be actually equal, else need a cast.
+		if expr.Type().String() == dst.String() {
+			return bb, expr
+		}
+		// This should only be possible if both types are addresses.
+		return bb, bb.bitCast(expr, dst)
 	case checker.Drop:
 		bb, _ := bb.expr(cvt.Expr)
 		return bb, nil
@@ -1860,6 +1876,13 @@ func (bb *blockBuilder) store(dst, src Value) {
 	if !src.Type().isSmall() {
 		panic(fmt.Sprintf("store from non-small type %s", src.Type()))
 	}
+
+	// If the types are not equal, they must be
+	// structurally equal addresses; bitcast.
+	if src.Type().String() != addr.Elem.String() {
+		src = bb.bitCast(src, addr.Elem)
+	}
+
 	r := &Store{Dst: dst, Src: src, L: bb.L}
 	bb.addInstr(r)
 }
@@ -2022,6 +2045,18 @@ func (bb *blockBuilder) allocN(n Value, typ Type) *Alloc {
 func (bb *blockBuilder) load(addr Value) *Load {
 	t := addr.Type().(*AddrType)
 	v := &Load{Addr: addr, AddrType: *t, L: bb.L}
+	bb.addValue(v)
+	return v
+}
+
+func (bb *blockBuilder) bitCast(src Value, dstType Type) *BitCast {
+	if !src.Type().isSmall() {
+		panic(fmt.Sprintf("bitcast from non-small type %s", src.Type()))
+	}
+	if !dstType.isSmall() {
+		panic(fmt.Sprintf("bitcast to non-small type %s", dstType))
+	}
+	v := &BitCast{Src: src, T: dstType, L: bb.L}
 	bb.addValue(v)
 	return v
 }

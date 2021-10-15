@@ -4,7 +4,7 @@ type v string
 
 // Hello, World!
 func main() {
-	print("Hello, World!")
+	foo("Hello, World!")
 }
 
 func foo(x t) {

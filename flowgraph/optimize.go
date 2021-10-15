@@ -406,6 +406,11 @@ func escapes(tr tracer, leaks map[Value]bool, v Value) bool {
 				tr.tr("x%d escapes: stored to leak x%d", v.Num(), u.Dst.Num())
 				return true
 			}
+		case *BitCast:
+			if escapes(tr, leaks, u) {
+				tr.tr("x%d escapes: bitcast escapes x%d", v.Num(), u.Num())
+				return true
+			}
 		case *Field:
 			if escapes(tr, leaks, u) {
 				tr.tr("x%d escapes: field escapes x%d", v.Num(), u.Num())
@@ -493,6 +498,9 @@ func findLeaks(fb *funcBuilder) map[Value]bool {
 				fb.tr("x%d leaks: loaded address leaks x%d", v.Addr.Num(), v.Num())
 				leak(&todo, leaks, v.Addr)
 			}
+		case *BitCast:
+			fb.tr("x%d leaks: bitcast to leak x%d", v.Src.Num(), v.Num())
+			leak(&todo, leaks, v.Src)
 		// If a Field, Case, Index, or Slice leak,
 		// the entire base needs is marked as a leak,
 		// becasue any Copy into the base
@@ -924,6 +932,9 @@ func singleFieldInit(base Value, def *FieldDef) Value {
 
 func isReadOnly(v Value) bool {
 	for _, user := range v.UsedBy() {
+		if bc, ok := user.(*BitCast); ok && isReadOnly(bc) {
+			continue
+		}
 		if _, ok := user.(*Load); !ok {
 			return false
 		}
@@ -934,6 +945,8 @@ func isReadOnly(v Value) bool {
 // singleInit returns the single Value stored or copied into v;
 // or nil if there is not exactly one Store or Copy into v,
 // or if v used by any instructions that may modify it's value.
+// The returned value is never a BitCast; if the single init is a BitCast,
+// it source is followed to arrive at the original, non-BitCast Value.
 func singleInit(v Value) Value {
 	var init Value
 	for _, user := range v.UsedBy() {
@@ -964,6 +977,14 @@ func singleInit(v Value) Value {
 		default:
 			return nil
 		}
+	}
+	// Follow any number bitcasts to get to the actual initial value.
+	for {
+		b, ok := init.(*BitCast)
+		if !ok {
+			break
+		}
+		init = b.Src
 	}
 	return init
 }
@@ -1098,6 +1119,10 @@ func (o Load) shallowCopy() Instruction {
 	shallowCopyUsedBy(&o.value)
 	return &o
 }
+func (o BitCast) shallowCopy() Instruction {
+	shallowCopyUsedBy(&o.value)
+	return &o
+}
 func (o Func) shallowCopy() Instruction {
 	shallowCopyUsedBy(&o.value)
 	return &o
@@ -1206,6 +1231,10 @@ func (o *Alloc) subValues(sub map[Value]Value) {
 
 func (o *Load) subValues(sub map[Value]Value) {
 	subValue(sub, o, &o.Addr)
+}
+
+func (o *BitCast) subValues(sub map[Value]Value) {
+	subValue(sub, o, &o.Src)
 }
 
 func (o *Func) subValues(sub map[Value]Value) {}

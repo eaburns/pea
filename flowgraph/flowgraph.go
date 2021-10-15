@@ -457,6 +457,17 @@ func (l *Load) Uses() []Value { return []Value{l.Addr} }
 func (l *Load) Loc() loc.Loc  { return l.L }
 func (l *Load) Type() Type    { return l.AddrType.Elem }
 
+type BitCast struct {
+	value
+	Src Value
+	T   Type
+	L   loc.Loc
+}
+
+func (b *BitCast) Uses() []Value { return []Value{b.Src} }
+func (b *BitCast) Loc() loc.Loc  { return b.L }
+func (b *BitCast) Type() Type    { return b.T }
+
 type Func struct {
 	value
 	Def *FuncDef

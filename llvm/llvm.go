@@ -398,15 +398,6 @@ func cName(s string) bool {
 func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 	switch r := r.(type) {
 	case *flowgraph.Store:
-		// flowgraph considers any pointer equal to struct{}*; LLVM does not.
-		// If we are storing a pointer to a non-equal dst type, we add a bitcast.
-		st, dt := r.Src.Type(), r.Dst.Type()
-		if isAddr(st) && st.String() != elemType(dt).String() {
-			tmp := g.tmp()
-			g.line(tmp, " = bitcast ", typeVal{r.Src}, " to ", elemType(dt))
-			g.line("store ", elemType(dt), " ", tmp, ", ", typeVal{r.Dst})
-			break
-		}
 		g.line("store ", typeVal{r.Src}, ", ", typeVal{r.Dst}, "")
 	case *flowgraph.Copy:
 		d := g.tmp()
@@ -511,6 +502,8 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 		}
 	case *flowgraph.Load:
 		g.line(r, " = load ", r.Type(), ", ", typeVal{r.Addr})
+	case *flowgraph.BitCast:
+		g.line(r, " = bitcast ", typeVal{r.Src}, " to ", r.Type())
 	case *flowgraph.Func:
 		break
 	case *flowgraph.String:
@@ -526,6 +519,10 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 		actualStruct := &r.BaseType
 		fieldType := actualStruct.Fields[r.Def.Num].Type
 		// There are three cases here due to type-erasure for recursive reference types.
+		// These cases cannot be handled easily by flowgraph construction,
+		// as the optimization pass may change the base of the field
+		// to a type-erased value after the flowgraph is built.
+		// It's easy enough to handle it here instead of flowgraph optimization.
 		switch {
 		case baseStruct.String() != actualStruct.String():
 			// 1) The base value has type-erased fields, but the Field's expected struct does not.

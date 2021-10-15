@@ -1,0 +1,22 @@
+// [.x 10, .y 10]
+func main() {
+	foo_no_inline(),
+	print("[.x "),
+	print_int(x.x),
+	print(", .y "),
+	print_int(x.y),
+	print("]"),
+}
+
+func foo_no_inline() {
+	u := u :: [.x 10, .y 10],
+	// This will end up as a bit-cast, that escapes.
+	x := t :: u,
+}
+
+type t &[.x int, .y int]
+type u &[.x int, .y int]
+
+var x := t :: [.x 5, .y 5]
+
+func print_int(_ int)
