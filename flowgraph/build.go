@@ -454,6 +454,7 @@ func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *funcBuilder {
 	}
 	fb := mb.newFuncBuilder(inst.Def.Mod, inst.Def.Name, inst.Parms, inst.T.Ret, inst.Loc())
 	fb.Exp = inst.Def.Exp
+	fb.Inst = len(inst.TypeArgs) > 0 || len(inst.IfaceArgs) > 0
 
 	var sourceName strings.Builder
 	sourceName.WriteString(inst.String())
@@ -471,12 +472,120 @@ func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *funcBuilder {
 	fb.SourceName = sourceName.String()
 
 	mb.funcDef[inst] = fb
-	if inst.Def.Exprs != nil {
-		b0 := fb.buildBlock0(inst.Locals)
-		b1 := fb.buildBlocks(inst.Exprs)
-		b0.jump(b1)
+	if inst.Def.Exprs == nil {
+		fb.Decl = true
+		return fb
 	}
+	// Don't build the flowgraph for other-module functions
+	// that aren't type-parameterized, and do not pass
+	// a loose inlinability check. These will just end up
+	// as declarations, defined in the other module's object file.
+	if mb.Path != inst.Def.Mod && !fb.Inst && !canInlineLoose(mb, inst) {
+		return fb
+	}
+	b0 := fb.buildBlock0(inst.Locals)
+	b1 := fb.buildBlocks(inst.Exprs)
+	b0.jump(b1)
 	return fb
+}
+
+// canInlineLoose gives a loose estimation whether it's worth
+// building the flowgraph for an other-module function
+// for use in later inlining.
+//
+// TODO: remove loose inlining estimation.
+// Other-module functions should already be compiled to flowgraph.
+// We can estimate their inlinability using that info,
+// but for now, there's nowhere to communicate that
+// without just building the entire flowgraph for the function.
+func canInlineLoose(mb *modBuilder, inst *checker.FuncInst) bool {
+	oldTrace := mb.trace
+	mb.trace = mb.traceInline
+	defer func() { mb.trace = oldTrace }()
+
+	// If any parameter is function type,
+	// assume that a block literal may be passed
+	// and then further inlined.
+	for _, a := range inst.Parms {
+		if _, ok := a.Type().(*checker.FuncType); ok {
+			mb.tr("loose inlinable %s: function parameter", inst)
+			return true
+		}
+	}
+
+	// nStmts is an approximation of how big the function is.
+	// However, some of the statements counted may actually
+	// end up in other functions, for example if they are in blocks
+	// that are never inlined. Further, other inlining may take place
+	// that makes the function even bigger than merely
+	// its number of statements.
+	//
+	nStmts := len(inst.Exprs)
+	for _, e := range inst.Exprs {
+		nStmts += numStmts(e)
+	}
+	const limit = 10
+	ok := nStmts < limit
+	if !ok {
+		mb.tr("no loose inlinable %s: %d statements >= %d", inst, nStmts, limit)
+	} else {
+		mb.tr("loose inlinable %s: %d statements < %d", inst, nStmts, limit)
+	}
+	return ok
+}
+
+// numStmts returns  the rumber of statments under the expression.
+// Statements under an expression can only appear in block literals.
+func numStmts(expr checker.Expr) int {
+	switch expr := expr.(type) {
+	case *checker.Call:
+		n := 0
+		for _, a := range expr.Args {
+			n += numStmts(a)
+		}
+		return n
+	case *checker.Convert:
+		return numStmts(expr.Expr)
+	case *checker.Var:
+		return 0
+	case *checker.Local:
+		return 0
+	case *checker.Parm:
+		return 0
+	case *checker.Cap:
+		return 0
+	case *checker.ArrayLit:
+		n := 0
+		for _, e := range expr.Elems {
+			n += numStmts(e)
+		}
+		return n
+	case *checker.StructLit:
+		n := 0
+		for _, e := range expr.Fields {
+			n += numStmts(e)
+		}
+		return n
+	case *checker.UnionLit:
+		if expr.Val != nil {
+			return numStmts(expr.Val)
+		}
+		return 0
+	case *checker.BlockLit:
+		n := len(expr.Exprs)
+		for _, e := range expr.Exprs {
+			n += numStmts(e)
+		}
+		return n
+	case *checker.StrLit:
+		return 0
+	case *checker.IntLit:
+		return 0
+	case *checker.FloatLit:
+		return 0
+	default:
+		panic(fmt.Sprintf("unknown checker.Expr type: %T", expr))
+	}
 }
 
 func (mb *modBuilder) buildTestDef(def *checker.TestDef) *funcBuilder {

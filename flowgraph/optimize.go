@@ -42,10 +42,29 @@ func (fb *funcBuilder) tr(f string, vs ...interface{}) {
 }
 
 func disused(fb *funcBuilder) bool {
-	return !fb.Test &&
-		!fb.Exp && len(fb.inRefs) == 0 &&
-		(fb.Mod != "main" || fb.Name != "main") &&
-		!strings.Contains(fb.Name, "<init>")
+	if len(fb.inRefs) > 0 {
+		return false
+	}
+	if strings.Contains(fb.Name, "<block") {
+		// Unreferenced blocks must have been fully inlined.
+		// It is no longer possible to call them.
+		return true
+	}
+	if fb.mod.Path != fb.Mod {
+		// Unreferenced functions from other modules can be removed.
+		// They were brough in for inlining. They are likely fully inlined.
+		// Any other modules that want to use them
+		// will use the version from the defining module.
+		return true
+	}
+	if fb.Inst {
+		// Instances of type-parameterized functions
+		// can be discarded if disused.
+		// Any other module that wants this function
+		// will re-generate its own copy of it.
+		return true
+	}
+	return false
 }
 
 func moveStackAllocsToFront(f *FuncDef) {

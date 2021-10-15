@@ -477,12 +477,6 @@ func (o OpKind) String() string {
 
 func (v *Op) buildString(s *strings.Builder) *strings.Builder {
 	switch {
-	case v.Op == IndexOOBString:
-		col := newCol(s, "x%d := index_oob(x%d, x%d)", v.Num(), v.Args[0].Num(), v.Args[1].Num())
-		col.addCol("// %s", v.Type())
-	case v.Op == SliceOOBString:
-		col := newCol(s, "x%d := slice_oob(x%d, x%d, x%d)", v.Num(), v.Args[0].Num(), v.Args[1].Num(), v.Args[2].Num())
-		col.addCol("// %s", v.Type())
 	case v.Op == NumConvert:
 		col := newCol(s, "x%d := %s(x%d)", v.Num(), v.Type(), v.Args[0].Num())
 		col.addCol("// %s", v.Type())
@@ -491,7 +485,11 @@ func (v *Op) buildString(s *strings.Builder) *strings.Builder {
 	case v.Op == Print:
 		fmt.Fprintf(s, "print(x%d)", v.Args[0].Num())
 	case v.Op == IndexOOBString:
-		fmt.Fprintf(s, "x%d := index_oob_string(x%d, x%d)", v.Num(), v.Args[0].Num(), v.Args[1].Num())
+		col := newCol(s, "x%d := index_oob(x%d, x%d)", v.Num(), v.Args[0].Num(), v.Args[1].Num())
+		col.addCol("// %s", v.Type())
+	case v.Op == SliceOOBString:
+		col := newCol(s, "x%d := slice_oob(x%d, x%d, x%d)", v.Num(), v.Args[0].Num(), v.Args[1].Num(), v.Args[2].Num())
+		col.addCol("// %s", v.Type())
 	case len(v.Args) == 1:
 		col := newCol(s, "x%d := %sx%d", v.Num(), v.Op, v.Args[0].Num())
 		col.addCol("// %s := %s%s", v.Type(), v.Op, v.Args[0].Type())

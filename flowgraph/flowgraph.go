@@ -191,6 +191,11 @@ type VarDef struct {
 type FuncDef struct {
 	// Test indicates whether this is a test definition.
 	Test bool
+	// Decl is whether this was only declared, not defined.
+	Decl bool
+	// Inst indicates that this is an instance
+	// of a type-parameterized function.
+	Inst bool
 	// SourceName is a unique name for this function
 	// using the syntax of the source language.
 	// It may be show to users,for example in stack traces.

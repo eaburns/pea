@@ -364,7 +364,7 @@ func (g *gen) write(vs ...interface{}) {
 		case intType:
 			g.write("i", int(v))
 		case *flowgraph.FuncDef:
-			if len(v.Blocks) == 0 && cName(v.Name) {
+			if v.Decl && cName(v.Name) {
 				// External definitions with C-compatible names
 				// ([_a-zA-Z][_0-9a-zA-Z]*)
 				// use C-style names to link with C.
