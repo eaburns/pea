@@ -14,7 +14,7 @@ var (
 	opt          = flag.Bool("opt", true, "whether to optimize")
 	root         = flag.String("root", ".", "module root directory")
 	traceEsc     = flag.Bool("esc", false, "whether to trace escape analysis")
-	printNAllocs = flag.Bool("print-nallocs", false, "whether to print the number of non-stack allocs")
+	printNAllocs = flag.Bool("print-nallocs", false, "whether to print the number of heap allocs")
 	traceInline  = flag.Bool("inl", false, "whether to trace function inlining")
 )
 
@@ -69,6 +69,6 @@ func main() {
 				}
 			}
 		}
-		fmt.Printf("%d non-stack allocations\n", n)
+		fmt.Printf("%d heap allocations\n", n)
 	}
 }

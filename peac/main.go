@@ -26,7 +26,7 @@ var (
 	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
 	traceEsc     = flag.Bool("trace-esc", false, "whether to trace escape analysis")
 	traceInline  = flag.Bool("trace-inl", false, "whether to trace inlining")
-	printNAllocs = flag.Bool("print-nallocs", false, "whether to print the number of non-stack allocs")
+	printNAllocs = flag.Bool("print-nallocs", false, "whether to print the number of heap allocs")
 )
 
 func main() {
@@ -154,7 +154,7 @@ func (m *Mod) compile() {
 					}
 				}
 			}
-			fmt.Printf("%d non-stack allocations\n", n)
+			fmt.Printf("%d heap allocations\n", n)
 		}
 		if *dumpFG {
 			fmt.Println(fg)
