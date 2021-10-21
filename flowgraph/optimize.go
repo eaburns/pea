@@ -356,19 +356,19 @@ func escapesConservative(tr tracer, a *Alloc) bool {
 		case *Copy:
 			continue
 		case *Field:
-			if isReadOnly(u) {
+			if isLoadOnly(u) {
 				continue
 			}
 			tr.tr("x%d escapes: non-read-only field x%d", a.Num(), u.Num())
 			return true
 		case *Case:
-			if isReadOnly(u) {
+			if isLoadOnly(u) {
 				continue
 			}
 			tr.tr("x%d escapes: non-read-only case x%d", a.Num(), u.Num())
 			return true
 		case *Index:
-			if isReadOnly(u) {
+			if isLoadOnly(u) {
 				continue
 			}
 			tr.tr("x%d escapes: non-read-only index x%d", a.Num(), u.Num())
@@ -1042,7 +1042,7 @@ func singleFieldInit(base Value, def *FieldDef) Value {
 	var init Value
 	for _, user := range base.UsedBy() {
 		f, ok := user.(*Field)
-		if !ok || f.Def != def || isReadOnly(f) {
+		if !ok || f.Def != def || isLoadOnly(f) {
 			continue
 		}
 		if init != nil {
@@ -1053,9 +1053,9 @@ func singleFieldInit(base Value, def *FieldDef) Value {
 	return init
 }
 
-func isReadOnly(v Value) bool {
+func isLoadOnly(v Value) bool {
 	for _, user := range v.UsedBy() {
-		if bc, ok := user.(*BitCast); ok && isReadOnly(bc) {
+		if bc, ok := user.(*BitCast); ok && isLoadOnly(bc) {
 			continue
 		}
 		if _, ok := user.(*Load); !ok {
@@ -1077,7 +1077,7 @@ func singleInit(v Value) Value {
 		case *Load:
 			continue
 		case *Field:
-			if !isReadOnly(user) {
+			if !isLoadOnly(user) {
 				return nil
 			}
 			continue
