@@ -621,8 +621,8 @@ func inlineCalls(fb *funcBuilder) {
 			if !ok {
 				continue
 			}
-			def := staticFunc(c)
-			if def == nil || !canInline(fb, def) {
+			def, ok := canInlineCall(fb, c)
+			if !ok {
 				continue
 			}
 			inlineFuncRefs(fb, def)
@@ -651,6 +651,7 @@ func inlineCalls(fb *funcBuilder) {
 	fb.Blocks = done
 	rmUnreach(fb)
 	rmDeletes(fb)
+	fb.tr("--- inlined:\n%s\n", fb.FuncDef)
 }
 
 func inlineFuncRefs(fb *funcBuilder, inl *FuncDef) {
@@ -667,60 +668,163 @@ func inlineFuncRefs(fb *funcBuilder, inl *FuncDef) {
 	panic(fmt.Sprintf("impossible: %s does not call %s", fb.Name, inl.Name))
 }
 
-func canInline(fb *funcBuilder, def *FuncDef) bool {
-	var ref *funcBuilder
-	for r := range fb.outRefs {
-		if r.FuncDef == def {
-			ref = r
+func canInlineCall(fb *funcBuilder, c *Call) (*FuncDef, bool) {
+	fb.tr("considering %s", c)
+	calledDef := staticFunc(c)
+	if calledDef == nil {
+		fb.tr("	NO: called function is not static")
+		return nil, false
+	}
+	fb.tr("	static call: %s", calledDef.Name)
+	if strings.HasSuffix(calledDef.Name, "no_inline") {
+		fb.tr("	NO: called function is marked no_inline")
+		return nil, false
+	}
+	if len(calledDef.Blocks) == 0 {
+		fb.tr("	NO: called function is empty")
+		return nil, false
+	}
+	if hasLongRet(calledDef) {
+		// We currently can't inline a function that may long return,
+		// because the preamble of that function is where we catch
+		// and deal with the long return.
+		fb.tr("	NO: called function has long return")
+		return nil, false
+	}
+	if fb.Test && !strings.Contains("<block", calledDef.Name) {
+		// In tests we only inline block literals,
+		// because we track test error locations
+		// by remembering the file:line of each call;
+		// if the call is inlined, we lose this information.
+		fb.tr("	NO: test call")
+		return nil, false
+	}
+	calledFB := calledFuncBuilder(fb, calledDef)
+	if calledFB == fb {
+		// We can't inline the calling function into itself.
+		fb.tr("	NO: self call")
+		return nil, false
+	}
+	if calledFB == fb.parent {
+		// We can't inline the function lexically containing a block literal
+		// into the block literal.
+		fb.tr("	NO: parent call")
+		return nil, false
+	}
+
+	// At this point, the call is possible to inline without breaking things.
+	// It's now a matter of deciding whether we want to do it.
+
+	// If the current callee is the only reference to the called, unexported function,
+	// we shoud inline it. Likely this is a helper function just for the callee.
+	// Better yet, if it is a block, then the block definition can be deleted later.
+	if len(calledFB.inRefs) == 1 && calledFB.inRefs[fb] == 1 && !calledFB.Exp {
+		fb.tr("	YES: this call is the only reference to the called function")
+		return calledDef, true
+	}
+	fb.tr("	not the only reference to the called function")
+
+	// If the call is to a leaf function we will inline it.
+	if len(calledFB.outRefs) == 0 && calledFB.inlineNonBlocks == 0 {
+		fb.tr("	YES: leaf function")
+		return calledDef, true
+	}
+	fb.tr("	not a leaf call")
+
+	// If the called function only recursively calls the callee,
+	// we inline it, because this will likely be optimized into a loop.
+	if len(calledFB.outRefs) == 1 && calledFB.outRefs[fb] == 1 {
+		fb.tr("	YES: only recursively calls the callee")
+		return calledDef, true
+	}
+	fb.tr("	doesn't only recursively call the callee")
+
+	// If an argument is a block literal, we should inline it,
+	// because likely that block literal will also get inlined.
+	for _, a := range c.Args {
+		fb.tr("		considering block literal arg %s", a)
+		if isBlockLiteralArg(fb, c, a) {
+			fb.tr("	YES: block literal argument")
+			return calledDef, true
+		}
+	}
+	fb.tr("	no block literal arguments")
+
+	fb.tr("	NO")
+	return nil, false
+}
+
+func hasLongRet(def *FuncDef) bool {
+	if len(def.Blocks) == 0 {
+		return false
+	}
+	for _, r := range def.Blocks[0].Instrs {
+		if _, ok := r.(*Frame); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func calledFuncBuilder(callerFB *funcBuilder, calledDef *FuncDef) *funcBuilder {
+	for r := range callerFB.outRefs {
+		if r.FuncDef == calledDef {
+			return r
+		}
+	}
+	panic(fmt.Sprintf("impossible: %s does not call %s", callerFB.Name, calledDef.Name))
+}
+
+func isBlockLiteralArg(tr tracer, call *Call, v Value) bool {
+	addrType, ok := v.Type().(*AddrType)
+	if !ok {
+		tr.tr("			no, type (%s) is not an address", v.Type())
+		return false
+	}
+	structType, ok := addrType.Elem.(*StructType)
+	if !ok {
+		tr.tr("			no, element (%s) is not a block struct", addrType.Elem)
+		return false
+	}
+	if !strings.HasPrefix(structType.Name, "block") {
+		tr.tr("			no, struct (%s) is not a block struct", structType)
+		return false
+	}
+	for {
+		init := singleInit(v)
+		if init == nil {
 			break
 		}
+		v = init
 	}
-	if ref == nil {
-		panic(fmt.Sprintf("impossible: %s does not call %s", fb.Name, def.Name))
-	}
-	testCall := fb.Test && !strings.Contains("<block", def.Name)
-	self := fb.FuncDef == def
-	parent := fb.parent == ref
-	empty := len(def.Blocks) == 0
-	noInline := strings.HasSuffix(def.Name, "no_inline")
-	var longRet bool
-	if len(def.Blocks) > 0 {
-		for _, r := range def.Blocks[0].Instrs {
-			if _, ok := r.(*Frame); ok {
-				longRet = true
-				break
+	// The base is only accessed only by
+	// 	* the current call,
+	// 	* the source of a Copy, and/or
+	// 	* a Field access
+	for _, user := range v.UsedBy() {
+		if user.isDeleted() {
+			continue
+		}
+		if user == call {
+			continue
+		}
+		switch user := user.(type) {
+		case *Field:
+			continue
+		case *Copy:
+			if user.Src == v {
+				continue
 			}
 		}
+		tr.tr("			no, accessed by other than copy/field: %s", user)
+		return false
 	}
-	onlyOneRef := len(ref.inRefs) == 1 && ref.inRefs[fb] == 1 && !ref.Exp
-	leafFun := len(ref.outRefs) == 0 && ref.inlineNonBlocks == 0
-	ok := !self && !parent && !empty && !testCall && !noInline && !longRet &&
-		(onlyOneRef || leafFun)
-
-	if ok {
-		fb.tr("	can inline %s: TRUE", def.Name)
-	} else {
-		fb.tr("	can inline %s: FALSE", def.Name)
+	if _, ok := singleFieldInit(v, structType.Fields[0]).(*Func); !ok {
+		tr.tr("			no single field init for .func")
+		return false
 	}
-	fb.tr("		self: %v", self)
-	fb.tr("		parent: %v", parent)
-	fb.tr("		empty: %v", empty)
-	fb.tr("		testCall: %v", testCall)
-	fb.tr("		noInline: %v", noInline)
-	fb.tr("		longRet: %v", longRet)
-	fb.tr("		onlyOneRef: %v", onlyOneRef)
-	fb.tr("		leafFun: %v", leafFun)
-	fb.tr("		exported: %v", ref.Exp)
-	fb.tr("		inlineNonBlocks: %d", ref.inlineNonBlocks)
-	fb.tr("		inRefs:")
-	for r, n := range ref.inRefs {
-		fb.tr("			%s: %d", r.Name, n)
-	}
-	fb.tr("		outRefs:")
-	for r, n := range ref.outRefs {
-		fb.tr("			%s: %d", r.Name, n)
-	}
-	return ok
+	tr.tr("			yes, it is a block literal")
+	return true
 }
 
 func rmSelfTailCalls(fb *funcBuilder) {

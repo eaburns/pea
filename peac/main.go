@@ -24,7 +24,8 @@ var (
 	test         = flag.Bool("test", false, "whether to compile a test binary")
 	v            = flag.Bool("v", false, "print commands executed")
 	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
-	traceESC     = flag.Bool("trace-esc", false, "whether to trace escape analysis")
+	traceEsc     = flag.Bool("trace-esc", false, "whether to trace escape analysis")
+	traceInline  = flag.Bool("trace-inl", false, "whether to trace inlining")
 	printNAllocs = flag.Bool("print-nallocs", false, "whether to print the number of non-stack allocs")
 )
 
@@ -133,10 +134,13 @@ func (m *Mod) compile() {
 
 	var fg *flowgraph.Mod
 	var locs loc.Files
-	if *dumpFG || *traceESC || *printNAllocs {
+	if *dumpFG || *traceEsc || *traceInline || *printNAllocs {
 		var opts []flowgraph.Option
-		if *traceESC {
+		if *traceEsc {
 			opts = append(opts, flowgraph.TraceEscape)
+		}
+		if *traceInline {
+			opts = append(opts, flowgraph.TraceInlining)
 		}
 		fg, locs = m.flowgraph(opts...)
 		if *printNAllocs {
