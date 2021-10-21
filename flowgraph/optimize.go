@@ -356,19 +356,19 @@ func escapesConservative(tr tracer, a *Alloc) bool {
 		case *Copy:
 			continue
 		case *Field:
-			if isLoadOnly(u) {
+			if isLoadStoreOnly(u) {
 				continue
 			}
 			tr.tr("x%d escapes: non-read-only field x%d", a.Num(), u.Num())
 			return true
 		case *Case:
-			if isLoadOnly(u) {
+			if isLoadStoreOnly(u) {
 				continue
 			}
 			tr.tr("x%d escapes: non-read-only case x%d", a.Num(), u.Num())
 			return true
 		case *Index:
-			if isLoadOnly(u) {
+			if isLoadStoreOnly(u) {
 				continue
 			}
 			tr.tr("x%d escapes: non-read-only index x%d", a.Num(), u.Num())
@@ -1055,12 +1055,34 @@ func singleFieldInit(base Value, def *FieldDef) Value {
 
 func isLoadOnly(v Value) bool {
 	for _, user := range v.UsedBy() {
-		if bc, ok := user.(*BitCast); ok && isLoadOnly(bc) {
+		switch user := user.(type) {
+		case *Load:
 			continue
+		case *BitCast:
+			if isLoadOnly(user) {
+				continue
+			}
 		}
-		if _, ok := user.(*Load); !ok {
-			return false
+		return false
+	}
+	return true
+}
+
+func isLoadStoreOnly(v Value) bool {
+	for _, user := range v.UsedBy() {
+		switch user := user.(type) {
+		case *Load:
+			continue
+		case *Store:
+			if user.Dst == v && user.Src != v {
+				continue
+			}
+		case *BitCast:
+			if isLoadStoreOnly(user) {
+				continue
+			}
 		}
+		return false
 	}
 	return true
 }
