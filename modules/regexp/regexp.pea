@@ -448,9 +448,6 @@ func exec(vm vm, s S) [int64] : read(&S)read_result {
 			vm step: t,
 		},
 		if: vm.cur_rune = eof || vm.match != [] && vm.next_run.length = 0 then: {
-			if: vm.opts.full && vm.next_rune != eof then: {
-				return: []
-			},
 			return: vm.match
 		},
 		if: vm.match = [] && !vm.opts.full then: {
@@ -549,6 +546,11 @@ func add_thread:(vm vm, t thread) {
 		},
 		vm add_thread: [.pc t.pc+1, .mem t.mem],
 	} match? {
+		if: vm.opts.full && (t.mem[0] > 0 || vm.next_rune != eof) then: {
+			// This match isn't full, so discard it.
+			vm.free_mem push_back: t.mem,
+			return(),
+		},
 		if: !vm.opts.longest then: {
 			// For first match, terminate all lower-priority threads.
 			clear: vm.run

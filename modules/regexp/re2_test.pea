@@ -220,17 +220,29 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
 		if: wants.length != 4 then: {
 			panic(print#string("malformed matches: [" ++ line ++ "]")),
 		},
-		_ := wants[0], // full match
-		partial_match := wants[1],
-		_ := wants[2], // longest full match
-		_ := wants[3], // longest partial match
-		want := parse_want(partial_match),
-		got := exec(re, str),
+
+		full_match := wants[0],
+		want := parse_want(full_match),
+		got := exec(re, [.longest false, .full true], str),
 		if: want != got then: {
+			print("full match:\n"),
 			print#print("regexp=[" ++ regexp ++ "], str=[" ++ str ++ "]\n"),
 			print#print("	got=" ++ got ++ ", want=" ++  want ++ "\n"),
 			panic("fail"),
 		},
+
+		partial_match := wants[1],
+		want := parse_want(partial_match),
+		got := exec(re, [.longest false, .full false], str),
+		if: want != got then: {
+			print("partial match:\n"),
+			print#print("regexp=[" ++ regexp ++ "], str=[" ++ str ++ "]\n"),
+			print#print("	got=" ++ got ++ ", want=" ++  want ++ "\n"),
+			panic("fail"),
+		},
+
+		_ := wants[2], // longest full match
+		_ := wants[3], // longest partial match
 	}
 }
 

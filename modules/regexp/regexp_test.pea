@@ -118,6 +118,11 @@ test find_partial_or_full {
 	assert: exec(re, full, "123abcxyz") equals: [],
 }
 
+test full_match {
+	re := must(compile("h.*o")),
+	assert: exec(re, [.longest false, .full true], "hello world") equals: [],
+}
+
 test find_containers {
 	re := must(compile("abc")),
 	assert: exec(re, "abc") equals: [0, 3],
