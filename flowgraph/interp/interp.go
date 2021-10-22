@@ -333,7 +333,11 @@ func (interp *Interp) step() {
 		}
 		frame.vals[instr] = &Obj{val: x}
 	case *flowgraph.Null:
-		frame.vals[instr] = &Obj{val: Pointer{}}
+		if _, ok := instr.Type().(*flowgraph.ArrayType); ok {
+			frame.vals[instr] = &Obj{val: Array{}}
+		} else {
+			frame.vals[instr] = &Obj{val: Pointer{}}
+		}
 	case *flowgraph.Op:
 		switch instr.Op {
 		case flowgraph.BitNot, flowgraph.Negate:

@@ -591,13 +591,13 @@ func (f *Float) Type() Type   { return &f.T }
 
 type Null struct {
 	value
-	T AddrType
+	T Type
 	L loc.Loc
 }
 
 func (*Null) Uses() []Value  { return nil }
 func (n *Null) Loc() loc.Loc { return n.L }
-func (n *Null) Type() Type   { return &n.T }
+func (n *Null) Type() Type   { return n.T }
 
 type OpKind int
 

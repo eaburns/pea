@@ -1800,10 +1800,16 @@ func (bb *blockBuilder) arrayLit(lit *checker.ArrayLit) (*blockBuilder, Value) {
 	lenVal := bb.intLit(strconv.Itoa(len(lit.Elems)), mod.intType())
 	lenField := bb.field(a, arrayType.Fields[0])
 	bb.store(lenField, lenVal)
-	dataVal := bb.allocNImm(len(lit.Elems), elemType)
-	dataField := bb.field(a, arrayType.Fields[1])
-	bb.store(dataField, dataVal)
 
+	dataField := bb.field(a, arrayType.Fields[1])
+	if len(lit.Elems) == 0 {
+		// Empty array literals are a relatively common case.
+		// We shouldn't bother calling alloc here.
+		bb.store(dataField, bb.null(&ArrayType{Elem: elemType}))
+		return bb, a
+	}
+	dataVal := bb.allocNImm(len(lit.Elems), elemType)
+	bb.store(dataField, dataVal)
 	for i, expr := range lit.Elems {
 		var v Value
 		bb, v = bb.expr(expr)
@@ -2276,11 +2282,12 @@ func (bb *blockBuilder) floatLit(text string, typ Type) *Float {
 }
 
 func (bb *blockBuilder) null(typ Type) *Null {
-	t, ok := typ.(*AddrType)
-	if !ok {
-		panic(fmt.Sprintf("got %s, want AddrType", typ))
+	_, isAddr := typ.(*AddrType)
+	_, isArray := typ.(*ArrayType)
+	if !isAddr && !isArray {
+		panic(fmt.Sprintf("got %s, want AddrType or ArrayType", typ))
 	}
-	v := &Null{T: *t, L: bb.L}
+	v := &Null{T: typ, L: bb.L}
 	bb.addValue(v)
 	return v
 }
