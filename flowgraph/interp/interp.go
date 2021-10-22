@@ -186,7 +186,11 @@ func (interp *Interp) step() {
 				break
 			}
 			if len(interp.stack) == 0 {
-				panic("long return across threads or to returned frame")
+				// This case should never happen,
+				// because flowgraph building
+				// shoud always insert a CheckFrame
+				// that would have failed instead.
+				panic("impossible")
 			}
 		}
 		return
@@ -364,6 +368,18 @@ func (interp *Interp) step() {
 			s := fmt.Sprintf("slice out of bounds: start=%d, end=%d, length=%d",
 				start.(SignedInt).Int64(), end.(SignedInt).Int64(), length.(SignedInt).Int64())
 			frame.vals[instr] = peaString(s)
+		case flowgraph.CheckFrame:
+			frameID := frame.vals[instr.Args[0]].Val()
+			ok := false
+			for _, frame := range interp.stack {
+				if frame.id == int(frameID.(Int64)) {
+					ok = true
+					break
+				}
+			}
+			if !ok {
+				panic("long return across threads or to returned frame")
+			}
 		default:
 			panic(fmt.Sprintf("unknown instruction: %s", instr))
 		}

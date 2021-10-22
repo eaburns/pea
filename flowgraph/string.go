@@ -490,6 +490,8 @@ func (v *Op) buildString(s *strings.Builder) *strings.Builder {
 	case v.Op == SliceOOBString:
 		col := newCol(s, "x%d := slice_oob(x%d, x%d, x%d)", v.Num(), v.Args[0].Num(), v.Args[1].Num(), v.Args[2].Num())
 		col.addCol("// %s", v.Type())
+	case v.Op == CheckFrame:
+		fmt.Fprintf(s, "check_frame(x%d)", v.Args[0].Num())
 	case len(v.Args) == 1:
 		col := newCol(s, "x%d := %sx%d", v.Num(), v.Op, v.Args[0].Num())
 		col.addCol("// %s := %s%s", v.Type(), v.Op, v.Args[0].Type())

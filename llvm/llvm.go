@@ -119,6 +119,7 @@ func (g *gen) writeHeader(mod *flowgraph.Mod) {
 		"declare i8* @pea_malloc(", g.int(), ")\n",
 		"declare i8* @pea_new_frame()\n",
 		"declare void @pea_finish_frame(i8* nocapture)\n",
+		"declare void @pea_check_frame(i8* nocapture)\n",
 		"declare void @pea_long_return(i8* nocapture) noreturn\n",
 		"declare void @pea_set_test_call_loc(i8*, i32)\n",
 		"declare void @pea_panic(%string* nocapture, i8* nocapture, i32) readonly noreturn\n",
@@ -722,6 +723,8 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			g.line(r, " = call %string* @pea_index_oob_string(", typeVal{r.Args[0]}, ", ", typeVal{r.Args[1]}, ")")
 		case flowgraph.SliceOOBString:
 			g.line(r, " = call %string* @pea_slice_oob_string(", typeVal{r.Args[0]}, ", ", typeVal{r.Args[1]}, ", ", typeVal{r.Args[2]}, ")")
+		case flowgraph.CheckFrame:
+			g.line("call void @pea_check_frame(", typeVal{r.Args[0]}, ")")
 		default:
 			panic(fmt.Sprintf("unknown op: %s", r.Op))
 		}

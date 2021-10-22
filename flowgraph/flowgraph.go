@@ -625,6 +625,9 @@ const (
 	Print
 	IndexOOBString
 	SliceOOBString
+	// Panics if the argument isn't a frame
+	// below the calling frame on the stack.
+	CheckFrame
 )
 
 type Op struct {
@@ -636,9 +639,9 @@ type Op struct {
 }
 
 func (o *Op) Uses() []Value {
-	// Print and Panic side-effect.
+	// Print, Panic, and CheckFrame can side-effect.
 	// This prevents them from being marked as disused.
-	if o.Op == Print || o.Op == Panic {
+	if o.Op == Print || o.Op == Panic || o.Op == CheckFrame {
 		return append(o.Args, o)
 	}
 	return o.Args

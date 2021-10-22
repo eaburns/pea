@@ -1415,6 +1415,19 @@ func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 		bb.Return(frame)
 		return bb, nil
 	}
+
+	var frame Value
+	if bb.fun.blockType != nil {
+		frame = bb.frame()
+	}
+	if frame != nil {
+		// We check the frame _before_ storing the return value.
+		// This ensures that we never write to the return value
+		// if it is not below our current frame on the stack.
+		// That way escape analysis can safely mark
+		// return values as non-escaping.
+		bb.op(CheckFrame, &StructType{}, frame)
+	}
 	if bb.fun.blockType != nil {
 		block := bb.parm(bb.fun.Parms[0])
 		field := bb.field(block, bb.fun.returnField)
@@ -1430,10 +1443,6 @@ func (bb *blockBuilder) buildReturn(call *checker.Call) (*blockBuilder, Value) {
 		} else {
 			bb.copy(parm, v)
 		}
-	}
-	var frame Value
-	if bb.fun.blockType != nil {
-		frame = bb.frame()
 	}
 	bb.Return(frame)
 	return bb, nil
