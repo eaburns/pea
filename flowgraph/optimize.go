@@ -151,7 +151,7 @@ func rmDeletes(fb *funcBuilder) {
 				seen[r] = true
 				continue
 			}
-			if v, ok := r.(Value); ok && (len(v.UsedBy()) == 0 || isWriteOnlyAlloc(v)) {
+			if v, ok := r.(Value); ok && (len(v.UsedBy()) == 0 || isWriteOnlyAlloc(v) || unusedFrame(v)) {
 				todo = append(todo, r)
 				seen[r] = true
 				continue
@@ -192,6 +192,21 @@ func rmDeletes(fb *funcBuilder) {
 		}
 		b.Instrs = b.Instrs[:i]
 	}
+}
+
+func unusedFrame(v Value) bool {
+	frame, ok := v.(*Frame)
+	if !ok {
+		return false
+	}
+	// A frame only used by CheckFrame is unused and should be deleted.
+	for _, user := range frame.UsedBy() {
+		op, ok := user.(*Op)
+		if !ok || op.Op != CheckFrame {
+			return false
+		}
+	}
+	return true
 }
 
 func isWriteOnlyAlloc(v Value) bool {
