@@ -456,9 +456,23 @@ func escapes(tr tracer, leaks map[Value]bool, v Value) bool {
 				if arg != v {
 					continue
 				}
-				if i == 0 &&
-					(!ok || len(s.Def.Parms) > 0 && s.Def.Parms[0].BlockData) {
+				// It is a block capture if it is the 0th parameter of a non-static call.
+				// We also check whether it's the BlockData parameter of a static call,
+				// but this is probably impossible in practice.
+				if (!ok && i == 0) || ok && i < len(s.Def.Parms) && s.Def.Parms[i].BlockData {
 					// Skip never-escaping block captures.
+					tr.tr("x%d arg %d of call %s is a non-escaping block capture", v.Num(), i, u)
+					continue
+				}
+				if isReturnArg(u, i) {
+					// Skip never-escaping return value.
+					//
+					// Return values can technically escape
+					// if passed in an escaping capture block.
+					// However, such a return value is never written to,
+					// because we ensure to always check that
+					// it is in a parent stack frame before writing to it.
+					tr.tr("x%d arg %d of call %s is a non-escaping return value", v.Num(), i, u)
 					continue
 				}
 				_, isAddr := arg.Type().(*AddrType)
@@ -472,6 +486,11 @@ func escapes(tr tracer, leaks map[Value]bool, v Value) bool {
 	}
 	tr.tr("x%d does not escape", v.Num())
 	return false
+}
+
+func isReturnArg(call *Call, i int) bool {
+	funcType := call.Func.Type().(*FuncType)
+	return i == len(call.Args)-1 && !funcType.Ret.isEmpty()
 }
 
 func findLeaks(fb *funcBuilder) map[Value]bool {
@@ -493,6 +512,17 @@ func findLeaks(fb *funcBuilder) map[Value]bool {
 				leak(&todo, leaks, r)
 			case *Call:
 				for i, arg := range r.Args {
+					if isReturnArg(r, i) {
+						// Skip never-leaking return value.
+						//
+						// Return values can technically escape
+						// if passed in an escaping capture block.
+						// However, such a return value is never written to,
+						// because we ensure to always check that
+						// it is in a parent stack frame before writing to it.
+						fb.tr("x%d arg %d of call %s is a non-leaking return value", arg.Num(), i, r)
+						continue
+					}
 					_, isAddr := arg.Type().(*AddrType)
 					_, isArray := arg.Type().(*ArrayType)
 					if isAddr || isArray {
