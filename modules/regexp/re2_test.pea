@@ -241,8 +241,25 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
 			panic("fail"),
 		},
 
-		_ := wants[2], // longest full match
-		_ := wants[3], // longest partial match
+		longest_full_match := wants[2],
+		want := parse_want(longest_full_match),
+		got := exec(re, [.longest true, .full true], str),
+		if: want != got then: {
+			print("longest, full match:\n"),
+			print#print("regexp=[" ++ regexp ++ "], str=[" ++ str ++ "]\n"),
+			print#print("	got=" ++ got ++ ", want=" ++  want ++ "\n"),
+			panic("fail"),
+		},
+
+		longest_partial_match := wants[3],
+		want := parse_want(longest_partial_match),
+		got := exec(re, [.longest true, .full false], str),
+		if: want != got then: {
+			print("longest, partial match:\n"),
+			print#print("regexp=[" ++ regexp ++ "], str=[" ++ str ++ "]\n"),
+			print#print("	got=" ++ got ++ ", want=" ++  want ++ "\n"),
+			panic("fail"),
+		},
 	}
 }
 
