@@ -29,7 +29,9 @@ func print(p print#printer, instrs instruction ring_buffer#ring_buffer) print#pr
 }
 
 func print(p print#printer, instr instruction) print#printer {
-	return: instr rune? (r rune) {
+	return: instr nop? {
+		p ++ "nop"
+	} rune? (r) {
 		p ++ "rune " ++ r
 	} any? {
 		p ++ "any"

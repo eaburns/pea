@@ -159,17 +159,29 @@ func unescape(str string) string {
 func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
 	// Ignore unsupported regexps.
 	if:
+		// non-greedy.
+		string#contains(regexp, "*?") ||
+		string#contains(regexp, "+?") ||
+		string#contains(regexp, "??") ||
+		// bad unterminated non-cap group?
+		string#contains(regexp, "(?:|") ||
 		// bad char classes
 		string#contains(regexp, `[]`) ||
 		{string#contains(regexp, `[-`)} ||
 		{string#contains(regexp, `[^-`)} ||
 		{string#contains(regexp, `-]`)} ||
 		{string#contains(regexp, `[a-b-c]`)} ||
-		// non-cap group
-		string#contains(regexp, "(?") ||
+		// flags
+		string#contains(regexp, "(?i") ||
+		string#contains(regexp, "(?m") ||
+		string#contains(regexp, "(?s") ||
+		string#contains(regexp, "(?U") ||
+		// repetition
+		string#contains(regexp, "{") ||
 		// Perl classes
 		string#contains(regexp, "[:") ||
 		// unsupported escapes
+		{string#contains(regexp, `\A`)} ||
 		{string#contains(regexp, `\B`)} ||
 		{string#contains(regexp, `\C`)} ||
 		{string#contains(regexp, `\D`)} ||
@@ -181,6 +193,7 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
 		{string#contains(regexp, `\p`)} ||
 		{string#contains(regexp, `\s`)} ||
 		{string#contains(regexp, `\w`)} ||
+		{string#contains(regexp, `\z`)} ||
 		// hex
 		{string#contains(regexp, `\x`)} ||
 		// octal
@@ -275,17 +288,20 @@ func parse_want(s string) [int64] {
 		if: fs.length != 2 then: {
 			panic(print#string("malformed expectation: " ++ s)),
 		},
-		want[n] := int#parse_uint64(fs[0]) ok? (i uint64){
-			int64:: i
-		} error? (e){
-			panic(print#string("bad int: " ++ fs[0])),
-		},
-		want[n+1] := int#parse_uint64(fs[1]) ok? (i uint64){
-			int64:: i
-		} error? (e){
-			panic(print#string("bad int: " ++ fs[0])),
-		},
+		want[n+0] := parse_int64_or_empty(fs[0]),
+		want[n+1] := parse_int64_or_empty(fs[1]),
 		n += 2,
 	},
 	return: want
+}
+
+func parse_int64_or_empty(x string) int64 {
+	if: x = "" then: {
+		return: -1
+	},
+	return: int#parse_uint64(x) ok? (i uint64){
+		int64:: i
+	} error? (e){
+		panic(print#string("bad int: " ++ x)),
+	}
 }

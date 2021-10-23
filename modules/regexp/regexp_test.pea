@@ -86,6 +86,20 @@ test find_simple {
 	assert: exec(re, "abcxyz123") equals: [],
 }
 
+test empty {
+	re := must(compile("^$")),
+	assert: exec(re, "a") equals: [],
+
+	re := must(compile("^()$")),
+	assert: exec(re, "a") equals: [],
+
+	re := must(compile("((()|a)*)")),
+	assert: exec(re, "a") equals: [0, 0, 0, 0, 0, 0, 0, 0],
+
+	re := must(compile("(?:(?:(?:)|a)*)")),
+	assert: exec(re, "a") equals: [0, 0],
+}
+
 test subexpr_match {
 	re := must(compile("(a*)|b")),
 

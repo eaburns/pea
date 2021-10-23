@@ -7,7 +7,7 @@
 // 	choice = concat [ "|" choice ].
 // 	concat = repeat [ concat ].
 // 	repeat = term { "*" | "+" | "?" }.
-// 	term = "." | "^" | "$" | "(" regexp ")" | charclass | literal.
+// 	term = "." | "^" | "$" | "(" regexp ")" | "(?:" regexp ")" | charclass | literal.
 // 	charclass = "[" [ "^" ] ( classlit [ "-" classlit ] ) { classlit [ "-" classlit ] } "]".
 // 	A literal is any non-operator rune or an escaped sequence.
 // 	A classlit is any non-"]", non-"-" rune or an escape sequence.
@@ -20,6 +20,7 @@
 // 	^ beginning of input or line
 // 	$ end of input or line
 // 	( ) capturing group
+// 	(?: ) non-capturing group
 // 	[ ] character class (^ negates, - is a range)
 // The escape sequences are:
 // 	\a bell (\x07)
@@ -49,6 +50,7 @@ type char_class := char_range vector#vector
 type char_range [.start rune, .end rune]
 
 type instruction [
+	nop?,	// no operation
 	rune? rune,	// match the given rune
 	any?,	// any character
 	begin?,	// beginning of input
@@ -158,13 +160,30 @@ func term(src &string, depth int) regexp or_error {
 }
 
 func group(src &string, depth int) regexp or_error {
+	cap := true,
+	if: peek(src) = '?' then: {
+		next(src), // '?'
+		if: next(src) != ':' then: {
+			return: error("expected :")
+		},
+		cap := false,
+	},
 	re := choice(src, depth+1) ok? (re regexp) {re} error? (e){
 		return: error(e)
 	},
 	if: next(src) != ')' then: {
 		return: error("unclosed ("),
 	},
-	return: ok(group_prog(re))
+	if: cap then: {
+		return: ok(group_prog(re))
+	},
+	if: is_empty(re) then: {
+		// This flags the regexp as non-empty.
+		// Otherwise, an empty (?:) can appear empty,
+		// since it has no save instructions, like () does.
+		re.prog push_back: [nop?],
+	},
+	return: ok(re)
 }
 
 func char_class(src &string) regexp or_error {
@@ -534,7 +553,10 @@ func add_thread:(vm vm, t thread) {
 		return()
 	},
 	vm.seen[t.pc] := vm.at,
-	vm.re.prog[t.pc] jmp? (delta int){
+	vm.re.prog[t.pc] nop? {
+		vm add_thread: [.pc t.pc+1, .mem t.mem],
+		return()
+	}jmp? (delta){
 		vm add_thread: [.pc t.pc+delta, .mem t.mem],
 		return()
 	} fork? (delta){
