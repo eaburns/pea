@@ -371,22 +371,22 @@ func escapesConservative(tr tracer, a *Alloc) bool {
 		case *Copy:
 			continue
 		case *Field:
-			if isLoadStoreOnly(u) {
+			if isLoadStoreCopyOnly(u) {
 				continue
 			}
-			tr.tr("x%d escapes: non-read-only field x%d", a.Num(), u.Num())
+			tr.tr("x%d escapes: field x%d may escape", a.Num(), u.Num())
 			return true
 		case *Case:
-			if isLoadStoreOnly(u) {
+			if isLoadStoreCopyOnly(u) {
 				continue
 			}
-			tr.tr("x%d escapes: non-read-only case x%d", a.Num(), u.Num())
+			tr.tr("x%d escapes: case x%d may escape", a.Num(), u.Num())
 			return true
 		case *Index:
-			if isLoadStoreOnly(u) {
+			if isLoadStoreCopyOnly(u) {
 				continue
 			}
-			tr.tr("x%d escapes: non-read-only index x%d", a.Num(), u.Num())
+			tr.tr("x%d escapes: index x%d may escape", a.Num(), u.Num())
 			return true
 		case *Call:
 			for i, arg := range u.Args {
@@ -1113,7 +1113,7 @@ func isLoadOnly(v Value) bool {
 	return true
 }
 
-func isLoadStoreOnly(v Value) bool {
+func isLoadStoreCopyOnly(v Value) bool {
 	for _, user := range v.UsedBy() {
 		switch user := user.(type) {
 		case *Load:
@@ -1122,8 +1122,12 @@ func isLoadStoreOnly(v Value) bool {
 			if user.Dst == v && user.Src != v {
 				continue
 			}
+		case *Copy:
+			if user.Dst == v && user.Src != v {
+				continue
+			}
 		case *BitCast:
-			if isLoadStoreOnly(user) {
+			if isLoadStoreCopyOnly(user) {
 				continue
 			}
 		}
