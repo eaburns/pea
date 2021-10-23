@@ -471,27 +471,49 @@ func read:(vm vm, s &S) : read(&S)read_result {
 }
 
 func step:(vm vm, t thread) {
-	if: !accepts(vm, vm.re.prog[t.pc]) then: {
+	vm.re.prog[t.pc] match? {
+		if: vm.opts.full && (t.mem[0] > 0 || vm.cur_rune != eof) then: {
+			// This match isn't full, so discard it.
+			vm.free_mem push_back: t.mem,
+			return(),
+		},
+		if: !vm.opts.longest then: {
+			// For first match, terminate all lower-priority threads.
+			clear: vm.run
+		},
+		if: vm.match = [] then: {
+			vm.match := t.mem,
+			return()
+		},
+		if: t.mem[0] <= vm.match[0] && t.mem[1] > vm.match[1] then: {
+			vm.free_mem push_back: vm.match,
+			vm.match := t.mem,
+			return(),
+		},
 		vm.free_mem push_back: t.mem,
 		return()
+	} rune? (r) {
+		if: vm.cur_rune != r then: {
+			vm.free_mem push_back: t.mem,
+			return()
+		},
+	} any? {
+		if: vm.cur_rune = '\n' || vm.cur_rune = eof then: {
+			vm.free_mem push_back: t.mem,
+			return()
+		}
+	} class? (i) {
+		if: !class_accepts(vm.cur_rune, vm.re.class[i], false) then: {
+			vm.free_mem push_back: t.mem,
+			return()
+		}
+	} nclass? (i) {
+		if: !class_accepts(vm.cur_rune, vm.re.class[i], true) then: {
+			vm.free_mem push_back: t.mem,
+			return()
+		}
 	},
 	vm add_thread: [.pc t.pc+1, .mem t.mem],
-}
-
-func accepts(vm vm, instr instruction) bool {
-	instr rune? (r rune) {
-		return: vm.cur_rune = r
-	} any? {
-		return: vm.cur_rune != '\n' && vm.cur_rune != eof
-	} class? (i) {
-		return: class_accepts(vm.cur_rune, vm.re.class[i], false)
-	} nclass? (i) {
-		return: class_accepts(vm.cur_rune, vm.re.class[i], true)
-	},
-	// This is impossible; accepts is only called with a consuming instruction.
-	// All the other instructions are non-consuming.
-	panic("impossible"),
-	return: false
 }
 
 func class_accepts(r rune, class char_class, neg bool) bool {
@@ -512,60 +534,39 @@ func add_thread:(vm vm, t thread) {
 		return()
 	},
 	vm.seen[t.pc] := vm.at,
-	vm.re.prog[t.pc] rune? (_ rune) {
-		vm.next_run push_back: [.pc t.pc, .mem t.mem]
-	} any? {
-		vm.next_run push_back: [.pc t.pc, .mem t.mem]
-	} class? (_){
-		vm.next_run push_back: [.pc t.pc, .mem t.mem]
-	} nclass? (_){
-		vm.next_run push_back: [.pc t.pc, .mem t.mem]
-	} jmp? (delta){
+	vm.re.prog[t.pc] jmp? (delta int){
 		vm add_thread: [.pc t.pc+delta, .mem t.mem],
+		return()
 	} fork? (delta){
 		mem2 := clone_mem(vm, t.mem),
 		vm add_thread: [.pc t.pc+1, .mem t.mem],
 		vm add_thread: [.pc t.pc+delta, .mem mem2],
+		return()
 	} rfork? (delta){
 		mem2 := clone_mem(vm, t.mem),
 		vm add_thread: [.pc t.pc+delta, .mem t.mem],
 		vm add_thread: [.pc t.pc+1, .mem mem2],
+		return()
 	} save? (i){
 		t.mem[i] := vm.at,
 		vm add_thread: [.pc t.pc+1, .mem t.mem],
+		return()
 	} begin? {
 		if: vm.cur_rune != eof then: {
 			vm.free_mem push_back: t.mem,
-			return(),
+		} else: {
+			vm add_thread: [.pc t.pc+1, .mem t.mem],
 		},
-		vm add_thread: [.pc t.pc+1, .mem t.mem],
+		return()
 	} end? {
 		if: vm.next_rune != eof then: {
 			vm.free_mem push_back: t.mem,
-			return(),
+		} else: {
+			vm add_thread: [.pc t.pc+1, .mem t.mem],
 		},
-		vm add_thread: [.pc t.pc+1, .mem t.mem],
-	} match? {
-		if: vm.opts.full && (t.mem[0] > 0 || vm.next_rune != eof) then: {
-			// This match isn't full, so discard it.
-			vm.free_mem push_back: t.mem,
-			return(),
-		},
-		if: !vm.opts.longest then: {
-			// For first match, terminate all lower-priority threads.
-			clear: vm.run
-		},
-		if: vm.match = [] then: {
-			vm.match := t.mem,
-			return()
-		},
-		if: t.mem[0] <= vm.match[0] && t.mem[1] > vm.match[1] then: {
-			vm.free_mem push_back: vm.match,
-			vm.match := t.mem,
-			return(),
-		},
-		vm.free_mem push_back: t.mem
+		return()
 	},
+	vm.next_run push_back: [.pc t.pc, .mem t.mem]
 }
 
 func new_mem(vm vm) [int64] {
