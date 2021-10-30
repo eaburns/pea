@@ -396,7 +396,7 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 		if parserType.Mod != nil {
 			modName := parserType.Mod.Name
 			modLoc := parserType.Mod.L
-			imp := x.findMod(parserType.Mod.Name)
+			imp := findImport(x, parserType.Mod.Name)
 			if imp == nil {
 				errs = append(errs, notFound(modName, modLoc))
 				return nil, errs
@@ -404,7 +404,7 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 			x = imp
 		}
 		name := parserType.Name.Name
-		switch types := x.findType(args, name, parserType.L); {
+		switch types := findType(x, args, name, parserType.L); {
 		case len(types) == 0:
 			errs = append(errs, notFound(name, parserType.L))
 		case len(types) > 1:
@@ -462,7 +462,7 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 		typ = &FuncType{Parms: parms, Ret: ret, L: parserType.L}
 	case parser.TypeVar:
 		name := parserType.Name
-		switch types := x.findType(nil, name, parserType.L); {
+		switch types := findType(x, nil, name, parserType.L); {
 		case len(types) == 0:
 			errs = append(errs, notFound(name, parserType.L))
 		case len(types) > 1:
@@ -873,7 +873,7 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, want Type) (
 	for i, parserExpr := range parserExprs {
 		if call, ok := isAssign(parserExpr); ok && newLocals {
 			if id, ok := isNewID(x, call.Args[0]); ok {
-				local, assign, es := newLocal(x, call, id)
+				local, assign, es := newLocalAssign(x, call, id)
 				if len(es) > 0 {
 					errs = append(errs, es...)
 				}
@@ -923,7 +923,7 @@ func isNewID(x scope, parserExpr parser.Expr) (parser.Ident, bool) {
 	if !ok {
 		return parser.Ident{}, false
 	}
-	for _, id := range x.find(parserID.Name) {
+	for _, id := range findIDs(x, parserID.Name) {
 		switch id.(type) {
 		case *VarDef:
 			return parser.Ident{}, false
@@ -936,12 +936,12 @@ func isNewID(x scope, parserExpr parser.Expr) (parser.Ident, bool) {
 	return parserID, true
 }
 
-func newLocal(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Expr, []Error) {
+func newLocalAssign(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Expr, []Error) {
 	expr, errs := checkExpr(x, call.Args[1], nil)
 	if expr == nil {
 		return nil, nil, errs
 	}
-	local := x.newLocal(id.Name, expr.Type(), id.L)
+	local := newLocal(x, id.Name, expr.Type(), id.L)
 	if local == nil {
 		errs = append(errs, newError(call.L, "local defined outside of a block"))
 		return nil, nil, errs
@@ -1061,10 +1061,10 @@ func unionConvert(expr Expr, typ Type, explicit bool) Expr {
 func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 	switch fun := parserCall.Fun.(type) {
 	case parser.Ident:
-		ids := x.find(fun.Name)
+		ids := findIDs(x, fun.Name)
 		return resolveIDCall(x, nil, fun, parserCall, want, ids)
 	case *parser.ModSel:
-		imp := x.findMod(fun.Mod.Name)
+		imp := findImport(x, fun.Mod.Name)
 		if imp == nil {
 			return nil, []Error{notFound(fun.Mod.Name, fun.L)}
 		}
@@ -1072,7 +1072,7 @@ func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 		if !imp.Exp {
 			addMod = imp
 		}
-		ids := imp.find(fun.Name.Name)
+		ids := findIDs(imp, fun.Name.Name)
 		return resolveIDCall(x, addMod, fun.Name, parserCall, want, ids)
 	default:
 		return checkExprCall(x, parserCall, want)
@@ -1280,7 +1280,7 @@ func adModuleIDs(x scope, importPath, idName string) []id {
 		if imp.Exp {
 			break
 		}
-		return imp.find(idName)
+		return findIDs(imp, idName)
 	}
 	return nil
 }
@@ -1397,7 +1397,7 @@ func filterIfaceConstraints(x scope, l loc.Loc, mod *Import, funcs []Func) ([]Fu
 func useFunc(x scope, l loc.Loc, fun Func) Func {
 	switch fun := fun.(type) {
 	case *FuncInst:
-		x.useFunc(l, fun.Def, nil, nil)
+		useFuncInst(x, l, fun.Def, nil, nil)
 		return canonicalFuncInst(fun)
 	case *idFunc:
 		return &ExprFunc{
@@ -1517,17 +1517,17 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 }
 
 func checkModSel(x scope, parserSel *parser.ModSel, useLocal bool, want Type) (Expr, []Error) {
-	imp := x.findMod(parserSel.Mod.Name)
+	imp := findImport(x, parserSel.Mod.Name)
 	if imp == nil {
 		return nil, []Error{notFound(parserSel.Mod.Name, parserSel.L)}
 	}
 	parserID := parserSel.Name
-	ids := imp.find(parserID.Name)
+	ids := findIDs(imp, parserID.Name)
 	return resolveID(x, parserID, useLocal, want, ids)
 }
 
 func checkID(x scope, parserID parser.Ident, useLocal bool, want Type) (Expr, []Error) {
-	ids := x.find(parserID.Name)
+	ids := findIDs(x, parserID.Name)
 	return resolveID(x, parserID, useLocal, want, ids)
 }
 
@@ -1621,19 +1621,19 @@ func isGround(id id) bool {
 func useID(x scope, l loc.Loc, useLocal bool, id id) id {
 	switch id := id.(type) {
 	case *VarDef:
-		x.useVar(l, id)
+		useVar(x, l, id)
 		return id
 	case *ParmDef:
-		return x.capture(id)
+		return capture(x, id)
 	case *LocalDef:
 		if useLocal {
 			id.used = true
 		}
-		return x.capture(id)
+		return capture(x, id)
 	case *BlockCap:
-		return x.capture(id)
+		return capture(x, id)
 	case *FuncInst:
-		x.useFunc(l, id.Def, nil, nil)
+		useFuncInst(x, l, id.Def, nil, nil)
 		return canonicalFuncInst(id)
 	default:
 		return id

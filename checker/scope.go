@@ -10,18 +10,6 @@ import (
 
 type scope interface {
 	up() scope
-	find(name string) []id
-	findMod(name string) *Import
-	findType(args []Type, name string, l loc.Loc) []Type
-	capture(id) id
-	useVar(loc.Loc, *VarDef)
-	useFunc(loc.Loc, *FuncDef, *FuncDecl, *FuncDef)
-	newLocal(string, Type, loc.Loc) *LocalDef
-}
-
-type id interface {
-	String() string
-	Type() Type
 }
 
 type blockLitScope struct {
@@ -44,23 +32,47 @@ type localScope struct {
 	*LocalDef
 }
 
-func file(s scope) *File {
-	for s != nil {
-		if f, ok := s.(*File); ok {
+func (*Mod) up() scope             { return nil }
+func (*Import) up() scope          { return nil }
+func (f *File) up() scope          { return f.Mod }
+func (v *VarDef) up() scope        { return v.File }
+func (t *TypeDef) up() scope       { return t.File }
+func (f *FuncDef) up() scope       { return f.File }
+func (t *TestDef) up() scope       { return t.File }
+func (b *blockLitScope) up() scope { return b.parent }
+func (e *ifaceLookup) up() scope   { return e.parent }
+func (o *localScope) up() scope    { return o.parent }
+
+func file(x scope) *File {
+	for x != nil {
+		if f, ok := x.(*File); ok {
 			return f
 		}
-		s = s.up()
+		x = x.up()
 	}
 	return nil
 }
 
-func recursiveIfaceDepth(s scope, d *FuncDef) int {
+func findImport(x scope, modName string) *Import {
+	f := file(x)
+	if f == nil {
+		return nil
+	}
+	for _, imp := range f.Imports {
+		if imp.Name == modName {
+			return imp
+		}
+	}
+	return nil
+}
+
+func recursiveIfaceDepth(x scope, d *FuncDef) int {
 	n := 0
-	for s != nil {
-		if f, ok := s.(*ifaceLookup); ok && f.def == d {
+	for x != nil {
+		if f, ok := x.(*ifaceLookup); ok && f.def == d {
 			n++
 		}
-		s = s.up()
+		x = x.up()
 	}
 	return n
 }
@@ -73,46 +85,54 @@ func recursiveIfaceDepth(s scope, d *FuncDef) int {
 // which can create exponential behavior.
 // Instead, we find these obvious loops
 // and cut them off immediately.
-func seenIfaceInst(s scope, inst *FuncInst) bool {
-	for s != nil {
-		if f, ok := s.(*ifaceLookup); ok && f.inst.eq(inst) {
+func seenIfaceInst(x scope, inst *FuncInst) bool {
+	for x != nil {
+		if f, ok := x.(*ifaceLookup); ok && f.inst.eq(inst) {
 			return true
 		}
-		s = s.up()
+		x = x.up()
 	}
 	return false
 }
 
-func (*Mod) up() scope             { return nil }
-func (*Import) up() scope          { return nil }
-func (f *File) up() scope          { return f.Mod }
-func (v *VarDef) up() scope        { return v.File }
-func (t *TypeDef) up() scope       { return t.File }
-func (f *FuncDef) up() scope       { return f.File }
-func (t *TestDef) up() scope       { return t.File }
-func (b *blockLitScope) up() scope { return b.parent }
-func (e *ifaceLookup) up() scope   { return e.parent }
-func (o *localScope) up() scope    { return o.parent }
+func findType(x0 scope, args []Type, name string, l loc.Loc) []Type {
+	x := x0
+	var types []Type
+	for x != nil {
+		if ft, ok := x.(interface {
+			findType([]Type, string, loc.Loc) []Type
+		}); ok {
+			types = append(types, ft.findType(args, name, l)...)
+		}
+		x = x.up()
+	}
+	if len(types) > 0 {
+		return types
+	}
 
-func (*Mod) findMod(string) *Import    { return nil }
-func (*Import) findMod(string) *Import { return nil }
-
-func (f *File) findMod(name string) *Import {
+	// Types in the current module shadow Capital Imported types.
+	// If there was no type in this module, check Capital Imported types.
+	f := file(x0)
+	if f == nil {
+		return nil
+	}
 	for _, imp := range f.Imports {
-		if imp.Name == name {
-			return imp
+		if imp.Exp {
+			types = append(types, imp.findType(args, name, l)...)
 		}
 	}
-	return f.Mod.findMod(name)
+	return types
 }
 
-func (v *VarDef) findMod(name string) *Import        { return v.File.findMod(name) }
-func (t *TypeDef) findMod(name string) *Import       { return t.File.findMod(name) }
-func (f *FuncDef) findMod(name string) *Import       { return f.File.findMod(name) }
-func (t *TestDef) findMod(name string) *Import       { return t.File.findMod(name) }
-func (b *blockLitScope) findMod(name string) *Import { return b.parent.findMod(name) }
-func (e *ifaceLookup) findMod(name string) *Import   { return e.parent.findMod(name) }
-func (o *localScope) findMod(name string) *Import    { return o.parent.findMod(name) }
+func (m *Mod) findType(args []Type, name string, l loc.Loc) []Type {
+	if t := findTypeInDefs(m.Defs, args, name, false, l); t != nil {
+		return []Type{t}
+	}
+	if t := findBuiltInType(args, name, l); t != nil {
+		return []Type{t}
+	}
+	return nil
+}
 
 func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 	if len(args) > 0 {
@@ -153,78 +173,9 @@ func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 	return nil
 }
 
-func (m *Mod) findType(args []Type, name string, l loc.Loc) []Type {
-	if t := findTypeInDefs(m.Defs, args, name, false, l); t != nil {
-		return []Type{t}
-	}
-	if t := findBuiltInType(args, name, l); t != nil {
-		return []Type{t}
-	}
-	return nil
-}
-
 func (i *Import) findType(args []Type, name string, l loc.Loc) []Type {
 	if t := findTypeInDefs(i.Defs, args, name, true, l); t != nil {
 		return []Type{t}
-	}
-	return nil
-}
-
-func (f *File) findType(args []Type, name string, l loc.Loc) []Type {
-	if t := f.Mod.findType(args, name, l); len(t) > 0 {
-		return t
-	}
-	var types []Type
-	for _, imp := range f.Imports {
-		if imp.Exp {
-			types = append(types, imp.findType(args, name, l)...)
-		}
-	}
-	return types
-}
-
-func (v *VarDef) findType(args []Type, name string, l loc.Loc) []Type {
-	return v.File.findType(args, name, l)
-}
-
-func (t *TypeDef) findType(args []Type, name string, l loc.Loc) []Type {
-	if typ := findTypeVar(t.Parms, args, name, l); typ != nil {
-		return []Type{typ}
-	}
-	return t.File.findType(args, name, l)
-}
-
-func (f *FuncDef) findType(args []Type, name string, l loc.Loc) []Type {
-	if typ := findTypeVar(f.TypeParms, args, name, l); typ != nil {
-		return []Type{typ}
-	}
-	return f.File.findType(args, name, l)
-}
-
-func (t *TestDef) findType(args []Type, name string, l loc.Loc) []Type {
-	return t.File.findType(args, name, l)
-}
-
-func (b *blockLitScope) findType(args []Type, name string, l loc.Loc) []Type {
-	return b.parent.findType(args, name, l)
-}
-
-func (e *ifaceLookup) findType(args []Type, name string, l loc.Loc) []Type {
-	return e.parent.findType(args, name, l)
-}
-
-func (o *localScope) findType(args []Type, name string, l loc.Loc) []Type {
-	return o.parent.findType(args, name, l)
-}
-
-func findTypeVar(parms []TypeParm, args []Type, name string, l loc.Loc) *TypeVar {
-	if len(args) != 0 {
-		return nil
-	}
-	for i := range parms {
-		if parms[i].Name == name {
-			return &TypeVar{Name: name, Def: &parms[i], L: l}
-		}
 	}
 	return nil
 }
@@ -240,10 +191,51 @@ func findTypeInDefs(defs []Def, args []Type, name string, exportedOnly bool, l l
 	return nil
 }
 
-func (m *Mod) find(name string) []id {
+func (t *TypeDef) findType(args []Type, name string, l loc.Loc) []Type {
+	if typ := findTypeVar(t.Parms, args, name, l); typ != nil {
+		return []Type{typ}
+	}
+	return nil
+}
+
+func (f *FuncDef) findType(args []Type, name string, l loc.Loc) []Type {
+	if typ := findTypeVar(f.TypeParms, args, name, l); typ != nil {
+		return []Type{typ}
+	}
+	return nil
+}
+
+func findTypeVar(parms []TypeParm, args []Type, name string, l loc.Loc) *TypeVar {
+	if len(args) != 0 {
+		return nil
+	}
+	for i := range parms {
+		if parms[i].Name == name {
+			return &TypeVar{Name: name, Def: &parms[i], L: l}
+		}
+	}
+	return nil
+}
+
+type id interface {
+	String() string
+	Type() Type
+}
+
+func findIDs(x scope, name string) []id {
 	if name == "_" {
 		return nil
 	}
+	if x == nil {
+		return nil
+	}
+	if fi, ok := x.(interface{ findIDs(string) []id }); ok {
+		return fi.findIDs(name)
+	}
+	return findIDs(x.up(), name)
+}
+
+func (m *Mod) findIDs(name string) []id {
 	ids := findInDefs(m.Defs, name, false)
 	if strings.HasPrefix(name, ".") {
 		// Add a template select type to be filled in with concrete types
@@ -333,32 +325,27 @@ func splitCaseNames(str string) []string {
 	return names
 }
 
-func (i *Import) find(name string) []id { return findInDefs(i.Defs, name, true) }
+func (i *Import) findIDs(name string) []id {
+	return findInDefs(i.Defs, name, true)
+}
 
-func (f *File) find(name string) []id {
-	ids := f.Mod.find(name)
+func (f *File) findIDs(name string) []id {
+	ids := findIDs(f.Mod, name)
 	for _, imp := range f.Imports {
 		if imp.Exp {
-			ids = append(ids, imp.find(name)...)
+			ids = append(ids, findIDs(imp, name)...)
 		}
 	}
 	return ids
 }
 
-func (v *VarDef) find(name string) []id { return v.File.find(name) }
-
-func (t *TypeDef) find(name string) []id { panic("impossible") }
-
-func (f *FuncDef) find(name string) []id {
-	if name == "_" {
-		return nil
-	}
+func (f *FuncDef) findIDs(name string) []id {
 	for i := range f.Parms {
 		if f.Parms[i].Name == name {
 			return []id{&f.Parms[i]}
 		}
 	}
-	ids := f.File.find(name)
+	ids := findIDs(f.File, name)
 	for i := range f.Iface {
 		if f.Iface[i].Name == name {
 			ids = append(ids, &f.Iface[i])
@@ -380,11 +367,7 @@ func (f *FuncDef) find(name string) []id {
 	return ids
 }
 
-func (t *TestDef) find(name string) []id {
-	return t.File.find(name)
-}
-
-func (b *blockLitScope) find(name string) []id {
+func (b *blockLitScope) findIDs(name string) []id {
 	if name == "_" {
 		return nil
 	}
@@ -393,18 +376,14 @@ func (b *blockLitScope) find(name string) []id {
 			return []id{&b.Parms[i]}
 		}
 	}
-	return b.parent.find(name)
+	return findIDs(b.parent, name)
 }
 
-func (e *ifaceLookup) find(name string) []id {
-	return e.parent.find(name)
-}
-
-func (o *localScope) find(name string) []id {
+func (o *localScope) findIDs(name string) []id {
 	if o.Name == name {
 		return []id{o.LocalDef}
 	}
-	return o.parent.find(name)
+	return findIDs(o.parent, name)
 }
 
 func findInDefs(defs []Def, name string, exportedOnly bool) []id {
@@ -479,13 +458,15 @@ func subFuncDecl(sub map[*TypeParm]Type, decl *FuncDecl) *FuncDecl {
 	}
 }
 
-func (*Mod) capture(id id) id       { return id }
-func (*Import) capture(id id) id    { return id }
-func (f *File) capture(id id) id    { return id }
-func (v *VarDef) capture(id id) id  { return id }
-func (t *TypeDef) capture(id id) id { return id }
-func (f *FuncDef) capture(id id) id { return id }
-func (t *TestDef) capture(id id) id { panic("impossible") }
+func capture(x scope, i id) id {
+	if x == nil {
+		return i
+	}
+	if c, ok := x.(interface{ capture(id) id }); ok {
+		return c.capture(i)
+	}
+	return capture(x.up(), i)
+}
 
 func (b *blockLitScope) capture(id id) id {
 	switch id := id.(type) {
@@ -508,7 +489,7 @@ func (b *blockLitScope) capture(id id) id {
 		return id
 	}
 
-	switch id := b.parent.capture(id).(type) {
+	switch id := capture(b.parent, id).(type) {
 	case *ParmDef:
 		for _, c := range b.Caps {
 			if c.Parm == id {
@@ -541,20 +522,24 @@ func (b *blockLitScope) capture(id id) id {
 	}
 }
 
-func (e *ifaceLookup) capture(id id) id { return e.parent.capture(id) }
-
 func (o *localScope) capture(id id) id {
 	if l, ok := id.(*LocalDef); ok && l == o.LocalDef {
 		return o.LocalDef
 	}
-	return o.parent.capture(id)
+	return capture(o.parent, id)
 }
 
-func (*Mod) newLocal(string, Type, loc.Loc) *LocalDef                 { return nil }
-func (*Import) newLocal(string, Type, loc.Loc) *LocalDef              { return nil }
-func (f *File) newLocal(string, Type, loc.Loc) *LocalDef              { return nil }
-func (v *VarDef) newLocal(name string, typ Type, l loc.Loc) *LocalDef { return nil }
-func (t *TypeDef) newLocal(string, Type, loc.Loc) *LocalDef           { return nil }
+func newLocal(x scope, name string, typ Type, l loc.Loc) *LocalDef {
+	for x != nil {
+		if nl, ok := x.(interface {
+			newLocal(string, Type, loc.Loc) *LocalDef
+		}); ok {
+			return nl.newLocal(name, typ, l)
+		}
+		x = x.up()
+	}
+	return nil
+}
 
 func (f *FuncDef) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
 	local := &LocalDef{Name: name, T: typ, L: l}
@@ -574,17 +559,17 @@ func (b *blockLitScope) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
 	return local
 }
 
-func (e *ifaceLookup) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
-	return e.parent.newLocal(name, typ, l)
+func useVar(x scope, l loc.Loc, v *VarDef) {
+	for x != nil {
+		if uv, ok := x.(interface {
+			useVar(loc.Loc, *VarDef)
+		}); ok {
+			uv.useVar(l, v)
+			return
+		}
+		x = x.up()
+	}
 }
-
-func (o *localScope) newLocal(name string, typ Type, l loc.Loc) *LocalDef {
-	return o.parent.newLocal(name, typ, l)
-}
-
-func (*Mod) useVar(loc.Loc, *VarDef)    {}
-func (*Import) useVar(loc.Loc, *VarDef) {}
-func (*File) useVar(loc.Loc, *VarDef)   {}
 
 func (v *VarDef) useVar(l loc.Loc, used *VarDef) {
 	for _, u := range v.usedVars {
@@ -595,8 +580,6 @@ func (v *VarDef) useVar(l loc.Loc, used *VarDef) {
 	v.usedVars = append(v.usedVars, varUse{Var: used, L: l})
 }
 
-func (t *TypeDef) useVar(loc.Loc, *VarDef) {}
-
 func (f *FuncDef) useVar(l loc.Loc, used *VarDef) {
 	for _, u := range f.usedVars {
 		if u.Var == used {
@@ -606,16 +589,19 @@ func (f *FuncDef) useVar(l loc.Loc, used *VarDef) {
 	f.usedVars = append(f.usedVars, varUse{Var: used, L: l})
 }
 
-func (t *TestDef) useVar(loc.Loc, *VarDef)           {}
-func (b *blockLitScope) useVar(l loc.Loc, v *VarDef) { b.parent.useVar(l, v) }
-func (e *ifaceLookup) useVar(l loc.Loc, v *VarDef)   { e.parent.useVar(l, v) }
-func (o *localScope) useVar(l loc.Loc, v *VarDef)    { o.parent.useVar(l, v) }
+func useFuncInst(x scope, l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
+	for x != nil {
+		if uf, ok := x.(interface {
+			useFuncInst(loc.Loc, *FuncDef, *FuncDecl, *FuncDef)
+		}); ok {
+			uf.useFuncInst(l, def, parm, arg)
+			return
+		}
+		x = x.up()
+	}
+}
 
-func (*Mod) useFunc(loc.Loc, *FuncDef, *FuncDecl, *FuncDef)    {}
-func (*Import) useFunc(loc.Loc, *FuncDef, *FuncDecl, *FuncDef) {}
-func (*File) useFunc(loc.Loc, *FuncDef, *FuncDecl, *FuncDef)   {}
-
-func (v *VarDef) useFunc(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
+func (v *VarDef) useFuncInst(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
 	for _, c := range v.usedFuncs {
 		if c.Func == def && c.Parm == parm && c.Arg == arg {
 			return
@@ -624,27 +610,11 @@ func (v *VarDef) useFunc(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) 
 	v.usedFuncs = append(v.usedFuncs, funcUse{L: l, Func: def, Parm: parm, Arg: arg})
 }
 
-func (t *TypeDef) useFunc(loc.Loc, *FuncDef, *FuncDecl, *FuncDef) {}
-
-func (f *FuncDef) useFunc(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
+func (f *FuncDef) useFuncInst(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
 	for _, c := range f.usedFuncs {
 		if c.Func == def && c.Parm == parm && c.Arg == arg {
 			return
 		}
 	}
 	f.usedFuncs = append(f.usedFuncs, funcUse{L: l, Func: def, Parm: parm, Arg: arg})
-}
-
-func (t *TestDef) useFunc(loc.Loc, *FuncDef, *FuncDecl, *FuncDef) {}
-
-func (b *blockLitScope) useFunc(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
-	b.parent.useFunc(l, def, parm, arg)
-}
-
-func (e *ifaceLookup) useFunc(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
-	e.parent.useFunc(l, def, parm, arg)
-}
-
-func (o *localScope) useFunc(l loc.Loc, def *FuncDef, parm *FuncDecl, arg *FuncDef) {
-	o.parent.useFunc(l, def, parm, arg)
 }

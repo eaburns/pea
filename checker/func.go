@@ -344,9 +344,9 @@ func instIface(x scope, l loc.Loc, addMod *Import, fun Func) note {
 }
 
 func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *FuncDecl) (Func, note) {
-	ids := x.find(decl.Name)
+	ids := findIDs(x, decl.Name)
 	if addMod != nil {
-		ids = append(ids, addMod.find(decl.Name)...)
+		ids = append(ids, findIDs(addMod, decl.Name)...)
 	}
 	var notFoundNotes []note
 	var funcs []Func
@@ -411,7 +411,7 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *Fu
 	default:
 		fun := funcs[0]
 		if f, ok := fun.(*FuncInst); ok {
-			x.useFunc(l, funDef, decl, f.Def)
+			useFuncInst(x, l, funDef, decl, f.Def)
 			fun = canonicalFuncInst(f)
 		}
 		return fun, nil
@@ -440,7 +440,7 @@ func ifaceADLookup(x scope, addMod *Import, decl *FuncDecl) ([]Func, []note) {
 			continue
 		}
 		seen[imp] = true
-		ids := imp.find(decl.Name)
+		ids := findIDs(imp, decl.Name)
 		fs, ns := filterToFuncs(ids, decl.L)
 		funcs = append(funcs, fs...)
 		notes = append(notes, ns...)
