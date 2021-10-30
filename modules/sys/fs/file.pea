@@ -1,7 +1,7 @@
 Import "assert"
 Import "basic"
-Import "print"
 import "io"
+import "print"
 import "sort"
 
 // An entry in the file system.

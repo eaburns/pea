@@ -1,5 +1,5 @@
 Import "basic"
-Import "print"
+import "print"
 
 // Panics of a is not equal to b by the = function.
 Func assert:equals:(a T, b T) : =(T, T) bool, ++(print#printer, T)print#printer {

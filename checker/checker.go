@@ -1071,6 +1071,7 @@ func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 		var addMod *Import
 		if !imp.Exp {
 			addMod = imp
+			x = addImportScope(x, imp)
 		}
 		ids := findIDs(imp, fun.Name.Name)
 		return resolveIDCall(x, addMod, fun.Name, parserCall, want, ids)
@@ -1125,7 +1126,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		markVerbose(notes)
 	}
 
-	funcs, ns = filterIfaceConstraints(x, parserCall.L, mod, funcs)
+	funcs, ns = filterIfaceConstraints(x, parserCall.L, funcs)
 	notes = append(notes, ns...)
 
 	switch {
@@ -1269,8 +1270,12 @@ func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, want Type)
 // or is capital Imported into the current module, nil is returned.
 // Otherwise, the IDs from the module matching idName are returned.
 func adModuleIDs(x scope, importPath, idName string) []id {
+	if isModuleInScope(x, importPath) {
+		// These are already in scope, we don't need to re-add them.
+		return nil
+	}
 	file := file(x)
-	if file.Mod.Path == importPath {
+	if file == nil {
 		return nil
 	}
 	for _, imp := range file.Imports {
@@ -1380,11 +1385,11 @@ func filterUngroundReturns(funcs []Func) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func filterIfaceConstraints(x scope, l loc.Loc, mod *Import, funcs []Func) ([]Func, []note) {
+func filterIfaceConstraints(x scope, l loc.Loc, funcs []Func) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		if note := instIface(x, l, mod, f); note != nil {
+		if note := instIface(x, l, f); note != nil {
 			notes = append(notes, note)
 			continue
 		}

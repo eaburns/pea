@@ -32,16 +32,24 @@ type localScope struct {
 	*LocalDef
 }
 
-func (*Mod) up() scope             { return nil }
-func (*Import) up() scope          { return nil }
-func (f *File) up() scope          { return f.Mod }
-func (v *VarDef) up() scope        { return v.File }
-func (t *TypeDef) up() scope       { return t.File }
-func (f *FuncDef) up() scope       { return f.File }
-func (t *TestDef) up() scope       { return t.File }
-func (b *blockLitScope) up() scope { return b.parent }
-func (e *ifaceLookup) up() scope   { return e.parent }
-func (o *localScope) up() scope    { return o.parent }
+// addedImportScope adds the IDs of the given Import
+// to the current scope, even if the *Import is not Capital.
+type addedImportScope struct {
+	parent scope
+	Import *Import
+}
+
+func (*Mod) up() scope                { return nil }
+func (*Import) up() scope             { return nil }
+func (f *File) up() scope             { return f.Mod }
+func (v *VarDef) up() scope           { return v.File }
+func (t *TypeDef) up() scope          { return t.File }
+func (f *FuncDef) up() scope          { return f.File }
+func (t *TestDef) up() scope          { return t.File }
+func (b *blockLitScope) up() scope    { return b.parent }
+func (e *ifaceLookup) up() scope      { return e.parent }
+func (o *localScope) up() scope       { return o.parent }
+func (o *addedImportScope) up() scope { return o.parent }
 
 func file(x scope) *File {
 	for x != nil {
@@ -64,6 +72,46 @@ func findImport(x scope, modName string) *Import {
 		}
 	}
 	return nil
+}
+
+// addImportScope returns a scope containing imp's definitions.
+// If the definitions are already in-scope, they are not re-added.
+func addImportScope(x0 scope, imp *Import) scope {
+	if imp.Exp {
+		// If this is already a Capital import, it is already added.
+		// We do not need to re-add it.
+		return x0
+	}
+	x := x0
+	for x != nil {
+		if ais, ok := x.(*addedImportScope); ok && ais.Import == imp {
+			return x0
+		}
+		x = x.up()
+	}
+	return &addedImportScope{parent: x0, Import: imp}
+}
+
+// isModuleInScope returns whether the current scope
+// already contains the definitions from the given module path.
+func isModuleInScope(x scope, path string) bool {
+	for x != nil {
+		if m, ok := x.(*Mod); ok && m.Path == path {
+			return true
+		}
+		if f, ok := x.(*File); ok {
+			for _, imp := range f.Imports {
+				if imp.Exp && imp.Path == path {
+					return true
+				}
+			}
+		}
+		if ais, ok := x.(*addedImportScope); ok && ais.Import.Path == path {
+			return true
+		}
+		x = x.up()
+	}
+	return false
 }
 
 func recursiveIfaceDepth(x scope, d *FuncDef) int {
@@ -386,10 +434,12 @@ func (o *localScope) findIDs(name string) []id {
 	return findIDs(o.parent, name)
 }
 
+func (x *addedImportScope) findIDs(name string) []id {
+	ids := findIDs(x.parent, name)
+	return append(ids, findInDefs(x.Import.Defs, name, true)...)
+}
+
 func findInDefs(defs []Def, name string, exportedOnly bool) []id {
-	if name == "_" {
-		return nil
-	}
 	var ids []id
 	for _, def := range defs {
 		switch def := def.(type) {

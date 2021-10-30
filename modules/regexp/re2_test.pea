@@ -1,10 +1,10 @@
 Import "assert"
 Import "basic"
-Import "print"
 import "//sys/fs"
 import "container/vector"
 import "io"
 import "num/int"
+import "print"
 import "string"
 
 /*

@@ -1,7 +1,7 @@
 Import "assert"
 Import "basic"
 import "io"
-Import "print"
+import "print"
 
 // A reader that reads from a string.
 Type S reader := S _reader

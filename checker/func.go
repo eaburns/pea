@@ -316,7 +316,7 @@ func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Typ
 	}
 }
 
-func instIface(x scope, l loc.Loc, addMod *Import, fun Func) note {
+func instIface(x scope, l loc.Loc, fun Func) note {
 	f, ok := fun.(*FuncInst)
 	if !ok {
 		return nil
@@ -328,7 +328,7 @@ func instIface(x scope, l loc.Loc, addMod *Import, fun Func) note {
 	var notes []note
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
-		fun, note := findIfaceFunc(x, l, f.Def, addMod, f.IfaceArgs[i].(*FuncDecl))
+		fun, note := findIfaceFunc(x, l, f.Def, f.IfaceArgs[i].(*FuncDecl))
 		if note != nil {
 			notes = append(notes, note)
 		} else {
@@ -343,11 +343,8 @@ func instIface(x scope, l loc.Loc, addMod *Import, fun Func) note {
 	return nil
 }
 
-func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *FuncDecl) (Func, note) {
+func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, decl *FuncDecl) (Func, note) {
 	ids := findIDs(x, decl.Name)
-	if addMod != nil {
-		ids = append(ids, findIDs(addMod, decl.Name)...)
-	}
 	var notFoundNotes []note
 	var funcs []Func
 	for _, id := range ids {
@@ -365,7 +362,7 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *Fu
 		funcs = append(funcs, id.(Func))
 	}
 
-	fs, ns := ifaceADLookup(x, addMod, decl)
+	fs, ns := ifaceADLookup(x, decl)
 	funcs = append(funcs, fs...)
 	notFoundNotes = append(notFoundNotes, ns...)
 	if len(funcs) > 0 {
@@ -418,7 +415,7 @@ func findIfaceFunc(x scope, l loc.Loc, funDef *FuncDef, addMod *Import, decl *Fu
 	}
 }
 
-func ifaceADLookup(x scope, addMod *Import, decl *FuncDecl) ([]Func, []note) {
+func ifaceADLookup(x scope, decl *FuncDecl) ([]Func, []note) {
 	file := file(x)
 	imports := make(map[string]*Import)
 	for _, imp := range file.Imports {
@@ -429,14 +426,14 @@ func ifaceADLookup(x scope, addMod *Import, decl *FuncDecl) ([]Func, []note) {
 
 	var funcs []Func
 	var notes []note
-	seen := map[*Import]bool{addMod: true}
+	seen := make(map[*Import]bool)
 	for _, typ := range append(decl.Parms, decl.Ret) {
 		defType, ok := typ.(*DefType)
 		if !ok {
 			continue
 		}
 		imp, ok := imports[defType.Def.Mod]
-		if !ok || seen[imp] || defType.Def.Mod == file.Mod.Path {
+		if !ok || seen[imp] || isModuleInScope(x, defType.Def.Mod) {
 			continue
 		}
 		seen[imp] = true
@@ -522,7 +519,7 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) *unifyFuncFailure {
 		return &unifyFuncFailure{note: note, parms: f.arity()}
 	}
 
-	if note := instIface(x, l, nil, f); note != nil {
+	if note := instIface(x, l, f); note != nil {
 		return &unifyFuncFailure{note: note, parms: f.arity()}
 	}
 	return nil
