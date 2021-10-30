@@ -401,11 +401,10 @@ func (e *ifaceLookup) find(name string) []id {
 }
 
 func (o *localScope) find(name string) []id {
-	ids := o.parent.find(name)
 	if o.Name == name {
-		ids = append(ids, o.LocalDef)
+		return []id{o.LocalDef}
 	}
-	return ids
+	return o.parent.find(name)
 }
 
 func findInDefs(defs []Def, name string, exportedOnly bool) []id {

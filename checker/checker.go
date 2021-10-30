@@ -1576,6 +1576,12 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []i
 		}
 		ids = ids[:n]
 	}
+	if len(ids) > 1 && want == nil {
+		for _, id := range ids {
+			note := newNote(id.String()).setLoc(id)
+			ambigNotes = append(ambigNotes, note)
+		}
+	}
 
 	switch {
 	case len(ids) == 0:
@@ -1584,7 +1590,7 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []i
 		return nil, []Error{err}
 	case len(ids) > 1:
 		var err Error
-		if want != nil {
+		if want == nil {
 			err = newError(parserID.L, "%s is ambiguous", parserID.Name)
 		} else {
 			err = newError(parserID.L, "%s is ambiguous for type %s", parserID.Name, want)

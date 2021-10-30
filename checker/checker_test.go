@@ -845,6 +845,17 @@ func TestCheckFuncScope(t *testing.T) {
 			err: "x \\(int\\) is not a function",
 		},
 		{
+			name: "local shadows module-level function",
+			src: `
+				func x(_ string)
+				func foo() {
+					x := 1,
+					x("hello")
+				}
+			`,
+			err: "x \\(int\\) is not a function",
+		},
+		{
 			name: "param shadows module-level var",
 			src: `
 				var x string
@@ -854,11 +865,23 @@ func TestCheckFuncScope(t *testing.T) {
 			`,
 			err: "cannot convert argument x \\(int\\) to string",
 		},
+		// Local can't shadow a module level variable,
+		// because a local cannot be defined if the identifier
+		// is already found as a module-level variable.
 		{
 			name: "param shadows interface func",
 			src: `
-				var x string
 				func foo(x int) (){} : x() {
+					return: x
+				}
+			`,
+			err: "cannot convert argument x \\(int\\) to \\(\\){}",
+		},
+		{
+			name: "local shadows interface func",
+			src: `
+				func foo() (){} : x() {
+					x := 1,
 					return: x
 				}
 			`,
