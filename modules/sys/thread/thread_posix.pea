@@ -1,0 +1,13 @@
+// TODO: make _mutex use &[.] once LLVM output bug is fixed.
+type _mutex &int
+
+// Returns a new, unlocked mutex.
+Func mutex() mutex
+
+// Blocks until the mutex is available and then locks the mutex.
+// If the mutex is already locked by the current thread, lock panics.
+Func lock(_ mutex)
+
+// Unlocks the mutex.
+// If the mutex is not locked by the current thread, unlock panics.
+Func unlock(_ mutex)

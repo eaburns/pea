@@ -1,0 +1,8 @@
+// A mutex is a mutex lock.
+Type mutex := _mutex
+
+test lock_unlock {
+	mu := mutex(),
+	lock(mu),
+	unlock(mu),
+}
