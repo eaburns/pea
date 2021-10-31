@@ -17,6 +17,18 @@ void* pea_malloc(int bytes) {
 	return GC_MALLOC(bytes);
 }
 
+// pea_register_finalizer registers fn to run when obj is collected.
+// The fn function is called with obj as the first argument and data as the second.
+//
+// All the various caveats of when to not use finalizers apply:
+// this is provided for compatibility with libraries that have explicitly managed memory.
+// For example: pthread_mutex_destroy must be called before the mutex is freed or memory will leak.
+void pea_register_finalizer(void* obj, void(*fn)(void*, void*), void* data) {
+	void (*old_fn)(void*, void*);
+	void *old_data;
+	GC_REGISTER_FINALIZER(obj, fn, data, &old_fn, &old_data);
+}
+
 // pea_print_stack prints the stack trace to standard output.
 void pea_print_stack() {
 	unw_context_t uc;
