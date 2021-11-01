@@ -193,22 +193,37 @@ void pea_set_test_call_loc(const char* file, int32_t line) {
 	test_file_line = line;
 }
 
+static void panic_test_output(const char* data, int n) {
+	if (test_panic_fd < 0) {
+		return;
+	}
+	FILE* test_panic_file = fdopen(test_panic_fd, "w");
+	if (test_panic_file == NULL) {
+		abort_errno("failed to open the test panic filedescr", errno);
+	}
+	if (test_file_name != NULL) {
+		fprintf(test_panic_file, "%s:%d\n", test_file_name, test_file_line);
+	}
+	fwrite(data, 1, n, test_panic_file);
+}
+
 // pea_panic prints a sting and stack trace to standard output
 // and aborts the program.
 void pea_panic(struct pea_string* pstr, const char* file, int32_t line) {
-	if (test_panic_fd >= 0) {
-		FILE* test_panic_file = fdopen(test_panic_fd, "w");
-		if (test_panic_file == NULL) {
-			abort_errno("failed to open the test panic filedescr", errno);
-		}
-		if (test_file_name != NULL) {
-			fprintf(test_panic_file, "%s:%d\n", test_file_name, test_file_line);
-		}
-		fwrite(&pstr->data[0], 1, pstr->length, test_panic_file);
-	}
+	panic_test_output(&pstr->data[0], pstr->length);
 	printf("Panic: ");
 	pea_print(pstr);
 	putchar('\n');
+	if (file != NULL) {
+		printf("%s:%d\n", file, line);
+	}
+	pea_abort();
+}
+
+// pea_panic_cstring is like pea_panic, but takes a C-style string.
+void pea_panic_cstring(const char* str, const char* file, int32_t line) {
+	panic_test_output(str, strlen(str));
+	printf("Panic: %s\n", str);
 	if (file != NULL) {
 		printf("%s:%d\n", file, line);
 	}
