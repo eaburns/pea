@@ -3,7 +3,7 @@ clang=clang
 ar=llvm-ar
 
 echo "Building gc"
-gc_path=vendor/gc-8.0.4
+gc_path=vendor/gc-8.2.0
 (cd libpea/$gc_path && \
 	make -f Makefile.direct > /dev/null)
 
