@@ -7,12 +7,12 @@ import (
 
 func (mb *modBuilder) optimize() {
 	for _, fb := range mb.funcBuilders {
-		moveAllocsToStack(fb)
+		earlyMoveAllocsToStack(fb)
 		inlineCalls(fb)
 		rmSelfTailCalls(fb)
 		rmAllocs(fb)
 		mergeBlocks(fb.FuncDef)
-		finalMoveAllocsToStack(fb)
+		lateMoveAllocsToStack(fb)
 	}
 	var i int
 	for _, fb := range mb.funcBuilders {
@@ -327,108 +327,26 @@ func mergeBlocks(f *FuncDef) {
 	f.Blocks = done
 }
 
-// finalMoveAllocsToStack is a very conservative escape analysis pass
-// that can run after inlining and tail-call optimization.
-// This pass cleans up allocs that, after inlining,
-// can be trivially proven not to escape.
-func finalMoveAllocsToStack(fb *funcBuilder) {
+// earlyMoveAllocsToStack computes leaky slots and
+// tracks the flow of values to determine which may be stored into a leak.
+// Allocations that cannot be stored into a leak are moved to the stack.
+func earlyMoveAllocsToStack(fb *funcBuilder) {
 	fb.mod.trace = fb.mod.traceEsc
 	defer func() { fb.mod.trace = false }()
 
-	fb.tr("---- final move allocs to stack:\n%s\n", fb.FuncDef)
-	change := true
-	for change {
-		change = false
-		for _, b := range fb.Blocks {
-			for _, r := range b.Instrs {
-				if a, ok := r.(*Alloc); ok && !a.Stack && !escapesConservative(fb, a) {
-					a.Stack = true
-					change = true
-				}
-			}
-		}
-	}
-}
-
-func escapesConservative(tr tracer, a *Alloc) bool {
-	if a.Count != nil {
-		tr.tr("x%d escapes: array alloc", a.Num())
-		return true
-	}
-	for _, u := range a.UsedBy() {
-		switch u := u.(type) {
-		case *Load:
-			continue
-		case *Store:
-			if u.Src != a {
-				continue
-			}
-			if d, ok := u.Dst.(*Alloc); ok && d.Stack {
-				continue
-			}
-			tr.tr("x%d escapes: stored into x%d", a.Num(), u.Dst.Num())
-			return true
-		case *Copy:
-			continue
-		case *Field:
-			if isLoadStoreCopyOnly(u) {
-				continue
-			}
-			tr.tr("x%d escapes: field x%d may escape", a.Num(), u.Num())
-			return true
-		case *Case:
-			if isLoadStoreCopyOnly(u) {
-				continue
-			}
-			tr.tr("x%d escapes: case x%d may escape", a.Num(), u.Num())
-			return true
-		case *Index:
-			if isLoadStoreCopyOnly(u) {
-				continue
-			}
-			tr.tr("x%d escapes: index x%d may escape", a.Num(), u.Num())
-			return true
-		case *Call:
-			for i, arg := range u.Args {
-				if arg != a || byValue(u, i) {
-					continue
-				}
-				tr.tr("x%d escapes: call %s non-by value argument %d", a.Num(), u, i)
-				return true
-			}
-		default:
-			tr.tr("x%d escapes: used by %s", a.Num(), u)
-			return true
-		}
-	}
-	tr.tr("x%d does not escape", a.Num())
-	return false
-}
-
-func byValue(c *Call, i int) bool {
-	f, ok := c.Func.(*Func)
-	return ok && f.Def.Parms[i].ByValue
-}
-
-// moveAllocsToStack computes leaks and moves allocations to the stack
-// that can be proven not to leak.
-func moveAllocsToStack(fb *funcBuilder) {
-	fb.mod.trace = fb.mod.traceEsc
-	defer func() { fb.mod.trace = false }()
-
-	fb.tr("---- moving allocs to stack:\n%s\n", fb.FuncDef)
+	fb.tr("---- early move allocs to stack:\n%s\n", fb.FuncDef)
 	leaks := findLeaks(fb)
 	fb.tr("-")
 	for _, b := range fb.Blocks {
 		for _, r := range b.Instrs {
 			if a, ok := r.(*Alloc); ok && !a.Stack {
-				a.Stack = !escapes(fb.mod, leaks, a)
+				a.Stack = !earlyEscapes(fb.mod, leaks, a)
 			}
 		}
 	}
 }
 
-func escapes(tr tracer, leaks map[Value]bool, v Value) bool {
+func earlyEscapes(tr tracer, leaks map[Value]bool, v Value) bool {
 	if a, ok := v.(*Alloc); ok && a.Count != nil {
 		tr.tr("x%d escapes: array alloc", v.Num())
 		return true
@@ -441,27 +359,27 @@ func escapes(tr tracer, leaks map[Value]bool, v Value) bool {
 				return true
 			}
 		case *BitCast:
-			if escapes(tr, leaks, u) {
+			if earlyEscapes(tr, leaks, u) {
 				tr.tr("x%d escapes: bitcast escapes x%d", v.Num(), u.Num())
 				return true
 			}
 		case *Field:
-			if escapes(tr, leaks, u) {
+			if earlyEscapes(tr, leaks, u) {
 				tr.tr("x%d escapes: field escapes x%d", v.Num(), u.Num())
 				return true
 			}
 		case *Case:
-			if escapes(tr, leaks, u) {
+			if earlyEscapes(tr, leaks, u) {
 				tr.tr("x%d escapes: case escapes x%d", v.Num(), u.Num())
 				return true
 			}
 		case *Index:
-			if escapes(tr, leaks, u) {
+			if earlyEscapes(tr, leaks, u) {
 				tr.tr("x%d escapes: index escapes x%d", v.Num(), u.Num())
 				return true
 			}
 		case *Slice:
-			if escapes(tr, leaks, u) {
+			if earlyEscapes(tr, leaks, u) {
 				tr.tr("x%d escapes: slice escapes x%d", v.Num(), u.Num())
 				return true
 			}
@@ -649,6 +567,107 @@ func leak(todo *[]Value, leaks map[Value]bool, v Value) {
 	}
 	leaks[v] = true
 	*todo = append(*todo, v)
+}
+
+// lateMoveAllocsToStack is a more conservative escape analysis
+// that can run after inlining and tail-call optimization.
+// This pass cleans up allocs that, after inlining,
+// can be trivially proven not to escape.
+// However, unlike earlyMoveAllocsToStack,
+// this pass does not compute leaking stores,
+// but assumes that all stores leak.
+func lateMoveAllocsToStack(fb *funcBuilder) {
+	fb.mod.trace = fb.mod.traceEsc
+	defer func() { fb.mod.trace = false }()
+
+	fb.tr("---- late move allocs to stack:\n%s\n", fb.FuncDef)
+	change := true
+	for change {
+		change = false
+		for _, b := range fb.Blocks {
+			for _, r := range b.Instrs {
+				if a, ok := r.(*Alloc); ok && !a.Stack && !lateEscapes(fb, a) {
+					a.Stack = true
+					change = true
+				}
+			}
+		}
+	}
+}
+
+func lateEscapes(tr tracer, v Value) bool {
+	if a, ok := v.(*Alloc); ok && a.Count != nil {
+		tr.tr("x%d escapes: array alloc", v.Num())
+		return true
+	}
+	for _, u := range v.UsedBy() {
+		switch u := u.(type) {
+		case *Load:
+			// The value at the address is loaded.
+			// The address itself does not escape.
+		case *Store:
+			// The value at the address is stored to,
+			// but the address itself is not stored.
+			// The address itself does not escape.
+			if u.Dst != v || u.Src == v {
+				tr.tr("x%d escapes: stored into x%d", v.Num(), u.Dst.Num())
+				return true
+			}
+		case *Copy:
+			// Either the value at the address is copied from,
+			// or the value at the address is copied to.
+			// The address itself does not escape.
+		case *BitCast:
+			// The address is cast into a different type of address;
+			// if the cast address does not escape, this does not either.
+			if lateEscapes(tr, u) {
+				tr.tr("x%d escapes: bitcast x%d may escape", v.Num(), u.Num())
+				return true
+			}
+		case *Field:
+			// A field offest from this base address is computed.
+			// If the field does not escape, than neither does the base.
+			if u.Base != v || lateEscapes(tr, u) {
+				tr.tr("x%d escapes: field x%d may escape", v.Num(), u.Num())
+				return true
+			}
+		case *Case:
+			// A case (field) offest from this base address is computed.
+			// If the field does not escape, than neither does the base.
+			if u.Base != v || lateEscapes(tr, u) {
+				tr.tr("x%d escapes: case x%d may escape", v.Num(), u.Num())
+				return true
+			}
+		case *Index:
+			if u.Base != v || lateEscapes(tr, u) {
+				tr.tr("x%d escapes: index x%d may escape", v.Num(), u.Num())
+				return true
+			}
+		case *Slice:
+			if u.Base != v || lateEscapes(tr, u) {
+				tr.tr("x%d escapes: slice x%d may escape", v.Num(), u.Num())
+				return true
+			}
+		case *Call:
+			// The value is only a by-value or return value argument.
+			// It does not escape.
+			for i, arg := range u.Args {
+				if arg == v && !byValue(u, i) && !isReturnArg(u, i) {
+					tr.tr("x%d escapes: call %s non-by value/return argument %d", v.Num(), u, i)
+					return true
+				}
+			}
+		default:
+			tr.tr("x%d escapes: used by %s", v.Num(), u)
+			return true
+		}
+	}
+	return false
+}
+
+func byValue(c *Call, i int) bool {
+	f, ok := c.Func.(*Func)
+	return ok && f.Def.Parms[i].ByValue
 }
 
 func inlineCalls(fb *funcBuilder) {
@@ -1105,29 +1124,6 @@ func isLoadOnly(v Value) bool {
 			continue
 		case *BitCast:
 			if isLoadOnly(user) {
-				continue
-			}
-		}
-		return false
-	}
-	return true
-}
-
-func isLoadStoreCopyOnly(v Value) bool {
-	for _, user := range v.UsedBy() {
-		switch user := user.(type) {
-		case *Load:
-			continue
-		case *Store:
-			if user.Dst == v && user.Src != v {
-				continue
-			}
-		case *Copy:
-			if user.Dst == v && user.Src != v {
-				continue
-			}
-		case *BitCast:
-			if isLoadStoreCopyOnly(user) {
 				continue
 			}
 		}
