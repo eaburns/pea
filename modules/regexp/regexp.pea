@@ -432,8 +432,8 @@ type vm &[
 	.next_rune rune,
 	.next_width int,
 	.seen [int64], // at for which each pc was last added to a thread
-	.run thread vector#vector,
-	.next_run thread vector#vector,
+	.run thread ring_buffer#ring_buffer,
+	.next_run thread ring_buffer#ring_buffer,
 	.free_mem [int64] vector#vector,
 	.match [int64],
 ]
@@ -449,8 +449,8 @@ func vm(re regexp, opts exec_options) vm {
 		.next_rune eof,
 		.next_width 0,
 		.seen new(re.prog.length, int64 :: -1),
-		.run vector#new(),
-		.next_run vector#new(),
+		.run ring_buffer#new(),
+		.next_run ring_buffer#new(),
 		.free_mem vector#new(),
 		.match [],
 	]
@@ -462,8 +462,7 @@ func exec(vm vm, s S) [int64] : read(&S)read_result {
 	forever: {
 		vm read: s,
 		swap(vm.run, vm.next_run),
-		clear: vm.next_run,
-		for: vm.run each: (t) {
+		while: {pop_front(vm.run)} some: (t) {
 			vm step: t,
 		},
 		if: vm.cur_rune = eof || vm.match != [] && vm.next_run.length = 0 then: {
@@ -498,7 +497,9 @@ func step:(vm vm, t thread) {
 		},
 		if: !vm.opts.longest then: {
 			// For first match, terminate all lower-priority threads.
-			clear: vm.run
+			while: {pop_front(vm.run)} some: (t) {
+				vm.free_mem push_back: t.mem
+			}
 		},
 		if: vm.match = [] then: {
 			vm.match := t.mem,
@@ -588,7 +589,12 @@ func add_thread:(vm vm, t thread) {
 		},
 		return()
 	},
-	vm.next_run push_back: [.pc t.pc, .mem t.mem]
+	// TODO: fix flowgraph bug requiring explicit conversion here.
+	// The literal is implicitly converted to thread,
+	// but somewhere between checker and llvm,
+	// the type is getting lost, and llvm complains
+	// that the function is called with the wrong type.
+	vm.next_run push_back: (thread :: [.pc t.pc, .mem t.mem])
 }
 
 func new_mem(vm vm) [int64] {
