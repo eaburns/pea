@@ -6,7 +6,7 @@
 // 	regexp = choice.
 // 	choice = concat [ "|" choice ].
 // 	concat = repeat [ concat ].
-// 	repeat = term { "*" | "+" | "?" }.
+// 	repeat = term [ "*" | "+" | "?" ].
 // 	term = "." | "^" | "$" | "(" regexp ")" | "(?:" regexp ")" | charclass | literal.
 // 	charclass = "[" [ "^" ] ( classlit [ "-" classlit ] ) { classlit [ "-" classlit ] } "]".
 // 	A literal is any non-operator rune or an escaped sequence.
