@@ -401,13 +401,25 @@ Func for:each:(r T ring_buffer, f (T){}) {
 }
 
 func index(r T ring_buffer, i int) int {
-	return: (r.start + i) % r.data.length
+	i += r.start,
+	if: i >= r.data.length then: {
+		i -= r.data.length
+	},
+	return: i
 }
 
 func next(r T ring_buffer, i int) int {
-	return: (i + 1) % r.data.length
+	++i,
+	if: i >= r.data.length then: {
+		i -= r.data.length
+	},
+	return: i
 }
 
 func prev(r T ring_buffer, i int) int {
-	return: (i + r.data.length - 1) % r.data.length
+	i := i + r.data.length - 1,
+	if: i >= r.data.length then: {
+		i -= r.data.length
+	},
+	return: i
 }
