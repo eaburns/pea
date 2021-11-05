@@ -212,6 +212,16 @@ func (g *gen) writeMain(mod *flowgraph.Mod, main *flowgraph.FuncDef) {
 }
 
 func (g *gen) writeTestMain(mod *flowgraph.Mod) {
+	for _, dep := range mod.Deps {
+		g.write("declare void @\"", dep, " <init>\"()\n")
+	}
+	g.write("define void @\"module init for test\"() {\n")
+	for _, dep := range mod.Deps {
+		g.write("	call void @\"", dep, " <init>\"()\n")
+	}
+	g.write("	call void ", mod.Init, "()\n")
+	g.write("	ret void\n")
+	g.write("}\n")
 	for _, t := range mod.Funcs {
 		if !t.Test {
 			continue
@@ -219,21 +229,25 @@ func (g *gen) writeTestMain(mod *flowgraph.Mod) {
 		name := t.Name + "\x00"
 		g.write("@test.", t.Name, " = private unnamed_addr constant [", len(name), " x i8] c", quote(name), "\n")
 		g.writeFuncDef(t)
+
+		// The test launcher runs all the init functions,
+		// and then calls the test function.
+		// This can't be done in main(),
+		// because pea_run_test fork()s its test,
+		// and GC can't be used before fork().
+		// So init must be done in each child instead.
+		g.write("define void @\"", t.Name, " launcher\"() {\n")
+		g.write("	call void @\"module init for test\"()\n")
+		g.write("	call void ", t, "()\n")
+		g.write("	ret void\n")
+		g.write("}\n")
 	}
 	g.write(
 		"@fail_str = private unnamed_addr constant [5 x i8] c\"FAIL\\00\"\n",
 		"declare i32 @puts(i8* nocapture)\n",
 		"declare i32 @pea_run_test(void()* nocapture, i8* nocapture)\n")
 
-	for _, dep := range mod.Deps {
-		g.write("declare void @\"", dep, " <init>\"()\n")
-	}
 	g.write("define i32 @main() {\n")
-	for _, dep := range mod.Deps {
-		g.write("	call void @\"", dep, " <init>\"()\n")
-	}
-	g.write("	call void ", mod.Init, "()\n")
-
 	var fail tmp
 	first := true
 	for _, t := range mod.Funcs {
@@ -244,7 +258,7 @@ func (g *gen) writeTestMain(mod *flowgraph.Mod) {
 		n := len(t.Name) + 1
 		g.line(s, " = getelementptr [", n, " x i8], [", n, " x i8]* @test.", t.Name, ", i64 0, i64 0")
 		r := g.tmp()
-		g.line(r, " = call i32 @pea_run_test(void()* ", t, ", i8* ", s, ")")
+		g.line(r, " = call i32 @pea_run_test(void()* @\"", t.Name, " launcher\", i8* ", s, ")")
 		if first {
 			fail = r
 			first = false
