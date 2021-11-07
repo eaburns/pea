@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	"github.com/eaburns/pea/flowgraph"
 	"github.com/eaburns/pea/llvm"
 	"github.com/eaburns/pea/loc"
+	"github.com/eaburns/pea/mod"
 	"github.com/eaburns/pea/parser"
 )
 
@@ -41,11 +41,12 @@ func main() {
 	case len(args) > 1:
 		usage("only one module path is supported")
 	}
-	m, err := load(*root, args[0])
+	ld := mod.New(*root)
+	m, err := ld.Load(args[0])
 	if err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
-	m.compile()
+	compile(m)
 }
 
 func usage(msg string) {
@@ -55,83 +56,12 @@ func usage(msg string) {
 	os.Exit(1)
 }
 
-type Mod struct {
-	Path     string
-	FullPath string
-	SrcFiles []string
-	Deps     []*Mod
-}
-
-func (m *Mod) binFile() string {
+func binFile(m *mod.Mod) string {
 	return filepath.Join(m.FullPath, filepath.Base(m.Path))
 }
 
-func load(rootDir, modPath string) (*Mod, error) {
-	var path []string
-	onPath := make(map[string]bool)
-	seen := make(map[string]*Mod)
-	var ld func(string) (*Mod, error)
-	ld = func(modPath string) (*Mod, error) {
-		path = append(path, modPath)
-		defer func() { path = path[:len(path)-1] }()
-		if onPath[modPath] {
-			return nil, fmt.Errorf("dependency cycle: %v", path)
-		}
-		onPath[modPath] = true
-		defer func() { delete(onPath, modPath) }()
-
-		if mod, ok := seen[modPath]; ok {
-			return mod, nil
-		}
-		mod := &Mod{
-			Path:     modPath,
-			FullPath: filepath.Join(rootDir, modPath),
-		}
-		seen[modPath] = mod
-
-		dirInfos, err := ioutil.ReadDir(mod.FullPath)
-		if err != nil {
-			return nil, err
-		}
-		var imports []string
-		seenImports := make(map[string]bool)
-		for _, dirInfo := range dirInfos {
-			// Ignore .pea.ll files, which are likely build artifacts.
-			if strings.HasPrefix(dirInfo.Name(), ".pea.ll") {
-				continue
-			}
-			filePath := filepath.Join(mod.FullPath, dirInfo.Name())
-			if filepath.Ext(filePath) == ".pea" {
-				imps, err := parser.ImportsOnly(filePath)
-				if err != nil {
-					return nil, err
-				}
-				for _, imp := range imps {
-					if seenImports[imp] {
-						continue
-					}
-					seenImports[imp] = true
-					imports = append(imports, imp)
-				}
-			}
-			if ext := filepath.Ext(filePath); ext == ".pea" || ext == ".c" || ext == ".ll" {
-				mod.SrcFiles = append(mod.SrcFiles, filePath)
-			}
-		}
-		for _, imp := range imports {
-			m, err := ld(imp)
-			if err != nil {
-				return nil, err
-			}
-			mod.Deps = append(mod.Deps, m)
-		}
-		return mod, nil
-	}
-	return ld(modPath)
-}
-
-func (m *Mod) compile() {
-	aFiles := m.compileDeps()
+func compile(m *mod.Mod) {
+	aFiles := compileDeps(m)
 
 	var fg *flowgraph.Mod
 	var locs loc.Files
@@ -143,7 +73,7 @@ func (m *Mod) compile() {
 		if *traceInline {
 			opts = append(opts, flowgraph.TraceInlining)
 		}
-		fg, locs = m.flowgraph(opts...)
+		fg, locs = compileFG(m, opts...)
 		if *printNAllocs {
 			n := 0
 			for _, f := range fg.Funcs {
@@ -161,7 +91,7 @@ func (m *Mod) compile() {
 			fmt.Println(fg)
 		}
 	}
-	aFile := m.binFile() + ".a"
+	aFile := binFile(m) + ".a"
 	// The change time depends on not only the source files,
 	// but the latest time that any dependency has changed also,
 	// since type-parameterized function changes in a dependency
@@ -175,9 +105,9 @@ func (m *Mod) compile() {
 			fmt.Printf("---- %s: building archive\n", m.Path)
 		}
 		if fg == nil {
-			fg, locs = m.flowgraph()
+			fg, locs = compileFG(m)
 		}
-		m.compileA(fg, locs)
+		compileA(m, fg, locs)
 	}
 	aFiles = append(aFiles, aFile)
 
@@ -185,11 +115,11 @@ func (m *Mod) compile() {
 		return
 	}
 
-	binFile := m.binFile()
+	binFilePath := binFile(m)
 	if *test {
-		binFile += ".test"
+		binFilePath += ".test"
 	}
-	if modTime(binFile).After(lastChange(aFiles)) {
+	if modTime(binFilePath).After(lastChange(aFiles)) {
 		if *v {
 			if *test {
 				fmt.Printf("---- %s: test binary up-to-date\n", m.Path)
@@ -207,10 +137,10 @@ func (m *Mod) compile() {
 		}
 	}
 	if fg == nil {
-		fg, locs = m.flowgraph()
+		fg, locs = compileFG(m)
 	}
 
-	llFile := m.binFile() + ".main.ll"
+	llFile := binFile(m) + ".main.ll"
 	f, err := os.Create(llFile)
 	if err != nil {
 		fail(fmt.Errorf("failed to create output file: %s", err))
@@ -235,12 +165,12 @@ func (m *Mod) compile() {
 		fail(fmt.Errorf("failed to close output file: %s", err))
 	}
 	defer os.Remove(llFile)
-	oFile := m.binFile() + ".main.o"
+	oFile := binFile(m) + ".main.o"
 	if err := compileLL(llFile, oFile); err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
 	defer os.Remove(oFile)
-	link(binFile, append([]string{oFile}, aFiles...))
+	link(binFilePath, append([]string{oFile}, aFiles...))
 }
 
 func link(binFile string, objs []string) {
@@ -259,25 +189,25 @@ func link(binFile string, objs []string) {
 	}
 }
 
-func (m *Mod) compileDeps() []string {
+func compileDeps(m *mod.Mod) []string {
 	var aFiles []string
-	seen := make(map[*Mod]bool)
+	seen := make(map[*mod.Mod]bool)
 	for _, d := range m.Deps {
-		aFiles = append(aFiles, d._compileDeps(seen)...)
+		aFiles = append(aFiles, _compileDeps(d, seen)...)
 	}
 	return aFiles
 }
 
-func (m *Mod) _compileDeps(seen map[*Mod]bool) []string {
+func _compileDeps(m *mod.Mod, seen map[*mod.Mod]bool) []string {
 	if seen[m] {
 		return nil
 	}
 	seen[m] = true
 	var aFiles []string
 	for _, d := range m.Deps {
-		aFiles = append(aFiles, d._compileDeps(seen)...)
+		aFiles = append(aFiles, _compileDeps(d, seen)...)
 	}
-	aFile := m.binFile() + ".a"
+	aFile := binFile(m) + ".a"
 	// The change time depends on not only the source files,
 	// but the latest time that any dependency has changed also,
 	// since type-parameterized function changes in a dependency
@@ -290,12 +220,13 @@ func (m *Mod) _compileDeps(seen map[*Mod]bool) []string {
 		if *v {
 			fmt.Printf("---- %s: building\n", m.Path)
 		}
-		m.compileA(m.flowgraph())
+		fg, locs := compileFG(m)
+		compileA(m, fg, locs)
 	}
 	return append(aFiles, aFile)
 }
 
-func (m *Mod) compileA(fg *flowgraph.Mod, locs loc.Files) {
+func compileA(m *mod.Mod, fg *flowgraph.Mod, locs loc.Files) {
 	var oFiles []string
 	for _, file := range m.SrcFiles {
 		switch filepath.Ext(file) {
@@ -316,7 +247,7 @@ func (m *Mod) compileA(fg *flowgraph.Mod, locs loc.Files) {
 		}
 	}
 
-	llFile := m.binFile() + ".ll"
+	llFile := binFile(m) + ".ll"
 	f, err := os.Create(llFile)
 	if err != nil {
 		fail(fmt.Errorf("failed to create output file: %s", err))
@@ -328,20 +259,20 @@ func (m *Mod) compileA(fg *flowgraph.Mod, locs loc.Files) {
 		fail(fmt.Errorf("failed to close output file: %s", err))
 	}
 	defer os.Remove(llFile)
-	oFile := m.binFile() + ".o"
+	oFile := binFile(m) + ".o"
 	if err := compileLL(llFile, oFile); err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
 	defer os.Remove(oFile)
 	oFiles = append(oFiles, oFile)
 
-	aFile := m.binFile() + ".a"
+	aFile := binFile(m) + ".a"
 	if err := run("llvm-ar", append([]string{"cr", aFile}, oFiles...)...); err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
 }
 
-func (m *Mod) flowgraph(fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs loc.Files) {
+func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs loc.Files) {
 	var peaFiles []string
 	for _, file := range m.SrcFiles {
 		if filepath.Ext(file) == ".pea" {
