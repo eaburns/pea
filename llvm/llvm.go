@@ -117,6 +117,7 @@ func (g *gen) writeHeader(mod *flowgraph.Mod) {
 	g.write(
 		"%string = type {", g.int(), ", i8*}\n",
 		"declare i8* @pea_malloc(", g.int(), ")\n",
+		"declare i8* @pea_malloc_no_scan(", g.int(), ")\n",
 		"declare i8* @pea_new_frame()\n",
 		"declare void @pea_finish_frame(i8* nocapture)\n",
 		"declare void @pea_check_frame(i8* nocapture)\n",
@@ -491,29 +492,34 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			"	ret void\n",
 			"func:\n")
 	case *flowgraph.Alloc:
+		et := elemType(r.Type())
 		switch {
 		case !r.Stack:
-			l := g.sizeOf(elemType(r.Type()))
+			mallocFunc := "pea_malloc"
+			if !needsGCScan(et) {
+				mallocFunc = "pea_malloc_no_scan"
+			}
+			l := g.sizeOf(et)
 			t := g.tmp()
 			switch {
 			case r.Count != nil:
 				x := g.tmp()
 				g.line(x, " = mul ", g.int(), " ", l, ", ", r.Count)
-				g.line(t, " = call i8* @pea_malloc(", g.int(), " ", x, ")")
+				g.line(t, " = call i8* @", mallocFunc, "(", g.int(), " ", x, ")")
 			case r.CountImm >= 0:
 				x := g.tmp()
 				g.line(x, " = mul ", g.int(), " ", l, ", ", r.CountImm)
-				g.line(t, " = call i8* @pea_malloc(", g.int(), " ", x, ")")
+				g.line(t, " = call i8* @", mallocFunc, "(", g.int(), " ", x, ")")
 			default:
-				g.line(t, " = call i8* @pea_malloc(", g.int(), " ", l, ")")
+				g.line(t, " = call i8* @", mallocFunc, "(", g.int(), " ", l, ")")
 			}
 			g.line(r, " = bitcast i8* ", t, " to ", r.Type())
 		case r.Count != nil:
 			panic("impossible")
 		case r.CountImm >= 0:
-			g.line(r, " = alloca ", elemType(r.Type()), ", i32 ", r.CountImm)
+			g.line(r, " = alloca ", et, ", i32 ", r.CountImm)
 		default:
-			g.line(r, " = alloca ", elemType(r.Type()))
+			g.line(r, " = alloca ", et)
 		}
 	case *flowgraph.Load:
 		g.line(r, " = load ", r.Type(), ", ", typeVal{r.Addr})
@@ -912,10 +918,56 @@ func isAddr(t flowgraph.Type) bool {
 		return true
 	case *flowgraph.ArrayType:
 		return true
+	case *flowgraph.FrameType:
+		return true
 	case *flowgraph.FuncType:
 		return true
 	default:
 		return false
+	}
+}
+
+// needsGCScan returns whether the type is an address or contain addresses
+// that the GC needs to scan for reachability of allocated objects.
+//
+// Note this is intended to be called on element type of an alloc.
+// So, for example an ArrayType here needs GC scan,
+// because if the array is the element of an alloc type,
+// it is a pointer that needs to be scanned.
+// But if the alloc is allocating an array, its element type
+// is the array element type, which may not need to be scanned.
+func needsGCScan(t flowgraph.Type) bool {
+	switch t := t.(type) {
+	case *flowgraph.IntType:
+		return false
+	case *flowgraph.FloatType:
+		return false
+	case *flowgraph.AddrType:
+		return true
+	case *flowgraph.ArrayType:
+		return true
+	case *flowgraph.FrameType:
+		return true
+	case *flowgraph.StructType:
+		for _, field := range t.Fields {
+			if needsGCScan(field.Type) {
+				return true
+			}
+		}
+		return false
+	case *flowgraph.UnionType:
+		for _, cas := range t.Cases {
+			if needsGCScan(cas.Type) {
+				return true
+			}
+		}
+		return false
+	case *flowgraph.FuncType:
+		// This is an address, but a static function address.
+		// The GC doesn't need to ever scan it.
+		return false
+	default:
+		panic(fmt.Sprintf("unknown Type type: %T", t))
 	}
 }
 

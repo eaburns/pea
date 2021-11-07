@@ -17,6 +17,14 @@ void* pea_malloc(int bytes) {
 	return GC_MALLOC(bytes);
 }
 
+// pea_malloc_no_scan returns a pointer
+// to a new object of the given number of bytes.
+// The object will not be scanned by the garbage collector,
+// so it must not contain pointers to allocated memory.
+void* pea_malloc_no_scan(int bytes) {
+	return GC_MALLOC_ATOMIC(bytes);
+}
+
 // pea_register_finalizer registers fn to run when obj is collected.
 // The fn function is called with obj as the first argument and data as the second.
 //
