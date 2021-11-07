@@ -23,6 +23,7 @@ var (
 	root         = flag.String("root", "", "module root directory (required)")
 	test         = flag.Bool("test", false, "whether to compile a test binary")
 	v            = flag.Bool("v", false, "print commands executed")
+	lprofiler    = flag.Bool("lprofiler", false, "whether to link with -lprofiler for CPU profiling")
 	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
 	traceEsc     = flag.Bool("trace-esc", false, "whether to trace escape analysis")
 	traceInline  = flag.Bool("trace-inl", false, "whether to trace inlining")
@@ -243,13 +244,16 @@ func (m *Mod) compile() {
 }
 
 func link(binFile string, objs []string) {
-	args := append(objs, []string{
+	args := []string{
 		"-g",
 		"-o", binFile,
 		"-pthread",
 		"-ldl", // needed for libunwind
-		filepath.Join(*libpea, "libpea.a"),
-	}...)
+	}
+	if *lprofiler {
+		args = append(args, "-lprofiler")
+	}
+	args = append(append(objs, args...), filepath.Join(*libpea, "libpea.a"))
 	if err := run("clang", args...); err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
