@@ -25,7 +25,7 @@ type Loader struct {
 }
 
 // New returns a new Loader that loads modules from a root directory.
-func New(rootDir string) *Loader {
+func NewLoader(rootDir string) *Loader {
 	return &Loader{
 		rootDir: rootDir,
 		mods:    make(map[string]*Mod),

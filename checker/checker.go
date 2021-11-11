@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/eaburns/pea/loc"
+	"github.com/eaburns/pea/mod"
 	"github.com/eaburns/pea/parser"
 )
 
@@ -60,7 +61,8 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 		opt(&checker)
 	}
 	if checker.importer == nil {
-		checker.importer = NewImporter(".", files, checker.trimErrorPathPrefix)
+		ld := mod.NewLoader(".")
+		checker.importer = NewImporter(ld, files, checker.trimErrorPathPrefix)
 	}
 
 	modPath = cleanImportPath(modPath)

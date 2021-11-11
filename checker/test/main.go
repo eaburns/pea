@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/eaburns/pea/checker"
+	"github.com/eaburns/pea/mod"
 	"github.com/eaburns/pea/parser"
 )
 
@@ -34,7 +35,8 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	imp := checker.NewImporter(*root, p.Files, "")
+	ld := mod.NewLoader(*root)
+	imp := checker.NewImporter(ld, p.Files, "")
 	m, fs, errs := checker.Check("main", p.Files, checker.UseImporter(imp))
 	if len(errs) > 0 {
 		for _, err := range errs {

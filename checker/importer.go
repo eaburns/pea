@@ -1,11 +1,11 @@
 package checker
 
 import (
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 
 	"github.com/eaburns/pea/loc"
+	"github.com/eaburns/pea/mod"
 	"github.com/eaburns/pea/parser"
 )
 
@@ -19,16 +19,16 @@ type Importer interface {
 }
 
 type defaultImporter struct {
-	modRoot             string
+	ld                  *mod.Loader
 	files               loc.Files
 	loaded              map[string]*Mod
 	deps                []string
 	trimErrorPathPrefix string
 }
 
-func NewImporter(modRoot string, files []*parser.File, trimErrorPathPrefix string) Importer {
+func NewImporter(ld *mod.Loader, files []*parser.File, trimErrorPathPrefix string) Importer {
 	imp := &defaultImporter{
-		modRoot:             modRoot,
+		ld:                  ld,
 		loaded:              make(map[string]*Mod),
 		trimErrorPathPrefix: trimErrorPathPrefix,
 	}
@@ -47,20 +47,17 @@ func (imp *defaultImporter) Load(path string) (*Mod, error) {
 	if mod, ok := imp.loaded[path]; ok {
 		return mod, nil
 	}
-
-	fullPath := filepath.Join(imp.modRoot, path)
-	fileInfos, err := ioutil.ReadDir(fullPath)
+	m, err := imp.ld.Load(path)
 	if err != nil {
 		return nil, err
 	}
 	p := parser.NewWithOffset(imp.files.Len() + 1)
 	p.TrimErrorPathPrefix = imp.trimErrorPathPrefix
-	for _, fileInfo := range fileInfos {
-		if filepath.Ext(fileInfo.Name()) != ".pea" {
+	for _, srcFile := range m.SrcFiles {
+		if filepath.Ext(srcFile) != ".pea" {
 			continue
 		}
-		filePath := filepath.Join(fullPath, fileInfo.Name())
-		if err := p.ParseFile(filePath); err != nil {
+		if err := p.ParseFile(srcFile); err != nil {
 			return nil, err
 		}
 	}
