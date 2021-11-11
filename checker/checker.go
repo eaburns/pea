@@ -61,8 +61,8 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 		opt(&checker)
 	}
 	if checker.importer == nil {
-		ld := mod.NewLoader(".")
-		checker.importer = NewImporter(ld, files, checker.trimErrorPathPrefix)
+		r := mod.NewRoot(".")
+		checker.importer = NewImporter(r, files, checker.trimErrorPathPrefix)
 	}
 
 	modPath = cleanImportPath(modPath)

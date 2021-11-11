@@ -41,12 +41,12 @@ func main() {
 	case len(args) > 1:
 		usage("only one module path is supported")
 	}
-	ld := mod.NewLoader(*root)
-	m, err := ld.Load(args[0])
+	r := mod.NewRoot(*root)
+	m, err := r.Get(args[0])
 	if err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
-	compile(ld, m)
+	compile(m)
 }
 
 func usage(msg string) {
@@ -60,8 +60,8 @@ func binFile(m *mod.Mod) string {
 	return filepath.Join(m.FullPath, filepath.Base(m.Path))
 }
 
-func compile(ld *mod.Loader, m *mod.Mod) {
-	aFiles := compileDeps(ld, m)
+func compile(m *mod.Mod) {
+	aFiles := compileDeps(m)
 
 	var fg *flowgraph.Mod
 	var locs loc.Files
@@ -73,7 +73,7 @@ func compile(ld *mod.Loader, m *mod.Mod) {
 		if *traceInline {
 			opts = append(opts, flowgraph.TraceInlining)
 		}
-		fg, locs = compileFG(ld, m, opts...)
+		fg, locs = compileFG(m, opts...)
 		if *printNAllocs {
 			n := 0
 			for _, f := range fg.Funcs {
@@ -105,7 +105,7 @@ func compile(ld *mod.Loader, m *mod.Mod) {
 			fmt.Printf("---- %s: building archive\n", m.Path)
 		}
 		if fg == nil {
-			fg, locs = compileFG(ld, m)
+			fg, locs = compileFG(m)
 		}
 		compileA(m, fg, locs)
 	}
@@ -137,7 +137,7 @@ func compile(ld *mod.Loader, m *mod.Mod) {
 		}
 	}
 	if fg == nil {
-		fg, locs = compileFG(ld, m)
+		fg, locs = compileFG(m)
 	}
 
 	llFile := binFile(m) + ".main.ll"
@@ -189,23 +189,23 @@ func link(binFile string, objs []string) {
 	}
 }
 
-func compileDeps(ld *mod.Loader, m *mod.Mod) []string {
+func compileDeps(m *mod.Mod) []string {
 	var aFiles []string
 	seen := make(map[*mod.Mod]bool)
 	for _, d := range m.Deps {
-		aFiles = append(aFiles, _compileDeps(ld, d, seen)...)
+		aFiles = append(aFiles, _compileDeps(d, seen)...)
 	}
 	return aFiles
 }
 
-func _compileDeps(ld *mod.Loader, m *mod.Mod, seen map[*mod.Mod]bool) []string {
+func _compileDeps(m *mod.Mod, seen map[*mod.Mod]bool) []string {
 	if seen[m] {
 		return nil
 	}
 	seen[m] = true
 	var aFiles []string
 	for _, d := range m.Deps {
-		aFiles = append(aFiles, _compileDeps(ld, d, seen)...)
+		aFiles = append(aFiles, _compileDeps(d, seen)...)
 	}
 	aFile := binFile(m) + ".a"
 	// The change time depends on not only the source files,
@@ -220,7 +220,7 @@ func _compileDeps(ld *mod.Loader, m *mod.Mod, seen map[*mod.Mod]bool) []string {
 		if *v {
 			fmt.Printf("---- %s: building\n", m.Path)
 		}
-		fg, locs := compileFG(ld, m)
+		fg, locs := compileFG(m)
 		compileA(m, fg, locs)
 	}
 	return append(aFiles, aFile)
@@ -272,7 +272,7 @@ func compileA(m *mod.Mod, fg *flowgraph.Mod, locs loc.Files) {
 	}
 }
 
-func compileFG(ld *mod.Loader, m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs loc.Files) {
+func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs loc.Files) {
 	var peaFiles []string
 	for _, file := range m.SrcFiles {
 		if filepath.Ext(file) == ".pea" {
@@ -291,7 +291,7 @@ func compileFG(ld *mod.Loader, m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flow
 			fail(err)
 		}
 	}
-	imp := checker.NewImporter(ld, p.Files, p.TrimErrorPathPrefix)
+	imp := checker.NewImporter(m.Root, p.Files, p.TrimErrorPathPrefix)
 	checkOpts := []checker.Option{
 		checker.UseImporter(imp),
 		checker.TrimErrorPathPrefix(p.TrimErrorPathPrefix),

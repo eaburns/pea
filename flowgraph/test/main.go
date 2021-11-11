@@ -39,8 +39,8 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	ld := mod.NewLoader(*root)
-	imp := checker.NewImporter(ld, p.Files, "")
+	r := mod.NewRoot(*root)
+	imp := checker.NewImporter(r, p.Files, "")
 	m, _, errs := checker.Check("main", p.Files, checker.UseImporter(imp))
 	if len(errs) > 0 {
 		for _, err := range errs {

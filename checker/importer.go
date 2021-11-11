@@ -19,16 +19,16 @@ type Importer interface {
 }
 
 type defaultImporter struct {
-	ld                  *mod.Loader
+	root                *mod.Root
 	files               loc.Files
 	loaded              map[string]*Mod
 	deps                []string
 	trimErrorPathPrefix string
 }
 
-func NewImporter(ld *mod.Loader, files []*parser.File, trimErrorPathPrefix string) Importer {
+func NewImporter(r *mod.Root, files []*parser.File, trimErrorPathPrefix string) Importer {
 	imp := &defaultImporter{
-		ld:                  ld,
+		root:                r,
 		loaded:              make(map[string]*Mod),
 		trimErrorPathPrefix: trimErrorPathPrefix,
 	}
@@ -47,7 +47,7 @@ func (imp *defaultImporter) Load(path string) (*Mod, error) {
 	if mod, ok := imp.loaded[path]; ok {
 		return mod, nil
 	}
-	m, err := imp.ld.Load(path)
+	m, err := imp.root.Get(path)
 	if err != nil {
 		return nil, err
 	}

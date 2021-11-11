@@ -12,32 +12,33 @@ import (
 
 // A Mod is information about a single module.
 type Mod struct {
+	Root     *Root
 	Path     string
 	FullPath string
 	SrcFiles []string
 	Deps     []*Mod
 }
 
-// A Loader loads information about modules and their dependencies from files.
-type Loader struct {
+// A Root represents the root of a module directory hierarchy.
+type Root struct {
 	rootDir string
 	mods    map[string]*Mod
 }
 
-// New returns a new Loader that loads modules from a root directory.
-func NewLoader(rootDir string) *Loader {
-	return &Loader{
+// NewRoot returns a new Root for a module directory hierarchy.
+func NewRoot(rootDir string) *Root {
+	return &Root{
 		rootDir: rootDir,
 		mods:    make(map[string]*Mod),
 	}
 }
 
-// Load returns the module at a given module path.
-func (ld *Loader) Load(modPath string) (*Mod, error) {
-	return ld.load([]string{}, make(map[string]bool), modPath)
+// Get returns the module at a given module path.
+func (r *Root) Get(modPath string) (*Mod, error) {
+	return r.get([]string{}, make(map[string]bool), modPath)
 }
 
-func (ld *Loader) load(path []string, onPath map[string]bool, modPath string) (*Mod, error) {
+func (r *Root) get(path []string, onPath map[string]bool, modPath string) (*Mod, error) {
 	path = append(path, modPath)
 	defer func() { path = path[:len(path)-1] }()
 	if onPath[modPath] {
@@ -46,11 +47,11 @@ func (ld *Loader) load(path []string, onPath map[string]bool, modPath string) (*
 	onPath[modPath] = true
 	defer func() { delete(onPath, modPath) }()
 
-	if mod, ok := ld.mods[modPath]; ok {
+	if mod, ok := r.mods[modPath]; ok {
 		return mod, nil
 	}
 
-	fullPath, err := ld.fullPath(modPath)
+	fullPath, err := r.fullPath(modPath)
 	if err != nil {
 		return nil, err
 	}
@@ -66,13 +67,14 @@ func (ld *Loader) load(path []string, onPath map[string]bool, modPath string) (*
 	sort.Strings(imports)
 
 	mod := &Mod{
+		Root:     r,
 		Path:     modPath,
 		FullPath: fullPath,
 		SrcFiles: srcFiles,
 	}
-	ld.mods[modPath] = mod
+	r.mods[modPath] = mod
 	for _, imp := range imports {
-		m, err := ld.load(path, onPath, imp)
+		m, err := r.get(path, onPath, imp)
 		if err != nil {
 			return nil, err
 		}
@@ -83,8 +85,8 @@ func (ld *Loader) load(path []string, onPath map[string]bool, modPath string) (*
 
 // fullPath returns the full path rooted at a root path entry for a module path.
 // It is an error if there are multiple possible full paths.
-func (ld *Loader) fullPath(modPath string) (string, error) {
-	return filepath.Join(ld.rootDir, modPath), nil
+func (r *Root) fullPath(modPath string) (string, error) {
+	return filepath.Join(r.rootDir, modPath), nil
 }
 
 func sourceFiles(fullPath string) ([]string, error) {
