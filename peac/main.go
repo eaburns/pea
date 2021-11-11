@@ -284,15 +284,18 @@ func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs 
 	}
 	p := parser.New()
 	if wd, err := os.Getwd(); err == nil {
-		p.TrimPathPrefix = wd + "/"
+		p.TrimErrorPathPrefix = wd + "/"
 	}
 	for _, file := range peaFiles {
 		if err := p.ParseFile(file); err != nil {
 			fail(err)
 		}
 	}
-	imp := checker.NewImporterTemplateParser(*root, p)
-	checkOpts := []checker.Option{checker.UseImporter(imp)}
+	imp := checker.NewImporter(*root, p.Files, p.TrimErrorPathPrefix)
+	checkOpts := []checker.Option{
+		checker.UseImporter(imp),
+		checker.TrimErrorPathPrefix(p.TrimErrorPathPrefix),
+	}
 	checkMod, locs, errs := checker.Check(m.Path, p.Files, checkOpts...)
 	if len(errs) > 0 {
 		fail(errs...)

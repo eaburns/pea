@@ -14,9 +14,10 @@ import (
 )
 
 type checker struct {
-	importer      Importer
-	maxErrorDepth int
-	verboseNotes  bool
+	importer            Importer
+	maxErrorDepth       int
+	verboseNotes        bool
+	trimErrorPathPrefix string
 }
 
 // Option is an option to Check.
@@ -26,6 +27,12 @@ type Option func(*checker)
 // By default checker uses an importer loads modules from the current directory.
 func UseImporter(imp Importer) Option {
 	return func(c *checker) { c.importer = imp }
+}
+
+// TrimErrorPathPrefix returns an Option that trims the given prefix
+// from file paths reported in error messages.
+func TrimErrorPathPrefix(p string) Option {
+	return func(c *checker) { c.trimErrorPathPrefix = p }
 }
 
 // MaxErrorDepth returns an Option that sets the max nesting depth for reported errors.
@@ -46,12 +53,14 @@ func VerboseNotes(b bool) Option {
 // Check does semantic checking, and returns a *Mod on success.
 func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.Files, []error) {
 	checker := checker{
-		importer:      NewImporter(".", files),
 		maxErrorDepth: 3,
 		verboseNotes:  false,
 	}
 	for _, opt := range opts {
 		opt(&checker)
+	}
+	if checker.importer == nil {
+		checker.importer = NewImporter(".", files, checker.trimErrorPathPrefix)
 	}
 
 	modPath = cleanImportPath(modPath)

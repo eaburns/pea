@@ -19,27 +19,18 @@ type Importer interface {
 }
 
 type defaultImporter struct {
-	modRoot        string
-	files          loc.Files
-	loaded         map[string]*Mod
-	deps           []string
-	trimPathPrefix string
+	modRoot             string
+	files               loc.Files
+	loaded              map[string]*Mod
+	deps                []string
+	trimErrorPathPrefix string
 }
 
-// NewImporterTemplateParser returns a new importer that importes modules from the given root.
-// It is created starting with the loc.Files as templateParser,
-// and any internal parses it creates copy the TrimPathPrefix
-// from templateParser too.
-func NewImporterTemplateParser(modRoot string, templateParser *parser.Parser) Importer {
-	imp := NewImporter(modRoot, templateParser.Files).(*defaultImporter)
-	imp.trimPathPrefix = templateParser.TrimPathPrefix
-	return imp
-}
-
-func NewImporter(modRoot string, files []*parser.File) Importer {
+func NewImporter(modRoot string, files []*parser.File, trimErrorPathPrefix string) Importer {
 	imp := &defaultImporter{
-		modRoot: modRoot,
-		loaded:  make(map[string]*Mod),
+		modRoot:             modRoot,
+		loaded:              make(map[string]*Mod),
+		trimErrorPathPrefix: trimErrorPathPrefix,
 	}
 	for _, f := range files {
 		imp.files = append(imp.files, f)
@@ -63,7 +54,7 @@ func (imp *defaultImporter) Load(path string) (*Mod, error) {
 		return nil, err
 	}
 	p := parser.NewWithOffset(imp.files.Len() + 1)
-	p.TrimPathPrefix = imp.trimPathPrefix
+	p.TrimErrorPathPrefix = imp.trimErrorPathPrefix
 	for _, fileInfo := range fileInfos {
 		if filepath.Ext(fileInfo.Name()) != ".pea" {
 			continue
@@ -76,7 +67,11 @@ func (imp *defaultImporter) Load(path string) (*Mod, error) {
 	for _, f := range p.Files {
 		imp.files = append(imp.files, f)
 	}
-	mod, _, errs := Check(path, p.Files, UseImporter(imp))
+	opts := []Option{
+		UseImporter(imp),
+		TrimErrorPathPrefix(imp.trimErrorPathPrefix),
+	}
+	mod, _, errs := Check(path, p.Files, opts...)
 	if len(errs) > 0 {
 		return nil, errs[0]
 	}

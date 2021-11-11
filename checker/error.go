@@ -96,7 +96,9 @@ func (e *_error) note(f string, vs ...interface{}) note {
 
 func (e *_error) done(c *checker) {
 	var s strings.Builder
-	s.WriteString(c.importer.Files().Location(e.loc).String())
+	l := c.importer.Files().Location(e.loc)
+	l.Path = strings.TrimPrefix(l.Path, c.trimErrorPathPrefix)
+	s.WriteString(l.String())
 	s.WriteString(": ")
 	s.WriteString(e.msg)
 	i := 0
@@ -118,7 +120,9 @@ func (e *_error) buildString(c *checker, mustIdent bool, depth int, s *strings.B
 	s.WriteString(e.msg)
 	if e.loc != (loc.Loc{}) {
 		s.WriteString(" (")
-		s.WriteString(c.importer.Files().Location(e.loc).String())
+		l := c.importer.Files().Location(e.loc)
+		l.Path = strings.TrimPrefix(l.Path, c.trimErrorPathPrefix)
+		s.WriteString(l.String())
 		s.WriteRune(')')
 	}
 	mustIdent = mustIdent || len(e.notes) > 1
