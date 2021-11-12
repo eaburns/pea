@@ -3,6 +3,7 @@ package flowgraph_test
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -153,7 +154,16 @@ func checkFuncInvariants(t *testing.T, f *flowgraph.FuncDef) {
 					t.Errorf("use of non-function value x%d: %s", v.Num(), r)
 					continue
 				}
-				uses[v] = append(uses[v], r)
+				found := false
+				for _, x := range uses[v] {
+					if x == r {
+						found = true
+						break
+					}
+				}
+				if !found {
+					uses[v] = append(uses[v], r)
+				}
 			}
 		}
 	}
@@ -192,10 +202,21 @@ func containsBlock(bs []*flowgraph.BasicBlock, b *flowgraph.BasicBlock) bool {
 	return false
 }
 
+func instrsDebugString(instrs []flowgraph.Instruction) string {
+	var b strings.Builder
+	b.WriteString("[\n")
+	for i, r := range instrs {
+		fmt.Fprintf(&b, "	%d: %s\n", i, r)
+	}
+	b.WriteString("]")
+	return b.String()
+}
+
 func checkValueInvariants(t *testing.T, seenUses []flowgraph.Instruction, v flowgraph.Value) {
 	usedBy := v.UsedBy()
 	if len(usedBy) != len(seenUses) {
-		t.Errorf("%s\nseenUses=%s\nusedBy=%s", v, seenUses, usedBy)
+		t.Errorf("%s\nseenUses=%s\nusedBy=%s", v,
+			instrsDebugString(seenUses), instrsDebugString(usedBy))
 		return
 	}
 	for _, ub := range usedBy {
@@ -207,7 +228,8 @@ func checkValueInvariants(t *testing.T, seenUses []flowgraph.Instruction, v flow
 			}
 		}
 		if !found {
-			t.Errorf("%s\nseenUses=%s\nusedBy=%s", v, seenUses, usedBy)
+			t.Errorf("%s\nseenUses=%s\nusedBy=%s", v,
+				instrsDebugString(seenUses), instrsDebugString(usedBy))
 			return
 		}
 	}

@@ -3486,7 +3486,7 @@ func TestChurch(t *testing.T) {
 	const src = `
 		Type num (num){num}
 		Func zero() num { return: (f){ (x){x} } }
-		Func next(n num) num { return: (f){ (x){ n(f(x)) } } }
+		Func next(n num) num { return: (f){ (x){ f(n(f)(x)) } } }
 		Func +(n num, m num) num { return: (f){ (x){ m(f)(n(f)(x)) } } }
 		Func *(n num, m num) num { return: (f){ (x){ m(n(f))(x) } } }
 		Func ^(n num, m num) num { return: m(n) }
