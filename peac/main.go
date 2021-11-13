@@ -38,15 +38,40 @@ func main() {
 		usage("-root is required")
 	case len(args) == 0:
 		usage("a module path is required")
-	case len(args) > 1:
-		usage("only one module path is supported")
 	}
+
 	r := mod.NewRoot(*root)
-	m, err := r.Get(args[0])
-	if err != nil {
-		fail(fmt.Errorf("%s", err))
+	var mods []*mod.Mod
+	var src []string
+	for _, a := range args {
+		if isSourceFile(a) {
+			src = append(src, a)
+		} else {
+			m, err := r.Get(a)
+			if err != nil {
+				fail(fmt.Errorf("%s", err))
+			}
+			mods = append(mods, m)
+		}
 	}
-	compile(m)
+	if len(src) > 0 && len(mods) > 0 {
+		fail(fmt.Errorf("mixture of source files and modules is not supported"))
+	}
+	if len(src) > 0 {
+		m, err := r.GetMainBySource(src)
+		if err != nil {
+			fail(fmt.Errorf("%s", err))
+		}
+		mods = append(mods, m)
+	}
+	for _, m := range mods {
+		compile(m)
+		if len(src) > 0 {
+			// This is a temporary main module, built from a list of source.
+			// Remove its .a file, since it will not be linked by other modules.
+			os.Remove(binFile(m) + ".a")
+		}
+	}
 }
 
 func usage(msg string) {
@@ -54,6 +79,11 @@ func usage(msg string) {
 	fmt.Printf("peac [flags] -root <root_path> <module_path>\n")
 	flag.PrintDefaults()
 	os.Exit(1)
+}
+
+func isSourceFile(path string) bool {
+	ext := filepath.Ext(path)
+	return ext == ".pea" || ext == ".ll" || ext == ".c"
 }
 
 func binFile(m *mod.Mod) string {
