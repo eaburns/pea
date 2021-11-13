@@ -1,6 +1,7 @@
 package mod
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -33,7 +34,49 @@ func NewRoot(rootDir string) *Root {
 	}
 }
 
+// GetMainBySource returns a new module with the path "main".
+// Rather than being specified by its module root directory,
+// the module is specified by listing its source files instead.
+// It is an error if srcFiles is empty.
+// The Path of the module is "main",
+// the FullPath for the module is the directory of srcFiles[0],
+// and the SrcFiles is srcFiles.
+//
+// The *Mod is unique; calls to GetMainBySource always return a new *Mod.
+// This differs from Get, which will return the same *Mod
+// when called with the same Root and modPath.
+func (r *Root) GetMainBySource(srcFiles []string) (*Mod, error) {
+	if len(srcFiles) == 0 {
+		return nil, errors.New("no source files")
+	}
+	// Make a copy of the original slice.
+	srcFiles = append([]string{}, srcFiles...)
+	sort.Strings(srcFiles)
+	imports, err := importPaths(srcFiles)
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(imports)
+	mod := &Mod{
+		Root:     r,
+		Path:     "main",
+		FullPath: filepath.Dir(srcFiles[0]),
+		SrcFiles: srcFiles,
+	}
+	path := []string{"main"}
+	onPath := map[string]bool{"main": true}
+	for _, imp := range imports {
+		m, err := r.get(path, onPath, imp)
+		if err != nil {
+			return nil, err
+		}
+		mod.Deps = append(mod.Deps, m)
+	}
+	return mod, nil
+}
+
 // Get returns the module at a given module path.
+// All calls to Get with the same *Root and modPath return the same *Mod.
 func (r *Root) Get(modPath string) (*Mod, error) {
 	return r.get([]string{}, make(map[string]bool), modPath)
 }
