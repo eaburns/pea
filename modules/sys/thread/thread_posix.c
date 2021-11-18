@@ -2,22 +2,19 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "libpea.h"
+
 static void destroy_mutex(void* mu, void* unused) {
 	pthread_mutex_destroy(mu);
 }
 
 static void panic_errno(const char* fun, int en, const char* file, int line) {
-	extern void pea_panic_cstring(const char*, const char*, int32_t);
-
 	char buf[512];
 	strerror_r(en, buf, 512);
 	pea_panic_cstring(buf, file, line);
 }
 
 void sys__thread__mutex(void** ret) {
-	extern void* pea_malloc(int);
-	extern void pea_register_finalizer(void*, void(*)(void*, void*), void*);
-
 	pthread_mutexattr_t mutex_attr;
 	pthread_mutexattr_init(&mutex_attr);
 	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_ERRORCHECK);

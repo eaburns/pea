@@ -1,6 +1,5 @@
-#define UNW_LOCAL_ONLY
 #include <fcntl.h>
-#include <gc.h>
+#define UNW_LOCAL_ONLY
 #include <libunwind.h>
 #include <pthread.h>
 #include <setjmp.h>
@@ -12,66 +11,98 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-// pea_malloc returns a pointer to a new object of the given number of bytes.
+#include "libpea.h"
+
+// pea_print_stack prints the stack trace to standard output.
+static void pea_print_stack();
+
+// pea_abort prints the stack trace and then aborts the program.
+static void pea_abort();
+
+// abort_errno prints the errno error string and calls pea_abort.
+static void abort_errno(const char *msg, int err);
+
+// panic_test_output writes the data to the test panic output file
+// if a test is currently running, otherwise does nothing.
+static void panic_test_output(const char* data, int n);
+
 void* pea_malloc(int bytes) {
 	return GC_MALLOC(bytes);
 }
 
-// pea_malloc_no_scan returns a pointer
-// to a new object of the given number of bytes.
-// The object will not be scanned by the garbage collector,
-// so it must not contain pointers to allocated memory.
 void* pea_malloc_no_scan(int bytes) {
 	return GC_MALLOC_ATOMIC(bytes);
 }
 
-// pea_register_finalizer registers fn to run when obj is collected.
-// The fn function is called with obj as the first argument and data as the second.
-//
-// All the various caveats of when to not use finalizers apply:
-// this is provided for compatibility with libraries that have explicitly managed memory.
-// For example: pthread_mutex_destroy must be called before the mutex is freed or memory will leak.
 void pea_register_finalizer(void* obj, void(*fn)(void*, void*), void* data) {
 	void (*old_fn)(void*, void*);
 	void *old_data;
 	GC_REGISTER_FINALIZER(obj, fn, data, &old_fn, &old_data);
 }
 
-// pea_print_stack prints the stack trace to standard output.
-void pea_print_stack() {
-	unw_context_t uc;
-	unw_getcontext(&uc);
-	unw_cursor_t cursor;
-	unw_init_local(&cursor, &uc);
-	int i = 0;
-	puts("Stack:");
-	while (unw_step(&cursor) > 0) {
-		char buf[512];
-		unw_word_t offs;
-		if (unw_get_proc_name(&cursor, buf, 512, &offs) < 0) {
-			break;
-		}
-		printf("%3d: %s+0x%lx\n", i, buf, (unsigned long) offs);
-		i++;
+struct pea_string {
+	uintptr_t length;
+	const char* data;
+};
+
+// pea_print prints a string to standard output.
+void pea_print(struct pea_string* pstr) {
+	for (int i = 0;  i< pstr->length; i++) {
+		putchar(pstr->data[i]);
 	}
-}
-
-void pea_abort() {
-	pea_print_stack();
 	fflush(stdout);
-	abort();
 }
 
-static void abort_errno(const char *msg, int err) {
-	puts("Panic: ");
-	char buf[256];
-	int n = strerror_r(err, buf, 256);
-	if (n != 0) {
-		puts(msg);
-	} else {
-		printf("%s: %s\n", msg, buf);
+// pea_print_int prints an int to standand output.
+// This is a temporary debugging function.
+void pea_print_int(int64_t i) {
+	printf("%ld", (long) i);
+}
+
+// pea_panic prints a sting and stack trace to standard output
+// and aborts the program.
+void pea_panic(struct pea_string* pstr, const char* file, int32_t line) {
+	panic_test_output(&pstr->data[0], pstr->length);
+	printf("Panic: ");
+	pea_print(pstr);
+	putchar('\n');
+	if (file != NULL) {
+		printf("%s:%d\n", file, line);
 	}
 	pea_abort();
+}
+
+void pea_panic_cstring(const char* str, const char* file, int32_t line) {
+	panic_test_output(str, strlen(str));
+	printf("Panic: %s\n", str);
+	if (file != NULL) {
+		printf("%s:%d\n", file, line);
+	}
+	pea_abort();
+}
+
+// pea_index_oob_string returns an index-out-of-bounds panic string.
+struct pea_string* pea_index_oob_string(intptr_t index, intptr_t length) {
+	const int buf_size = 500;
+	char *buf = pea_malloc(buf_size);
+	int n = snprintf(buf, buf_size, "index out of bounds: index=%ld, length=%ld",
+		(long int) index, (long int) length);
+	struct pea_string *pstr = pea_malloc(sizeof(struct pea_string));
+	pstr->data = buf;
+	pstr->length = n >= buf_size ? buf_size - 1 : n;
+	return pstr;
+}
+
+// pea_slice_oob_string returns a slice-out-of-bounds panic string.
+struct pea_string* pea_slice_oob_string(intptr_t start, intptr_t end, intptr_t length) {
+	const int buf_size = 500;
+	char *buf = pea_malloc(buf_size);
+	int n = snprintf(buf, buf_size, "slice out of bounds: start=%ld, end=%ld, length=%ld",
+		(long int) start, (long int) end, (long int) length);
+	struct pea_string *pstr = pea_malloc(sizeof(struct pea_string));
+	pstr->data = buf;
+	pstr->length = n >= buf_size ? buf_size - 1 : n;
+	return pstr;
 }
 
 struct frame {
@@ -134,43 +165,6 @@ void pea_long_return(void* frame_handle) {
 	longjmp(frame->jmp, 1);
 }
 
-struct pea_string {
-	uintptr_t length;
-	const char* data;
-};
-
-// pea_print prints a string to standard output.
-void pea_print(struct pea_string* pstr) {
-	for (int i = 0;  i< pstr->length; i++) {
-		putchar(pstr->data[i]);
-	}
-	fflush(stdout);
-}
-
-// pea_index_oob_string returns an index-out-of-bounds panic string.
-struct pea_string* pea_index_oob_string(intptr_t index, intptr_t length) {
-	const int buf_size = 500;
-	char *buf = pea_malloc(buf_size);
-	int n = snprintf(buf, buf_size, "index out of bounds: index=%ld, length=%ld",
-		(long int) index, (long int) length);
-	struct pea_string *pstr = pea_malloc(sizeof(struct pea_string));
-	pstr->data = buf;
-	pstr->length = n >= buf_size ? buf_size - 1 : n;
-	return pstr;
-}
-
-// pea_slice_oob_string returns a slice-out-of-bounds panic string.
-struct pea_string* pea_slice_oob_string(intptr_t start, intptr_t end, intptr_t length) {
-	const int buf_size = 500;
-	char *buf = pea_malloc(buf_size);
-	int n = snprintf(buf, buf_size, "slice out of bounds: start=%ld, end=%ld, length=%ld",
-		(long int) start, (long int) end, (long int) length);
-	struct pea_string *pstr = pea_malloc(sizeof(struct pea_string));
-	pstr->data = buf;
-	pstr->length = n >= buf_size ? buf_size - 1 : n;
-	return pstr;
-}
-
 // test_panic_fd, if non-negative, as a file descriptor
 // to copy panic messages to in implementation of test failure output.
 // This is non-negative if executing a test.
@@ -213,35 +207,6 @@ static void panic_test_output(const char* data, int n) {
 		fprintf(test_panic_file, "%s:%d\n", test_file_name, test_file_line);
 	}
 	fwrite(data, 1, n, test_panic_file);
-}
-
-// pea_panic prints a sting and stack trace to standard output
-// and aborts the program.
-void pea_panic(struct pea_string* pstr, const char* file, int32_t line) {
-	panic_test_output(&pstr->data[0], pstr->length);
-	printf("Panic: ");
-	pea_print(pstr);
-	putchar('\n');
-	if (file != NULL) {
-		printf("%s:%d\n", file, line);
-	}
-	pea_abort();
-}
-
-// pea_panic_cstring is like pea_panic, but takes a C-style string.
-void pea_panic_cstring(const char* str, const char* file, int32_t line) {
-	panic_test_output(str, strlen(str));
-	printf("Panic: %s\n", str);
-	if (file != NULL) {
-		printf("%s:%d\n", file, line);
-	}
-	pea_abort();
-}
-
-// pea_print_int prints an int to standand output.
-// This is a temporary debugging function.
-void pea_print_int(int64_t i) {
-	printf("%ld", (long) i);
 }
 
 static void print_test_output(int fd) {
@@ -335,4 +300,40 @@ int32_t pea_run_test(void(*test)(), const char* name) {
 	close(out);
 	unlink(out_file);
 	return 1;
+}
+
+static void pea_abort() {
+	pea_print_stack();
+	fflush(stdout);
+	abort();
+}
+
+static void abort_errno(const char *msg, int err) {
+	puts("Panic: ");
+	char buf[256];
+	int n = strerror_r(err, buf, 256);
+	if (n != 0) {
+		puts(msg);
+	} else {
+		printf("%s: %s\n", msg, buf);
+	}
+	pea_abort();
+}
+
+static void pea_print_stack() {
+	unw_context_t uc;
+	unw_getcontext(&uc);
+	unw_cursor_t cursor;
+	unw_init_local(&cursor, &uc);
+	int i = 0;
+	puts("Stack:");
+	while (unw_step(&cursor) > 0) {
+		char buf[512];
+		unw_word_t offs;
+		if (unw_get_proc_name(&cursor, buf, 512, &offs) < 0) {
+			break;
+		}
+		printf("%3d: %s+0x%lx\n", i, buf, (unsigned long) offs);
+		i++;
+	}
 }

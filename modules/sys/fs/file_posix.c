@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "libpea.h"
+
 struct pea_string {
 	uintptr_t length;
 	char* data;
@@ -107,8 +109,6 @@ void sys__fs__closedir(void* dir, int32_t *ret) {
 }
 
 void sys__fs__readdir(DIR* dir, struct pea_string* str, int32_t *ret) {
-	extern void* pea_malloc(int);
-
 	struct dirent* ent = NULL;
 	for ( ; ; ) {
 		errno = 0;
