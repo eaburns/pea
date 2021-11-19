@@ -28,3 +28,67 @@ test new_thread {
 	},
 	assert_true: passed,
 }
+
+// A condition allows threads to wait until an event occurs.
+//
+// Conditions work in conjuction with a mutex.
+// A thread waiting for an event that is protected by a mutex
+// will lock the mutex and check for the event.
+// If the event has occcurred, it can continue on.
+// If the event has not occurred, the thread can call wait
+// on the condition with the mutex to block and then re-check the event.
+//
+// Example:
+//
+// 	var mu := mutex :: mutex()
+// 	var cond := condition :: condition()
+// 	func consumer() {
+// 		lock(mu),
+// 		while: {!event()} do: {wait(cond, mu)},
+// 		… // do the job; mu is held
+// 		unlock(mu),
+// 	}
+// 	func producer() {
+// 		produce_event(),
+// 		signal(cond), // or broadcast(cond),
+// 	}
+// Optionally signaler can hold the mutex, if needed:
+// 	func producer2() {
+// 		lock(mu),
+// 		produce_event(),
+// 		signal(cond), // or broadcast(cond),
+// 		unlock(mu),
+// 	}
+
+Type condition := _condition
+
+test cond_wait_signal {
+	passed := false,
+	mu := mutex(),
+	cond := condition(),
+	new((){
+		lock(mu),
+		passed := true,
+		signal(cond),
+		unlock(mu),
+	}),
+	lock(mu),
+	while: {!passed} do: { wait(cond, mu) },
+	assert_true: passed,
+}
+
+test cond_wait_broadcast {
+	passed := false,
+	mu := mutex(),
+	cond := condition(),
+	new((){
+		lock(mu),
+		passed := true,
+		broadcast(cond),
+		unlock(mu),
+	}),
+	lock(mu),
+	while: {!passed} do: { wait(cond, mu) },
+	assert_true: passed,
+}
+

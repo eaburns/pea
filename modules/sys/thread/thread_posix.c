@@ -80,3 +80,38 @@ void sys__thread__unlock(void* mu) {
 		panic_errno("pthread_mutex_unlock", en, __FILE__, __LINE__);
 	}
 }
+
+static void destroy_cond(void* cond, void* unused) {
+	pthread_cond_destroy(cond);
+}
+
+void sys__thread__condition(void** ret) {
+	pthread_cond_t* cond = pea_malloc(sizeof(pthread_cond_t));
+	int en = pthread_cond_init(cond, NULL);
+	if (en != 0) {
+		panic_errno("pthread_cond_init", en, __FILE__, __LINE__);
+	}
+	pea_register_finalizer(cond, destroy_cond, NULL);
+	*ret = cond;
+}
+
+void sys__thread__wait(void* cond, void* mu) {
+	int en = pthread_cond_wait(cond, mu);
+	if (en != 0) {
+		panic_errno("pthread_cond_wait", en, __FILE__, __LINE__);
+	}
+}
+
+void sys__thread__signal(void* cond) {
+	int en = pthread_cond_signal(cond);
+	if (en != 0) {
+		panic_errno("pthread_cond_signal", en, __FILE__, __LINE__);
+	}
+}
+
+void sys__thread__broadcast(void* cond) {
+	int en = pthread_cond_broadcast(cond);
+	if (en != 0) {
+		panic_errno("pthread_cond_broadcast", en, __FILE__, __LINE__);
+	}
+}

@@ -15,3 +15,23 @@ Func lock(_ mutex)
 // Unlocks the mutex.
 // If the mutex is not locked by the current thread, unlock panics.
 Func unlock(_ mutex)
+
+// TODO: make _condition use &[.] once LLVM output bug is fixed.
+type _condition &int
+
+// Returns a new condition.
+Func condition() condition
+
+// Unlocks the mutex and blocks the calling thread
+// until another thread signals or broadcast the condition,
+// at which time waiting thread unblocks, re-acquires the mutex,
+// and wait returns.
+//
+// TODO: replace 'mu' with '_' once LLVM dup ident bug with _ is fixed.
+Func wait(_ condition, mu mutex)
+
+// Wakes up a single thread that is waiting.
+Func signal(_ condition)
+
+// Wakes up all threads that are waiting.
+Func broadcast(_ condition)
