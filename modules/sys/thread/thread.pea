@@ -1,8 +1,30 @@
-// A mutex is a mutex lock.
+Import "assert"
+Import "basic"
+
+// A mutual exclusion lock.
 Type mutex := _mutex
 
 test lock_unlock {
 	mu := mutex(),
 	lock(mu),
 	unlock(mu),
+}
+
+test new_thread {
+	passed := false,
+	mu := mutex(),
+	new((){
+		lock(mu),
+		passed := true,
+		unlock(mu),
+	}),
+	while: {
+		lock(mu),
+		p := passed,
+		unlock(mu),
+		!p
+	} do: {
+		// nothing
+	},
+	assert_true: passed,
 }

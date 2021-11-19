@@ -2,16 +2,55 @@
 #include <stdio.h>
 #include <string.h>
 
+// libpea.h should be included after pthread.h
+// because it redefines some pthread functions
+// to make them compatible with the garbage collector.
 #include "libpea.h"
 
-static void destroy_mutex(void* mu, void* unused) {
-	pthread_mutex_destroy(mu);
-}
+struct pea_func {
+	void (*func)(void*);
+	void *capture;
+};
 
 static void panic_errno(const char* fun, int en, const char* file, int line) {
 	char buf[512];
 	strerror_r(en, buf, 512);
 	pea_panic_cstring(buf, file, line);
+}
+
+static void* thread_start(void* pea_func) {
+	struct pea_func *f = pea_func;
+	f->func(f->capture);
+	pthread_exit(NULL);
+	return NULL;
+}
+
+// The argument is passed by-value.
+// We need to copy it to the heap before passing it to the thread.
+void sys__thread__new(struct pea_func* f_by_value) {
+	pthread_attr_t attr;
+	int en = pthread_attr_init(&attr);
+	if (en != 0) {
+		panic_errno("pthread_attr_init", en, __FILE__, __LINE__);
+	}
+	en = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	if (en != 0) {
+		pthread_attr_destroy(&attr);
+		panic_errno("pthread_attr_setdetachstate", en, __FILE__, __LINE__);
+	}
+	pthread_t thread_id;
+	// Copy the argument value to the heap before passing it to the thread.
+	struct pea_func *f = pea_malloc(sizeof(struct pea_func));
+	*f = *f_by_value;
+	en = pthread_create(&thread_id, &attr, thread_start, f);
+	if (en != 0) {
+		pthread_attr_destroy(&attr);
+		panic_errno("pthread_create", en, __FILE__, __LINE__);
+	}
+}
+
+static void destroy_mutex(void* mu, void* unused) {
+	pthread_mutex_destroy(mu);
 }
 
 void sys__thread__mutex(void** ret) {

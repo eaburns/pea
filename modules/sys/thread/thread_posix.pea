@@ -1,3 +1,7 @@
+// Creates and starts a new thread executing function f.
+// When f returns, the thread terminates.
+Func new(f (){})
+
 // TODO: make _mutex use &[.] once LLVM output bug is fixed.
 type _mutex &int
 
