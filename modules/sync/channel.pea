@@ -1,0 +1,111 @@
+Import "assert"
+Import "basic"
+import "container/ring_buffer"
+import "print"
+import "//sys/thread"
+
+// A thread-safe, first-in-first-out channel.
+Type T channel := T _channel
+
+type T _channel &[
+	.mutex sys#thread#mutex,
+	.has_value_cond sys#thread#condition,
+	.has_space_cond sys#thread#condition,
+	.limit int, // 0=unlimited, <0=closed.
+	.data T ring_buffer#ring_buffer
+]
+
+func .closed(ch T channel) bool { return: ch.limit < 0 }
+
+// Returns a new, empty channel with infinite buffer.
+// Sending on the channel will never block.
+Func channel() T channel {
+	return: channel(0)
+}
+
+// Returns a new, empty channel.
+//
+// If the limit is non-positive, the channel has an unlimited buffer,
+// and sending on the channel will not block on receivers.
+//
+// If the limit is positive, the channel has a finite buffer,
+// and sending on the channel will block if the buffer is full
+// until space is available for the send.
+Func channel(limit int) T channel {
+	return: [
+		.mutex sys#thread#mutex(),
+		.has_value_cond sys#thread#condition(),
+		.has_space_cond sys#thread#condition(),
+		.limit limit < 0 true? {0} false? {limit},
+		.data ring_buffer#new(),
+	]
+}
+
+// Closes the channel.
+// Closing an already closed channel causes a runtime panic.
+Func close:(ch T channel) {
+	lock(ch.mutex),
+	if: ch.closed then: {
+		unlock(ch.mutex),
+		panic("closing a closed channel")
+	},
+	ch.limit := -1, // closed
+	unlock(ch.mutex),
+}
+
+// Sends t to the channel.
+// Sending to a closed channel causes a runtime panic.
+Func send:(ch T channel, t T) {
+	lock(ch.mutex),
+	if: ch.closed then: {
+		unlock(ch.mutex),
+		panic("sending to a closed channel")
+	},
+	while: {ch.limit > 0 && {ch.data.length >= ch.limit}} do: {
+		wait(ch.has_space_cond, ch.mutex)
+	},
+	ch.data push_back: t,
+	signal(ch.has_value_cond),
+	unlock(ch.mutex),
+}
+
+// Sends t to the channel.
+// Sending to a closed channel causes a runtime panic.
+Func <-(ch T channel, t T) {
+	ch send: t
+}
+
+// Receives the next value from the channel
+// or none() if there are no values and the channel is closed.
+Func receive(ch T channel) T option {
+	lock(ch.mutex),
+	while: {!ch.closed && {ch.data.length = 0}} do: {
+		wait(ch.has_value_cond, ch.mutex)
+	},
+	ret := pop_front(ch.data),
+	signal(ch.has_space_cond),
+	unlock(ch.mutex),
+	return: ret
+}
+
+// Receives the next value from the channel
+// or none() if there are no values and the channel is closed.
+Func <-(ch T channel) T option {
+	return: receive(ch)
+}
+
+test channel {
+	ch := int channel :: channel(),
+	sys#thread#new((){
+		for: 0 to: 9 do: (i){
+			ch <- i
+		},
+		close: ch
+	}),
+	next := 0,
+	while: {<-ch} some: (received){
+		assert: received equals: next,
+		++next
+	},
+	assert: next equals: 10
+}
