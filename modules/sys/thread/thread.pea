@@ -4,6 +4,14 @@ Import "basic"
 // A mutual exclusion lock.
 Type mutex := _mutex
 
+// Blocks until the mutex is available and then locks the mutex.
+// If the mutex is already locked by the current thread, lock panics.
+Func lock:(mu mutex) { lock(mu) }
+
+// Unlocks the mutex.
+// If the mutex is not locked by the current thread, unlock panics.
+Func unlock:(mu mutex) { unlock(mu) }
+
 test lock_unlock {
 	mu := mutex(),
 	lock(mu),
@@ -43,24 +51,35 @@ test new_thread {
 // 	var mu := mutex :: mutex()
 // 	var cond := condition :: condition()
 // 	func consumer() {
-// 		lock(mu),
-// 		while: {!event()} do: {wait(cond, mu)},
+// 		lock: mu,
+// 		while: {!event()} do: { wait: cond with: mu },
 // 		… // do the job; mu is held
-// 		unlock(mu),
+// 		unlock: mu,
 // 	}
 // 	func producer() {
 // 		produce_event(),
-// 		signal(cond), // or broadcast(cond),
+// 		signal: cond, // or broadcast(cond),
 // 	}
 // Optionally signaler can hold the mutex, if needed:
 // 	func producer2() {
-// 		lock(mu),
+// 		lock:mu,
 // 		produce_event(),
-// 		signal(cond), // or broadcast(cond),
-// 		unlock(mu),
+// 		signal: cond, // or broadcast: cond,
+// 		unlock:mu,
 // 	}
-
 Type condition := _condition
+
+// Unlocks the mutex and blocks the calling thread
+// until another thread signals or broadcast the condition,
+// at which time waiting thread unblocks, re-acquires the mutex,
+// and wait returns.
+Func wait:with:(cond condition, mu mutex) { wait(cond, mu) }
+
+// Wakes up a single thread that is waiting.
+Func signal:(cond condition) { signal(cond) }
+
+// Wakes up all threads that are waiting.
+Func broadcast:(cond condition) { broadcast(cond) }
 
 test cond_wait_signal {
 	passed := false,

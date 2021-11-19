@@ -44,29 +44,29 @@ Func channel(limit int) T channel {
 // Closes the channel.
 // Closing an already closed channel causes a runtime panic.
 Func close:(ch T channel) {
-	lock(ch.mutex),
+	lock: ch.mutex,
 	if: ch.closed then: {
-		unlock(ch.mutex),
+		unlock: ch.mutex,
 		panic("closing a closed channel")
 	},
 	ch.limit := -1, // closed
-	unlock(ch.mutex),
+	unlock: ch.mutex,
 }
 
 // Sends t to the channel.
 // Sending to a closed channel causes a runtime panic.
 Func send:(ch T channel, t T) {
-	lock(ch.mutex),
+	lock: ch.mutex,
 	if: ch.closed then: {
-		unlock(ch.mutex),
+		unlock: ch.mutex,
 		panic("sending to a closed channel")
 	},
 	while: {ch.limit > 0 && {ch.data.length >= ch.limit}} do: {
-		wait(ch.has_space_cond, ch.mutex)
+		wait: ch.has_space_cond with: ch.mutex
 	},
 	ch.data push_back: t,
-	signal(ch.has_value_cond),
-	unlock(ch.mutex),
+	signal: ch.has_value_cond,
+	unlock: ch.mutex,
 }
 
 // Sends t to the channel.
@@ -78,13 +78,13 @@ Func <-(ch T channel, t T) {
 // Receives the next value from the channel
 // or none() if there are no values and the channel is closed.
 Func receive(ch T channel) T option {
-	lock(ch.mutex),
+	lock: ch.mutex,
 	while: {!ch.closed && {ch.data.length = 0}} do: {
-		wait(ch.has_value_cond, ch.mutex)
+		wait: ch.has_value_cond with: ch.mutex
 	},
 	ret := pop_front(ch.data),
-	signal(ch.has_space_cond),
-	unlock(ch.mutex),
+	signal: ch.has_space_cond,
+	unlock: ch.mutex,
 	return: ret
 }
 
