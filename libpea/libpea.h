@@ -7,6 +7,7 @@ This header file may re-define some pthread functions to intercept their calls i
 #ifndef _LIBPEA_H_
 #define _LIBPEA_H_
 
+#define GC_THREADS
 #include <gc.h>
 #include <stdint.h>
 
