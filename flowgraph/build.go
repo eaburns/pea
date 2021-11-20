@@ -1311,7 +1311,6 @@ func (bb *blockBuilder) buildNewArray(c *checker.Call) (*blockBuilder, Value) {
 }
 
 func (bb *blockBuilder) buildIndex(call *checker.Call) (*blockBuilder, Value) {
-	fun := call.Func.(*checker.Builtin)
 	bb, base := bb.expr(call.Args[0])
 	bb, index := bb.expr(call.Args[1])
 	arrayType := base.Type().(*AddrType).Elem.(*StructType)
@@ -1333,20 +1332,19 @@ func (bb *blockBuilder) buildIndex(call *checker.Call) (*blockBuilder, Value) {
 
 	data := bb.field(base, arrayType.Fields[1])
 	elem := bb.index(bb.load(data), index)
-	switch typ := fun.Parms[0].(type) {
-	case *checker.ArrayType:
+
+	retType := bb.buildType(call.T).(*AddrType)
+
+	// If the return type is a double pointer, this is an array index.
+	if _, ok := retType.Elem.(*AddrType); ok {
 		a := bb.alloc(elem.Type())
 		bb.store(a, elem)
 		return bb, a
-	case *checker.BasicType:
-		if typ.Kind != checker.String {
-			break
-		}
-		a := bb.alloc(&IntType{Size: 8, Unsigned: true})
-		bb.store(a, bb.load(elem))
-		return bb, a
 	}
-	panic(fmt.Sprintf("bad Index arg type: %s", fun.Parms[0]))
+	// Otherwise, this is a string index.
+	a := bb.alloc(retType.Elem)
+	bb.store(a, bb.load(elem))
+	return bb, a
 }
 
 func (bb *blockBuilder) buildSlice(call *checker.Call) (*blockBuilder, Value) {

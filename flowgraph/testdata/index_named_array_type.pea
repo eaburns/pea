@@ -1,0 +1,9 @@
+// 104
+func main() {
+	x := foo :: [104],
+	print_int(int :: x[0])
+}
+
+type foo [int64]
+
+func print_int(_ int)
