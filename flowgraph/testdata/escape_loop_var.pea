@@ -1,0 +1,19 @@
+// 012
+func main() {
+	fs := [(){}] :: [(){}, (){}, (){}],
+	for: 0 to: fs.length-1 do: (i){
+		fs[i] := (){print_int(i)},
+	},
+	for: 0 to: fs.length-1 do: (j){
+		fs[j]()
+	},
+}
+
+Func for:to:do:(start int, end int, f (int){}) {
+	start <= end true? {
+		f(start),
+		for: start + 1 to: end do: f
+	}
+}
+
+func print_int(_ int)
