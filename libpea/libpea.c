@@ -170,6 +170,9 @@ void pea_long_return(void* frame_handle) {
 // This is non-negative if executing a test.
 static int test_panic_fd = -1;
 
+// test_file_mutex guards test_file_name and test_file_line.
+static pthread_mutex_t test_file_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 // test_file_name is the file name of the current test definition.
 // This is non-NULL if locations were enabled at compilation time
 // and if currently executing a function called from a test body.
@@ -191,8 +194,10 @@ static int32_t test_file_line = 0;
 // TODO: remove the pea_set_test_call_loc mechanism
 // once unwinding is source-location aware.
 void pea_set_test_call_loc(const char* file, int32_t line) {
+	pthread_mutex_lock(&test_file_mutex);
 	test_file_name = file;
 	test_file_line = line;
+	pthread_mutex_unlock(&test_file_mutex);
 }
 
 static void panic_test_output(const char* data, int n) {
@@ -203,9 +208,11 @@ static void panic_test_output(const char* data, int n) {
 	if (test_panic_file == NULL) {
 		abort_errno("failed to open the test panic filedescr", errno);
 	}
+	pthread_mutex_lock(&test_file_mutex);
 	if (test_file_name != NULL) {
 		fprintf(test_panic_file, "%s:%d\n", test_file_name, test_file_line);
 	}
+	pthread_mutex_unlock(&test_file_mutex);
 	fwrite(data, 1, n, test_panic_file);
 }
 
