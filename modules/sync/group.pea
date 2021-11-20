@@ -1,0 +1,117 @@
+Import "assert"
+Import "basic"
+import "container/ring_buffer"
+import "container/vector"
+import "print"
+import "//sys/thread"
+
+// A group of threads.
+Type group := _group
+
+type _group &[
+	.mutex sys#thread#mutex,
+	.cond sys#thread#condition,
+	.errors error ring_buffer#ring_buffer,
+	.count int,
+]
+
+// Returns a new, empty group.
+Func group() group {
+	return: [
+		.mutex sys#thread#mutex(),
+		.cond sys#thread#condition(),
+		.errors ring_buffer#new(),
+		.count 0,
+	]
+}
+
+// Starts a new thread in the group gr executing function f.
+// If the thread returns an error, wait will unblock and return the error.
+Func add:(gr group, f (){error option}) {
+	lock: gr.mutex,
+	++gr.count,
+	unlock: gr.mutex,
+
+	sys#thread#new((){
+		err_opt := f(),
+
+		lock: gr.mutex,
+		if: err_opt some: (err) {
+			gr.errors push_back: err
+		},
+		--gr.count,
+		if: is_some(err_opt) || gr.count = 0 then: {
+			signal: gr.cond
+		},
+		unlock: gr.mutex
+	})
+}
+
+// Waits for either all threads to finish,
+// in which case none() is returned,
+// or for the next thread to return an error,
+// in which case the error is returned.
+//
+// Wait may be called repeatedly.
+// If wait returns none(), all threads are complete.
+Func wait(gr group)error option {
+	lock: gr.mutex,
+	while: {gr.errors.length = 0 && gr.count > 0} do: {
+		wait: gr.cond with: gr.mutex
+	},
+	ret := pop_front(gr.errors),
+	unlock: gr.mutex,
+	return: ret
+}
+
+test group_wait_ok {
+	gr := group(),
+	results := [0, 0, 0, 0, 0],
+	for: 0 to: results.length-1 do: (i){
+		gr add: {
+			for: 0 to: i do: (_){
+				++results[i],
+			},
+			error option :: none(),
+		},
+	},
+	assert_none: wait(gr),
+	assert: results equals: [1, 2, 3, 4, 5]
+}
+
+test group_wait_errors {
+	gr := group(),
+	for: 0 to: 6 do: (i){
+		gr add: {
+			error option :: error(print#string(i))
+		},
+	},
+	results := string vector#vector :: new(),
+	while: {wait(gr)} some: (err) {
+		results push_back: message(err)
+	},
+	assert: results unordered_elements: ["0", "1", "2", "3", "4", "5", "6"],
+}
+
+test group_wait_errors_and_non_errors {
+	gr := group(),
+	for: 0 to: 6 do: (i){
+		gr add: {
+			 i % 2 = 0 true? {
+				error option :: error(print#string(i))
+			} false? {
+				none()
+			}
+		},
+	},
+	results := string vector#vector :: new(),
+	while: {wait(gr)} some: (err) {
+		results push_back: message(err)
+	},
+	assert: results unordered_elements: ["0", "2", "4", "6"],
+}
+
+// TODO: move is_some  to be exported in option.pea.
+func is_some(o error option) bool {
+	return: o none? {false} some? (_){true}
+}
