@@ -265,3 +265,144 @@ test for_down_to_do {
 	assert_true: inds[9] = -4,
 	assert_true: inds[10] = -5,
 }
+
+// Calls f with each value from start (inclusive)
+// to end (inclusive) in order in increments of d.
+// If d is non-negative, the values are in increasing order while start <= end.
+// If d is negative, the values are in decreasing order while start >= end.
+Func for:to:by:do:(start int, end int, d int, f (int){}) {
+	if: d >= 0 then: {
+		if: start <= end then: {
+			f(start),
+			for: start+d to: end by: d do: f
+		}
+	} else: {
+		if: start >= end then: {
+			f(start),
+			for: start+d to: end by: d do: f
+		}
+	}
+}
+
+test for_to_by_do_positive {
+	iters := 0,
+	for: 0 to: -1 by: 5 do: (_){++iters},
+	assert_true: iters = 0,
+
+	iters := 0,
+	for: 0 to: 0 by: 5 do: (_){++iters},
+	assert_true: iters = 1,
+
+	iters := 0,
+	for: 0 to: 1 by: 5 do: (_){++iters},
+	assert_true: iters = 1,
+
+	iters := 0,
+	for: -1 to: 1 by: 1 do: (_){++iters},
+	assert_true: iters = 3,
+
+	iters := 0,
+	for: -1 to: 1 by: 2 do: (_){++iters},
+	assert_true: iters = 2,
+
+	iters := 0,
+	inds := [int] :: new(11, -100),
+	for: -5 to: 5 by: 2 do: (i) {
+		inds[iters] := i,
+		++iters,
+	},
+	assert_true: iters = 6,
+	assert_true: inds[0] = -5,
+	assert_true: inds[1] = -3,
+	assert_true: inds[2] = -1,
+	assert_true: inds[3] = 1,
+	assert_true: inds[4] = 3,
+	assert_true: inds[5] = 5,
+
+	iters := 0,
+	inds := [int] :: new(11, -100),
+	for: -5 to: 5 by: 3 do: (i) {
+		inds[iters] := i,
+		++iters,
+	},
+	assert_true: iters = 4,
+	assert_true: inds[0] = -5,
+	assert_true: inds[1] = -2,
+	assert_true: inds[2] = 1,
+	assert_true: inds[3] = 4,
+}
+
+test for_to_by_do_negative {
+	iters := 0,
+	for: -1 to: 0 by: -5 do: (_){++iters},
+	assert_true: iters = 0,
+
+	iters := 0,
+	for: 0 to: 0 by: -5 do: (_){++iters},
+	assert_true: iters = 1,
+
+	iters := 0,
+	for: 1 to: 0 by: -5 do: (_){++iters},
+	assert_true: iters = 1,
+
+	iters := 0,
+	for: 1 to: -1 by: -1 do: (_){++iters},
+	assert_true: iters = 3,
+
+	iters := 0,
+	for: 1 to: -1 by: -2 do: (_){++iters},
+	assert_true: iters = 2,
+
+	iters := 0,
+	inds := [int] :: new(11, -100),
+	for: 5 to: -5 by: -2 do: (i) {
+		inds[iters] := i,
+		++iters,
+	},
+	assert_true: iters = 6,
+	assert_true: inds[0] = 5,
+	assert_true: inds[1] = 3,
+	assert_true: inds[2] = 1,
+	assert_true: inds[3] = -1,
+	assert_true: inds[4] = -3,
+	assert_true: inds[5] = -5,
+
+	iters := 0,
+	inds := [int] :: new(11, -100),
+	for: 5 to: -5 by: -3 do: (i) {
+		inds[iters] := i,
+		++iters,
+	},
+	assert_true: iters = 4,
+	assert_true: inds[0] = 5,
+	assert_true: inds[1] = 2,
+	assert_true: inds[2] = -1,
+	assert_true: inds[3] = -4,
+}
+
+test for_to_by_do_zero {
+	iters := 0,
+	for: 3 to: 2 by: 0 do: (i){
+		++iters
+	},
+	assert_true: iters = 0,
+
+	// Test looping "forever";
+	// this needs to be in a function
+	// so it can return() from the loop
+	// after a while.
+	test_for_to_by_do_zero_forever(),
+}
+
+func test_for_to_by_do_zero_forever() {
+	iters := 0,
+	for: 1 to: 2 by: 0 do: (i){
+		assert_true: i = 1,
+		// It should run forever, but just go for 100 iterations.
+		if: iters = 100 then: {
+			return()
+		},
+		++iters
+	},
+	panic("impossible"),
+}
