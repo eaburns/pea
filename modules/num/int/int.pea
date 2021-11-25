@@ -15,23 +15,63 @@ Const min_int32 := int32 :: -2147483648
 Const max_int64 := int64 :: 9223372036854775807
 Const min_int64 := int64 :: -9223372036854775808
 
+// Returns a uint8 parsed from the string in base 10.
+Func parse_uint8(s string) uint8 or_error {
+	return: parse_uint8(s, 10)
+}
+
+test parse_uint8 {
+	assert: parse_uint8("0") ok: 0,
+	assert: parse_uint8("1") ok: 1,
+	assert: parse_uint8("10") ok: 10,
+	assert: parse_uint8("254") ok: max_uint8-1,
+	assert: parse_uint8("255") ok: max_uint8,
+
+	assert: parse_uint8("") error: "unexpected end of input",
+	assert: parse_uint8("abc") error: "bad digit",
+	assert: parse_uint8("123abc") error: "bad digit",
+	assert: parse_uint8("256") error: "too big",
+}
+
+// Returns a uint16 parsed from the string in base 10.
+Func parse_uint16(s string) uint16 or_error {
+	return: parse_uint16(s, 10)
+}
+
+test parse_uint16 {
+	assert: parse_uint16("0") ok: 0,
+	assert: parse_uint16("1") ok: 1,
+	assert: parse_uint16("10") ok: 10,
+	assert: parse_uint16("65534") ok: max_uint16-1,
+	assert: parse_uint16("65535") ok: max_uint16,
+
+	assert: parse_uint16("") error: "unexpected end of input",
+	assert: parse_uint16("abc") error: "bad digit",
+	assert: parse_uint16("123abc") error: "bad digit",
+	assert: parse_uint16("65536") error: "too big",
+}
+
+// Returns a uint32 parsed from the string in base 10.
+Func parse_uint32(s string) uint32 or_error {
+	return: parse_uint32(s, 10)
+}
+
+test parse_uint32 {
+	assert: parse_uint32("0") ok: 0,
+	assert: parse_uint32("1") ok: 1,
+	assert: parse_uint32("10") ok: 10,
+	assert: parse_uint32("4294967294") ok: max_uint32-1,
+	assert: parse_uint32("4294967295") ok: max_uint32,
+
+	assert: parse_uint32("") error: "unexpected end of input",
+	assert: parse_uint32("abc") error: "bad digit",
+	assert: parse_uint32("123abc") error: "bad digit",
+	assert: parse_uint32("4294967296") error: "too big",
+}
+
 // Returns a uint64 parsed from the string in base 10.
 Func parse_uint64(s string) uint64 or_error {
-	if: s.length = 0 then: {
-		return: error("unexpected end of input")
-	},
-	n := uint64 :: 0,
-	for: 0 to: s.length - 1 do: (i) {
-		if: s[i] < '0' || s[i] > '9' then: {
-			return: error(print#string("bad digit"))
-		},
-		d := uint64 :: s[i] - (uint8 :: '0'),
-		if: n > max_uint64/10 || {n*10 > max_uint64-d} then: {
-			return: error("too big")
-		},
-		n := n*10 + d,
-	},
-	return: ok(n),
+	return: parse_uint64(s, 10)
 }
 
 test parse_uint64 {
@@ -48,3 +88,183 @@ test parse_uint64 {
 	assert: parse_uint64("123abc") error: "bad digit",
 	assert: parse_uint64("18446744073709551616") error: "too big",
 }
+
+// Returns a uint8 parsed from the string in the give base.
+// Base must between 2 and 36 inclusive.
+// Digits greater than 9 are represented by lower-case or capital letters,
+// beginning with a (or A) as 10 through z (or Z) as 35.
+Func parse_uint8(s string, base int) uint8 or_error {
+	return: parse_uint64_max(s, base, uint64 :: max_uint8) ok? (x uint64){
+		ok(uint8 :: x)
+	} error? (err) {
+		error(err)
+	}
+}
+
+test parse_uint8_base16 {
+	assert: parse_uint8("0", 16) ok: 0,
+	assert: parse_uint8("10", 16) ok: 16,
+	assert: parse_uint8("fe", 16) ok: max_uint8-1,
+	assert: parse_uint8("ff", 16) ok: max_uint8,
+	assert: parse_uint8("-1", 16) error: "bad digit",
+	assert: parse_uint8("100", 16) error: "too big",
+}
+
+// Returns a uint16 parsed from the string in the give base.
+// Base must between 2 and 36 inclusive.
+// Digits greater than 9 are represented by lower-case or capital letters,
+// beginning with a (or A) as 10 through z (or Z) as 35.
+Func parse_uint16(s string, base int) uint16 or_error {
+	return: parse_uint64_max(s, base, uint64 :: max_uint16) ok? (x uint64){
+		ok(uint16 :: x)
+	} error? (err) {
+		error(err)
+	}
+}
+
+test parse_uint16_base16 {
+	assert: parse_uint16("0", 16) ok: 0,
+	assert: parse_uint16("10", 16) ok: 16,
+	assert: parse_uint16("fffe", 16) ok: max_uint16-1,
+	assert: parse_uint16("ffff", 16) ok: max_uint16,
+	assert: parse_uint16("-1", 16) error: "bad digit",
+	assert: parse_uint16("10000", 16) error: "too big",
+}
+
+// Returns a uint32 parsed from the string in the give base.
+// Base must between 2 and 36 inclusive.
+// Digits greater than 9 are represented by lower-case or capital letters,
+// beginning with a (or A) as 10 through z (or Z) as 35.
+Func parse_uint32(s string, base int) uint32 or_error {
+	return: parse_uint64_max(s, base, uint64 :: max_uint32) ok? (x uint64){
+		ok(uint32 :: x)
+	} error? (err) {
+		error(err)
+	}
+}
+
+test parse_uint32_base16 {
+	assert: parse_uint32("0", 16) ok: 0,
+	assert: parse_uint32("10", 16) ok: 16,
+	assert: parse_uint32("fffffffe", 16) ok: max_uint32-1,
+	assert: parse_uint32("ffffffff", 16) ok: max_uint32,
+	assert: parse_uint32("-1", 16) error: "bad digit",
+	assert: parse_uint32("100000000", 16) error: "too big",
+}
+
+// Returns a uint64 parsed from the string in the give base.
+// Base must between 2 and 36 inclusive.
+// Digits greater than 9 are represented by lower-case or capital letters,
+// beginning with a (or A) as 10 through z (or Z) as 35.
+Func parse_uint64(s string, base int) uint64 or_error {
+	return: parse_uint64_max(s, base, max_uint64)
+}
+
+func parse_uint64_max(s string, base int, max uint64) uint64 or_error {
+	if: s.length = 0 then: {
+		return: error("unexpected end of input")
+	},
+	if: base < 2 || base > 36 then: {
+		return: error("bad base")
+	},
+	b := uint64 :: base,
+	n := uint64 :: 0,
+	for: 0 to: s.length - 1 do: (i) {
+		d := int :: -1,
+		if: s[i] >= '0' && s[i] <= '9' then: {
+			d := int :: s[i] - (uint8 :: '0'),
+		} else: s[i] >= 'a' && s[i] <= 'z' then: {
+			d := int :: s[i] - (uint8 :: 'a') + 10,
+		} else: s[i] >= 'A' && s[i] <= 'Z' then: {
+			d := int :: s[i] - (uint8 :: 'A') + 10,
+		},
+		if: d < 0 || d >= base then: {
+			return: error("bad digit")
+		},
+		if: n > max/b || {n*b > max-(uint64 :: d)} then: {
+			return: error("too big")
+		},
+		n := n*b + (uint64 :: d),
+	},
+	return: ok(n),
+}
+
+test parse_uint64_bad_base {
+	assert: parse_uint64("0", -1) error: "bad base",
+	assert: parse_uint64("0", 0) error: "bad base",
+	assert: parse_uint64("0", 1) error: "bad base",
+	assert: parse_uint64("0", 37) error: "bad base",
+	assert: parse_uint64("0", 100) error: "bad base",
+}
+
+test parse_uint64_base2 {
+	assert: parse_uint64("0", 2) ok: 0,
+	assert: parse_uint64("1", 2) ok: 1,
+	assert: parse_uint64("10", 2) ok: 2,
+	assert: parse_uint64("11", 2) ok: 3,
+	assert: parse_uint64("1111111111111111111111111111111111111111111111111111111111111110", 2) ok: max_uint64-1,
+	assert: parse_uint64("1111111111111111111111111111111111111111111111111111111111111111", 2) ok: max_uint64,
+
+	assert: parse_uint64("", 2) error: "unexpected end of input",
+	assert: parse_uint64("3", 2) error: "bad digit",
+	assert: parse_uint64("123abc", 2) error: "bad digit",
+	assert: parse_uint64("11111111111111111111111111111111111111111111111111111111111111110", 2) error: "too big",
+}
+
+test parse_uint64_base8 {
+	assert: parse_uint64("0", 8) ok: 0,
+	assert: parse_uint64("1", 8) ok: 1,
+	assert: parse_uint64("2", 8) ok: 2,
+	assert: parse_uint64("10", 8) ok: 8,
+	assert: parse_uint64("12", 8) ok: 10,
+	assert: parse_uint64("1777777777777777777776", 8) ok: max_uint64-1,
+	assert: parse_uint64("1777777777777777777777", 8) ok: max_uint64,
+
+	assert: parse_uint64("", 8) error: "unexpected end of input",
+	assert: parse_uint64("8", 8) error: "bad digit",
+	assert: parse_uint64("123abc", 8) error: "bad digit",
+	assert: parse_uint64("2000000000000000000000", 8) error: "too big",
+}
+
+test parse_uint64_base16 {
+	assert: parse_uint64("0", 16) ok: 0,
+	assert: parse_uint64("1", 16) ok: 1,
+	assert: parse_uint64("2", 16) ok: 2,
+	assert: parse_uint64("a", 16) ok: 10,
+	assert: parse_uint64("A", 16) ok: 10,
+	assert: parse_uint64("b", 16) ok: 11,
+	assert: parse_uint64("B", 16) ok: 11,
+	assert: parse_uint64("f", 16) ok: 15,
+	assert: parse_uint64("F", 16) ok: 15,
+	assert: parse_uint64("10", 16) ok: 16,
+	assert: parse_uint64("12", 16) ok: 18,
+	assert: parse_uint64("fffffffffffffffe", 16) ok: max_uint64-1,
+	assert: parse_uint64("ffffffffffffffff", 16) ok: max_uint64,
+
+	assert: parse_uint64("", 16) error: "unexpected end of input",
+	assert: parse_uint64("g", 16) error: "bad digit",
+	assert: parse_uint64("G", 16) error: "bad digit",
+	assert: parse_uint64("123g", 16) error: "bad digit",
+	assert: parse_uint64("10000000000000000", 16) error: "too big",
+}
+
+test parse_uint64_base36 {
+	assert: parse_uint64("0", 36) ok: 0,
+	assert: parse_uint64("1", 36) ok: 1,
+	assert: parse_uint64("2", 36) ok: 2,
+	assert: parse_uint64("a", 36) ok: 10,
+	assert: parse_uint64("A", 36) ok: 10,
+	assert: parse_uint64("b", 36) ok: 11,
+	assert: parse_uint64("B", 36) ok: 11,
+	assert: parse_uint64("z", 36) ok: 35,
+	assert: parse_uint64("Z", 36) ok: 35,
+	assert: parse_uint64("10", 36) ok: 36,
+	assert: parse_uint64("3W5E11264SGSE", 36) ok: max_uint64-1,
+	assert: parse_uint64("3W5E11264SGSF", 36) ok: max_uint64,
+
+	assert: parse_uint64("", 36) error: "unexpected end of input",
+	assert: parse_uint64(".", 36) error: "bad digit",
+	assert: parse_uint64("12.", 36) error: "bad digit",
+	assert: parse_uint64("3W5E11264SGSG", 36) error: "too big",
+}
+
