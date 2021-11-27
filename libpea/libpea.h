@@ -11,6 +11,12 @@ This header file may re-define some pthread functions to intercept their calls i
 #include <gc.h>
 #include <stdint.h>
 
+// pea_string is the Pea representation of a string.
+struct pea_string {
+	uintptr_t length;
+	char* data;
+};
+
 // pea_malloc returns a pointer to a new object of the given number of bytes.
 // The returned pointer is owned by the garbage collector, so it should not be freed, but instead will be released once it is determined to be unreachable.
 // Pointer-sized spans of the returned object will be scanned by the garbage collector for liveness checking.

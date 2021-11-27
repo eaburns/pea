@@ -40,11 +40,6 @@ void pea_register_finalizer(void* obj, void(*fn)(void*, void*), void* data) {
 	GC_REGISTER_FINALIZER(obj, fn, data, &old_fn, &old_data);
 }
 
-struct pea_string {
-	uintptr_t length;
-	const char* data;
-};
-
 // pea_print prints a string to standard output.
 void pea_print(struct pea_string* pstr) {
 	for (int i = 0;  i< pstr->length; i++) {

@@ -9,11 +9,6 @@
 
 #include "libpea.h"
 
-struct pea_string {
-	uintptr_t length;
-	char* data;
-};
-
 static char* cstring(struct pea_string* str) {
 	char* cstr = calloc(str->length + 1, 1);
 	memcpy(cstr, str->data, str->length);

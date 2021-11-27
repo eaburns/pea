@@ -3,10 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
-struct pea_string {
-	uintptr_t length;
-	char* data;
-};
+#include "libpea.h"
 
 void sys__internal__eacces(int32_t *ret) { *ret = EACCES; }
 void sys__internal__eexist(int32_t *ret) { *ret = EEXIST; }
