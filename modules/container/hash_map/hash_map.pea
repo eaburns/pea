@@ -40,7 +40,7 @@ Func .length(m (K, V) hash_map) int {
 // Returns the value for key k if any.
 Func find(m (K, V) hash_map, k K) V option {
 	h := m.hash(k),
-	i := (int :: h) % m.buckets.length,
+	i := int :: h%(uint64 :: m.buckets.length),
 	for: m.buckets[i] each_entry: (e) {
 		if: m.eq(e.k, k) then: {
 			return: some(e.v)
@@ -52,7 +52,7 @@ Func find(m (K, V) hash_map, k K) V option {
 // Sets v as the value for to k, returning the previous binding if any.
 Func at:put:(m (K, V) hash_map, k K, v V) V option {
 	h := m.hash(k),
-	i := (int :: h) % m.buckets.length,
+	i := int :: h%(uint64 :: m.buckets.length),
 	for: m.buckets[i] each_entry: (e) {
 		if: m.eq(e.k, k) then: {
 			old := e.v,
@@ -63,7 +63,7 @@ Func at:put:(m (K, V) hash_map, k K, v V) V option {
 
 	if: m.n * 3 > m.buckets.length then: {
 		grow(m),
-		i := (int :: h) % m.buckets.length,
+		i := int :: h%(uint64 :: m.buckets.length),
 	},
 
 	++m.n,
@@ -80,7 +80,7 @@ func grow(m (K, V) hash_map) {
 	for: m.buckets each: (b) {
 		for: b each_entry: (e) {
 			h := m.hash(e.k),
-			i := (int :: h) % len,
+			i := int :: h%(uint64 :: len),
 			append(buckets2[i], e)
 		}
 	},
@@ -109,7 +109,7 @@ func append(b &(K, V) bucket, e (K, V) entry) {
 // Removes the value for key k, returning the previous binding if any.
 Func delete:(m (K, V) hash_map, k K) V option {
 	h := m.hash(k),
-	i := (int :: h) % m.buckets.length,
+	i := int :: h%(uint64 :: m.buckets.length),
 	b := m.buckets[i],
 	for: 0 to: b.length - 1 do: (j) {
 		b[j] some? (e) {
@@ -136,6 +136,14 @@ test put_delete {
 	assert: (m delete: "Hello") some: 5,
 	assert_none: find(m, "Hello"),
 	assert: m.length equals: 0,
+}
+
+test at_put_test0 {
+	// Test regression where bad indexing created a -1 index.
+	m := ([uint8], bool) hash_map :: new(),
+	m at: [127, 0, 0, 1] put: true,
+	m at: [0, 0, 0, 0, 0, 0, 0, 1] put: true,
+	// don't crash
 }
 
 // Calls f for each key/value binding in the map.
