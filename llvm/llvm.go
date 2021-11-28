@@ -135,6 +135,7 @@ func (g *gen) writeHeader(mod *flowgraph.Mod) {
 func (g *gen) writeTypeDefs(mod *flowgraph.Mod) {
 	for _, t := range mod.Types {
 		unnamed := *t
+		unnamed.SourceName = ""
 		unnamed.Mod = ""
 		unnamed.Args = nil
 		unnamed.Name = ""
@@ -792,6 +793,10 @@ func (g *gen) writeType(t flowgraph.Type) {
 	case *flowgraph.FrameType:
 		g.writeString("i8*")
 	case *flowgraph.StructType:
+		if t.SourceName != "" {
+			g.write(`%"`, t.SourceName, `"`)
+			return
+		}
 		if t.Mod != "" {
 			g.write(`%"`, t.Mod, " ", t.Name)
 			if len(t.Args) > 0 {

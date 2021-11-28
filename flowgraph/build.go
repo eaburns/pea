@@ -229,6 +229,7 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			for _, a := range typ.Args {
 				t.Args = append(t.Args, mb.buildType(a))
 			}
+			t.SourceName = typ.String()
 			mb.Types = append(mb.Types, t)
 			return t
 		case *AddrType:

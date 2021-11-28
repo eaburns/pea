@@ -95,10 +95,23 @@ func (t *ArrayType) eq(other Type) bool {
 
 type StructType struct {
 	// Mod, Args, and Name are set for defined types.
-	Mod    string
-	Args   []Type
-	Name   string
-	Fields []*FieldDef
+	Mod string
+	// SourceName is a unique name for this type
+	// using the syntax of the source language.
+	// This field is set for StructType entires of Mod.Types.
+	//
+	// Note that, some different checker types
+	// may have the same flowgraph type representation.
+	// These types can be distinguished by SourceName.
+	//
+	// For example, `uint8 option` and `bool option`
+	// are distinct checker types, but if `bool` is a `uint8`
+	// in the flowgraph, then they will have the same flowgraph type.
+	// The SourceName field will still differ.
+	SourceName string
+	Args       []Type
+	Name       string
+	Fields     []*FieldDef
 }
 
 type FieldDef struct {
@@ -198,7 +211,7 @@ type FuncDef struct {
 	Inst bool
 	// SourceName is a unique name for this function
 	// using the syntax of the source language.
-	// It may be show to users,for example in stack traces.
+	// It may be show to users, for example in stack traces.
 	SourceName string
 	Mod        string
 	Name       string
