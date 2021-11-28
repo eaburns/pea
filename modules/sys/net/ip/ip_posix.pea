@@ -1,0 +1,27 @@
+Import "basic"
+Import "hash"
+import "container/hash_map"
+import "sys/internal"
+
+// Returns errno (0 means no error) and returns addresses by the 2nd argument.
+// The returned addresses may be duplicates.
+func lookup_host(host string, addrs &[addr]) int32
+
+Func _lookup_host(host string) [addr] or_error {
+	addrs := [addr] :: [],
+	errno := lookup_host(host, addrs),
+	if: errno != 0 then: {
+		return: error(internal#errno_error(errno))
+	},
+
+	// TODO: switch hash_map with hash_set once hash_set exists.
+	i := 0,
+	seen := (addr, bool) hash_map#hash_map :: new(),
+	for: addrs each: (addr){
+		if: (seen at: addr put: true) none: {
+			addrs[i] := addr,
+			++i,
+		}
+	},
+	return: ok(addrs[0, i])
+}

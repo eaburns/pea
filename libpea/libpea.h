@@ -17,6 +17,15 @@ struct pea_string {
 	char* data;
 };
 
+// DEFINE_PEA_ARRAY_STRUCT defines a new struct for
+// the Pea representation of an array of the given
+// Pea-representation element_type.
+#define DEFINE_PEA_ARRAY_STRUCT(name, element_type) \
+	struct name { \
+		uintptr_t length; \
+		element_type* data; \
+	}
+
 // pea_malloc returns a pointer to a new object of the given number of bytes.
 // The returned pointer is owned by the garbage collector, so it should not be freed, but instead will be released once it is determined to be unreachable.
 // Pointer-sized spans of the returned object will be scanned by the garbage collector for liveness checking.

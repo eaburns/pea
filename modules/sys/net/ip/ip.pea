@@ -1,0 +1,227 @@
+Import "assert"
+Import "basic"
+import "hash"
+import "print"
+
+// An IP address, either IPv4 or IPv6.
+// If the address is IPv4, .length will return 4.
+// If the address is IPv6, .length will return 16.
+Type addr := _addr
+type _addr [.bytes [uint8]]
+
+// Returns the length of the addr in bytes.
+Func .length(a addr) int {
+	return: a.bytes.length
+}
+
+// Returns the ith byte of the addr.
+Func [](a addr, i int) uint8 {
+	return: a.bytes[i]
+}
+
+// Returns whether the two addresses are equal.
+Func =(a addr, b addr) bool {
+	return: a.bytes = b.bytes
+}
+
+// Returns a new IPv4 address.
+Func addr(a uint8, b uint8, c uint8, d uint8) addr {
+	return: [.bytes [a, b, c, d]]
+}
+
+test addr4 {
+	assert: addr(127, 0, 0,1) equals: [.bytes [127, 0, 0, 1]],
+}
+
+// Returns a new IPv6 address.
+// Each uint16 is interprented as a big-endian integer..
+Func addr(a uint16, b uint16, c uint16, d uint16, e uint16, f uint16, g uint16, h uint16) addr {
+	return: [
+		.bytes [
+			uint8 :: a >> 8, uint8:: a & 0xFF,
+			uint8 :: b >> 8, uint8:: b & 0xFF,
+			uint8 :: c >> 8, uint8:: c & 0xFF,
+			uint8 :: d >> 8, uint8:: d & 0xFF,
+			uint8 :: e >> 8, uint8:: e & 0xFF,
+			uint8 :: f >> 8, uint8:: f & 0xFF,
+			uint8 :: g >> 8, uint8:: g & 0xFF,
+			uint8 :: h >> 8, uint8:: h & 0xFF,
+		],
+	]
+}
+
+test addr6 {
+	assert: addr(0x2601, 0x18c, 0x8500, 0x4cb, 0xe000, 0xb3ff, 0xfe14, 0x33ed)
+	equals: [.bytes [0x26, 0x01, 0x01, 0x8c, 0x85, 0x00, 0x04, 0xcb, 0xe0, 0x00, 0xb3, 0xff, 0xfe, 0x14, 0x33, 0xed]]
+}
+
+// Adds the string representation of the addr to the printer and returns the printer.
+// IPv4 addresses are printed as a .-separated string of decimal bytes.
+// IPv6 addresses are printed as a :-separated string of 16-bit hex numbers
+// with the first, longest sequence of consecutive 0s greater than 1 in length
+// replaced with ::.
+Func print(p print#printer, a addr) print#printer {
+	if: a.length = 4 then: {
+		return: p ++ a[0] ++ "." ++ a[1] ++ "." ++ a[2] ++ "." ++ a[3]
+	},
+	print_ipv6(p, a),
+	return: p
+}
+
+func print_ipv6(p print#printer, a addr) {
+	z := longest0(a),
+	if: z.end - z.start <= 2 then: {
+		// Don't collapse sequences of only 1 16-bit value.
+		z := [.start 0, .end 0]
+	},
+	buf := [uint8] :: new(4, uint8 :: 0),
+	for: 0 to: z.start-2 by: 2 do: (i){
+		if: i > 0 then: {
+			p ++ ":"
+		},
+		print_hex16(p, buf, a[i], a[i + 1])
+	},
+	if: z.start < z.end then: {
+		p ++ ":",
+		if: z.end = 16 then: {
+			p ++ ":",
+			return()
+		},
+	},
+	for: z.end to: 15 by: 2 do: (i) {
+		if: i > 0 then: {
+			p ++ ":"
+		},
+		print_hex16(p, buf, a[i], a[i + 1])
+	},
+}
+
+var hex_digit := [uint8] :: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
+
+func print_hex16(p print#printer, buf [uint8], u uint8, l uint8) {
+	buf[0] := hex_digit[int :: u >> 4],
+	buf[1] := hex_digit[int :: u & 0xF],
+	buf[2] := hex_digit[int :: l >> 4],
+	buf[3] := hex_digit[int :: l & 0xF],
+	b := buf,
+	while: {b.length > 1 && {b[0] = '0'}} do: {
+		b := b[1,b.length],
+	},
+	if: b.length > 0 then: {
+		add_bytes(p, b),
+	},
+}
+
+test print {
+	assert: print#string(addr(0, 0, 0, 0)) equals: "0.0.0.0",
+	assert: print#string(addr(127, 0, 0, 1)) equals: "127.0.0.1",
+	assert: print#string(addr(1, 2, 3, 4)) equals: "1.2.3.4",
+
+	assert: print#string(addr(0, 0, 0, 0, 0, 0, 0, 0)) equals: "::",
+	assert: print#string(addr(0x2601, 0x18c, 0x8500, 0x4cb, 0xe000, 0xb3ff, 0xfe14, 0x33ed)) equals: "2601:18c:8500:4cb:e000:b3ff:fe14:33ed",
+	assert: print#string(addr(0, 0x18c, 0x8500, 0x4cb, 0xe000, 0xb3ff, 0xfe14, 0x33ed)) equals: "0:18c:8500:4cb:e000:b3ff:fe14:33ed",
+	assert: print#string(addr(0x2601, 0x18c, 0x8500, 0x4cb, 0xe000, 0xb3ff, 0xfe14, 0)) equals: "2601:18c:8500:4cb:e000:b3ff:fe14:0",
+	assert: print#string(addr(0x2601, 0, 0x8500, 0x4cb, 0xe000, 0xb3ff, 0xfe14, 0x33ed)) equals: "2601:0:8500:4cb:e000:b3ff:fe14:33ed",
+
+	assert: print#string(addr(0x2601, 0, 0, 0x4cb, 0xe000, 0xb3ff, 0xfe14, 0x33ed)) equals: "2601::4cb:e000:b3ff:fe14:33ed",
+	assert: print#string(addr(0x2601, 0, 0, 0, 0xe000, 0xb3ff, 0xfe14, 0x33ed)) equals: "2601::e000:b3ff:fe14:33ed",
+	assert: print#string(addr(0x2601, 0, 0, 0, 0, 0xb3ff, 0xfe14, 0x33ed)) equals: "2601::b3ff:fe14:33ed",
+	assert: print#string(addr(0x2601, 0, 0, 0, 0, 0, 0xfe14, 0x33ed)) equals: "2601::fe14:33ed",
+	assert: print#string(addr(0x2601, 0, 0, 0, 0, 0, 0, 0x33ed)) equals: "2601::33ed",
+	assert: print#string(addr(0x2601, 0, 0, 0, 0, 0, 0, 0)) equals: "2601::",
+
+	assert: print#string(addr(0x2601, 0x18c, 0x8500, 0x4cb, 0xe000, 0, 0, 0x33ed)) equals: "2601:18c:8500:4cb:e000::33ed",
+	assert: print#string(addr(0x2601, 0x18c, 0x8500, 0x4cb, 0, 0, 0, 0x33ed)) equals: "2601:18c:8500:4cb::33ed",
+	assert: print#string(addr(0x2601, 0x18c, 0x8500, 0, 0, 0, 0, 0x33ed)) equals: "2601:18c:8500::33ed",
+	assert: print#string(addr(0x2601, 0x18c, 0, 0, 0, 0, 0, 0x33ed)) equals: "2601:18c::33ed",
+	assert: print#string(addr(0x2601, 0, 0, 0, 0, 0, 0, 0x33ed)) equals: "2601::33ed",
+	assert: print#string(addr(0, 0, 0, 0, 0, 0, 0, 0x33ed)) equals: "::33ed",
+
+	// Examples from RFC5952.
+	assert: print#string(addr(0x2001, 0xdb8, 0, 0, 0, 0, 2, 1)) equals: "2001:db8::2:1",
+	assert: print#string(addr(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)) equals: "2001:db8::1",
+	assert: print#string(addr(0x2001, 0xdb8, 0, 1, 1, 1, 1, 1)) equals: "2001:db8:0:1:1:1:1:1",
+	assert: print#string(addr(0x2001, 0, 0, 1, 0, 0, 0, 1)) equals: "2001:0:0:1::1",
+	assert: print#string(addr(0x2001, 0xdb8, 0, 0, 1, 0, 0, 1)) equals: "2001:db8::1:0:0:1",
+
+	assert: print#string(addr(0, 0, 0, 0, 0, 0, 0, 1)) equals: "::1",
+}
+
+// Returns the start (inclusive) and end (exclusive)
+// of the longest span of 16-bit 0 values.
+func longest0(a addr) [.start int, .end int] {
+	cur := [.start 0, .end 0],
+	longest := [.start 0, .end 0],
+	for: 0 to: a.length-1 by: 2 do: (i){
+		if: a[i] != 0 || a[i+1] != 0 then: {
+			longest := max(longest, cur),
+			cur.start := i+2,
+		},
+		cur.end := i+2
+	},
+	return: max(longest, cur)
+}
+
+func =(a [.start int, .end int], b [.start int, .end int]) bool {
+	return: a.start = b.start && a.end = b.end
+}
+
+func <(a [.start int, .end int], b [.start int, .end int]) bool {
+	return: a.end - a.start < b.end - b.start
+}
+
+func print(p print#printer, a [.start int, .end int]) print#printer {
+	return: p ++ "[.start " ++ a.start ++ ", .end " ++ a.end ++ "]"
+}
+
+test longest0 {
+	assert: longest0(addr(0, 0, 0, 0, 0, 0, 0, 0)) equals: [.start 0, .end 16],
+	assert: longest0(addr(1, 0, 0, 0, 0, 0, 0, 0)) equals: [.start 2, .end 16],
+	assert: longest0(addr(1, 1, 0, 0, 0, 0, 0, 0)) equals: [.start 4, .end 16],
+	assert: longest0(addr(1, 1, 1, 0, 0, 0, 0, 0)) equals: [.start 6, .end 16],
+	assert: longest0(addr(1, 1, 1, 0, 0, 0, 0, 0)) equals: [.start 6, .end 16],
+	assert: longest0(addr(1, 1, 1, 1, 0, 0, 0, 0)) equals: [.start 8, .end 16],
+	assert: longest0(addr(1, 1, 1, 1, 1, 0, 0, 0)) equals: [.start 10, .end 16],
+	assert: longest0(addr(1, 1, 1, 1, 1, 1, 0, 0)) equals: [.start 12, .end 16],
+	assert: longest0(addr(1, 1, 1, 1, 1, 1, 1, 0)) equals: [.start 14, .end 16],
+	assert: longest0(addr(1, 1, 1, 1, 1, 1, 1, 1)) equals: [.start 0, .end 0],
+	assert: longest0(addr(1, 0, 1, 1, 1, 1, 1, 1)) equals: [.start 2, .end 4],
+	assert: longest0(addr(1, 0, 0, 1, 1, 1, 1, 1)) equals: [.start 2, .end 6],
+	assert: longest0(addr(1, 0, 0, 0, 1, 1, 1, 1)) equals: [.start 2, .end 8],
+	assert: longest0(addr(1, 0, 0, 0, 0, 1, 1, 1)) equals: [.start 2, .end 10],
+	assert: longest0(addr(1, 0, 0, 0, 0, 0, 1, 1)) equals: [.start 2, .end 12],
+	assert: longest0(addr(1, 0, 0, 0, 0, 0, 0, 1)) equals: [.start 2, .end 14],
+
+	assert: longest0(addr(0, 1, 0, 1, 0, 1, 0, 1)) equals: [.start 0, .end 2],
+
+	assert: longest0(addr(0, 1, 0, 0, 1, 1, 1, 1)) equals: [.start 4, .end 8],
+
+	assert: longest0(addr(0, 1, 0, 0, 1, 0, 0, 0)) equals: [.start 10, .end 16],
+
+	assert: longest0(addr(0, 0, 0, 1, 0, 1, 0, 0)) equals: [.start 0, .end 6],
+
+	assert: longest0(addr(0x2601, 0, 0x8500, 0x4cb, 0xe000, 0xb3ff, 0xfe14, 0x33ed)) equals: [.start 2, .end 4],
+}
+
+// Adds addr to the hasher.
+Func +=(h hash#hasher, addr addr) hash#hasher {
+	return: h += addr.bytes
+}
+
+// Returns all IP addresses found for a hostname using the system resolver.
+Func lookup_host(host string) [addr] or_error {
+	return: _lookup_host(host)
+}
+
+test lookup_host {
+	// TODO: delete lookup_host test.
+	// This is a terrible test, assuming what localhost resolves to.
+	// But for a minute or so, it's probably useful
+	// to make sure lookup_host resolves
+	// something to a reasonable value
+	// on likely machines to run the test.
+	assert: lookup_host("localhost") ok: [
+		addr(0, 0, 0, 0, 0, 0, 0, 1),
+		addr(127, 0, 0, 1),
+	],
+}
