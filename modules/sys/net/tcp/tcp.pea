@@ -1,0 +1,315 @@
+Import "assert"
+Import "basic"
+import "//sys/io"
+import "//sys/net/ip"
+import "io"
+import "print"
+import "sync"
+
+// A TCP address, which combines a network address and port number.
+Type addr [
+	// The address of the underlying network.
+	.network [ ip? sys#net#ip#addr ],
+	// The port number.
+	.port uint16,
+]
+
+// Returns a new addr.
+Func addr(ip sys#net#ip#addr, port uint16) addr {
+	return: [.network [ip? ip], .port port]
+}
+
+// Returns whether the two addrs are equal.
+Func =(a addr, b addr) bool {
+	ip_a := a.network ip? (ip sys#net#ip#addr){ip},
+	ip_b := b.network ip? (ip sys#net#ip#addr){ip},
+	return: ip_a = ip_b && a.port = b.port
+}
+
+test equal {
+	assert: addr(sys#net#ip#addr(127, 0, 0, 1), 80) equals: addr(sys#net#ip#addr(127, 0, 0, 1), 80),
+	assert_false: addr(sys#net#ip#addr(127, 0, 0, 1), 80) = addr(sys#net#ip#addr(127, 0, 0, 2), 80),
+	assert_false: addr(sys#net#ip#addr(127, 0, 0, 1), 80) = addr(sys#net#ip#addr(127, 0, 0, 1), 81),
+}
+
+// Adds the string representation of the addr to the printer and returns the printer.
+//
+// If the network address is an IPv4 addresses, the format is d.d.d.d:p,
+// where d is a decimal number 0-255 and p is the port number.
+//
+// If the network address is an IPv6 addresses, the format is [x:x:x:x:x:x:x:x]:p,
+// where x is a hexadecimal number 0-ffff and p is the port number.
+Func print(p print#printer, addr addr) print#printer {
+	ip := addr.network ip? (ip sys#net#ip#addr){ip},
+	if: ip.length = 4 then: {
+		p ++ ip
+	} else: {
+		p ++ "[" ++ ip ++ "]"
+	},
+	return: p ++ ":" ++ addr.port
+}
+
+test print {
+	assert: print#string(addr(sys#net#ip#addr(127, 0, 0, 1), 80)) equals: "127.0.0.1:80",
+	assert: print#string(addr(sys#net#ip#addr(0x2601, 0x18c, 0x8500, 0x4cb, 0xe000, 0xb3ff, 0xfe14, 0x33ed), 80)) equals: "[2601:18c:8500:4cb:e000:b3ff:fe14:33ed]:80",
+}
+
+
+Type listener := _listener
+
+// Returns a new listener listening on the given TCP address.
+//
+// The listening address is specified by a network address and a service name separated by a colon.
+//
+// The network address can be:
+// 	the empty string, in which case the listener listens on all addresses
+// 	a literal IPv4 address in the form: d.d.d.d,
+// 		where d is a decimal number 0-255.
+// 	a literal IPv6 address in the form: [x:x:x:x:x:x:x:x],
+// 		where x is a hexidecimal number 0-ffff,
+//		and a single sequence of 0s may be replaced with ::
+// 	a literal IPv6 address in the form: [x:x:x:x:x:x:d.d.d.d],
+// 		where x is a hexidecimal number 0-ffff,
+//		a single sequence of 0s may be replaced with ::,
+// 		and d is a decimal number 0-255.
+// 	a host name string
+// Note that literal IPv6 addresses must be surrounded by [ ]
+// to disambiguate the : inside the IPv6 address
+// from the network address and service separator.
+//
+// The service name is either a port number literal 0-65535
+// or is the name of a service (such as "http", "ssh", and so forth).
+// If the service name is empty, an available port number
+// is selected by the operating system.
+Func listener(addr string) listener or_error {
+	split := split_addr(addr),
+	return: _listener(split.network, split.service)
+}
+
+test listener_error {
+	listener("bad host:bad port") ok? (_ listener) {
+		panic("expected error")
+	},
+	listener("bad host:") ok? (_ listener) {
+		panic("expected error")
+	},
+	listener(":bad port") ok? (_ listener) {
+		panic("expected error")
+	},
+}
+
+test listener_empty {
+	l := listener("") ok? (l listener){l} error? (err){
+		panic(message(err))
+	},
+	addr(l).network ip? (ip sys#net#ip#addr){
+		assert: ip one_of: [
+			sys#net#ip#addr(0, 0, 0, 0),
+			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0),
+		]
+	},
+	assert_false: addr(l).port = 0,
+	assert_ok: close(l),
+
+	l := listener(":") ok? (l listener){l} error? (err){
+		panic(message(err))
+	},
+	addr(l).network ip? (ip sys#net#ip#addr){
+		assert: ip one_of: [
+			sys#net#ip#addr(0, 0, 0, 0),
+			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0),
+		]
+	},
+	assert_false: addr(l).port = 0,
+	assert_ok: close(l),
+}
+
+// TODO: move assert:one_of: to the assert module.
+func assert:one_of:(t T, ts [T]) : =(T, T)bool, ++(print#printer, T)print#printer {
+	for: ts each: (u){
+		if: t = u then: {
+			return()
+		}
+	},
+	panic(print#string(t ++ " is not one of " ++ ts))
+}
+
+test listener_empty_port {
+	l := listener("127.0.0.1") ok? (l listener){l} error? (err){
+		panic(message(err))
+	},
+	addr(l).network ip? (ip sys#net#ip#addr) {
+		assert: ip equals: sys#net#ip#addr(127, 0, 0, 1)
+	},
+	assert_ok: close(l),
+}
+
+test listener_empty_addr {
+	l := listener(":8888") ok? (l listener){l} error? (err){
+		panic(message(err))
+	},
+	assert: addr(l).port equals: 8888,
+	assert_ok: close(l),
+}
+
+// Returns the address on which the listener is listening.
+Func addr(l listener) addr {
+	return: _addr(l)
+}
+
+// Closes the listener.
+Func close(l listener) error option {
+	return: _close(l)
+}
+
+// A TCP connection stream.
+Type stream := _stream
+
+// Blocks until a new incoming connection is made
+// and returns the TCP stream of the new connection.
+// If the listener is closed, accept unblocks and returns an error.
+Func accept(l listener) stream or_error {
+	return: _accept(l)
+}
+
+// Returns a new TCP stream connected to a remote host at the given TCP address.
+//
+// The network address can be:
+// 	a literal IPv4 address in the form: d.d.d.d,
+// 		where d is a decimal number 0-255.
+// 	a literal IPv6 address in the form: [x:x:x:x:x:x:x:x],
+// 		where x is a hexidecimal number 0-ffff,
+//		and a single sequence of 0s may be replaced with ::
+// 	a literal IPv6 address in the form: [x:x:x:x:x:x:d.d.d.d],
+// 		where x is a hexidecimal number 0-ffff,
+//		a single sequence of 0s may be replaced with ::,
+// 		and d is a decimal number 0-255.
+// 	a host name string
+// Note that literal IPv6 addresses must be surrounded by [ ]
+// to disambiguate the : inside the IPv6 address
+// from the network address and service separator.
+//
+// The service name is either a port number literal 0-65535
+// or is the name of a service (such as "http", "ssh", and so forth).
+Func connect(addr string) stream or_error {
+	split := split_addr(addr),
+	return: _connect(split.network, split.service)
+}
+
+// Returns the stream's descriptor.
+Func descriptor(s stream)sys#io#descriptor {
+	return: _descriptor(s)
+}
+
+Func local_addr(s stream) addr {
+	return: _local_addr(s)
+}
+
+Func remote_addr(s stream) addr {
+	return: _remote_addr(s)
+}
+
+// Reads at most d.length bytes from the stream into d.
+Func read(s stream, buf [uint8]) io#read_result {
+	return: _read(s, buf)
+}
+
+// Writes at most d.length bytes from d into the stream.
+Func write(s stream, buf [uint8]) io#write_result {
+	return: _write(s, buf)
+}
+
+// Closes the stream.
+// Future operations on the stream will return an error.
+Func close(s stream) error option {
+	return: _close(s)
+}
+
+test listen_connect {
+	l := must(listener("127.0.0.1")),
+	listen_addr := addr(l),
+	listener_local_addr := addr(sys#net#ip#addr(0, 0, 0, 0), 0),
+	listener_remote_addr := addr(sys#net#ip#addr(0, 0, 0, 0), 0),
+	group := sync#group(),
+	group add: (){
+		s := must(accept(l)),
+		assert_ok: close(l),
+		listener_local_addr := local_addr(s),
+		listener_remote_addr := remote_addr(s),
+		must(write(s,  [uint8 :: 'H', 'e', 'l', 'l', 'o'])),
+		buf := [uint8] :: new("Bye".length, uint8 :: 0),
+		assert_ok: io#read_full(s, buf),
+		assert: buf equals: [uint8 :: 'B', 'y', 'e'],
+		assert_ok: close(s),
+		none(),
+	},
+	connecter_local_addr := addr(sys#net#ip#addr(0, 0, 0, 0), 0),
+	connecter_remote_addr := addr(sys#net#ip#addr(0, 0, 0, 0), 0),
+	group add: (){
+		s := must(connect(print#string(listen_addr))),
+		connecter_local_addr := local_addr(s),
+		connecter_remote_addr := remote_addr(s),
+		buf := [uint8] :: new("Hello".length, uint8 :: 0),
+		assert_ok: io#read_full(s, buf),
+		assert: buf equals: [uint8 :: 'H', 'e', 'l', 'l', 'o'],
+		must(write(s, [uint8 :: 'B', 'y', 'e'])),
+		assert_ok: close(s),
+		none()
+	},
+	assert_ok: wait(group),
+	assert: listener_local_addr equals: connecter_remote_addr,
+	assert: listener_remote_addr equals: connecter_local_addr,
+}
+
+func split_addr(addr string) [.network string, .service string] {
+	if: addr.length > 0 && {addr[0] = '['} then: {
+		i := 1,
+		while: {i < addr.length && {addr[i] != ']'}} do: {++i},
+		network := addr[1, i],
+		// either no ] or ends with ].
+		if: i >= addr.length-1 then: {
+			return: [.network network, .service ""]
+		},
+		++i, // skip ]
+		if: addr[i] = ':' then: {
+			// skip network:service separator
+			++i
+		},
+		return: [.network network, .service addr[i, addr.length]]
+	},
+
+	// TODO: string#last_index
+	i := addr.length-1,
+	while: {i >= 0 && {addr[i] != ':'}} do: { --i },
+	network := "",
+	service := "",
+	if: i < 0 then: {
+		network := addr,
+	} else: {
+		network := addr[0, i],
+		service := addr[i+1, addr.length]
+	},
+	return: [.network network, .service service]
+}
+
+func =(a [.network string, .service string], b [.network string, .service string]) bool {
+	return: a.network = b.network && {a.service = b.service}
+}
+
+func print(p print#printer, a [.network string, .service string]) print#printer {
+	return: p ++ "[.network " ++ a.network ++ ", .service " ++ a.service ++ "]"
+}
+
+test split_addr {
+	assert: split_addr("") equals: [.network "", .service ""],
+	assert: split_addr(":") equals: [.network "", .service ""],
+	assert: split_addr("[") equals: [.network "", .service ""],
+	assert: split_addr("[:") equals: [.network ":", .service ""],
+	assert: split_addr("[]") equals: [.network "", .service ""],
+	assert: split_addr("[]:") equals: [.network "", .service ""],
+	assert: split_addr("127.0.0.1:80") equals: [.network "127.0.0.1", .service "80"],
+	assert: split_addr("127.0.0.1:65535") equals: [.network "127.0.0.1", .service "65535"],
+	assert: split_addr("[2601:18c:8500:4cb:e000:b3ff:fe14:33ed]:80") equals: [.network "2601:18c:8500:4cb:e000:b3ff:fe14:33ed", .service "80"],
+	assert: split_addr("[2601::33ed]:80") equals: [.network "2601::33ed", .service "80"],
+	assert: split_addr("www.google.com:http") equals: [.network "www.google.com", .service "http"],
+}

@@ -1,0 +1,149 @@
+Import "basic"
+import "//sys/internal"
+import "//sys/io"
+import "//sys/net/ip"
+import "io"
+
+type _listener [
+	.fd sys#io#descriptor,
+	.addr addr,
+]
+
+// Returns a file descriptor listening on
+// the address described by the network string
+// and the port described by the service string.
+// The network is a host or network address string or "".
+// If network is "", then address returned will listen on all addresses.
+// The service is a port number or service name string or "".
+// If service is "", then the port is chosen by the operating system.
+//
+// On success, the return value is non-negative.
+//
+// On failure, the return value is negative and an error message
+// is returned from the err argument.
+// Unlike most other such functions in the sys modules
+// this one uses an err argument to return the error message,
+// because internally there are two error number namespaces:
+// standard errno and gai_errno.
+// Instead of signaling which error number space to use,
+// we just return the error string itself.
+func listener_fd(network string, service string, err &string) int32
+
+// Returns the fd of a newly accepted connection or negative errno.
+func accept(l int32) int32
+
+// Returns a file descriptor connected to
+// the address described by the network string
+// and the port described by the service string.
+// It is an error if either the network or service strings are empty.
+//
+// On failure, the return value is negative and an error message
+// is returned from the err argument.
+// Unlike most other such functions in the sys modules
+// this one uses an err argument to return the error message,
+// because internally there are two error number namespaces:
+// standard errno and gai_errno.
+// Instead of signaling which error number space to use,
+// we just return the error string itself.
+func connect_fd(network string, service string, err &string) int32
+
+// Returns the ip and port of the local end of a socket
+// through the ip and port arguments and 0 or returns a -errno value.
+func getsockname(fd int32, ip &sys#net#ip#addr, port &uint16) int32
+
+// Returns the ip and port of the remote end of a socket
+// through the ip and port arguments and 0 or returns a -errno value.
+func getpeername(fd int32, ip &sys#net#ip#addr, port &uint16) int32
+
+func _listener(network string, service string) listener or_error {
+	err := "",
+	fd := listener_fd(network, service, err),
+	if: fd < 0 then: {
+		return: error(err)
+	},
+	ip := sys#net#ip#addr(42, 42, 42, 42),
+	port := uint16 :: 42,
+	ret := getsockname(int32 :: fd, ip, port),
+	if: ret < 0 then: {
+		return: error(sys#internal#errno_error(-ret)),
+	},
+	return: ok(listener :: [
+		.fd sys#io#descriptor :: fd,
+		.addr addr(ip, port),
+	])
+}
+
+func _addr(l listener) addr {
+	return: l.addr,
+}
+
+func _close(l listener) error option {
+	return: sys#internal#close(l.fd)
+}
+
+type _stream [
+	.fd sys#io#descriptor,
+	.local addr,
+	.remote addr,
+]
+
+func stream(fd sys#io#descriptor) stream or_error {
+	local_ip := sys#net#ip#addr(42, 42, 42, 42),
+	local_port := uint16 :: 42,
+	ret := getsockname(int32 :: fd, local_ip, local_port),
+	if: ret < 0 then: {
+		return: error(sys#internal#errno_error(-ret)),
+	},
+	remote_ip := sys#net#ip#addr(42, 42, 42, 42),
+	remote_port := uint16 :: 42,
+	ret := getpeername(int32 :: fd, remote_ip, remote_port),
+	if: ret < 0 then: {
+		return: error(sys#internal#errno_error(-ret)),
+	},
+	return: ok(stream :: [
+		.fd fd,
+		.local [.network [ip? local_ip], .port local_port],
+		.remote [.network [ip? remote_ip], .port remote_port],
+	])
+}
+
+func _accept(l listener) stream or_error {
+	fd := accept(int32 :: l.fd),
+	if: fd < 0 then: {
+		return: error(sys#internal#errno_error(-fd)),
+	},
+	return: stream(sys#io#descriptor :: fd)
+}
+
+func _connect(network string, service string) stream or_error {
+	err := "",
+	fd := connect_fd(network, service, err),
+	if: fd < 0 then: {
+		return: error(err)
+	},
+	return: stream(sys#io#descriptor :: fd)
+}
+
+func _descriptor(s stream) sys#io#descriptor {
+	return: s.fd
+}
+
+func _local_addr(s stream) addr {
+	return: s.local
+}
+
+func _remote_addr(s stream) addr {
+	return: s.remote
+}
+
+func _read(s stream, buf [uint8]) io#read_result {
+	return: read(s.fd, buf)
+}
+
+func _write(s stream, buf [uint8]) io#write_result {
+	return: write(s.fd, buf)
+}
+
+func _close(s stream) error option {
+	return: close(s.fd)
+}
