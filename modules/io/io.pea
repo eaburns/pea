@@ -37,6 +37,22 @@ Func must(res write_result) int {
 	return: res error? (e error) { panic(print#string(e)) }
 }
 
+// Reads until buf is full.
+// It is an error if exactly buf.length bytes are not read.
+Func read_full(r R, buf [uint8])error option : read(R, [uint8])read_result {
+	total := 0,
+	while: {total < buf.length} do: {
+		read(r, buf[total, buf.length]) ok? (n int){
+			total += n,
+		} end? {
+			return: error("unexpected end-of-input")
+		} error? (err) {
+			return: error(err)
+		},
+	},
+	return: none()
+}
+
 // Reads from a reader until its end
 // and returns an array of all bytes read.
 Func read_all(r R) [uint8] or_error : read(R, [uint8]) read_result {
