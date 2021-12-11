@@ -3,6 +3,18 @@ Import "basic"
 import "print"
 
 // The result of a read operation.
+//
+// Various functions take a read()able paramaterized type.
+// The read function should have the signature:
+// 	read(r R, buf [uint8])read_result
+// The returned read_result should have the following cases:
+// 	ok? n	indicates n bytes were read into the beginning of buf;
+// 			n is never larger than buf.length,
+// 			the remainder of buf after the first n bytes
+// 			should be left unmodified.
+// 	end?	there were no bytes to read; the end of input was reached.
+//	error? e	 an error, e, was encountered;
+// 			an unspecified number of bytes may have been read.
 Type read_result [
 	// The given number of bytes were successfully read.
 	ok? int,
@@ -14,6 +26,17 @@ Type read_result [
 ]
 
 // The result of a write operation.
+//
+// Various functions take a write()able paramaterized type.
+// The write function should have the signature:
+// 	write(r R, buf [uint8])write_result
+// The returned write_result indicates the number of bytes written,
+// and whether an error occurred.
+// The number of bytes written can never be greater than buf.length.
+// It is an error if the number of bytes written is less than buf.length;
+// implementations that may have a "short write"
+// should contiunally writing until the entire buffer is written
+// or return an error indicating the short write.
 Type write_result [
 	// The number of bytes written.
 	.n int,
