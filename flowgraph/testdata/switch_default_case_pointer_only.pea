@@ -1,0 +1,11 @@
+type foo [none?, some? &string]
+
+// _?
+// _?
+//
+func main() {
+	(&foo :: [none?]) _? { print("_?") },
+	print("\n"),
+	(&foo :: [some? "foo"]) _? { print("_?") },
+	print("\n"),
+}

@@ -95,6 +95,9 @@ func subFunc(bindings bindings, fun Func) Func {
 		unionCopy := subType(bindings.Types, fun.Union).(*UnionType)
 		casesCopy := make([]*CaseDef, len(fun.Cases))
 		for i, cas := range fun.Cases {
+			if cas == nil {
+				continue
+			}
 			for j := range fun.Union.Cases {
 				if cas == &fun.Union.Cases[j] {
 					casesCopy[i] = &unionCopy.Cases[j]

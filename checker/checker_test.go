@@ -2248,6 +2248,33 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in b?(&a_or_b, (int){})",
 		},
 		{
+			name: "built-in switch only default case",
+			src: `
+				type a_or_b [a?, b? int]
+				func make() a_or_b
+			`,
+			call: "make() _? {1}",
+			want: "built-in _?(&a_or_b, (){int})int",
+		},
+		{
+			name: "built-in switch case and default case",
+			src: `
+				type a_b_c_d [a?, b? int, c?, d? string]
+				func make() a_b_c_d
+			`,
+			call: "make() a? {1} _? {2} d? (_ string){3}",
+			want: "built-in a?_?d?(&a_b_c_d, (){int}, (){int}, (string){int})int",
+		},
+		{
+			name: "built-in switch multiple default cases not supported",
+			src: `
+				type a_or_b [a?, b? int]
+				func make() a_or_b
+			`,
+			call: "make() _? {1} _? {2}",
+			err:  `not found`,
+		},
+		{
 			name: "built-in switch not all cases, does not convert return",
 			src: `
 				type a_or_b [a?, b? int]

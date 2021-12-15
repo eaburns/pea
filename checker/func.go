@@ -624,8 +624,14 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 		}
 		s.Union = valueType(literalType(typ)).(*UnionType)
 		seen := make(map[*CaseDef]bool)
+		hasDefault := false
 		for i := range s.Cases {
 			name := s.Cases[i].Name
+			if name == "_?" {
+				hasDefault = true
+				s.Cases[i] = nil
+				continue
+			}
 			c := findCase(name, s.Union)
 			if c == nil {
 				return newNote("%s: %s has no case %s", s, typ, name).setLoc(typ)
@@ -640,6 +646,9 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 			}
 			seen[c] = true
 			s.Cases[i] = c
+		}
+		if hasDefault {
+			break
 		}
 		for i := range s.Union.Cases {
 			if seen[&s.Union.Cases[i]] {
@@ -669,6 +678,10 @@ func (s *Switch) unifyParm(i int, typ Type) note {
 	return nil
 ground_parms:
 	for j, c := range s.Cases {
+		if c == nil {
+			s.Parms[j+1] = &FuncType{Ret: s.Ret, L: s.Union.L}
+			continue
+		}
 		f := &FuncType{Ret: s.Ret, L: c.L}
 		if c.Type != nil {
 			f.Parms = []Type{c.Type}

@@ -330,6 +330,10 @@ func (e *Select) buildString(s *strings.Builder) *strings.Builder {
 func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
 	s.WriteString("built-in ")
 	for _, c := range w.Cases {
+		if c == nil {
+			s.WriteString("_?")
+			continue
+		}
 		s.WriteString(c.Name)
 	}
 	if w.Union == nil {

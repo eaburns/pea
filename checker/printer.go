@@ -566,7 +566,12 @@ func (pc *config) slice(s interface{}) {
 	pc.p("{")
 	for i := 0; i < v.Len(); i++ {
 		pc.p("\n")
-		v.Index(i).Interface().(printer).print(pc)
+		elem := v.Index(i)
+		if elem.Kind() == reflect.Ptr && elem.IsNil() {
+			pc.p("nil")
+			continue
+		}
+		elem.Interface().(printer).print(pc)
 		pc.p(",")
 	}
 	pc.n--

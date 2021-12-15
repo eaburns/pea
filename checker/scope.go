@@ -293,18 +293,25 @@ func (m *Mod) findIDs(name string) []id {
 		})
 	}
 	if strings.HasSuffix(name, "?") {
-		// Add two template switches to be filled with concrete types
-		// or rejected when their return or 0th parameter is unified.
+		// Add a template switch to be filled with concrete types
+		// or rejected when the return or 0th parameter is unified.
 		caseNames := splitCaseNames(name)
 		n := len(caseNames)
 		sw := Switch{
 			Cases: make([]*CaseDef, n),
 			Parms: make([]Type, n+1),
 		}
+		defaultCases := 0
 		for i, caseName := range caseNames {
+			if caseName == "_?" {
+				defaultCases++
+			}
 			sw.Cases[i] = &CaseDef{Name: caseName}
 		}
-		ids = append(ids, &sw)
+		// Multiple default cases are not supported.
+		if defaultCases <= 1 {
+			ids = append(ids, &sw)
+		}
 	}
 	for _, binfo := range builtins {
 		if binfo.name != name {

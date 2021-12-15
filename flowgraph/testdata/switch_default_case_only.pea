@@ -1,0 +1,21 @@
+type foo [a? string, b?, c? string, d?, e?]
+
+// _?
+// _?
+// _?
+// _?
+// _?
+//
+func main() {
+	print_foo([a? "foo"]), print("\n"),
+	print_foo([b?]), print("\n"),
+	print_foo([c? "foo"]), print("\n"),
+	print_foo([d?]), print("\n"),
+	print_foo([e?]), print("\n"),
+}
+
+func print_foo(f foo) {
+	f _? {
+		print("_?")
+	}
+}

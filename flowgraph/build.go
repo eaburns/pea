@@ -992,6 +992,9 @@ type switchCase struct {
 	base Value
 	// def is the case def of the case if this is a typed case.
 	def *CaseDef
+
+	// bDefault is the default case block if this is a default case.
+	bDefault *blockBuilder
 }
 
 func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*blockBuilder, Value) {
@@ -1011,21 +1014,31 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 		unionBase = bb.field(base, unionHeaderType.Fields[1])
 	}
 
-	cases := make([]switchCase, len(sw.Cases))
+	var defaultCase *switchCase
+	handledNums := make([]bool, len(sw.Union.Cases))
+	switchCases := make([]*switchCase, 0, len(sw.Cases))
 	for i, expr := range call.Args[1:] {
+		var sc switchCase
 		cas := sw.Cases[i]
-		cases[i].num = caseNum(sw.Union, cas.Name)
-		if cas.Type != nil {
-			union := unionBase.Type().(*AddrType).Elem.(*UnionType)
-			cases[i].def = caseDef(union, strings.TrimSuffix(cas.Name, "?"))
-			cases[i].base = unionBase
+		if cas == nil {
+			sc.num = -1
+			defaultCase = &sc
+		} else {
+			sc.num = caseNum(sw.Union, cas.Name)
+			handledNums[sc.num] = true
+			if cas.Type != nil {
+				union := unionBase.Type().(*AddrType).Elem.(*UnionType)
+				sc.def = caseDef(union, strings.TrimSuffix(cas.Name, "?"))
+				sc.base = unionBase
+			}
+			switchCases = append(switchCases, &sc)
 		}
 		if cvt, ok := expr.(*checker.Convert); ok && cvt.Kind == checker.Deref {
-			if cases[i].fun, ok = cvt.Expr.(*checker.BlockLit); ok {
+			if sc.fun, ok = cvt.Expr.(*checker.BlockLit); ok {
 				continue
 			}
 		}
-		bb, cases[i].fun = bb.expr(expr)
+		bb, sc.fun = bb.expr(expr)
 	}
 
 	var res Value
@@ -1039,8 +1052,36 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 		L:          call.L,
 	}
 
-	sort.Slice(cases, func(i, j int) bool { return cases[i].num < cases[j].num })
-	bb.buildCases(0, len(sw.Union.Cases), tag, res, cases, bDone)
+	var bDefault *blockBuilder
+	if defaultCase != nil {
+		// Populate all un-handled cases with the default case.
+		bDefault = &blockBuilder{
+			fun:        bb.fun,
+			BasicBlock: &BasicBlock{Func: bb.fun.FuncDef},
+			L:          defaultCase.fun.Loc(),
+		}
+		for i, handled := range handledNums {
+			if handled {
+				continue
+			}
+			sc := *defaultCase // copies .fun for loc
+			sc.num = i
+			sc.bDefault = bDefault
+			switchCases = append(switchCases, &sc)
+		}
+	}
+
+	sort.Slice(switchCases, func(i, j int) bool {
+		return switchCases[i].num < switchCases[j].num
+	})
+	bb.buildCases(0, len(sw.Union.Cases), tag, res, switchCases, bDone)
+
+	if bDefault != nil {
+		bb.fun.mod.nextBlock++
+		bDefault.Num = bb.fun.mod.nextBlock - 1
+		bb.fun.Blocks = append(bb.fun.Blocks, bDefault.BasicBlock)
+		bDefault.buildBranchCall(defaultCase.fun, nil, res, bDone)
+	}
 
 	bb.fun.mod.nextBlock++
 	bDone.Num = bb.fun.mod.nextBlock - 1
@@ -1057,7 +1098,7 @@ func caseDef(union *UnionType, caseName string) *CaseDef {
 	panic("impossible")
 }
 
-func (bb *blockBuilder) buildCases(min, max int, tag, res Value, cases []switchCase, bDone *blockBuilder) {
+func (bb *blockBuilder) buildCases(min, max int, tag, res Value, cases []*switchCase, bDone *blockBuilder) {
 	total := true
 	next := min
 	for _, c := range cases {
@@ -1122,8 +1163,13 @@ func (bb *blockBuilder) buildCases(min, max int, tag, res Value, cases []switchC
 	bRight.buildCases(cases[i].num, max, tag, res, cases[i:], bDone)
 }
 
-func (bb *blockBuilder) buildCaseCall(cas switchCase, res Value, bDone *blockBuilder) {
+func (bb *blockBuilder) buildCaseCall(cas *switchCase, res Value, bDone *blockBuilder) {
 	bb.L = cas.fun.Loc()
+	if cas.bDefault != nil {
+		// Jump to the default case.
+		bb.jump(cas.bDefault)
+		return
+	}
 	if cas.base == nil {
 		bb.buildBranchCall(cas.fun, nil, res, bDone)
 		return
@@ -1156,33 +1202,50 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 		fun:        bb.fun,
 		BasicBlock: &BasicBlock{Func: bb.fun.FuncDef},
 	}
-
-	bYes := bb.fun.newBlock(loc.Loc{})
-	bNo := bDone
-	if len(sw.Cases) == 2 {
-		bNo = bb.fun.newBlock(loc.Loc{})
-	}
-	tag := bb.load(base)
-	if sw.Cases[0].Type == nil {
-		bb.ifNull(tag, bYes, bNo)
-		bYes.buildBranchCall(funcs[0], nil, res, bDone)
-	} else {
-		bb.ifNull(tag, bNo, bYes)
-		bYes.buildBranchCall(funcs[0], tag, res, bDone)
-	}
-
-	if len(sw.Cases) == 2 {
-		if sw.Cases[1].Type == nil {
-			bNo.buildBranchCall(funcs[1], nil, res, bDone)
+	switch {
+	case len(sw.Cases) == 1 && sw.Cases[0] == nil:
+		// Only a default case.
+		bb.buildBranchCall(funcs[0], nil, res, bDone)
+	case len(sw.Cases) == 1 && sw.Cases[0].Type == nil:
+		tag := bb.load(base)
+		bNil := bb.fun.newBlock(loc.Loc{})
+		bb.ifNull(tag, bNil, bDone)
+		bNil.buildBranchCall(funcs[0], nil, res, bDone)
+	case len(sw.Cases) == 1:
+		tag := bb.load(base)
+		bNonNil := bb.fun.newBlock(loc.Loc{})
+		bb.ifNull(tag, bDone, bNonNil)
+		bNonNil.buildBranchCall(funcs[0], tag, res, bDone)
+	case len(sw.Cases) == 2:
+		// Find which case indices are the nil and non-nil,
+		// taking into account that one or the other (but not both)
+		// may be a default case (sw.Cases[i]==nil).
+		nilIndex := 0
+		nonNilIndex := 1
+		if sw.Cases[nilIndex] != nil {
+			if sw.Cases[nilIndex].Type != nil {
+				nilIndex, nonNilIndex = nonNilIndex, nilIndex
+			}
 		} else {
-			bNo.buildBranchCall(funcs[1], tag, res, bDone)
+			if sw.Cases[nonNilIndex].Type == nil {
+				nilIndex, nonNilIndex = nonNilIndex, nilIndex
+			}
+		}
+		tag := bb.load(base)
+		bNil := bb.fun.newBlock(loc.Loc{})
+		bNonNil := bb.fun.newBlock(loc.Loc{})
+		bb.ifNull(tag, bNil, bNonNil)
+		bNil.buildBranchCall(funcs[nilIndex], nil, res, bDone)
+		if sw.Cases[nonNilIndex] == nil {
+			// Don't pass the tag if this is the default case.
+			bNonNil.buildBranchCall(funcs[nonNilIndex], nil, res, bDone)
+		} else {
+			bNonNil.buildBranchCall(funcs[nonNilIndex], tag, res, bDone)
 		}
 	}
-
 	bb.fun.mod.nextBlock++
 	bDone.Num = bb.fun.mod.nextBlock - 1
 	bb.fun.Blocks = append(bb.fun.Blocks, bDone.BasicBlock)
-
 	return bDone, res
 }
 

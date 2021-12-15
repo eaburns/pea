@@ -328,6 +328,7 @@ func (s *Select) Type() Type { return &FuncType{Parms: []Type{s.Parm}, Ret: s.Re
 
 type Switch struct {
 	Union *UnionType
+	// Cases[i] is nil for the default _? case.
 	Cases []*CaseDef
 	Parms []Type
 	Ret   Type // inferred return type
