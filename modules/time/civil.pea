@@ -578,23 +578,23 @@ test print_civil {
 */
 
 func normal(y int64, m int64, d int64, hh int64, mm int64, ss int64, nn int64) civil {
-	if: nn < (int64 :: 0) || {nn >= (int64 :: 1.0e9)} then: {
+	if: nn < 0 || {nn >= 1.0e9} then: {
 		return: n_ns(y, m, d, hh, mm, ss, nn)
 	},
 	nnn := int32 :: nn,
-	if: ss < (int64 :: 0) || {ss >= (int64 :: 60)} then: {
+	if: ss < 0 || {ss >= 60} then: {
 		return: n_sec(y, m, d, hh, mm, ss/60, ss%60, nnn)
 	},
 	nss := int8 :: ss,
-	if: mm < (int64 :: 0) || {mm >= (int64 :: 60)} then: {
+	if: mm < 0 || {mm >= 60} then: {
 		return: n_min(y, m, d, hh, mm/60, mm%60, nss, nnn)
 	},
 	nmm := int8 :: mm,
-	if: hh < (int64 :: 0) || {hh >= (int64 :: 24)} then: {
+	if: hh < 0 || {hh >= 24} then: {
 		return: n_hour(y, m, d, hh/24, hh%24, nmm, nss, nnn)
 	},
 	nhh := int8 :: hh,
-	if: d < (int64 :: 1) || {d > (int64 :: 28) || {m < (int64 :: 1) || {m > (int64 :: 12)}}} then: {
+	if: d < 1 || {d > 28 || {m < 1 || {m > 12}}} then: {
 		return: n_month(y, m, d, 0, nhh, nmm, nss, nnn)
 	},
 	nd := int8 :: d,
