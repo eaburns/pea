@@ -45,11 +45,15 @@ func (f *FuncInst) unifyParm(i int, typ Type) note {
 		// because one of its parameters has a unknown type.
 		return newNote("%s: bad parameter type", f)
 	}
-	parms := f.typeParmMap()
-	if isGroundType(parms, f.T.Parms[i]) {
+	parmMap := f.typeParmMap()
+	var parms []*TypeParm
+	for p := range parmMap {
+		parms = append(parms, p)
+	}
+	if isGroundType(parmMap, f.T.Parms[i]) {
 		return nil
 	}
-	bind := unify(parms, f.T.Parms[i], typ)
+	bind := unify(typePattern{parms: parms, typ: f.T.Parms[i]}, typ)
 	if bind == nil {
 		return newNote("%s: cannot unify argument %d: %s and %s", f, i, f.T.Parms[i], typ).setLoc(typ)
 	}
@@ -65,11 +69,15 @@ func (f *FuncInst) groundRet() Type {
 }
 
 func (f *FuncInst) unifyRet(typ Type) note {
-	parms := f.typeParmMap()
-	if isGroundType(parms, f.T.Ret) {
+	parmMap := f.typeParmMap()
+	if isGroundType(parmMap, f.T.Ret) {
 		return nil
 	}
-	bind := unify(parms, f.T.Ret, typ)
+	var parms []*TypeParm
+	for p := range parmMap {
+		parms = append(parms, p)
+	}
+	bind := unify(typePattern{parms: parms, typ: f.T.Ret}, typ)
 	if bind == nil {
 		return newNote("%s: cannot unify return: %s and %s", f, f.T.Ret, typ).setLoc(typ)
 	}
@@ -148,171 +156,6 @@ func isGroundType(parms map[*TypeParm]bool, typ Type) bool {
 		return !parms[typ.Def]
 	default:
 		panic(fmt.Sprintf("impossible Type type: %T", typ))
-	}
-}
-
-// unify unifies typ with a function parameter type pat
-// and returns the binding from type variables to types.
-// parms are the function's type parameters.
-//
-// unify is related to unifyStrict, but allows an implicit conversion.
-//
-// typ unifies with pat if…
-// 	* pat is a variable that is a free parameter, in which case pat=typ is bound; or
-// 	* pat is a type literal and typ's literal form unifies with pat; or
-// 	* typ is a type literal and pat's literal form unifies with pat; or
-// 	* pat and typ are references, and their referred types strictly unify; or
-// 	* pat is a reference, typ is not, and pat's referred type strictly unifies with typ; or
-// 	* typ is a reference, pat is not, and typ's referred type strictly unifies with pat; or
-// 	* typ strictly unifies with pat.
-func unify(parms map[*TypeParm]bool, pat, typ Type) map[*TypeParm]Type {
-	bind := make(map[*TypeParm]Type)
-	if v, ok := pat.(*TypeVar); ok && parms[v.Def] {
-		bind[v.Def] = typ
-		return bind
-	}
-
-	if isLiteralType(pat) {
-		if lit := literalType(typ); lit != nil {
-			typ = lit
-		}
-	} else if isLiteralType(typ) {
-		if lit := literalType(pat); lit != nil {
-			pat = lit
-		}
-	}
-	var ok bool
-	switch {
-	case isRefType(pat) && isRefType(typ):
-		ok = unifyStrict(parms, bind, pat.(*RefType).Type, typ.(*RefType).Type)
-	case isRefType(pat):
-		ok = unifyStrict(parms, bind, pat.(*RefType).Type, typ)
-	case isRefType(typ):
-		ok = unifyStrict(parms, bind, pat, typ.(*RefType).Type)
-	default:
-		ok = unifyStrict(parms, bind, pat, typ)
-	}
-	if !ok {
-		return nil
-	}
-	return bind
-}
-
-// unifyStrict strictly unifies typ with another type, pat
-// and returns the binding from type variables to types.
-// parms are the free type parameters.
-//
-// typ strictly unifies with pat…
-// 	* if pat is a def type and typ is a def type and
-// 		- they both have the same type definition, and
-// 		- each argument of typ strictly unifies with the corresponding of pat;
-// 	* or if pat is a ref type and typ is a ref type and
-// 		the referred type of typ strictly unifies with the referred type of pat;
-// 	* or if pat is an array type and typ is an array type and
-// 		the element type of typ strictly unifies with the element type of pat;
-// 	* or if pat is a struct type and typ is a struct type and
-// 		- pat and typ have the same number of fields,
-// 		- each field of typ has the same name as the corresponding field of pat, and
-// 		- the type of each field of typ strictly unifies with the type of the corresponding field of pat,
-// 	* or if pat is a union type and typ is a union type and,
-// 		- pat and typ have the same number of cases,
-// 		- each case of typ has the same name as the corresponding case of pat, and
-// 		- each case of typ either is untyped and so is the corresponding case of pat
-// 			or is typed and so is the corresponding case of pat and
-// 			the type of the case of typ strictly unifies with that of pat;
-// 	* or if pat is a function typ and typ is a function type and,
-// 		- they have the same number of parameters,
-// 		- each parameter type of typ strictly unifies with the corresponding parameter type of pat, and
-// 		- the return type of typ strictly unifies with the return type of pat;
-// 	* or pat is a type variable that is a free parameter,
-// 		in which case the unification contains a binding from pat=typ,
-// 	* otherwise pat and typ are equal.
-// It is an error for multiple bindings to the same type variable to have differing types.
-func unifyStrict(parms map[*TypeParm]bool, bind map[*TypeParm]Type, pat, typ Type) bool {
-	switch pat := pat.(type) {
-	case *DefType:
-		typ, ok := typ.(*DefType)
-		if !ok || pat.Def != typ.Def {
-			return false
-		}
-		for i := range pat.Args {
-			if !unifyStrict(parms, bind, pat.Args[i], typ.Args[i]) {
-				return false
-			}
-		}
-		return true
-	case *RefType:
-		typ, ok := typ.(*RefType)
-		if !ok {
-			return false
-		}
-		return unifyStrict(parms, bind, pat.Type, typ.Type)
-	case *ArrayType:
-		typ, ok := typ.(*ArrayType)
-		if !ok {
-			return false
-		}
-		return unifyStrict(parms, bind, pat.ElemType, typ.ElemType)
-	case *StructType:
-		typ, ok := typ.(*StructType)
-		if !ok || len(pat.Fields) != len(typ.Fields) {
-			return false
-		}
-		for i := range pat.Fields {
-			patFieldType := pat.Fields[i].Type
-			typFieldType := typ.Fields[i].Type
-			if !unifyStrict(parms, bind, patFieldType, typFieldType) {
-				return false
-			}
-		}
-		return true
-	case *UnionType:
-		typ, ok := typ.(*UnionType)
-		if !ok || len(pat.Cases) != len(typ.Cases) {
-			return false
-		}
-		for i := range pat.Cases {
-			patCaseType := pat.Cases[i].Type
-			typCaseType := typ.Cases[i].Type
-			if patCaseType == nil {
-				if typCaseType != nil {
-					return false
-				}
-				continue
-			}
-			if !unifyStrict(parms, bind, patCaseType, typCaseType) {
-				return false
-			}
-		}
-		return true
-	case *FuncType:
-		typ, ok := typ.(*FuncType)
-		if !ok || len(pat.Parms) != len(typ.Parms) {
-			return false
-		}
-		for i := range pat.Parms {
-			if !unifyStrict(parms, bind, pat.Parms[i], typ.Parms[i]) {
-				return false
-			}
-		}
-		return unifyStrict(parms, bind, pat.Ret, typ.Ret)
-	case *BasicType:
-		if !eqType(pat, typ) {
-			return false
-		}
-		return true
-	case *TypeVar:
-		if !parms[pat.Def] {
-			return eqType(pat, typ)
-		}
-		prev, ok := bind[pat.Def]
-		if !ok {
-			bind[pat.Def] = typ
-			return true
-		}
-		return eqType(prev, typ)
-	default:
-		panic(fmt.Sprintf("impossible Type type: %T", pat))
 	}
 }
 

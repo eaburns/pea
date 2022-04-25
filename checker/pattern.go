@@ -26,6 +26,11 @@ func pattern(t Type) *typePattern {
 	return &typePattern{parms: nil, typ: t}
 }
 
+func (pat typePattern) withType(typ Type) typePattern {
+	pat.typ = typ
+	return pat
+}
+
 // bound returns whether the type variable is bound to a type parameter of the typePattern.
 func (pat *typePattern) bound(v *TypeVar) bool {
 	for _, parm := range pat.parms {
@@ -289,4 +294,131 @@ func common(pats ...*typePattern) *typePattern {
 	}
 	pat.typ = buildType(ts)
 	return &pat
+}
+
+// unify returns a binding of types to type parameters of pat
+// that make pat's type implicitly convertible to typ,
+// or nil if there is no such binding.
+func unify(pat typePattern, typ Type) map[*TypeParm]Type {
+	bind := make(map[*TypeParm]Type)
+	if v, ok := pat.typ.(*TypeVar); ok && pat.bound(v) {
+		bind[v.Def] = typ
+		return bind
+	}
+	if isLiteralType(pat.typ) {
+		if lit := literalType(typ); lit != nil {
+			typ = lit
+		}
+	} else if isLiteralType(typ) {
+		if lit := literalType(pat.typ); lit != nil {
+			pat.typ = lit
+		}
+	}
+	var ok bool
+	switch {
+	case isRefType(pat.typ) && isRefType(typ):
+		ok = unifyStrict(pat.withType(pat.typ.(*RefType).Type), typ.(*RefType).Type, bind)
+	case isRefType(pat.typ):
+		ok = unifyStrict(pat.withType(pat.typ.(*RefType).Type), typ, bind)
+	case isRefType(typ):
+		ok = unifyStrict(pat, typ.(*RefType).Type, bind)
+	default:
+		ok = unifyStrict(pat, typ, bind)
+	}
+	if !ok {
+		return nil
+	}
+	return bind
+}
+
+// unifyStrict adds to bind bindings of types to type parameters of pat
+// such that substituting the binding makes pat's type equivalent to typ,
+// and returns whether the unification was successful.
+// It is an error for multiple bindings to the same type variable to have differing types.
+func unifyStrict(pat typePattern, typ Type, bind map[*TypeParm]Type) bool {
+	switch patType := pat.typ.(type) {
+	case *DefType:
+		typ, ok := typ.(*DefType)
+		if !ok || patType.Def != typ.Def {
+			return false
+		}
+		for i, patArg := range patType.Args {
+			if !unifyStrict(pat.withType(patArg), typ.Args[i], bind) {
+				return false
+			}
+		}
+		return true
+	case *RefType:
+		typ, ok := typ.(*RefType)
+		if !ok {
+			return false
+		}
+		return unifyStrict(pat.withType(patType.Type), typ.Type, bind)
+	case *ArrayType:
+		typ, ok := typ.(*ArrayType)
+		if !ok {
+			return false
+		}
+		return unifyStrict(pat.withType(patType.ElemType), typ.ElemType, bind)
+	case *StructType:
+		typ, ok := typ.(*StructType)
+		if !ok || len(patType.Fields) != len(typ.Fields) {
+			return false
+		}
+		for i := range patType.Fields {
+			patFieldType := patType.Fields[i].Type
+			typFieldType := typ.Fields[i].Type
+			if !unifyStrict(pat.withType(patFieldType), typFieldType, bind) {
+				return false
+			}
+		}
+		return true
+	case *UnionType:
+		typ, ok := typ.(*UnionType)
+		if !ok || len(patType.Cases) != len(typ.Cases) {
+			return false
+		}
+		for i := range patType.Cases {
+			patCaseType := patType.Cases[i].Type
+			typCaseType := typ.Cases[i].Type
+			if patCaseType == nil {
+				if typCaseType != nil {
+					return false
+				}
+				continue
+			}
+			if !unifyStrict(pat.withType(patCaseType), typCaseType, bind) {
+				return false
+			}
+		}
+		return true
+	case *FuncType:
+		typ, ok := typ.(*FuncType)
+		if !ok || len(patType.Parms) != len(typ.Parms) {
+			return false
+		}
+		for i := range patType.Parms {
+			if !unifyStrict(pat.withType(patType.Parms[i]), typ.Parms[i], bind) {
+				return false
+			}
+		}
+		return unifyStrict(pat.withType(patType.Ret), typ.Ret, bind)
+	case *BasicType:
+		if !eqType(patType, typ) {
+			return false
+		}
+		return true
+	case *TypeVar:
+		if !pat.bound(patType) {
+			return eqType(patType, typ)
+		}
+		prev, ok := bind[patType.Def]
+		if !ok {
+			bind[patType.Def] = typ
+			return true
+		}
+		return eqType(prev, typ)
+	default:
+		panic(fmt.Sprintf("impossible Type type: %T", pat))
+	}
 }
