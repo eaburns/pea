@@ -132,6 +132,20 @@ func ParseExpr(str string) (Expr, error) {
 	return *expr, nil
 }
 
+func ParseType(str string) (Type, error) {
+	_p, err := _NewParser(str)
+	if err != nil {
+		return nil, err
+	}
+	_p.data = New()
+	if pos, perr := _TypeAccepts(_p, 0); pos < 0 {
+		_, t := _TypeFail(_p, 0, perr)
+		return nil, parseError{loc: perr, text: _p.text, fail: t}
+	}
+	_, typ := _TypeAction(_p, 0)
+	return *typ, nil
+}
+
 type parseError struct {
 	path string
 	loc  int

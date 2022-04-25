@@ -163,7 +163,7 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 				continue
 			}
 			typeDef := defs[parserTypeDef].(*TypeDef)
-			t, fs := _makeType(typeDef, parserTypeDef.Type, false)
+			t, fs := _makeType(typeDef, parserTypeDef.Type, false, false)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 			}
@@ -381,20 +381,20 @@ func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm
 }
 
 func makeType(x scope, parserType parser.Type) (typ Type, errs []Error) {
-	return _makeType(x, parserType, true)
+	return _makeType(x, parserType, true, false)
 }
 
-func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Error) {
+func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) (typ Type, errs []Error) {
 	switch parserType := parserType.(type) {
 	case nil:
 		return nil, nil
 	case *parser.RefType:
-		typ, errs = _makeType(x, parserType.Type, inst)
+		typ, errs = _makeType(x, parserType.Type, inst, allowUnboundForTest)
 		typ = &RefType{Type: typ, L: parserType.L}
 	case *parser.NamedType:
 		var args []Type
 		for _, parserArg := range parserType.Args {
-			arg, fs := _makeType(x, parserArg, inst)
+			arg, fs := _makeType(x, parserArg, inst, allowUnboundForTest)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 				continue
@@ -428,12 +428,12 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 		}
 	case *parser.ArrayType:
 		var elemType Type
-		elemType, errs = _makeType(x, parserType.ElemType, inst)
+		elemType, errs = _makeType(x, parserType.ElemType, inst, allowUnboundForTest)
 		typ = &ArrayType{ElemType: elemType, L: parserType.L}
 	case *parser.StructType:
 		var fields []FieldDef
 		for _, parserField := range parserType.Fields {
-			t, fs := _makeType(x, parserField.Type, inst)
+			t, fs := _makeType(x, parserField.Type, inst, allowUnboundForTest)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 			}
@@ -447,7 +447,7 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 	case *parser.UnionType:
 		var cases []CaseDef
 		for _, parserCase := range parserType.Cases {
-			t, fs := _makeType(x, parserCase.Type, inst)
+			t, fs := _makeType(x, parserCase.Type, inst, allowUnboundForTest)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 			}
@@ -459,11 +459,11 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 		}
 		typ = &UnionType{Cases: cases, L: parserType.L}
 	case *parser.FuncType:
-		parms, fs := _makeTypes(x, parserType.Parms, inst)
+		parms, fs := _makeTypes(x, parserType.Parms, inst, allowUnboundForTest)
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
-		ret, fs := _makeType(x, parserType.Ret, inst)
+		ret, fs := _makeType(x, parserType.Ret, inst, allowUnboundForTest)
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
@@ -475,7 +475,11 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 		name := parserType.Name
 		switch types := findType(x, nil, name, parserType.L); {
 		case len(types) == 0:
-			errs = append(errs, notFound(name, parserType.L))
+			if allowUnboundForTest {
+				typ = &TypeVar{Name: name, L: parserType.L}
+			} else {
+				errs = append(errs, notFound(name, parserType.L))
+			}
 		case len(types) > 1:
 			errs = append(errs, ambigType(name, parserType.L, types))
 		default:
@@ -491,14 +495,14 @@ func _makeType(x scope, parserType parser.Type, inst bool) (typ Type, errs []Err
 }
 
 func makeTypes(x scope, parserTypes []parser.Type) ([]Type, []Error) {
-	return _makeTypes(x, parserTypes, true)
+	return _makeTypes(x, parserTypes, true, false)
 }
 
-func _makeTypes(x scope, parserTypes []parser.Type, inst bool) ([]Type, []Error) {
+func _makeTypes(x scope, parserTypes []parser.Type, inst bool, allowUnboundForTest bool) ([]Type, []Error) {
 	var errs []Error
 	var types []Type
 	for _, parserType := range parserTypes {
-		t, fs := _makeType(x, parserType, inst)
+		t, fs := _makeType(x, parserType, inst, allowUnboundForTest)
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
