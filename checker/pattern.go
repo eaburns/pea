@@ -299,33 +299,48 @@ func common(pats ...*typePattern) *typePattern {
 // unify returns a binding of types to type parameters of pat
 // that make pat's type implicitly convertible to typ,
 // or nil if there is no such binding.
+//
+// Note that the binding is optimistic.
+// Specificially, it assumes any expression of type typ
+// can be referenced, but this is not true.
+// So unify can succeed with a non-nil binding,
+// even if the actual expression cannot be converted
+// to the pattern.
 func unify(pat typePattern, typ Type) map[*TypeParm]Type {
-	bind := make(map[*TypeParm]Type)
 	if v, ok := pat.typ.(*TypeVar); ok && pat.bound(v) {
+		bind := make(map[*TypeParm]Type)
 		bind[v.Def] = typ
 		return bind
 	}
-	if isLiteralType(pat.typ) {
+
+	switch {
+	case isLiteralType(pat.typ):
 		if lit := literalType(typ); lit != nil {
 			typ = lit
 		}
-	} else if isLiteralType(typ) {
+	case isLiteralType(typ):
 		if lit := literalType(pat.typ); lit != nil {
 			pat.typ = lit
 		}
 	}
-	var ok bool
-	switch {
-	case isRefType(pat.typ) && isRefType(typ):
-		ok = unifyStrict(pat.withType(pat.typ.(*RefType).Type), typ.(*RefType).Type, bind)
-	case isRefType(pat.typ):
-		ok = unifyStrict(pat.withType(pat.typ.(*RefType).Type), typ, bind)
-	case isRefType(typ):
-		ok = unifyStrict(pat, typ.(*RefType).Type, bind)
-	default:
-		ok = unifyStrict(pat, typ, bind)
+
+	switch typRefDepth, patRefDepth := refDepth(typ), refDepth(pat.typ); {
+	case typRefDepth > patRefDepth:
+		// Dereference conversion.
+		for typRefDepth > patRefDepth {
+			typ = typ.(*RefType).Type
+			typRefDepth--
+		}
+	case patRefDepth == typRefDepth+1:
+		// Single reference conversion.
+		// The actual conversion can fail
+		// for non-referencable expressions.
+		pat.typ = pat.typ.(*RefType).Type
+		patRefDepth--
 	}
-	if !ok {
+
+	bind := make(map[*TypeParm]Type)
+	if !unifyStrict(pat, typ, bind) {
 		return nil
 	}
 	return bind
@@ -366,6 +381,9 @@ func unifyStrict(pat typePattern, typ Type, bind map[*TypeParm]Type) bool {
 			return false
 		}
 		for i := range patType.Fields {
+			if patType.Fields[i].Name != typ.Fields[i].Name {
+				return false
+			}
 			patFieldType := patType.Fields[i].Type
 			typFieldType := typ.Fields[i].Type
 			if !unifyStrict(pat.withType(patFieldType), typFieldType, bind) {
@@ -381,10 +399,11 @@ func unifyStrict(pat typePattern, typ Type, bind map[*TypeParm]Type) bool {
 		for i := range patType.Cases {
 			patCaseType := patType.Cases[i].Type
 			typCaseType := typ.Cases[i].Type
+			if patType.Cases[i].Name != typ.Cases[i].Name ||
+				(patCaseType == nil) != (typCaseType == nil) {
+				return false
+			}
 			if patCaseType == nil {
-				if typCaseType != nil {
-					return false
-				}
 				continue
 			}
 			if !unifyStrict(pat.withType(patCaseType), typCaseType, bind) {
