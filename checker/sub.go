@@ -190,7 +190,8 @@ func (c *Call) subExpr(bindings bindings) Expr {
 		// coming out of an explicit convert.
 		// We need to be able to convert it back to &string
 		// to pass to bar(&string).
-		args[i], err = convert(args[i], fun.groundParm(i), true)
+		p := fun.parm(i).groundType()
+		args[i], err = convert(args[i], p, true)
 		if err != nil {
 			// The conversion should always succeed,
 			// because iface instantiation only binds

@@ -450,8 +450,11 @@ func TestUnusedLocal(t *testing.T) {
 		}
 	`
 	_, errs := check("test", []string{src}, nil)
-	if len(errs) != 1 {
+	if len(errs) == 0 {
 		t.Fatal("expected an error, got none")
+	}
+	if len(errs) > 1 {
+		t.Fatalf("expected one error, got %v", errs)
 	}
 	if !regexp.MustCompile("x unused").MatchString(errs[0].Error()) {
 		t.Errorf("expected x unused, got %s", errs[0])
@@ -2661,7 +2664,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo() + make_foo()",
-			err:  `built-in \+\(_, _\): does not support type other#_foo`,
+			err:  `built-in \+\(T, T\)T: does not support type other#_foo`,
 		},
 		{
 			name: "built-in array index, no expected type",
@@ -2717,7 +2720,7 @@ func TestOverloadResolution(t *testing.T) {
 		{
 			name: "built-in array slice, arg not an array",
 			call: "1[1, 2]",
-			err:  "not an array or string",
+			err:  "int is not an array or string",
 		},
 		{
 			name: "built-in string slice",

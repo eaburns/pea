@@ -277,14 +277,16 @@ func (f *FuncDecl) Type() Type {
 
 type Func interface {
 	String() string
-
-	arity() int
-	groundRet() Type // nil if not grounded
-	unifyRet(Type) note
-	groundParm(int) Type // nil if not grounded
-	unifyParm(int, Type) note
 	buildString(*strings.Builder) *strings.Builder
 	eq(Func) bool
+	arity() int
+	// ret() and parm() return the return type pattern and parameter type patterns respectively.
+	// An implementation may assume that for i>0, parm(i) is not called until after parm(i-1)
+	// is called and a subsequent sub() call substitutes any type variables from parm(i-1);
+	// similarly ret() is not called until after parm(arity()-1).
+	ret() typePattern
+	parm(int) typePattern
+	sub(map[*TypeParm]Type) note
 }
 
 type FuncInst struct {
@@ -316,22 +318,48 @@ func (f *FuncInst) Loc() loc.Loc { return f.Def.L }
 func (f *FuncInst) Type() Type   { return f.T }
 
 type Select struct {
+	// N is the selected field name.
+	N        string
+	TypeParm *TypeParm
+	Parm     Type
+	// Ret is nil until after a successful call to Select.sub().
+	Ret Type
+
 	// Struct is the struct type and the type of the 0th parameter.
-	// During overload resolution, Struct is nil until parm 0 is unified.
+	// It is nil until parm 0 is successfully substituted.
 	Struct *StructType
-	Field  *FieldDef
-	Parm   Type
-	Ret    Type
+	// Field is a pointer to the selected field in Struct.
+	// It is nil until parm0 is successfully substituted.
+	Field *FieldDef
 }
 
 func (s *Select) Type() Type { return &FuncType{Parms: []Type{s.Parm}, Ret: s.Ret} }
 
 type Switch struct {
+	// N is the name of the switch function.
+	N string
+	// Names is the names of the cases; N split by ?.
+	Names []string
+	// TypeParms are the type parameters.
+	//
+	// TypeParms[0] is the fake type parameter representing the union type.
+	// By the spec, there are Switch functions defined directly on every union type,
+	// but we represent this lazily by using a type parameter for it,
+	// and returning an error from Switch.sub() if that parameter is substituted with a non-union.
+	//
+	// TypeParms[1] is the type parameter of the return type.
+	TypeParms []*TypeParm
+	// Parms is the correct length, but:
+	// before Switch.sub(), Parms[0] is a type variable of TypeParms[0],
+	// and the remaining elements are nil, and
+	// after Switch.sub() the elements are the correct type for the switch.
+	Parms []Type
+	// Ret is nil until after Switch.sub().
+	Ret Type
+
 	Union *UnionType
 	// Cases[i] is nil for the default _? case.
 	Cases []*CaseDef
-	Parms []Type
-	Ret   Type // inferred return type
 }
 
 func (s *Switch) Type() Type { return &FuncType{Parms: s.Parms, Ret: s.Ret} }
@@ -369,9 +397,11 @@ const (
 )
 
 type Builtin struct {
-	Op    Op
-	Parms []Type
-	Ret   Type
+	N        string
+	Op       Op
+	TypeParm *TypeParm
+	Parms    []Type
+	Ret      Type
 }
 
 func (b *Builtin) Type() Type { return &FuncType{Parms: b.Parms, Ret: b.Ret} }

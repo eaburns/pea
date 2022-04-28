@@ -21,14 +21,79 @@ func any() *typePattern {
 	return &typePattern{parms: []*TypeParm{p}, typ: v}
 }
 
-// pattern returns the typePattern for the type.
-func pattern(t Type) *typePattern {
-	return &typePattern{parms: nil, typ: t}
-}
-
 func (pat typePattern) withType(typ Type) typePattern {
 	pat.typ = typ
 	return pat
+}
+
+// groundType returns the ground type of the type pattern;
+// it panics if either pat.typ is nil or not grounded.
+func (pat typePattern) groundType() Type {
+	if pat.typ == nil {
+		panic("type is nil")
+	}
+	if !pat.isGroundType() {
+		panic(fmt.Sprintf("not grounded: %s", pat))
+	}
+	return pat.typ
+}
+
+// patternToWantType returns nil if the pattern's type is not grounded, otherwise the type.
+// TODO: remove patternToWantType once want types are eliminated.
+func patternToWantType(pat typePattern) Type {
+	if !pat.isGroundType() {
+		return nil
+	}
+	return pat.typ
+}
+
+// isGroundType returns whether the type pattern is a ground type;
+// whether its type has no referenced type parameters.
+func (pat typePattern) isGroundType() bool {
+	var isGround func(Type) bool
+	isGround = func(t Type) bool {
+		switch t := t.(type) {
+		case *DefType:
+			for i := range t.Args {
+				if !isGround(t.Args[i]) {
+					return false
+				}
+			}
+		case *RefType:
+			return isGround(t.Type)
+		case *ArrayType:
+			return isGround(t.ElemType)
+		case *StructType:
+			for i := range t.Fields {
+				if !isGround(t.Fields[i].Type) {
+					return false
+				}
+			}
+		case *UnionType:
+			for i := range t.Cases {
+				if !isGround(t.Cases[i].Type) {
+					return false
+				}
+			}
+		case *FuncType:
+			for i := range t.Parms {
+				if !isGround(t.Parms[i]) {
+					return false
+				}
+			}
+			return isGround(t.Ret)
+		case *TypeVar:
+			if pat.bound(t) {
+				return false
+			}
+		case *BasicType:
+		case nil:
+		default:
+			panic(fmt.Sprintf("bad type type: %T", t))
+		}
+		return true
+	}
+	return isGround(pat.typ)
 }
 
 // bound returns whether the type variable is bound to a type parameter of the typePattern.
@@ -41,7 +106,7 @@ func (pat *typePattern) bound(v *TypeVar) bool {
 	return false
 }
 
-func (pat *typePattern) String() string {
+func (pat typePattern) String() string {
 	c := copyTypeWithLoc(pat.typ, loc.Loc{})
 
 	refs := make(map[*TypeParm]int)

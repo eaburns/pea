@@ -288,79 +288,105 @@ func (m *Mod) findIDs(name string) []id {
 	if strings.HasPrefix(name, ".") {
 		// Add a template select type to be filled in with concrete types
 		// or rejected when its 0th parameter is unified.
+		pat := any()
 		ids = append(ids, &Select{
-			Field: &FieldDef{Name: name},
+			N:        name,
+			TypeParm: pat.parms[0],
+			Parm:     &RefType{Type: pat.typ},
+			Ret:      nil, // determined during sub()
 		})
 	}
 	if strings.HasSuffix(name, "?") {
-		// Add a template switch to be filled with concrete types
-		// or rejected when the return or 0th parameter is unified.
-		caseNames := splitCaseNames(name)
-		n := len(caseNames)
-		sw := Switch{
-			Cases: make([]*CaseDef, n),
-			Parms: make([]Type, n+1),
-		}
+		names := splitCaseNames(name)
 		defaultCases := 0
-		for i, caseName := range caseNames {
-			if caseName == "_?" {
+		for _, n := range names {
+			if n == "_?" {
 				defaultCases++
 			}
-			sw.Cases[i] = &CaseDef{Name: caseName}
 		}
 		// Multiple default cases are not supported.
 		if defaultCases <= 1 {
+			sw := Switch{
+				N:     name,
+				Names: names,
+				TypeParms: []*TypeParm{
+					{Name: "_"},
+					{Name: "_"},
+				},
+				Parms: make([]Type, len(names)+1),
+			}
+			sw.Parms[0] = &TypeVar{Name: "_", Def: sw.TypeParms[0]}
 			ids = append(ids, &sw)
 		}
 	}
-	for _, binfo := range builtins {
-		if binfo.name != name {
-			continue
+	for i := range builtins {
+		if builtins[i].N == name {
+			// copy
+			b := builtins[i]
+			b.Parms = append([]Type{}, b.Parms...)
+			ids = append(ids, &b)
 		}
-		b := &Builtin{Op: binfo.op}
-		for _, p := range binfo.parms {
-			b.Parms = append(b.Parms, p)
-		}
-		b.Ret = binfo.ret
-		ids = append(ids, b)
 	}
 	return ids
 }
 
-type builtin struct {
-	name  string
-	op    Op
-	parms []Type // nil is _
-	ret   Type   // nil is _
-}
+var (
+	_P      = &TypeParm{Name: "T"}
+	_T      = &TypeVar{Name: _P.Name, Def: _P}
+	_uint8  = basic(Uint8)
+	_int    = basic(Int)
+	_bool   = basic(Bool)
+	_string = basic(String)
+	_empty  = &StructType{}
 
-var builtins = []builtin{
-	{name: ":=", op: Assign, parms: []Type{nil, nil}, ret: &StructType{}},
-	{name: "new", op: NewArray, parms: []Type{basic(Int), nil}, ret: nil},
-	{name: "^", op: BitNot, parms: []Type{nil}, ret: nil},
-	{name: "^", op: BitXor, parms: []Type{nil, nil}, ret: nil},
-	{name: "&", op: BitAnd, parms: []Type{nil, nil}, ret: nil},
-	{name: "|", op: BitOr, parms: []Type{nil, nil}, ret: nil},
-	{name: "<<", op: LeftShift, parms: []Type{nil, basic(Int)}, ret: nil},
-	{name: ">>", op: RightShift, parms: []Type{nil, basic(Int)}, ret: nil},
-	{name: "-", op: Negate, parms: []Type{nil}, ret: nil},
-	{name: "-", op: Minus, parms: []Type{nil, nil}, ret: nil},
-	{name: "+", op: Plus, parms: []Type{nil, nil}, ret: nil},
-	{name: "*", op: Times, parms: []Type{nil, nil}, ret: nil},
-	{name: "/", op: Divide, parms: []Type{nil, nil}, ret: nil},
-	{name: "%", op: Modulus, parms: []Type{nil, nil}, ret: nil},
-	{name: "=", op: Eq, parms: []Type{nil, nil}, ret: basic(Bool)},
-	{name: "!=", op: Neq, parms: []Type{nil, nil}, ret: basic(Bool)},
-	{name: "<", op: Less, parms: []Type{nil, nil}, ret: basic(Bool)},
-	{name: "<=", op: LessEq, parms: []Type{nil, nil}, ret: basic(Bool)},
-	{name: ">", op: Greater, parms: []Type{nil, nil}, ret: basic(Bool)},
-	{name: ">=", op: GreaterEq, parms: []Type{nil, nil}, ret: basic(Bool)},
-	{name: "[]", op: Index, parms: []Type{nil, basic(Int)}, ret: nil},
-	{name: "[]", op: Slice, parms: []Type{nil, basic(Int), basic(Int)}, ret: nil},
-	{name: ".length", op: Length, parms: []Type{nil}, ret: basic(Int)},
-	{name: "panic", op: Panic, parms: []Type{basic(String)}, ret: &StructType{}},
-	{name: "print", op: Print, parms: []Type{basic(String)}, ret: &StructType{}},
-}
+	builtins = []Builtin{
+		{N: ":=", Op: Assign, TypeParm: _P, Parms: []Type{refType(_T), _T}, Ret: _empty},
+		{N: "new", Op: NewArray, TypeParm: _P, Parms: []Type{_int, _T}, Ret: arrayType(_T)},
+
+		// Bit-wise ops are asserted to only sub Parms[0] with an integer type in Builtin.sub.
+		{N: "^", Op: BitNot, TypeParm: _P, Parms: []Type{_T}, Ret: _T},
+		{N: "^", Op: BitXor, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
+		{N: "&", Op: BitAnd, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
+		{N: "|", Op: BitOr, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
+		{N: "<<", Op: LeftShift, TypeParm: _P, Parms: []Type{_T, _int}, Ret: _T},
+		{N: ">>", Op: RightShift, TypeParm: _P, Parms: []Type{_T, _int}, Ret: _T},
+
+		// Arithmetic ops are asserted to only sub Parms[0] with a number type in Builtin.sub.
+		{N: "-", Op: Negate, TypeParm: _P, Parms: []Type{_T}, Ret: _T},
+		{N: "-", Op: Minus, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
+		{N: "+", Op: Plus, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
+		{N: "*", Op: Times, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
+		{N: "/", Op: Divide, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
+		{N: "%", Op: Modulus, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
+
+		// Comparison ops are asserted to only sub Parms[0] with a number type in Builtin.sub.
+		{N: "=", Op: Eq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
+		{N: "!=", Op: Neq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
+		{N: "<", Op: Less, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
+		{N: "<=", Op: LessEq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
+		{N: ">", Op: Greater, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
+		{N: ">=", Op: GreaterEq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
+
+		// TODO: allow the following instead of the hackery in Builtin.sub.
+		/*
+			{N: "[]", Op: Index, TypeParm: _P, Parms: []Type{arrayType(_T), _int}, Ret: refType(_T)},
+			{N: "[]", Op: Slice, TypeParm: _P, Parms: []Type{arrayType(_T), _int, _int}, Ret: arrayType(_T)},
+			{N: "[]", Op: Index, Parms: []Type{_string, _int}, Ret: _int},
+			{N: "[]", Op: Slice, Parms: []Type{_string, _int, _int}, Ret: _string},
+			{N: ".length", Op: Length, TypeParm: _P, Parms: []Type{arrayType(_T)}, Ret: _int},
+			{N: ".length", Op: Length, Parms: []Type{_string}, Ret: _int},
+		*/
+		// Index, Slice, and Length ops are asserted to only sub Parms[0]
+		// with an array or string type in Builtin.sub;
+		// for Index, the return type is fixed up also in Builtin.sub.
+		{N: "[]", Op: Index, TypeParm: _P, Parms: []Type{_T, _int}, Ret: refType(_T)},
+		{N: "[]", Op: Slice, TypeParm: _P, Parms: []Type{_T, _int, _int}, Ret: arrayType(_T)},
+		{N: ".length", Op: Length, TypeParm: _P, Parms: []Type{_T}, Ret: _int},
+
+		{N: "panic", Op: Panic, Parms: []Type{_string}, Ret: _empty},
+		{N: "print", Op: Print, Parms: []Type{_string}, Ret: _empty},
+	}
+)
 
 func basic(k BasicTypeKind) Type { return &BasicType{Kind: k} }
 func byteArray() Type            { return &ArrayType{ElemType: basic(Uint8)} }

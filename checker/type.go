@@ -33,6 +33,13 @@ func trim1Ref(typ Type) Type {
 	return typ
 }
 
+func arrayType(typ Type) Type {
+	if typ == nil {
+		return nil
+	}
+	return &ArrayType{ElemType: typ, L: typ.Loc()}
+}
+
 var boolUnion = &UnionType{
 	Cases: []CaseDef{
 		{Name: "false?"},

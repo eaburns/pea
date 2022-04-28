@@ -308,7 +308,7 @@ func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {
 
 func (e *Select) buildString(s *strings.Builder) *strings.Builder {
 	s.WriteString("built-in ")
-	s.WriteString(e.Field.Name)
+	s.WriteString(e.N)
 	if e.Struct == nil {
 		return s
 	}

@@ -1155,9 +1155,10 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	}
 
 	fun := useFunc(x, parserCall.L, funcs[0])
-	ret := fun.groundRet()
+	ret := fun.ret().groundType()
 	for i, arg := range args {
-		args[i], _ = convert(arg, fun.groundParm(i), false)
+		p := fun.parm(i).groundType()
+		args[i], _ = convert(arg, p, false)
 	}
 	var expr Expr = &Call{
 		Func: fun,
@@ -1317,12 +1318,15 @@ func checkArgsFallback(x scope, parserArgs []parser.Expr) []Error {
 func commonGroundParmType(funcs []Func, i int) Type {
 	var t Type
 	for _, f := range funcs {
-		switch {
-		case f.groundParm(i) == nil:
+		typ := patternToWantType(f.parm(i))
+		if typ == nil {
 			return nil
-		case t == nil:
-			t = f.groundParm(i)
-		case !eqType(t, f.groundParm(i)):
+		}
+		if t == nil {
+			t = typ
+			continue
+		}
+		if !eqType(t, typ) {
 			return nil
 		}
 	}
@@ -1338,14 +1342,22 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		if note := f.unifyParm(i, arg.Type()); note != nil {
-			notes = append(notes, note)
-			continue
+		// For the moment, we don't bother trying to unify if the type is already grounded.
+		// The difference is just in who reports the error: unify or converson.
+		// TODO: always unify types and change the expected error in tests.
+		if pat := f.parm(i); !pat.isGroundType() {
+			bind := unify(pat, arg.Type())
+			if bind == nil {
+				n := newNote("%s: cannot unify argument %d: %s and %s", f, i, pat, arg.Type()).setLoc(arg)
+				notes = append(notes, n)
+				continue
+			}
+			if n := f.sub(bind); n != nil {
+				notes = append(notes, n)
+				continue
+			}
 		}
-		parmType := f.groundParm(i)
-		if parmType == nil {
-			continue
-		}
+		parmType := f.parm(i).groundType()
 		if _, err := convert(arg, parmType, false); err == nil {
 			funcs[n] = f
 			n++
@@ -1361,14 +1373,24 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		if note := f.unifyRet(want); note != nil {
-			notes = append(notes, note)
-			continue
+		// For the moment, we don't bother trying to unify if the type is already grounded.
+		// The difference is just in who reports the error: unify or converson.
+		// TODO: always unify types and change the expected error in tests.
+		if pat := f.ret(); !pat.isGroundType() {
+			bind := unify(pat, want)
+			if bind == nil {
+				// TODO: the location here should be the call location, not the want location.
+				n := newNote("%s: cannot unify return: %s and %s", f, pat, want).setLoc(want)
+				notes = append(notes, n)
+				continue
+			}
+			if n := f.sub(bind); n != nil {
+				notes = append(notes, n)
+				continue
+			}
 		}
-		retType := f.groundRet()
-		if retType == nil {
-			continue
-		}
+		retType := f.ret().groundType()
+
 		// If there is only 1 function, don't bother checking conversion.
 		// If it cannot convert, it will fail upstream.
 		// The reason for this special case is that canImplicitConvert
@@ -1390,7 +1412,7 @@ func filterUngroundReturns(funcs []Func) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		if f.groundRet() != nil {
+		if f.ret().isGroundType() {
 			funcs[n] = f
 			n++
 			continue
@@ -1628,11 +1650,11 @@ func isGround(id id) bool {
 	switch id := id.(type) {
 	case Func:
 		for i := 0; i < id.arity(); i++ {
-			if id.groundParm(i) == nil {
+			if !id.parm(i).isGroundType() {
 				return false
 			}
 		}
-		return id.groundRet() != nil
+		return id.ret().isGroundType()
 	default:
 		return true
 	}
@@ -1671,7 +1693,7 @@ func idToExpr(id id, l loc.Loc) Expr {
 	case *BlockCap:
 		return deref(&Cap{Def: id, T: refType(id.T), L: l})
 	case Func:
-		return wrapCallInBlock(id, id.groundRet(), l)
+		return wrapCallInBlock(id, id.ret().groundType(), l)
 	default:
 		panic(fmt.Sprintf("impossible id type: %T", id))
 	}
@@ -1691,16 +1713,14 @@ func idToExpr(id id, l loc.Loc) Expr {
 func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 	var parms []Type
 	for i := 0; i < fun.arity(); i++ {
-		p := fun.groundParm(i)
-		if p == nil {
-			panic(fmt.Sprintf("impossible: %s", fun))
-		}
+		p := fun.parm(i).groundType()
 		parms = append(parms, p)
 	}
+	retType := fun.ret().groundType()
 	call := &Call{
 		Func: fun,
 		Args: make([]Expr, len(parms)),
-		T:    &RefType{Type: fun.groundRet(), L: l},
+		T:    &RefType{Type: retType, L: l},
 		L:    l,
 	}
 	localDef := &LocalDef{
