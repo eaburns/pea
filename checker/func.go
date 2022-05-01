@@ -8,8 +8,8 @@ import (
 )
 
 func (f *FuncDecl) arity() int                  { return len(f.Parms) }
-func (f *FuncDecl) ret() typePattern            { return typePattern{typ: f.Ret} }
-func (f *FuncDecl) parm(i int) typePattern      { return typePattern{typ: f.Parms[i]} }
+func (f *FuncDecl) ret() typePattern            { return pattern(f.Ret) }
+func (f *FuncDecl) parm(i int) typePattern      { return pattern(f.Parms[i]) }
 func (f *FuncDecl) sub(map[*TypeParm]Type) note { return nil }
 
 func (f *FuncDecl) eq(other Func) bool {
@@ -350,14 +350,12 @@ func (s *Select) parm(i int) typePattern {
 	// but we implement it lazily by using _ for the 0th argument,
 	// and erroring out in sub() if it's not a struct type.
 	if s.TypeParm == nil {
-		return typePattern{typ: s.Parm}
+		return pattern(s.Parm)
 	}
 	return typePattern{parms: []*TypeParm{s.TypeParm}, typ: s.Parm}
 }
 
-func (s *Select) ret() typePattern {
-	return typePattern{typ: s.Ret}
-}
+func (s *Select) ret() typePattern { return pattern(s.Ret) }
 
 func (s *Select) sub(bind map[*TypeParm]Type) note {
 	typ, ok := bind[s.TypeParm]
@@ -494,19 +492,19 @@ func (s *Switch) eq(other Func) bool {
 func (b *Builtin) arity() int { return len(b.Parms) }
 
 func (b *Builtin) ret() typePattern {
-	pat := typePattern{typ: b.Ret}
+	p := pattern(b.Ret)
 	if b.TypeParm != nil {
-		pat.parms = []*TypeParm{b.TypeParm}
+		p.parms = []*TypeParm{b.TypeParm}
 	}
-	return pat
+	return p
 }
 
 func (b *Builtin) parm(i int) typePattern {
-	pat := typePattern{typ: b.Parms[i]}
+	p := pattern(b.Parms[i])
 	if b.TypeParm != nil {
-		pat.parms = []*TypeParm{b.TypeParm}
+		p.parms = []*TypeParm{b.TypeParm}
 	}
-	return pat
+	return p
 }
 
 var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64}
@@ -598,8 +596,8 @@ func (b *Builtin) eq(other Func) bool {
 }
 
 func (e *ExprFunc) arity() int                  { return len(e.FuncType.Parms) }
-func (e *ExprFunc) ret() typePattern            { return typePattern{typ: e.FuncType.Ret} }
-func (e *ExprFunc) parm(i int) typePattern      { return typePattern{typ: e.FuncType.Parms[i]} }
+func (e *ExprFunc) ret() typePattern            { return pattern(e.FuncType.Ret) }
+func (e *ExprFunc) parm(i int) typePattern      { return pattern(e.FuncType.Parms[i]) }
 func (e *ExprFunc) sub(map[*TypeParm]Type) note { return nil }
 
 // eq returns whether other is an *ExprFunc.
@@ -625,8 +623,8 @@ func (i *idFunc) buildString(s *strings.Builder) *strings.Builder {
 	return s
 }
 func (id *idFunc) arity() int                  { return len(id.funcType.Parms) }
-func (id *idFunc) ret() typePattern            { return typePattern{typ: id.funcType.Ret} }
-func (id *idFunc) parm(i int) typePattern      { return typePattern{typ: id.funcType.Parms[i]} }
+func (id *idFunc) ret() typePattern            { return pattern(id.funcType.Ret) }
+func (id *idFunc) parm(i int) typePattern      { return pattern(id.funcType.Parms[i]) }
 func (id *idFunc) sub(map[*TypeParm]Type) note { return nil }
 
 // eq should never be called; it's used to check equality of FuncInst ifaces.

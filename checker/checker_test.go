@@ -4247,7 +4247,7 @@ func TestLiteralInference(t *testing.T) {
 			// Ignore the error. Many of the test cases are type mismatches.
 			// That's fine. Here we are testing the resulting literal type,
 			// not correct reporting of type mismatch.
-			expr, _ := checkAndConvertExpr(mod.Files[0], parserExpr, infer)
+			expr, _ := checkAndConvertExpr(mod.Files[0], parserExpr, patternOrAny(infer))
 			want := findTypeDef(t, "want", mod).Type
 			if !eqType(expr.Type(), want) {
 				t.Errorf("got %s, want %s", expr.Type(), want)

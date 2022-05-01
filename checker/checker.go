@@ -660,7 +660,7 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
 		// If the type was erronous, that error is reported elsewhere.
 		return nil
 	}
-	expr, errs := checkAndConvertExpr(def, parserDef.Expr, def.T)
+	expr, errs := checkAndConvertExpr(def, parserDef.Expr, patternOrAny(def.T))
 	if def.T == nil || expr.Type() == nil {
 		return errs
 	}
@@ -785,7 +785,7 @@ func topoSortVars(mod *Mod) []Error {
 
 func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 	var errs []Error
-	def.Exprs, errs = checkExprs(def, true, parserDef.Exprs, nil)
+	def.Exprs, errs = checkExprs(def, true, parserDef.Exprs, any())
 	if len(parserDef.Exprs) == 0 && parserDef.Exprs != nil {
 		def.Exprs = []Expr{}
 	}
@@ -831,48 +831,48 @@ func isBuiltin(expr Expr, op Op) bool {
 
 func checkTestDef(def *TestDef, parserDef *parser.TestDef) []Error {
 	var errs []Error
-	def.Exprs, errs = checkExprs(def, true, parserDef.Exprs, nil)
+	def.Exprs, errs = checkExprs(def, true, parserDef.Exprs, any())
 	return errs
 }
 
-func checkExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Error) {
+func checkExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
 	switch parserExpr := parserExpr.(type) {
 	case *parser.Call:
-		return checkCall(x, parserExpr, want)
+		return checkCall(x, parserExpr, pat)
 	case *parser.Convert:
 		return checkConvert(x, parserExpr)
 	case *parser.SubExpr:
-		return checkExpr(x, parserExpr.Expr, want)
+		return checkExpr(x, parserExpr.Expr, pat)
 	case *parser.ArrayLit:
-		return checkArrayLit(x, parserExpr, want)
+		return checkArrayLit(x, parserExpr, pat)
 	case *parser.StructLit:
-		return checkStructLit(x, parserExpr, want)
+		return checkStructLit(x, parserExpr, pat)
 	case *parser.UnionLit:
-		return checkUnionLit(x, parserExpr, want)
+		return checkUnionLit(x, parserExpr, pat)
 	case *parser.BlockLit:
-		return checkBlockLit(x, parserExpr, want)
+		return checkBlockLit(x, parserExpr, pat)
 	case *parser.StrLit:
-		return checkStrLit(parserExpr, want)
+		return checkStrLit(parserExpr, pat)
 	case *parser.CharLit:
-		return checkCharLit(parserExpr, want)
+		return checkCharLit(parserExpr, pat)
 	case *parser.IntLit:
-		return checkIntLit(parserExpr, want)
+		return checkIntLit(parserExpr, pat)
 	case *parser.FloatLit:
-		return checkFloatLit(parserExpr, want)
+		return checkFloatLit(parserExpr, pat)
 	case *parser.ModSel:
-		return checkModSel(x, parserExpr, true, want)
+		return checkModSel(x, parserExpr, true, pat)
 	case parser.Ident:
-		return checkID(x, parserExpr, true, want)
+		return checkID(x, parserExpr, true, pat)
 	default:
 		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
 	}
 }
 
-func checkAndConvertExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Error) {
-	expr, errs := checkExpr(x, parserExpr, want)
-	if expr != nil && want != nil {
+func checkAndConvertExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
+	expr, errs := checkExpr(x, parserExpr, pat)
+	if expr != nil && pat.isGroundType() {
 		var err Error
-		expr, err = convert(expr, want, false)
+		expr, err = convert(expr, pat.groundType(), false)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -881,8 +881,8 @@ func checkAndConvertExpr(x scope, parserExpr parser.Expr, want Type) (Expr, []Er
 }
 
 // newLocals indicates whether new local variables may be created.
-// want is the type expected for the last expression, or nil.
-func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, want Type) ([]Expr, []Error) {
+// pat is the type pattern for the last expression.
+func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat typePattern) ([]Expr, []Error) {
 	var errs []Error
 	var exprs []Expr
 	for i, parserExpr := range parserExprs {
@@ -902,16 +902,16 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, want Type) (
 		}
 		var expr Expr
 		var es []Error
-		if i == len(parserExprs)-1 && want != nil && !isEmptyStruct(want) {
-			expr, es = checkExpr(x, parserExpr, want)
+		if i == len(parserExprs)-1 && pat.isGroundType() && !isEmptyStruct(pat.groundType()) {
+			expr, es = checkExpr(x, parserExpr, pat)
 			if expr != nil && !isBuiltin(expr, Panic) && !isBuiltin(expr, Return) {
 				var err Error
-				if expr, err = convert(expr, want, false); err != nil {
+				if expr, err = convert(expr, pat.groundType(), false); err != nil {
 					es = append(es, err)
 				}
 			}
 		} else {
-			expr, es = checkExpr(x, parserExpr, nil)
+			expr, es = checkExpr(x, parserExpr, any())
 		}
 		if len(es) > 0 {
 			errs = append(errs, es...)
@@ -952,7 +952,7 @@ func isNewID(x scope, parserExpr parser.Expr) (parser.Ident, bool) {
 }
 
 func newLocalAssign(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Expr, []Error) {
-	expr, errs := checkExpr(x, call.Args[1], nil)
+	expr, errs := checkExpr(x, call.Args[1], any())
 	if expr == nil {
 		return nil, nil, errs
 	}
@@ -1073,11 +1073,11 @@ func unionConvert(expr Expr, typ Type, explicit bool) Expr {
 	}
 }
 
-func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
+func checkCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []Error) {
 	switch fun := parserCall.Fun.(type) {
 	case parser.Ident:
 		ids := findIDs(x, fun.Name)
-		return resolveIDCall(x, nil, fun, parserCall, want, ids)
+		return resolveIDCall(x, nil, fun, parserCall, pat, ids)
 	case *parser.ModSel:
 		imp := findImport(x, fun.Mod.Name)
 		if imp == nil {
@@ -1089,15 +1089,17 @@ func checkCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
 			x = addImportScope(x, imp)
 		}
 		ids := findIDs(imp, fun.Name.Name)
-		return resolveIDCall(x, addMod, fun.Name, parserCall, want, ids)
+		return resolveIDCall(x, addMod, fun.Name, parserCall, pat, ids)
 	default:
-		return checkExprCall(x, parserCall, want)
+		return checkExprCall(x, parserCall, pat)
 	}
 }
 
-func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *parser.Call, want Type, ids []id) (Expr, []Error) {
-	if defType, ok := want.(*DefType); ok && mod == nil {
-		ids = append(ids, adModuleIDs(x, defType.Def.Mod, parserID.Name)...)
+func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *parser.Call, pat typePattern, ids []id) (Expr, []Error) {
+	if pat.isGroundType() {
+		if defType, ok := pat.groundType().(*DefType); ok && mod == nil {
+			ids = append(ids, adModuleIDs(x, defType.Def.Mod, parserID.Name)...)
+		}
 	}
 
 	funcs, notes := filterToFuncs(ids, parserID.L)
@@ -1120,7 +1122,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 
 		if mod == nil {
 			// Do argument-dependent lookup if the call is not tagged with a module.
-			fs, ns = adLookup(x, parserID, len(parserCall.Args), args, want)
+			fs, ns = adLookup(x, parserID, len(parserCall.Args), args, pat)
 			funcs = append(funcs, fs...)
 			notes = append(notes, ns...)
 		}
@@ -1129,9 +1131,9 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		}
 	}
 
-	if want != nil {
+	if pat.isGroundType() {
 		var ns []note
-		funcs, ns = filterByReturn(funcs, want)
+		funcs, ns = filterByReturn(funcs, pat.groundType())
 		notes = append(notes, ns...)
 	} else {
 		funcs, ns = filterUngroundReturns(funcs)
@@ -1225,7 +1227,7 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.Expr, funcs []Func) (Expr, []Func, []note, []Error) {
 	var notes []note
 	if t := commonGroundParmType(funcs, i); t != nil {
-		arg, errs := checkExpr(x, parserArg, t)
+		arg, errs := checkExpr(x, parserArg, pattern(t))
 		if len(errs) > 0 {
 			return nil, nil, nil, errs
 		}
@@ -1240,9 +1242,9 @@ func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.E
 	// If this is the LHS of an assignment to an Ident,
 	// don't mark it as "used" if it is a local variable.
 	if lhs, ok := parserArg.(parser.Ident); ok && i == 0 && parserID.Name == ":=" {
-		arg, errs = checkID(x, lhs, false, nil)
+		arg, errs = checkID(x, lhs, false, any())
 	} else {
-		arg, errs = checkAndConvertExpr(x, parserArg, nil)
+		arg, errs = checkAndConvertExpr(x, parserArg, any())
 	}
 	if len(errs) > 0 {
 		return arg, nil, nil, errs
@@ -1251,14 +1253,16 @@ func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.E
 	return arg, funcs, notes, errs
 }
 
-func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, want Type) ([]Func, []note) {
+func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, pat typePattern) ([]Func, []note) {
 	// Only called after args have been added, so args cannot be empty.
 	defType, ok := args[len(args)-1].Type().(*DefType)
 	if !ok {
 		return nil, nil
 	}
-	if dt, ok := want.(*DefType); ok && defType.Def.Mod == dt.Def.Mod {
-		return nil, nil
+	if pat.isGroundType() {
+		if dt, ok := pat.groundType().(*DefType); ok && defType.Def.Mod == dt.Def.Mod {
+			return nil, nil
+		}
 	}
 	for _, prevArg := range args[:len(args)-1] {
 		dt, ok := prevArg.Type().(*DefType)
@@ -1309,7 +1313,7 @@ func adModuleIDs(x scope, importPath, idName string) []id {
 func checkArgsFallback(x scope, parserArgs []parser.Expr) []Error {
 	var errs []Error
 	for _, parserArg := range parserArgs {
-		_, es := checkAndConvertExpr(x, parserArg, nil)
+		_, es := checkAndConvertExpr(x, parserArg, any())
 		errs = append(errs, es...)
 	}
 	return errs
@@ -1318,15 +1322,15 @@ func checkArgsFallback(x scope, parserArgs []parser.Expr) []Error {
 func commonGroundParmType(funcs []Func, i int) Type {
 	var t Type
 	for _, f := range funcs {
-		typ := patternToWantType(f.parm(i))
-		if typ == nil {
+		if !f.parm(i).isGroundType() {
 			return nil
 		}
+		parmType := f.parm(i).groundType()
 		if t == nil {
-			t = typ
+			t = parmType
 			continue
 		}
-		if !eqType(t, typ) {
+		if !eqType(t, parmType) {
 			return nil
 		}
 	}
@@ -1369,7 +1373,7 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
+func filterByReturn(funcs []Func, typ Type) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
@@ -1377,10 +1381,10 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 		// The difference is just in who reports the error: unify or converson.
 		// TODO: always unify types and change the expected error in tests.
 		if pat := f.ret(); !pat.isGroundType() {
-			bind := unify(pat, want)
+			bind := unify(pat, typ)
 			if bind == nil {
 				// TODO: the location here should be the call location, not the want location.
-				n := newNote("%s: cannot unify return: %s and %s", f, pat, want).setLoc(want)
+				n := newNote("%s: cannot unify return: %s and %s", f, pat, typ).setLoc(typ)
 				notes = append(notes, n)
 				continue
 			}
@@ -1398,8 +1402,8 @@ func filterByReturn(funcs []Func, want Type) ([]Func, []note) {
 		// If the parent node is an explicit conversion,
 		// we want it to be accepted in the common case
 		// that there is only one function overload acceptable at this point.
-		if len(funcs) > 1 && !canImplicitConvert(retType, want) {
-			notes = append(notes, newNote("%s: cannot convert returned %s to %s", f, retType, want).setLoc(f))
+		if len(funcs) > 1 && !canImplicitConvert(retType, typ) {
+			notes = append(notes, newNote("%s: cannot convert returned %s to %s", f, retType, typ).setLoc(f))
 			continue
 		}
 		funcs[n] = f
@@ -1511,10 +1515,10 @@ func canImplicitConvert(src, dst Type) bool {
 	return err == nil
 }
 
-func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) {
+func checkExprCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []Error) {
 	var errs []Error
 	var fun *ExprFunc
-	expr, fs := checkExpr(x, parserCall.Fun, nil)
+	expr, fs := checkExpr(x, parserCall.Fun, any())
 	if len(fs) > 0 {
 		errs = append(errs, fs...)
 	}
@@ -1536,9 +1540,9 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 		var arg Expr
 		var fs []Error
 		if fun != nil && i < len(fun.FuncType.Parms) {
-			arg, fs = checkAndConvertExpr(x, parserArg, fun.FuncType.Parms[i])
+			arg, fs = checkAndConvertExpr(x, parserArg, pattern(fun.FuncType.Parms[i]))
 		} else {
-			arg, fs = checkAndConvertExpr(x, parserArg, nil)
+			arg, fs = checkAndConvertExpr(x, parserArg, any())
 		}
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
@@ -1558,32 +1562,32 @@ func checkExprCall(x scope, parserCall *parser.Call, want Type) (Expr, []Error) 
 	return expr, errs
 }
 
-func checkModSel(x scope, parserSel *parser.ModSel, useLocal bool, want Type) (Expr, []Error) {
+func checkModSel(x scope, parserSel *parser.ModSel, useLocal bool, pat typePattern) (Expr, []Error) {
 	imp := findImport(x, parserSel.Mod.Name)
 	if imp == nil {
 		return nil, []Error{notFound(parserSel.Mod.Name, parserSel.L)}
 	}
 	parserID := parserSel.Name
 	ids := findIDs(imp, parserID.Name)
-	return resolveID(x, parserID, useLocal, want, ids)
+	return resolveID(x, parserID, useLocal, pat, ids)
 }
 
-func checkID(x scope, parserID parser.Ident, useLocal bool, want Type) (Expr, []Error) {
+func checkID(x scope, parserID parser.Ident, useLocal bool, pat typePattern) (Expr, []Error) {
 	ids := findIDs(x, parserID.Name)
-	return resolveID(x, parserID, useLocal, want, ids)
+	return resolveID(x, parserID, useLocal, pat, ids)
 }
 
-func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []id) (Expr, []Error) {
+func resolveID(x scope, parserID parser.Ident, useLocal bool, pat typePattern, ids []id) (Expr, []Error) {
 	var n int
 	var notFoundNotes []note
 	for _, id := range ids {
 		if !isGround(id) {
-			if want == nil {
+			if !pat.isGroundType() {
 				n := newNote("cannot ground %s", id).setLoc(id)
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
-			if fail := unifyFunc(x, parserID.L, id.(Func), want); fail != nil {
+			if fail := unifyFunc(x, parserID.L, id.(Func), pat.groundType()); fail != nil {
 				notFoundNotes = append(notFoundNotes, fail.note)
 				continue
 			}
@@ -1594,7 +1598,7 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []i
 	ids = ids[:n]
 
 	// If there is more than one ID, filter to only those
-	// implicitly convertable to the want type.
+	// implicitly convertable to the pattern type.
 	// We don't filter in the 1-ID case,
 	// to allow explicit conversions to work
 	// when the ID is unambiguous.
@@ -1602,14 +1606,13 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []i
 	// would get a "not found" instead of
 	// the convertible expression.
 	var ambigNotes []note
-	if len(ids) > 1 && want != nil {
+	if len(ids) > 1 && pat.isGroundType() {
 		var n int
 		for _, id := range ids {
 			expr := idToExpr(id, parserID.L)
-			if _, err := convert(expr, want, false); err != nil {
-				notFoundNotes = append(notFoundNotes,
-					newNote("cannot convert %s (%s) to type %s",
-						expr, expr.Type(), want).setLoc(expr))
+			if _, err := convert(expr, pat.groundType(), false); err != nil {
+				n := newNote("cannot convert %s (%s) to type %s", expr, expr.Type(), pat.groundType()).setLoc(expr)
+				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
 			ambigNotes = append(ambigNotes, newNote(id.String()).setLoc(id))
@@ -1618,7 +1621,7 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []i
 		}
 		ids = ids[:n]
 	}
-	if len(ids) > 1 && want == nil {
+	if len(ids) > 1 && !pat.isGroundType() {
 		for _, id := range ids {
 			note := newNote(id.String()).setLoc(id)
 			ambigNotes = append(ambigNotes, note)
@@ -1631,12 +1634,7 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, want Type, ids []i
 		err.setNotes(notFoundNotes)
 		return nil, []Error{err}
 	case len(ids) > 1:
-		var err Error
-		if want == nil {
-			err = newError(parserID.L, "%s is ambiguous", parserID.Name)
-		} else {
-			err = newError(parserID.L, "%s is ambiguous for type %s", parserID.Name, want)
-		}
+		err := newError(parserID.L, "%s is ambiguous for pattern %s", parserID.Name, pat)
 		err.setNotes(ambigNotes)
 		return nil, []Error{err}
 	default:
@@ -1773,7 +1771,7 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 // 	  to the conversion type.
 func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	typ, errs := makeType(x, parserConvert.Type)
-	expr, es := checkExpr(x, parserConvert.Expr, typ)
+	expr, es := checkExpr(x, parserConvert.Expr, pattern(typ))
 	if len(es) > 0 {
 		errs = append(errs, es...)
 	}
@@ -1831,7 +1829,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 }
 
 // checkStructLit checks a struct literal.
-// 	* If the expected type is appropriate to the literal,
+// 	* If the pattern is a ground type that is appropriate to the literal,
 // 	  then the literal's type is the expected type.
 // 	  The expected type of each element is the element type,
 // 	  and it is an error if the value's type is not convertible
@@ -1845,28 +1843,28 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 //
 // A type is appropriate to an array literal if
 // 	* its literal type is an array type or a reference to an array type.
-func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Error) {
+func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, []Error) {
 	var errs []Error
 	lit := &ArrayLit{L: parserLit.L}
-	if lit.Array, _ = trim1Ref(literalType(want)).(*ArrayType); lit.Array != nil {
+	if lit.Array = appropriateArray(pat); lit.Array != nil {
 		for _, parserExpr := range parserLit.Exprs {
-			expr, fs := checkAndConvertExpr(x, parserExpr, lit.Array.ElemType)
+			expr, fs := checkAndConvertExpr(x, parserExpr, pattern(lit.Array.ElemType))
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 			}
 			lit.Elems = append(lit.Elems, expr)
 		}
-		if !isRefType(want) {
-			lit.T = refType(copyTypeWithLoc(want, lit.L))
+		if !isRefType(pat.groundType()) {
+			lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
 			return deref(lit), errs
 		}
-		lit.T = copyTypeWithLoc(want, lit.L)
+		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, errs
 	}
 
 	var elemType Type
 	for _, parserExpr := range parserLit.Exprs {
-		expr, fs := checkAndConvertExpr(x, parserExpr, elemType)
+		expr, fs := checkAndConvertExpr(x, parserExpr, patternOrAny(elemType))
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
@@ -1887,9 +1885,19 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Erro
 	lit.T = refType(lit.Array)
 	return deref(lit), errs
 }
+func appropriateArray(pat typePattern) *ArrayType {
+	if !pat.isGroundType() {
+		return nil
+	}
+	ary, ok := trim1Ref(literalType(pat.groundType())).(*ArrayType)
+	if !ok {
+		return nil
+	}
+	return ary
+}
 
 // checkStructLit checks a struct literal.
-// 	* If the expected type is appropriate to the literal,
+// 	* If the pattern is a ground type appropriate to the literal,
 // 	  then the literal's type is the expected type.
 // 	  The expected type of each literal field value
 // 	  is the type of the corresponding field,
@@ -1904,29 +1912,29 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, want Type) (Expr, []Erro
 // 	* its literal type is a struct type or a reference to a struct type,
 // 	* it has the same number of fields as the literal,
 // 	* each of the fields, in order, has the same name as the corresponding literal field.
-func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []Error) {
+func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr, []Error) {
 	var errs []Error
 	lit := &StructLit{L: parserLit.L}
 
-	if lit.Struct = appropriateStruct(want, parserLit); lit.Struct != nil {
+	if lit.Struct = appropriateStruct(pat, parserLit); lit.Struct != nil {
 		for i, parserField := range parserLit.FieldVals {
-			expr, fs := checkAndConvertExpr(x, parserField.Val, lit.Struct.Fields[i].Type)
+			expr, fs := checkAndConvertExpr(x, parserField.Val, pattern(lit.Struct.Fields[i].Type))
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 			}
 			lit.Fields = append(lit.Fields, expr)
 		}
-		if !isRefType(literalType(want)) {
-			lit.T = refType(copyTypeWithLoc(want, lit.L))
+		if !isRefType(literalType(pat.groundType())) {
+			lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
 			return deref(lit), errs
 		}
-		lit.T = copyTypeWithLoc(want, lit.L)
+		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, errs
 	}
 
 	lit.Struct = &StructType{L: lit.L}
 	for _, parserField := range parserLit.FieldVals {
-		expr, fs := checkAndConvertExpr(x, parserField.Val, nil)
+		expr, fs := checkAndConvertExpr(x, parserField.Val, any())
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
@@ -1945,8 +1953,11 @@ func checkStructLit(x scope, parserLit *parser.StructLit, want Type) (Expr, []Er
 	return deref(lit), errs
 }
 
-func appropriateStruct(typ Type, lit *parser.StructLit) *StructType {
-	s, ok := trim1Ref(literalType(typ)).(*StructType)
+func appropriateStruct(pat typePattern, lit *parser.StructLit) *StructType {
+	if !pat.isGroundType() {
+		return nil
+	}
+	s, ok := trim1Ref(literalType(pat.groundType())).(*StructType)
 	if !ok || len(s.Fields) != len(lit.FieldVals) {
 		return nil
 	}
@@ -1959,8 +1970,8 @@ func appropriateStruct(typ Type, lit *parser.StructLit) *StructType {
 }
 
 // checkUnionLit checks a union literal.
-// 	* If the expected type is appropriate to the literal,
-// 	  then the literal's type is the expected type.
+// 	* If the pattern type is a ground type appropriate to the literal,
+// 	  then the literal's type is the pattern type.
 // 	  If the literal has a value,
 // 	  it's expected type is the corresponding case type,
 // 	  and it is an error if the value is not convertible
@@ -1975,18 +1986,18 @@ func appropriateStruct(typ Type, lit *parser.StructLit) *StructType {
 // 	* it has a case with the same name as the literal case,
 // 	* if the literal has a value, the corresponding case has a type,
 // 	* or if the literal has no value, the corresponding case has no type.
-func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []Error) {
+func checkUnionLit(x scope, parserLit *parser.UnionLit, pat typePattern) (Expr, []Error) {
 	var errs []Error
 	lit := &UnionLit{L: parserLit.L}
-	if lit.Union, lit.Case = appropriateUnion(want, parserLit); lit.Union != nil {
+	if lit.Union, lit.Case = appropriateUnion(pat, parserLit); lit.Union != nil {
 		if parserLit.CaseVal.Val != nil {
-			lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, lit.Case.Type)
+			lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, pattern(lit.Case.Type))
 		}
-		if !isRefType(literalType(want)) {
-			lit.T = refType(copyTypeWithLoc(want, lit.L))
+		if !isRefType(literalType(pat.groundType())) {
+			lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
 			return deref(lit), errs
 		}
-		lit.T = copyTypeWithLoc(want, lit.L)
+		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, errs
 	}
 
@@ -1998,7 +2009,7 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []Erro
 		L: parserLit.L,
 	}
 	if parserLit.CaseVal.Val != nil {
-		lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, nil)
+		lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, any())
 	}
 	lit.Case = &lit.Union.Cases[0]
 	if lit.Val != nil {
@@ -2008,8 +2019,11 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, want Type) (Expr, []Erro
 	return deref(lit), errs
 }
 
-func appropriateUnion(typ Type, lit *parser.UnionLit) (*UnionType, *CaseDef) {
-	u, ok := trim1Ref(literalType(typ)).(*UnionType)
+func appropriateUnion(pat typePattern, lit *parser.UnionLit) (*UnionType, *CaseDef) {
+	if !pat.isGroundType() {
+		return nil, nil
+	}
+	u, ok := trim1Ref(literalType(pat.groundType())).(*UnionType)
 	if !ok {
 		return nil, nil
 	}
@@ -2030,8 +2044,8 @@ func findCase(name string, u *UnionType) *CaseDef {
 }
 
 // checkBlockLit checks a block literal.
-// 	* If the expected type is appropriate to the literal,
-// 	  then the literal's type is the expected type.
+// 	* If the pattern is a ground type appropriate to the literal,
+// 	  then the literal's type is the pattern's type.
 // 	  If the type has a return type,
 // 	  it is an error if there are no expressions in the block.
 // 	  The expected type of the last expression is the return type,
@@ -2050,13 +2064,13 @@ func findCase(name string, u *UnionType) *CaseDef {
 // 	* it has the same number of parameters as the literal, and
 // 	* all explicit parameter types of the literal
 // 	  equal the corresponding parameter type of the function type.
-func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Error) {
+func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, []Error) {
 	var errs []Error
 	lit := &BlockLit{L: parserLit.L}
 	lit.Parms, errs = makeFuncParms(x, parserLit.Parms)
 	x = &blockLitScope{parent: x, BlockLit: lit}
 
-	if f := appropriateBlock(want, lit.Parms); f != nil {
+	if f := appropriateBlock(pat, lit.Parms); f != nil {
 		for i := range lit.Parms {
 			if lit.Parms[i].T != nil {
 				continue
@@ -2065,15 +2079,15 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 		}
 		lit.Ret = f.Ret
 		var fs []Error
-		lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, f.Ret)
+		lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, pattern(f.Ret))
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
-		if !isRefType(want) {
-			lit.T = refType(copyTypeWithLoc(want, lit.L))
+		if !isRefType(pat.groundType()) {
+			lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
 			return deref(lit), errs
 		}
-		lit.T = copyTypeWithLoc(want, lit.L)
+		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, errs
 	}
 
@@ -2092,7 +2106,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 	lit.Parms = lit.Parms[:n]
 
 	var fs []Error
-	lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, nil)
+	lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, any())
 	if len(fs) > 0 {
 		errs = append(errs, fs...)
 	}
@@ -2112,8 +2126,11 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, want Type) (Expr, []Erro
 	return deref(lit), errs
 }
 
-func appropriateBlock(typ Type, litParms []ParmDef) *FuncType {
-	f, ok := trim1Ref(literalType(typ)).(*FuncType)
+func appropriateBlock(pat typePattern, litParms []ParmDef) *FuncType {
+	if !pat.isGroundType() {
+		return nil
+	}
+	f, ok := trim1Ref(literalType(pat.groundType())).(*FuncType)
 	if !ok || len(f.Parms) != len(litParms) {
 		return nil
 	}
@@ -2126,75 +2143,78 @@ func appropriateBlock(typ Type, litParms []ParmDef) *FuncType {
 }
 
 // checkStrLit checks a string literal.
-// 	* If the expected type's literal types is the built-in string type
+// 	* If the pattern is a ground type with
+// 	  a literal type that is the built-in string type
 // 	  or a reference to the built-in string type,
-// 	  then the type of the literal is the expected type.
+// 	  then the type of the literal is the pattern's type.
 // 	* Otherwise the type is string.
-func checkStrLit(parserLit *parser.StrLit, want Type) (Expr, []Error) {
+func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {
 	lit := &StrLit{Text: parserLit.Data, L: parserLit.L}
 	switch {
-	case want == nil:
+	case !pat.isGroundType():
 		fallthrough
 	default:
 		lit.T = refType(&BasicType{Kind: String, L: parserLit.L})
 		return deref(lit), nil
-	case isStringRefType(want):
-		lit.T = copyTypeWithLoc(want, lit.L)
+	case isStringRefType(pat.groundType()):
+		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, nil
-	case isStringType(want):
-		lit.T = refType(copyTypeWithLoc(want, lit.L))
+	case isStringType(pat.groundType()):
+		lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
 	}
 }
 
 // checkCharLit checks a character literal.
-// 	* Characeter literals are checked just as int literals
+// 	* Character literals are checked just as int literals
 // 	  with the literal value being the unicode code point value
 // 	  of the character.
 // TODO: should default to int32, not int.
-func checkCharLit(parserLit *parser.CharLit, want Type) (Expr, []Error) {
+func checkCharLit(parserLit *parser.CharLit, pat typePattern) (Expr, []Error) {
 	return checkIntLit(&parser.IntLit{
 		Text: strconv.FormatInt(int64(parserLit.Rune), 10),
 		L:    parserLit.L,
-	}, want)
+	}, pat)
 }
 
 // checkIntLit checks an integer literal.
-// 	* If the expected type's literal type is a built-in int type
+// 	* If the pattern is a ground type
+// 	  with a literal type that is a built-in int type
 // 	  or a reference to a built-in int type,
-// 	  then the type of the literal is the expected type.
+// 	  then the type of the literal is the pattern's type.
 // 	  It is an error if the value is not representable by the int type.
-// 	* If the expected type's literal type is a built-in float type,
+// 	* If the pattern is a ground type
+// 	  with a literal type that is a built-in float type,
 // 	  or a reference to a built-in float type,
-// 	  then the type of the literal is the expected type.
+// 	  then the type of the literal is the pattern's type.
 // 	* Otherwise the type of the literal is int.
-func checkIntLit(parserLit *parser.IntLit, want Type) (Expr, []Error) {
+func checkIntLit(parserLit *parser.IntLit, pat typePattern) (Expr, []Error) {
 	switch {
-	case want == nil:
+	case !pat.isGroundType():
 		fallthrough
 	default:
 		t := &BasicType{Kind: Int, L: parserLit.L}
 		lit, errs := newIntLit(parserLit, t)
 		lit.T = refType(t)
 		return deref(lit), errs
-	case isFloatType(want) || isFloatRefType(want):
+	case isFloatType(pat.groundType()) || isFloatRefType(pat.groundType()):
 		floatLit := &parser.FloatLit{Text: parserLit.Text, L: parserLit.L}
-		return checkFloatLit(floatLit, want)
-	case isIntRefType(want):
-		lit, errs := newIntLit(parserLit, want)
-		lit.T = copyTypeWithLoc(want, lit.L)
+		return checkFloatLit(floatLit, pat)
+	case isIntRefType(pat.groundType()):
+		lit, errs := newIntLit(parserLit, pat.groundType())
+		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, errs
-	case isIntType(want):
-		lit, errs := newIntLit(parserLit, want)
-		lit.T = refType(copyTypeWithLoc(want, lit.L))
+	case isIntType(pat.groundType()):
+		lit, errs := newIntLit(parserLit, pat.groundType())
+		lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), errs
 	}
 }
 
-func newIntLit(parserLit *parser.IntLit, want Type) (*IntLit, []Error) {
+func newIntLit(parserLit *parser.IntLit, typ Type) (*IntLit, []Error) {
 	var bits uint
 	var signed bool
-	switch basicKind(want) {
+	switch basicKind(typ) {
 	case Int:
 		bits = 64 // TODO: set by a flag
 		signed = true
@@ -2229,7 +2249,7 @@ func newIntLit(parserLit *parser.IntLit, want Type) (*IntLit, []Error) {
 		bits = 64
 		signed = false
 	default:
-		panic(fmt.Sprintf("impossible int kind: %s", want))
+		panic(fmt.Sprintf("impossible int kind: %s", typ))
 	}
 	var min, max *big.Int
 	if signed {
@@ -2253,50 +2273,52 @@ func newIntLit(parserLit *parser.IntLit, want Type) (*IntLit, []Error) {
 	var errs []Error
 	switch {
 	case lit.Val.Cmp(min) < 0:
-		errs = append(errs, newError(lit, "%s underflows type %s", lit.Text, want))
+		errs = append(errs, newError(lit, "%s underflows type %s", lit.Text, typ))
 	case lit.Val.Cmp(max) > 0:
-		errs = append(errs, newError(lit, "%s overflows type %s", lit.Text, want))
+		errs = append(errs, newError(lit, "%s overflows type %s", lit.Text, typ))
 	}
 	return lit, errs
 }
 
 // checkFloatLit checks a float literal.
-// 	* If the expected type's literal type is a built-in float type
+// 	* If the pattern is a ground type
+// 	  with a literal type that is a built-in float type
 // 	  or a reference to a built-in float type,
-// 	  then the type of the expression is the expected type.
-// 	* If the expected type's literal type is a built-in int type
+// 	  then the type of the expression is the pattern's type.
+// 	* If the pattern is a ground type
+// 	  with a literal type that is a built-in int type
 // 	  or a reference to a built-in int type,
-// 	  then the type of the expression is the expected type.
+// 	  then the type of the expression is the pattern's type.
 // 	  It is an error if the literal value is not a whole integer value
 // 	  representable by the int typ.
 // 	* Otherwise, the type is float64.
-func checkFloatLit(parserLit *parser.FloatLit, want Type) (Expr, []Error) {
+func checkFloatLit(parserLit *parser.FloatLit, pat typePattern) (Expr, []Error) {
 	lit := &FloatLit{Text: parserLit.Text, L: parserLit.L}
 	if _, _, err := lit.Val.Parse(parserLit.Text, 10); err != nil {
 		panic("malformed float")
 	}
 	switch {
-	case want == nil:
+	case !pat.isGroundType():
 		fallthrough
 	default:
 		lit.T = refType(&BasicType{Kind: Float64, L: parserLit.L})
 		return deref(lit), nil
-	case isIntType(want) || isIntRefType(want):
+	case isIntType(pat.groundType()) || isIntRefType(pat.groundType()):
 		var i big.Int
 		var errs []Error
 		if _, acc := lit.Val.Int(&i); acc != big.Exact {
-			errs = append(errs, newError(lit, "%s truncates %s", want, lit.Text))
+			errs = append(errs, newError(lit, "%s truncates %s", pat.groundType(), lit.Text))
 		}
-		intLit, es := checkIntLit(&parser.IntLit{Text: i.String(), L: parserLit.L}, want)
+		intLit, es := checkIntLit(&parser.IntLit{Text: i.String(), L: parserLit.L}, pat)
 		if len(es) > 0 {
 			errs = append(errs, es...)
 		}
 		return intLit, errs
-	case isFloatRefType(want):
-		lit.T = copyTypeWithLoc(want, lit.L)
+	case isFloatRefType(pat.groundType()):
+		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, nil
-	case isFloatType(want):
-		lit.T = refType(copyTypeWithLoc(want, lit.L))
+	case isFloatType(pat.groundType()):
+		lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
 	}
 }

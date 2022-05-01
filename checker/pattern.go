@@ -14,11 +14,33 @@ type typePattern struct {
 }
 
 // any returns a new typePattern with a single, bound type variable.
-func any() *typePattern {
+func any() typePattern {
 	n := "_"
 	p := &TypeParm{Name: n}
 	v := &TypeVar{Name: n, Def: p}
-	return &typePattern{parms: []*TypeParm{p}, typ: v}
+	return typePattern{parms: []*TypeParm{p}, typ: v}
+}
+
+func (pat typePattern) isAny() bool {
+	typ, ok := pat.typ.(*TypeVar)
+	return ok && pat.bound(typ)
+}
+
+// pattern returns the type pattern for a ground type.
+// pattern panics if typ is nil.
+func pattern(typ Type) typePattern {
+	if typ == nil {
+		panic("impossible")
+	}
+	return typePattern{typ: typ}
+}
+
+// patternOrAny returns the pattern for a ground type, or if typ is nil, any().
+func patternOrAny(typ Type) typePattern {
+	if typ == nil {
+		return any()
+	}
+	return pattern(typ)
 }
 
 func (pat typePattern) withType(typ Type) typePattern {
@@ -34,15 +56,6 @@ func (pat typePattern) groundType() Type {
 	}
 	if !pat.isGroundType() {
 		panic(fmt.Sprintf("not grounded: %s", pat))
-	}
-	return pat.typ
-}
-
-// patternToWantType returns nil if the pattern's type is not grounded, otherwise the type.
-// TODO: remove patternToWantType once want types are eliminated.
-func patternToWantType(pat typePattern) Type {
-	if !pat.isGroundType() {
-		return nil
 	}
 	return pat.typ
 }
@@ -196,7 +209,7 @@ func (pat typePattern) String() string {
 }
 
 // common returns a new typePattern that is the most specific simple common pattern of pats.
-func common(pats ...*typePattern) *typePattern {
+func common(pats ...typePattern) typePattern {
 	switch len(pats) {
 	case 0:
 		return any()
@@ -358,7 +371,7 @@ func common(pats ...*typePattern) *typePattern {
 		ts[i] = p.typ
 	}
 	pat.typ = buildType(ts)
-	return &pat
+	return pat
 }
 
 // unify returns a binding of types to type parameters of pat

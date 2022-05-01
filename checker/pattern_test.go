@@ -409,7 +409,7 @@ func TestCommonPattern(t *testing.T) {
 				t.Fatalf("failed to parse and check: %s", errs[0])
 			}
 			var err error
-			pats := make([]*typePattern, len(test.pats))
+			pats := make([]typePattern, len(test.pats))
 			for i, p := range test.pats {
 				if pats[i], err = parseTestPattern(t, mod, p); err != nil {
 					t.Fatalf("failed to parse type pattern %s: %s", p, err)
@@ -731,7 +731,7 @@ func TestPatternUnify(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to parse type: %s", err)
 			}
-			bind := unify(*pat, typ)
+			bind := unify(pat, typ)
 			if test.want == "" {
 				if bind != nil {
 					t.Errorf("got %s %v, want nil", subType(bind, typ), bindAsSlice(bind))
@@ -843,7 +843,7 @@ func (s *typeParmScope) findType(args []Type, name string, l loc.Loc) []Type {
 	return nil
 }
 
-func parseTestPattern(t *testing.T, m *Mod, src string) (*typePattern, error) {
+func parseTestPattern(t *testing.T, m *Mod, src string) (typePattern, error) {
 	var parms []*TypeParm
 	parmSet := make(map[string]*TypeParm)
 	nextName := 'A'
@@ -883,13 +883,13 @@ func parseTestPattern(t *testing.T, m *Mod, src string) (*typePattern, error) {
 	}
 	p, err := parser.ParseType(src2)
 	if err != nil {
-		return nil, err
+		return typePattern{}, err
 	}
 	typ, errs := _makeType(&typeParmScope{mod: m, parms: parms}, p, true, true)
 	if len(errs) > 0 {
-		return nil, errs[0]
+		return typePattern{}, errs[0]
 	}
-	return &typePattern{parms: parms, typ: typ}, nil
+	return typePattern{parms: parms, typ: typ}, nil
 }
 
 func parseTestType(t *testing.T, m *Mod, src string) (Type, error) {
