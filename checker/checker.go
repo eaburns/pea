@@ -870,12 +870,12 @@ func checkExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error)
 
 func checkAndConvertExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
 	expr, errs := checkExpr(x, parserExpr, pat)
-	if expr != nil && pat.isGroundType() {
-		var err Error
-		expr, err = convert(expr, pat.groundType(), false)
-		if err != nil {
-			errs = append(errs, err)
-		}
+	if expr == nil || !pat.isGroundType() {
+		return expr, errs
+	}
+	expr, err := convert(expr, pat.groundType(), false)
+	if err != nil {
+		errs = append(errs, err)
 	}
 	return expr, errs
 }
@@ -1828,72 +1828,68 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	return cvt, errs
 }
 
-// checkStructLit checks a struct literal.
-// 	* If the pattern is a ground type that is appropriate to the literal,
-// 	  then the literal's type is the expected type.
-// 	  The expected type of each element is the element type,
-// 	  and it is an error if the value's type is not convertible
-// 	  to the element type.
-// 	* Otherwise, the literal's type is an unnamed array type.
-// 	  It is an error if the literal has not element expressions.
-// 	  The array element type is the type of the element at index 0
-// 	  with no expected type.
-// 	  The expected type of elements at indices greater than 0
-// 	  is the array element type.
+// checkArrayLit checks an array literal.
 //
-// A type is appropriate to an array literal if
-// 	* its literal type is an array type or a reference to an array type.
+// If the pattern's type is an array type or reference to an array type,
+// the 0th element is checked with the pattern's array element pattern.
+// Subsequent expressions are checked with the pattern of element 0's type.
+//
+// Otherwise, it is an error if there are no expressions in the literal.
+// The 0th element is checked with a new pattern with a single bound type variable.
+// Subsequent expressions are checked with the pattern of element 0's type.
+//
+// The type of the literal is the unification of a literal array type with the pattern.
+// The element type of the literal array is the type of expression 0, or
+// if there are no elements and the pattern is an array or array reference type,
+// then the pattern's array element type.
+// It is an error if the unification fails or contains type variables bound in the pattern.
+//
+// The returned Expr is never nil even if there are errors.
 func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, []Error) {
-	var errs []Error
-	lit := &ArrayLit{L: parserLit.L}
-	if lit.Array = appropriateArray(pat); lit.Array != nil {
-		for _, parserExpr := range parserLit.Exprs {
-			expr, fs := checkAndConvertExpr(x, parserExpr, pattern(lit.Array.ElemType))
-			if len(fs) > 0 {
-				errs = append(errs, fs...)
-			}
-			lit.Elems = append(lit.Elems, expr)
-		}
-		if !isRefType(pat.groundType()) {
-			lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
-			return deref(lit), errs
-		}
-		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
-		return lit, errs
+	lit := &ArrayLit{Array: &ArrayType{L: parserLit.L}, L: parserLit.L}
+	elemPat := any()
+	if isArrayType(pat.typ) || isArrayRefType(pat.typ) {
+		ary := trim1Ref(literalType(pat.typ)).(*ArrayType)
+		elemPat = pat.withType(ary.ElemType)
+	} else if len(parserLit.Exprs) == 0 {
+		return lit, []Error{newError(lit, "unable to infer array type")}
 	}
-
-	var elemType Type
+	var errs []Error
 	for _, parserExpr := range parserLit.Exprs {
-		expr, fs := checkAndConvertExpr(x, parserExpr, patternOrAny(elemType))
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
+		expr, es := checkAndConvertExpr(x, parserExpr, elemPat)
+		if len(es) > 0 {
+			errs = append(errs, es...)
 		}
+		// TODO: there should be no nil exprs
 		if expr == nil {
-			// There was an error somewhere; it is reported elsewhere.
 			continue
 		}
 		lit.Elems = append(lit.Elems, expr)
-		if elemType == nil {
-			elemType = expr.Type()
+		if expr.Type() != nil {
+			elemPat = pat.withType(expr.Type())
 		}
 	}
-	if elemType == nil {
-		errs = append(errs, newError(lit, "unable to infer array type"))
+	if len(errs) > 0 {
 		return lit, errs
 	}
-	lit.Array = &ArrayType{ElemType: elemType, L: lit.L}
-	lit.T = refType(lit.Array)
-	return deref(lit), errs
-}
-func appropriateArray(pat typePattern) *ArrayType {
-	if !pat.isGroundType() {
-		return nil
+	lit.Array.ElemType = elemPat.typ
+	switch bind := unify(pat, lit.Array); {
+	case bind == nil:
+		return lit, []Error{newError(lit, "cannot unify %s with %s", lit.Array, pat)}
+	case isRefType(literalType(pat.typ)):
+		lit.T = subType(bind, pat.typ)
+	default:
+		// The underlying literal is always a reference, so add a ref here,
+		// but we will deref it below before returning the expression.
+		lit.T = subType(bind, refType(pat.typ))
 	}
-	ary, ok := trim1Ref(literalType(pat.groundType())).(*ArrayType)
-	if !ok {
-		return nil
+	if !pat.withType(lit.T).isGroundType() {
+		return lit, []Error{newError(lit, "unable to infer array type, got %s", lit.T)}
 	}
-	return ary
+	if isRefType(literalType(pat.typ)) {
+		return lit, nil
+	}
+	return deref(lit), nil
 }
 
 // checkStructLit checks a struct literal.

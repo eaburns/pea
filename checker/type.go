@@ -223,6 +223,20 @@ func isArrayType(typ Type) bool {
 	return false
 }
 
+func isArrayRefType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *RefType:
+		return isArrayType(typ.Type)
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isArrayRefType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
 func isStringType(typ Type) bool {
 	switch typ := typ.(type) {
 	case *DefType:

@@ -3829,6 +3829,235 @@ func TestBlockLitLocals(t *testing.T) {
 	}
 }
 
+// exprTypeTest checks an expression in the context of a given pattern
+// and verifies the expected type or an expected error.
+type exprTypeTest struct {
+	// src and otherMod are context for checking.
+	src      string
+	otherMod testMod
+	// pat is the pattern used to check.
+	pat string
+	// expr is the expression to check.
+	expr string
+	// want is the expected type or "" if an error is expected.
+	want string
+	// err is the regular expression of an error message or "" if no error is expected.
+	err string
+}
+
+func (test exprTypeTest) name() string { return test.pat + " :: " + test.expr }
+
+func (test exprTypeTest) run(t *testing.T) {
+	mod, errs := check("test", []string{test.src}, []testMod{test.otherMod})
+	if len(errs) > 0 {
+		t.Fatalf("failed to parse and check: %s", errs[0])
+	}
+	pat, err := parseTestPattern(t, mod, test.pat)
+	if err != nil {
+		t.Fatalf("failed to parse type pattern: %s", err)
+	}
+	parserExpr, err := parser.ParseExpr(test.expr)
+	if err != nil {
+		t.Fatalf("failed to parse [%s]: %s", test.expr, err)
+	}
+	expr, es := checkAndConvertExpr(mod.Files[0], parserExpr, pat)
+	if test.err != "" {
+		if len(es) == 0 {
+			t.Errorf("got nil, expected error %s", test.err)
+		} else if errStr := fmt.Sprintf("%s", es); !regexp.MustCompile(test.err).MatchString(errStr) {
+			t.Errorf("got %s, expected matching %s", errStr, test.err)
+		}
+		return
+	}
+	if len(es) > 0 {
+		t.Errorf("got %s, expected no errors", es[0])
+		return
+	}
+	want, err := parseTestType(t, mod, test.want)
+	if err != nil {
+		t.Fatalf("failed to parse type: %s", err)
+	}
+	if !eqType(expr.Type(), want) {
+		t.Errorf("got %s, want %s", expr.Type(), test.want)
+	}
+}
+
+func TestArrayLiteralInference(t *testing.T) {
+	tests := []exprTypeTest{
+		{pat: "_", expr: `[]`, err: `unable to infer`},
+		{pat: "_", expr: `[error]`, err: `not found`},
+		{pat: "_", expr: `[5]`, want: `[int]`},
+		{pat: "_", expr: `["hello"]`, want: `[string]`},
+		{pat: "_", expr: `[[[5]]]`, want: `[[[int]]]`},
+		{pat: "_", expr: `[[[5], []], []]`, want: `[[[int]]]`},
+
+		{pat: "&_", expr: `[]`, err: `unable to infer`},
+		{pat: "&_", expr: `[error]`, err: `not found`},
+		{pat: "&_", expr: `[5]`, want: `&[int]`},
+		{pat: "&_", expr: `["hello"]`, want: `&[string]`},
+		{pat: "&_", expr: `[[[5]]]`, want: `&[[[int]]]`},
+		{pat: "&_", expr: `[[[5], []], []]`, want: `&[[[int]]]`},
+
+		{pat: "int", expr: `[]`, err: `unable to infer`},
+		{pat: "int", expr: `[error]`, err: `not found`},
+		{pat: "int", expr: `[5]`, err: `cannot unify \[int\] with int`},
+		{pat: "int", expr: `["hello"]`, err: `cannot unify \[string\] with int`},
+		{pat: "int", expr: `[[[5]]]`, err: `cannot unify \[\[\[int\]\]\] with int`},
+		{pat: "int", expr: `[[[5], []], []]`, err: `cannot unify \[\[\[int\]\]\] with int`},
+
+		{pat: "&int", expr: `[]`, err: `unable to infer`},
+		{pat: "&int", expr: `[error]`, err: `not found`},
+		{pat: "&int", expr: `[5]`, err: `cannot unify \[int\] with &int`},
+		{pat: "&int", expr: `["hello"]`, err: `cannot unify \[string\] with &int`},
+		{pat: "&int", expr: `[[[5]]]`, err: `cannot unify \[\[\[int\]\]\] with &int`},
+		{pat: "&int", expr: `[[[5], []], []]`, err: `cannot unify \[\[\[int\]\]\] with &int`},
+
+		{pat: "[int]", expr: `[]`, want: `[int]`},
+		{pat: "[int]", expr: `[error]`, err: `not found`},
+		{pat: "[int]", expr: `[5]`, want: `[int]`},
+		{pat: "[int]", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{pat: "[int]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]\] with int`},
+		{pat: "[int]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]\] with int`},
+
+		{pat: "&[int]", expr: `[]`, want: `&[int]`},
+		{pat: "&[int]", expr: `[error]`, err: `not found`},
+		{pat: "&[int]", expr: `[5]`, want: `&[int]`},
+		{pat: "&[int]", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{pat: "&[int]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]\] with int`},
+		{pat: "&[int]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]\] with int`},
+
+		{pat: "[_]", expr: `[]`, err: `unable to infer`},
+		{pat: "[_]", expr: `[error]`, err: `not found`},
+		{pat: "[_]", expr: `[5]`, want: `[int]`},
+		{pat: "[_]", expr: `["hello"]`, want: `[string]`},
+		{pat: "[_]", expr: `[[[5]]]`, want: `[[[int]]]`},
+		{pat: "[_]", expr: `[[[5], []], []]`, want: `[[[int]]]`},
+
+		{pat: "&[_]", expr: `[]`, err: `unable to infer`},
+		{pat: "&[_]", expr: `[error]`, err: `not found`},
+		{pat: "&[_]", expr: `[5]`, want: `&[int]`},
+		{pat: "&[_]", expr: `["hello"]`, want: `&[string]`},
+		{pat: "&[_]", expr: `[[[5]]]`, want: `&[[[int]]]`},
+		{pat: "&[_]", expr: `[[[5], []], []]`, want: `&[[[int]]]`},
+
+		{pat: "[T]", expr: `[]`, want: `[T]`},
+		{pat: "[T]", expr: `[error]`, err: `not found`},
+		{pat: "[T]", expr: `[5]`, err: `cannot convert 5 \(int\) to type T`},
+		{pat: "[T]", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type T`},
+		{pat: "[T]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with T`},
+		{pat: "[T]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with T`},
+
+		{pat: "&[T]", expr: `[]`, want: `&[T]`},
+		{pat: "&[T]", expr: `[error]`, err: `not found`},
+		{pat: "&[T]", expr: `[5]`, err: `cannot convert 5 \(int\) to type T`},
+		{pat: "&[T]", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type T`},
+		{pat: "&[T]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with T`},
+		{pat: "&[T]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with T`},
+
+		{src: "type t [int]", pat: "t", expr: `[]`, want: `t`},
+		{src: "type t [int]", pat: "t", expr: `[error]`, err: `not found`},
+		{src: "type t [int]", pat: "t", expr: `[5]`, want: `t`},
+		{src: "type t [int]", pat: "t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type t [int]", pat: "t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with int`},
+		{src: "type t [int]", pat: "t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
+
+		{src: "type t [int]", pat: "&t", expr: `[]`, want: `&t`},
+		{src: "type t [int]", pat: "&t", expr: `[error]`, err: `not found`},
+		{src: "type t [int]", pat: "&t", expr: `[5]`, want: `&t`},
+		{src: "type t [int]", pat: "&t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type t [int]", pat: "&t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with int`},
+		{src: "type t [int]", pat: "&t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
+
+		{src: "type T t [T]", pat: "int t", expr: `[]`, want: `int t`},
+		{src: "type T t [T]", pat: "int t", expr: `[error]`, err: `not found`},
+		{src: "type T t [T]", pat: "int t", expr: `[5]`, want: `int t`},
+		{src: "type T t [T]", pat: "int t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type T t [T]", pat: "int t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with int`},
+		{src: "type T t [T]", pat: "int t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
+
+		{src: "type T t [T]", pat: "&int t", expr: `[]`, want: `&int t`},
+		{src: "type T t [T]", pat: "&int t", expr: `[error]`, err: `not found`},
+		{src: "type T t [T]", pat: "&int t", expr: `[5]`, want: `&int t`},
+		{src: "type T t [T]", pat: "&int t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type T t [T]", pat: "&int t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]\] with int`},
+		{src: "type T t [T]", pat: "&int t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
+
+		{src: "type T t [T]", pat: "_ t", expr: `[]`, err: `unable to infer`},
+		{src: "type T t [T]", pat: "_ t", expr: `[error]`, err: `not found`},
+		{src: "type T t [T]", pat: "_ t", expr: `[5]`, want: `int t`},
+		{src: "type T t [T]", pat: "_ t", expr: `["hello"]`, want: `string t`},
+		{src: "type T t [T]", pat: "_ t", expr: `[[[5]]]`, want: `[[int]] t`},
+		{src: "type T t [T]", pat: "_ t", expr: `[[[5], []], []]`, want: `[[int]] t`},
+
+		{src: "type T t [T]", pat: "&_ t", expr: `[]`, err: `unable to infer`},
+		{src: "type T t [T]", pat: "&_ t", expr: `[error]`, err: `not found`},
+		{src: "type T t [T]", pat: "&_ t", expr: `[5]`, want: `&int t`},
+		{src: "type T t [T]", pat: "&_ t", expr: `["hello"]`, want: `&string t`},
+		{src: "type T t [T]", pat: "&_ t", expr: `[[[5]]]`, want: `&[[int]] t`},
+		{src: "type T t [T]", pat: "&_ t", expr: `[[[5], []], []]`, want: `&[[int]] t`},
+
+		{src: "type t &[int]", pat: "t", expr: `[]`, want: `t`},
+		{src: "type t &[int]", pat: "t", expr: `[error]`, err: `not found`},
+		{src: "type t &[int]", pat: "t", expr: `[5]`, want: `t`},
+		{src: "type t &[int]", pat: "t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type t &[int]", pat: "t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]\] with int`},
+		{src: "type t &[int]", pat: "t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]\] with int`},
+
+		{src: "type t &[int]", pat: "&t", expr: `[]`, err: `unable to infer`},
+		{src: "type t &[int]", pat: "&t", expr: `[error]`, err: `not found`},
+		{src: "type t &[int]", pat: "&t", expr: `[5]`, err: `cannot unify \[int\] with &t`},
+		{src: "type t &[int]", pat: "&t", expr: `["hello"]`, err: `cannot unify \[string\] with &t`},
+		{src: "type t &[int]", pat: "&t", expr: `[[[5]]]`, err: `cannot unify \[\[\[int\]\]\] with &t`},
+		{src: "type t &[int]", pat: "&t", expr: `[[[5], []], []]`, err: `cannot unify \[\[\[int\]\]\] with &t`},
+
+		{src: "type T t &[T]", pat: "int t", expr: `[]`, want: `int t`},
+		{src: "type T t &[T]", pat: "int t", expr: `[error]`, err: `not found`},
+		{src: "type T t &[T]", pat: "int t", expr: `[5]`, want: `int t`},
+		{src: "type T t &[T]", pat: "int t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type T t &[T]", pat: "int t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with int`},
+		{src: "type T t &[T]", pat: "int t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
+
+		{src: "type T t &[T]", pat: "&int t", expr: `[]`, err: `unable to infer`},
+		{src: "type T t &[T]", pat: "&int t", expr: `[error]`, err: `not found`},
+		{src: "type T t &[T]", pat: "&int t", expr: `[5]`, err: `cannot unify \[int\] with &int t`},
+		{src: "type T t &[T]", pat: "&int t", expr: `["hello"]`, err: `cannot unify \[string\] with &int t`},
+		{src: "type T t &[T]", pat: "&int t", expr: `[[[5]]]`, err: `cannot unify \[\[\[int\]\]\] with &int t`},
+		{src: "type T t &[T]", pat: "&int t", expr: `[[[5], []], []]`, err: `cannot unify \[\[\[int\]\]\] with &int t`},
+
+		{src: "type T t &[T]", pat: "_ t", expr: `[]`, err: `unable to infer`},
+		{src: "type T t &[T]", pat: "_ t", expr: `[error]`, err: `not found`},
+		{src: "type T t &[T]", pat: "_ t", expr: `[5]`, want: `int t`},
+		{src: "type T t &[T]", pat: "_ t", expr: `["hello"]`, want: `string t`},
+		{src: "type T t &[T]", pat: "_ t", expr: `[[[5]]]`, want: `[[int]] t`},
+		{src: "type T t &[T]", pat: "_ t", expr: `[[[5], []], []]`, want: `[[int]] t`},
+
+		{src: "type T t &[T]", pat: "&_ t", expr: `[]`, err: `unable to infer`},
+		{src: "type T t &[T]", pat: "&_ t", expr: `[error]`, err: `not found`},
+		{src: "type T t &[T]", pat: "&_ t", expr: `[5]`, err: `cannot unify \[int\] with &_ t`},
+		{src: "type T t &[T]", pat: "&_ t", expr: `["hello"]`, err: `cannot unify \[string\] with &_ t`},
+		{src: "type T t &[T]", pat: "&_ t", expr: `[[[5]]]`, err: `cannot unify \[\[\[int\]\]\] with &_ t`},
+		{src: "type T t &[T]", pat: "&_ t", expr: `[[[5], []], []]`, err: `cannot unify \[\[\[int\]\]\] with &_ t`},
+
+		{pat: "[[int]]", expr: `[]`, want: `[[int]]`},
+		{pat: "[[int]]", expr: `[[]]`, want: `[[int]]`},
+		{pat: "[[int]]", expr: `[error]`, err: `not found`},
+		{pat: "[[int]]", expr: `[5]`, err: `cannot convert 5 \(int\) to type \[int\]`},
+		{pat: "[[int]]", expr: `[[5], []]`, want: `[[int]]`},
+
+		{
+			src:  `func foo()T`,
+			pat:  `_`,
+			expr: `[foo()]`,
+			// foo() is not found, since we cannot ground T.
+			err: `not found`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name(), test.run)
+	}
+}
+
+// This test is from pre-0.2.0 literals.
 func TestLiteralInference(t *testing.T) {
 	tests := []struct {
 		expr     string

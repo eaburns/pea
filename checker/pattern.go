@@ -44,6 +44,9 @@ func patternOrAny(typ Type) typePattern {
 }
 
 func (pat typePattern) withType(typ Type) typePattern {
+	if typ == nil {
+		panic("impossible")
+	}
 	pat.typ = typ
 	return pat
 }
