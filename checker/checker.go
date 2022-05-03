@@ -1771,7 +1771,8 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 // 	  to the conversion type.
 func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	typ, errs := makeType(x, parserConvert.Type)
-	expr, es := checkExpr(x, parserConvert.Expr, pattern(typ))
+	// typ may be nil if there was an error in the type, so use patternOrAny.
+	expr, es := checkExpr(x, parserConvert.Expr, patternOrAny(typ))
 	if len(es) > 0 {
 		errs = append(errs, es...)
 	}
