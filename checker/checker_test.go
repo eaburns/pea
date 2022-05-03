@@ -4057,6 +4057,180 @@ func TestArrayLiteralInference(t *testing.T) {
 	}
 }
 
+func TestStructLiteralInference(t *testing.T) {
+	tests := []exprTypeTest{
+		{pat: `_`, expr: `[.x error]`, err: `not found`},
+		{pat: `_`, expr: `[.]`, want: `[.]`},
+		{pat: `_`, expr: `[.x 5]`, want: `[.x int]`},
+		{pat: `_`, expr: `[.x 5, .y 3.14]`, want: `[.x int, .y float64]`},
+		{pat: `_`, expr: `[.y 5, .x 3.14]`, want: `[.y int, .x float64]`},
+		{pat: `_`, expr: `[.x [.x [.x 5]]]`, want: `[.x [.x [.x int]]]`},
+
+		{pat: `&_`, expr: `[.x error]`, err: `not found`},
+		{pat: `&_`, expr: `[.]`, want: `&[.]`},
+		{pat: `&_`, expr: `[.x 5]`, want: `&[.x int]`},
+		{pat: `&_`, expr: `[.x 5, .y 3.14]`, want: `&[.x int, .y float64]`},
+		{pat: `&_`, expr: `[.y 5, .x 3.14]`, want: `&[.y int, .x float64]`},
+		{pat: `&_`, expr: `[.x [.x [.x 5]]]`, want: `&[.x [.x [.x int]]]`},
+
+		{pat: `int`, expr: `[.x error]`, err: `not found`},
+		{pat: `int`, expr: `[.]`, err: `cannot unify`},
+		{pat: `int`, expr: `[.x 5]`, err: `cannot unify`},
+		{pat: `int`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `int`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `int`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `&int`, expr: `[.x error]`, err: `not found`},
+		{pat: `&int`, expr: `[.]`, err: `cannot unify`},
+		{pat: `&int`, expr: `[.x 5]`, err: `cannot unify`},
+		{pat: `&int`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `&int`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `&int`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `[.]`, expr: `[.x error]`, err: `not found`},
+		{pat: `[.]`, expr: `[.]`, want: `[.]`},
+		{pat: `[.]`, expr: `[.x 5]`, err: `cannot unify`},
+		{pat: `[.]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `[.]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `[.]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `&[.]`, expr: `[.x error]`, err: `not found`},
+		{pat: `&[.]`, expr: `[.]`, want: `&[.]`},
+		{pat: `&[.]`, expr: `[.x 5]`, err: `cannot unify`},
+		{pat: `&[.]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `&[.]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `&[.]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `[.x int]`, expr: `[.x error]`, err: `not found`},
+		{pat: `[.x int]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `[.x int]`, expr: `[.x 5]`, want: `[.x int]`},
+		{pat: `[.x int]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `[.x int]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `[.x int]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `&[.x int]`, expr: `[.x error]`, err: `not found`},
+		{pat: `&[.x int]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `&[.x int]`, expr: `[.x 5]`, want: `&[.x int]`},
+		{pat: `&[.x int]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `&[.x int]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `&[.x int]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `[.x int, .y float64]`, expr: `[.x error, .y 3.14]`, err: `not found`},
+		{pat: `[.x int, .y float64]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `[.x int, .y float64]`, expr: `[.x 5]`, err: `cannot unify`},
+		{pat: `[.x int, .y float64]`, expr: `[.x 5, .y 3.14]`, want: `[.x int, .y float64]`},
+		{pat: `[.x int, .y float64]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `[.x int, .y float64]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `&[.x int, .y float64]`, expr: `[.x error, .y 3.14]`, err: `not found`},
+		{pat: `&[.x int, .y float64]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `&[.x int, .y float64]`, expr: `[.x 5]`, err: `cannot unify`},
+		{pat: `&[.x int, .y float64]`, expr: `[.x 5, .y 3.14]`, want: `&[.x int, .y float64]`},
+		{pat: `&[.x int, .y float64]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `&[.x int, .y float64]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `[.x _]`, expr: `[.x error, .y 3.14]`, err: `not found`},
+		{pat: `[.x _]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `[.x _]`, expr: `[.x 5]`, want: `[.x int]`},
+		{pat: `[.x _]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `[.x _]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `[.x _]`, expr: `[.x [.x [.x 5]]]`, want: `[.x [.x [.x int]]]`},
+
+		{pat: `&[.x _]`, expr: `[.x error, .y 3.14]`, err: `not found`},
+		{pat: `&[.x _]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `&[.x _]`, expr: `[.x 5]`, want: `&[.x int]`},
+		{pat: `&[.x _]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `&[.x _]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `&[.x _]`, expr: `[.x [.x [.x 5]]]`, want: `&[.x [.x [.x int]]]`},
+
+		{pat: `[.x _, .y float64]`, expr: `[.x error, .y 3.14]`, err: `not found`},
+		{pat: `[.x _, .y float64]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `[.x _, .y float64]`, expr: `[.x 5]`, err: `cannot unify`},
+		{pat: `[.x _, .y float64]`, expr: `[.x 5, .y 3.14]`, want: `[.x int, .y float64]`},
+		{pat: `[.x _, .y float64]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `[.x _, .y float64]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `&[.x _, .y float64]`, expr: `[.x error, .y 3.14]`, err: `not found`},
+		{pat: `&[.x _, .y float64]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `&[.x _, .y float64]`, expr: `[.x 5]`, err: `cannot unify`},
+		{pat: `&[.x _, .y float64]`, expr: `[.x 5, .y 3.14]`, want: `&[.x int, .y float64]`},
+		{pat: `&[.x _, .y float64]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `&[.x _, .y float64]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `[.x T]`, expr: `[.x error, .y 3.14]`, err: `not found`},
+		{pat: `[.x T]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `[.x T]`, expr: `[.x 5]`, err: `cannot convert 5 \(int\) to type T`},
+		{pat: `[.x T]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `[.x T]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `[.x T]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{pat: `&[.x T]`, expr: `[.x error, .y 3.14]`, err: `not found`},
+		{pat: `&[.x T]`, expr: `[.]`, err: `cannot unify`},
+		{pat: `&[.x T]`, expr: `[.x 5]`, err: `cannot convert 5 \(int\) to type T`},
+		{pat: `&[.x T]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
+		{pat: `&[.x T]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
+		{pat: `&[.x T]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
+
+		{src: `type t [.x int]`, pat: `t`, expr: `[.x 5]`, want: `t`},
+		{src: `type t [.x int]`, pat: `&t`, expr: `[.x 5]`, want: `&t`},
+
+		{src: `type t &[.x int]`, pat: `t`, expr: `[.x 5]`, want: `t`},
+		{src: `type t &[.x int]`, pat: `&t`, expr: `[.x 5]`, err: `cannot unify`},
+
+		{src: `type T t [.x T]`, pat: `int t`, expr: `[.x 5]`, want: `int t`},
+		{src: `type T t [.x T]`, pat: `int t`, expr: `[.x [.x 5]]`, err: `cannot unify`},
+		{src: `type T t [.x T]`, pat: `&int t`, expr: `[.x 5]`, want: `&int t`},
+		{src: `type T t [.x T]`, pat: `&int t`, expr: `[.x [.x 5]]`, err: `cannot unify`},
+		{src: `type T t [.x T]`, pat: `_ t`, expr: `[.x 5]`, want: `int t`},
+		{src: `type T t [.x T]`, pat: `_ t`, expr: `[.x [.x 5]]`, want: `[.x int] t`},
+		{src: `type T t [.x T]`, pat: `&_ t`, expr: `[.x 5]`, want: `&int t`},
+		{src: `type T t [.x T]`, pat: `&_ t`, expr: `[.x [.x 5]]`, want: `&[.x int] t`},
+
+		{src: `type T t &[.x T]`, pat: `int t`, expr: `[.x 5]`, want: `int t`},
+		{src: `type T t &[.x T]`, pat: `int t`, expr: `[.x [.x 5]]`, err: `cannot unify`},
+		{src: `type T t &[.x T]`, pat: `&int t`, expr: `[.x 5]`, err: `cannot unify`},
+		{src: `type T t &[.x T]`, pat: `&int t`, expr: `[.x [.x 5]]`, err: `cannot unify`},
+		{src: `type T t &[.x T]`, pat: `_ t`, expr: `[.x 5]`, want: `int t`},
+		{src: `type T t &[.x T]`, pat: `_ t`, expr: `[.x [.x 5]]`, want: `[.x int] t`},
+		{src: `type T t &[.x T]`, pat: `&_ t`, expr: `[.x 5]`, err: `cannot unify`},
+		{src: `type T t &[.x T]`, pat: `&_ t`, expr: `[.x [.x 5]]`, err: `cannot unify`},
+
+		{
+			src:  `type (X, Y) pair [.x X, .y Y]`,
+			pat:  `(int, string) pair`,
+			expr: `[.x 5, .y "hello"]`,
+			want: `(int, string) pair`,
+		},
+		{
+			src:  `type (X, Y) pair [.x X, .y Y]`,
+			pat:  `(int32, string) pair`,
+			expr: `[.x 5, .y "hello"]`,
+			want: `(int32, string) pair`,
+		},
+		{
+			src:  `type (X, Y) pair [.x X, .y Y]`,
+			pat:  `(_, string) pair`,
+			expr: `[.x 5, .y "hello"]`,
+			want: `(int, string) pair`,
+		},
+		{
+			src:  `type (X, Y) pair [.x X, .y Y]`,
+			pat:  `(int, _) pair`,
+			expr: `[.x 5, .y "hello"]`,
+			want: `(int, string) pair`,
+		},
+		{
+			src:  `type (X, Y) pair [.x X, .y Y]`,
+			pat:  `(_, _) pair`,
+			expr: `[.x 5, .y "hello"]`,
+			want: `(int, string) pair`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name(), test.run)
+	}
+}
+
 // This test is from pre-0.2.0 literals.
 func TestLiteralInference(t *testing.T) {
 	tests := []struct {

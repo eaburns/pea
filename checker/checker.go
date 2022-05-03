@@ -1894,76 +1894,81 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, 
 }
 
 // checkStructLit checks a struct literal.
-// 	* If the pattern is a ground type appropriate to the literal,
-// 	  then the literal's type is the expected type.
-// 	  The expected type of each literal field value
-// 	  is the type of the corresponding field,
-// 	  and it is an error if the value's type is not convertible
-// 	  to the field value.
-// 	* Otherwise, the literal's type is an unnamed struct type
-// 	  with a field corresponding to each of the literal's fields.
-// 	  The type of each field is the type of its corresponding value
-// 	  with no expected type.
 //
-// A type is appropriate to a struct literal if
-// 	* its literal type is a struct type or a reference to a struct type,
-// 	* it has the same number of fields as the literal,
-// 	* each of the fields, in order, has the same name as the corresponding literal field.
+// If the pattern's type is a struct type or reference to a struct type
+// and the number, names, and order of fields match the literal expression, then
+// the field expressions are checked with the pattern's corresponding field pattern.
+// Otherwise, the field expressions are checked with a new pattern
+// with a single bound type variable.
+//
+// The type of the literal is the unification of a literal struct type with the pattern.
+// The field types of the literal struct type used in the unification
+// are the types of each corresponding field expression.
+// It is an error if the unification fails or contains type variables bound in the pattern.
+//
+// The returned Expr is never nil even if there are errors.
 func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr, []Error) {
-	var errs []Error
 	lit := &StructLit{L: parserLit.L}
-
-	if lit.Struct = appropriateStruct(pat, parserLit); lit.Struct != nil {
-		for i, parserField := range parserLit.FieldVals {
-			expr, fs := checkAndConvertExpr(x, parserField.Val, pattern(lit.Struct.Fields[i].Type))
-			if len(fs) > 0 {
-				errs = append(errs, fs...)
+	var fieldPats []typePattern
+	if isStructType(pat.typ) || isStructRefType(pat.typ) {
+		str := trim1Ref(literalType(pat.typ)).(*StructType)
+		if len(str.Fields) == len(parserLit.FieldVals) {
+			for i := range parserLit.FieldVals {
+				if str.Fields[i].Name != parserLit.FieldVals[i].Name.Name {
+					fieldPats = nil
+					break
+				}
+				fieldPats = append(fieldPats, pat.withType(str.Fields[i].Type))
 			}
-			lit.Fields = append(lit.Fields, expr)
 		}
-		if !isRefType(literalType(pat.groundType())) {
-			lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
-			return deref(lit), errs
-		}
-		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
-		return lit, errs
 	}
-
+	if fieldPats == nil {
+		for range parserLit.FieldVals {
+			fieldPats = append(fieldPats, any())
+		}
+	}
+	var errs []Error
 	lit.Struct = &StructType{L: lit.L}
-	for _, parserField := range parserLit.FieldVals {
-		expr, fs := checkAndConvertExpr(x, parserField.Val, any())
+	for i, parserField := range parserLit.FieldVals {
+		expr, fs := checkAndConvertExpr(x, parserField.Val, fieldPats[i])
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
-		var typ Type
-		if expr != nil {
-			typ = expr.Type()
+		// TODO: there should be no nil exprs
+		if expr == nil {
+			continue
 		}
 		lit.Fields = append(lit.Fields, expr)
 		lit.Struct.Fields = append(lit.Struct.Fields, FieldDef{
 			Name: parserField.Name.Name,
-			Type: typ,
+			Type: expr.Type(),
 			L:    parserField.L,
 		})
 	}
-	lit.T = refType(lit.Struct)
-	return deref(lit), errs
-}
-
-func appropriateStruct(pat typePattern, lit *parser.StructLit) *StructType {
-	if !pat.isGroundType() {
-		return nil
+	if len(errs) > 0 {
+		return lit, errs
 	}
-	s, ok := trim1Ref(literalType(pat.groundType())).(*StructType)
-	if !ok || len(s.Fields) != len(lit.FieldVals) {
-		return nil
+	switch bind := unify(pat, lit.Struct); {
+	case bind == nil:
+		return lit, []Error{newError(lit, "cannot unify %s with %s", lit.Struct, pat)}
+	case isRefType(literalType(pat.typ)):
+		lit.T = subType(bind, pat.typ)
+	default:
+		// The underlying literal is always a reference, so add a ref here,
+		// but we will deref it below before returning the expression.
+		lit.T = subType(bind, refType(pat.typ))
 	}
-	for i := range s.Fields {
-		if s.Fields[i].Name != lit.FieldVals[i].Name.Name {
-			return nil
-		}
+	if !pat.withType(lit.T).isGroundType() {
+		// I believe this is impossible. If not, it should be an error.
+		// However, I'd like to see a case that produces this panic
+		// before bothering to return the error.
+		panic("impossible")
+		// return lit, []Error{newError(lit, "unable to infer struct type, got %s", lit.T)}
 	}
-	return s
+	if isRefType(literalType(pat.typ)) {
+		return lit, nil
+	}
+	return deref(lit), nil
 }
 
 // checkUnionLit checks a union literal.
