@@ -1853,7 +1853,7 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, 
 		ary := trim1Ref(literalType(pat.typ)).(*ArrayType)
 		elemPat = pat.withType(ary.ElemType)
 	} else if len(parserLit.Exprs) == 0 {
-		return lit, []Error{newError(lit, "unable to infer array type")}
+		return lit, []Error{newError(lit, "cannot infer array type")}
 	}
 	var errs []Error
 	for _, parserExpr := range parserLit.Exprs {
@@ -1885,7 +1885,7 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, 
 		lit.T = subType(bind, refType(pat.typ))
 	}
 	if !pat.withType(lit.T).isGroundType() {
-		return lit, []Error{newError(lit, "unable to infer array type, got %s", lit.T)}
+		return lit, []Error{newError(lit, "cannot infer array type, got %s", lit.T)}
 	}
 	if isRefType(literalType(pat.typ)) {
 		return lit, nil
@@ -1963,7 +1963,7 @@ func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr
 		// However, I'd like to see a case that produces this panic
 		// before bothering to return the error.
 		panic("impossible")
-		// return lit, []Error{newError(lit, "unable to infer struct type, got %s", lit.T)}
+		// return lit, []Error{newError(lit, "cannot infer struct type, got %s", lit.T)}
 	}
 	if isRefType(literalType(pat.typ)) {
 		return lit, nil
@@ -1972,68 +1972,77 @@ func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr
 }
 
 // checkUnionLit checks a union literal.
-// 	* If the pattern type is a ground type appropriate to the literal,
-// 	  then the literal's type is the pattern type.
-// 	  If the literal has a value,
-// 	  it's expected type is the corresponding case type,
-// 	  and it is an error if the value is not convertible
-// 	  to the case type.
-// 	* Otherwise, the literal's type is an unnamed union type
-// 	  with a single case of the name of the literal case.
-// 	  If the literal has a value, the type of the case
-// 	  is the type of the value with no expected type.
 //
-// A type is appropriate to a union literal if
-// 	* its literal type is a union type or a reference to a union type,
-// 	* it has a case with the same name as the literal case,
-// 	* if the literal has a value, the corresponding case has a type,
-// 	* or if the literal has no value, the corresponding case has no type.
+// If the literal has an expresson and
+// the pattern's type is a union type or reference to a union type and
+// the union type has a case that is typed,
+// the expression is checked with the pattern's corresponding case pattern.
+// Otherwise, the case expression is checked with a new pattern
+// with a single bound type variable.
+//
+// If the pattern is a union type or a reference to a union type,
+// the type of the literal is the unification with the pattern
+// of the literal union type of the pattern
+// with the type of the case corresponding to the literal, if typed,
+// replaced with the type of the literal expression.
+//
+// Otherwise if the pattern is not a union type or reference to a union type,
+// the type of the literal is the unification with the pattern
+// of the literal union type that consists of just the literal case;
+// if the literal has an expression,
+// the case is typed with the type of the expression,
+// otherwise it is untyped.
+//
+// It is an error if the unification fails or contains type variables bound in the pattern.
+//
+// The returned Expr is never nil even if there are errors.
 func checkUnionLit(x scope, parserLit *parser.UnionLit, pat typePattern) (Expr, []Error) {
-	var errs []Error
+	caseName := parserLit.CaseVal.Name.Name
 	lit := &UnionLit{L: parserLit.L}
-	if lit.Union, lit.Case = appropriateUnion(pat, parserLit); lit.Union != nil {
-		if parserLit.CaseVal.Val != nil {
-			lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, pattern(lit.Case.Type))
+	exprPat := any()
+	if isUnionType(pat.typ) || isUnionRefType(pat.typ) {
+		uni := trim1Ref(literalType(pat.typ)).(*UnionType)
+		if c := findCase(caseName, uni); c != nil && (c.Type == nil) == (parserLit.CaseVal.Val == nil) {
+			if c.Type != nil {
+				exprPat = pat.withType(c.Type)
+			}
+			// Copy the type, because we will later replace the type for the expr case
+			// with the type of the checked expression.
+			lit.Union = copyTypeWithLoc(uni, pat.typ.Loc()).(*UnionType)
 		}
-		if !isRefType(literalType(pat.groundType())) {
-			lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
-			return deref(lit), errs
+	}
+	if lit.Union == nil {
+		lit.Union = &UnionType{
+			Cases: []CaseDef{{Name: caseName, L: parserLit.CaseVal.Name.L}},
+			L:     lit.L,
 		}
-		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
-		return lit, errs
 	}
-
-	lit.Union = &UnionType{
-		Cases: []CaseDef{{
-			Name: parserLit.CaseVal.Name.Name,
-			L:    parserLit.CaseVal.L,
-		}},
-		L: parserLit.L,
-	}
+	lit.Case = findCase(caseName, lit.Union)
 	if parserLit.CaseVal.Val != nil {
-		lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, any())
-	}
-	lit.Case = &lit.Union.Cases[0]
-	if lit.Val != nil {
+		var errs []Error
+		lit.Val, errs = checkAndConvertExpr(x, parserLit.CaseVal.Val, exprPat)
+		if len(errs) > 0 {
+			return lit, errs
+		}
 		lit.Case.Type = lit.Val.Type()
 	}
-	lit.T = refType(lit.Union)
-	return deref(lit), errs
-}
-
-func appropriateUnion(pat typePattern, lit *parser.UnionLit) (*UnionType, *CaseDef) {
-	if !pat.isGroundType() {
-		return nil, nil
+	switch bind := unify(pat, lit.Union); {
+	case bind == nil:
+		return lit, []Error{newError(lit, "cannot unify %s with %s", lit.Union, pat)}
+	case isRefType(literalType(pat.typ)):
+		lit.T = subType(bind, pat.typ)
+	default:
+		// The underlying literal is always a reference, so add a ref here,
+		// but we will deref it below before returning the expression.
+		lit.T = subType(bind, refType(pat.typ))
 	}
-	u, ok := trim1Ref(literalType(pat.groundType())).(*UnionType)
-	if !ok {
-		return nil, nil
+	if !pat.withType(lit.T).isGroundType() {
+		return lit, []Error{newError(lit, "cannot infer union type, got %s", lit.T)}
 	}
-	c := findCase(lit.CaseVal.Name.Name, u)
-	if c == nil || (c.Type == nil) != (lit.CaseVal.Val == nil) {
-		return nil, nil
+	if isRefType(literalType(pat.typ)) {
+		return lit, nil
 	}
-	return u, c
+	return deref(lit), nil
 }
 
 func findCase(name string, u *UnionType) *CaseDef {
