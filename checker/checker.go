@@ -2055,102 +2055,144 @@ func findCase(name string, u *UnionType) *CaseDef {
 }
 
 // checkBlockLit checks a block literal.
-// 	* If the pattern is a ground type appropriate to the literal,
-// 	  then the literal's type is the pattern's type.
-// 	  If the type has a return type,
-// 	  it is an error if there are no expressions in the block.
-// 	  The expected type of the last expression is the return type,
-// 	  and it is an error if the type of the last expression
-// 	  is not convertible to the return type.
-// 	* Otherwise, the literal's type is an unnamed function type
-// 	  with parameters corresponding to the explicitly type
-// 	  of each of the literal's parameters.
-// 	  It is an error if any of the parameter's type is elided.
-// 	  If there are no expressions in the block, the type has no return type.
-// 	  Otherwise the return type is the type of the last expression
-// 	  in the block with no expected type.
 //
-// A type is appropriate to a block literal if
-// 	* its literal type is a function type or a reference to a function type,
-// 	* it has the same number of parameters as the literal, and
-// 	* all explicit parameter types of the literal
-// 	  equal the corresponding parameter type of the function type.
+// If the pattern is not a function type or reference to a function type,
+// it is an error if any parameters of the literal do not have explicit types.
+//
+// The expressions in the literal body are checked with a new pattern
+// containing a single, bound type variable.
+// However, if the pattern is a function type or reference to a function type,
+// the last expression in the literal body is checked with the type
+// of the pattern's function return pattern.
+//
+// The type of the literal is the unification of a literal function type with the pattern.
+// The parameter types of the literal function type used in the unification
+// are the explicit parameter type for each parameter where specified;
+// for parameters without an explicitly specified type,
+// the type is that of the pattern's corresponding parameter
+// (recall that the pattern must be a function or reference to a function
+// in order for non-explicitly-typed parameters to be allowed).
+// The return type of the function literal is the type of the last expression in the body,
+// or if the pattern is a function or reference to a function
+// and the pattern's function return type is [.], then the return type is [.],
+// or if the pattern's function return type a ground type in the pattern
+// and the last expression in the body  is a panic or return,
+// then the type is the pattern's return type.
+// It is an error if the unification fails or contains type variables bound in the pattern.
+//
+// TODO: move [.] special case into unify.
+// TODO: panic/return special case for block literals goes away by adding !-type from return and panic, and moving the handling into unify.
+//
+// The returned Expr is never nil even if there are errors.
 func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, []Error) {
-	var errs []Error
 	lit := &BlockLit{L: parserLit.L}
+	var errs []Error
 	lit.Parms, errs = makeFuncParms(x, parserLit.Parms)
-	x = &blockLitScope{parent: x, BlockLit: lit}
-
-	if f := appropriateBlock(pat, lit.Parms); f != nil {
-		for i := range lit.Parms {
-			if lit.Parms[i].T != nil {
-				continue
+	retPat := any()
+	funType := &FuncType{L: lit.L}
+	if isFuncType(pat.typ) || isFuncRefType(pat.typ) {
+		fun := trim1Ref(literalType(pat.typ)).(*FuncType)
+		if len(fun.Parms) == len(lit.Parms) {
+			retPat = pat.withType(fun.Ret)
+			for i := range lit.Parms {
+				p := &lit.Parms[i]
+				if lit.Parms[i].T == nil {
+					lit.Parms[i].T = fun.Parms[i]
+					continue
+				}
+				parmPat := pat.withType(fun.Parms[i])
+				bind := unify(parmPat, p.T)
+				if bind == nil {
+					err := newError(p, "cannot unify %s with %s", p.T, parmPat)
+					errs = append(errs, err)
+				}
+				lit.Parms[i].T = subType(bind, parmPat.typ)
 			}
-			lit.Parms[i].T = copyTypeWithLoc(f.Parms[i], lit.Parms[i].L)
 		}
-		lit.Ret = f.Ret
-		var fs []Error
-		lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, pattern(f.Ret))
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
-		}
-		if !isRefType(pat.groundType()) {
-			lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
-			return deref(lit), errs
-		}
-		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
-		return lit, errs
 	}
-
-	// Remove parameters with elided types and report an error.
-	var n int
-	var parmTypes []Type
 	for _, p := range lit.Parms {
-		if p.T == nil {
-			errs = append(errs, newError(p.L, "cannot infer type of parameter %s", p.Name))
+		if p.T == nil || !pat.withType(p.T).isGroundType() {
+			err := newError(p.L, "cannot infer type of parameter %s", p.Name)
+			errs = append(errs, err)
 			continue
 		}
-		parmTypes = append(parmTypes, p.T)
-		lit.Parms[n] = p
-		n++
+		funType.Parms = append(funType.Parms, p.T)
 	}
-	lit.Parms = lit.Parms[:n]
-
-	var fs []Error
-	lit.Exprs, fs = checkExprs(x, true, parserLit.Exprs, any())
-	if len(fs) > 0 {
-		errs = append(errs, fs...)
+	var es []Error
+	x = &blockLitScope{parent: x, BlockLit: lit}
+	lit.Exprs, es = checkExprs(x, true, parserLit.Exprs, retPat)
+	if len(es) > 0 {
+		errs = append(errs, es...)
 	}
 	for _, l := range lit.Locals {
 		if l.Name != "_" && !l.used {
 			errs = append(errs, newError(l, "%s unused", l.Name))
 		}
 	}
-
-	if len(lit.Exprs) > 0 {
-		lit.Ret = lit.Exprs[len(lit.Exprs)-1].Type()
-	}
-	if lit.Ret == nil {
-		lit.Ret = &StructType{L: lit.L}
-	}
-	lit.T = refType(&FuncType{Parms: parmTypes, Ret: lit.Ret, L: lit.L})
-	return deref(lit), errs
-}
-
-func appropriateBlock(pat typePattern, litParms []ParmDef) *FuncType {
-	if !pat.isGroundType() {
-		return nil
-	}
-	f, ok := trim1Ref(literalType(pat.groundType())).(*FuncType)
-	if !ok || len(f.Parms) != len(litParms) {
-		return nil
-	}
-	for i := range f.Parms {
-		if t := litParms[i].T; t != nil && !eqType(f.Parms[i], t) {
-			return nil
+	if isFuncType(pat.typ) || isFuncRefType(pat.typ) {
+		fun := trim1Ref(literalType(pat.typ)).(*FuncType)
+		if isEmptyStruct(fun.Ret) ||
+			(pat.withType(fun.Ret).isGroundType() && endsInReturnOrPanic(lit.Exprs)) {
+			lit.Ret = copyTypeWithLoc(fun.Ret, lit.L)
 		}
 	}
-	return f
+	if lit.Ret == nil {
+		if len(lit.Exprs) > 0 {
+			lit.Ret = lit.Exprs[len(lit.Exprs)-1].Type()
+		}
+		if lit.Ret == nil {
+			lit.Ret = &StructType{L: lit.L}
+		}
+	}
+	funType.Ret = lit.Ret
+
+	if len(errs) > 0 {
+		return lit, errs
+	}
+	switch bind := unify(pat, funType); {
+	case bind == nil:
+		return lit, []Error{newError(lit, "cannot unify %s with %s", funType, pat)}
+	case isRefType(literalType(pat.typ)):
+		lit.T = subType(bind, pat.typ)
+	default:
+		// The underlying literal is always a reference, so add a ref here,
+		// but we will deref it below before returning the expression.
+		lit.T = subType(bind, refType(pat.typ))
+	}
+	if !pat.withType(lit.T).isGroundType() {
+		// I believe this is impossible. If not, it should be an error.
+		// However, I'd like to see a case that produces this panic
+		// before bothering to return the error.
+		panic("impossible")
+		//return lit, []Error{newError(lit, "cannot infer block type, got %s", lit.T)}
+	}
+	if isRefType(literalType(pat.typ)) {
+		return lit, nil
+	}
+	return deref(lit), nil
+}
+
+func endsInReturnOrPanic(es []Expr) bool {
+	if len(es) == 0 {
+		return false
+	}
+	e := es[len(es)-1]
+	for {
+		if c, ok := e.(*Convert); !ok {
+			break
+		} else {
+			e = c.Expr
+		}
+	}
+	c, ok := e.(*Call)
+	if !ok {
+		return false
+	}
+	b, ok := c.Func.(*Builtin)
+	if !ok {
+		return false
+	}
+	return b.Op == Return || b.Op == Panic
 }
 
 // checkStrLit checks a string literal.

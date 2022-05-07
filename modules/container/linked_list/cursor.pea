@@ -433,7 +433,6 @@ Func before:insert:(c T cursor, t T) {
 	n.prev := some(m),
 	if: same_node(some(n), c.list.head) then: {
 		c.list.head := some(m),
-		h := c.list.head some? (n T node) {n} none? {panic("no")},
 	},
 	++c.list.len,
 }

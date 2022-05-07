@@ -119,6 +119,34 @@ func funcType(typ Type) *FuncType {
 	return nil
 }
 
+func isFuncType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *FuncType:
+		return true
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isFuncType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
+func isFuncRefType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *RefType:
+		return isFuncType(typ.Type)
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isFuncRefType(typ.Inst.Type)
+		}
+	}
+	return false
+}
+
 func isStructType(typ Type) bool {
 	switch typ := typ.(type) {
 	case *StructType:

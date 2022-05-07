@@ -714,7 +714,7 @@ func TestNewLocalTypes(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.expr, func(t *testing.T) {
-			src := fmt.Sprintf("%s\nvar xxx := (){} :: {got := %s}\n", test.src, test.expr)
+			src := fmt.Sprintf("%s\nvar xxx := (){} :: {_ := %s}\n", test.src, test.expr)
 			if test.want != "" {
 				src += fmt.Sprintf("var want %s\n", test.want)
 			}
@@ -3816,12 +3816,15 @@ func TestBlockLitLocals(t *testing.T) {
 		func use(t T)
 		var x := (){} :: {
 			y := 5,
+			y
 		}
 		var xx := (){int} :: {
 			y := 5,
+			y
 		}
 		var xxx := (){&int} :: {
 			y := 5,
+			y
 		}
 	`
 	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
@@ -4310,6 +4313,117 @@ func TestStructLiteralInference(t *testing.T) {
 			expr: `[.x 5, .y "hello"]`,
 			want: `(int, string) pair`,
 		},
+	}
+	for _, test := range tests {
+		t.Run(test.name(), test.run)
+	}
+}
+
+func TestBlockLiteralInference(t *testing.T) {
+	tests := []exprTypeTest{
+		{pat: `_`, expr: `(){error}`, err: `not found`},
+		{pat: `_`, expr: `(a){}`, err: `cannot infer`},
+		{pat: `_`, expr: `(){}`, want: `(){}`},
+		{pat: `_`, expr: `(_ int){}`, want: `(int){}`},
+		{pat: `_`, expr: `(_ int, _ string){}`, want: `(int, string){}`},
+		{pat: `_`, expr: `(_ int, _ string){5}`, want: `(int, string){int}`},
+
+		{pat: `&_`, expr: `(){}`, want: `&(){}`},
+		{pat: `&_`, expr: `(_ int){}`, want: `&(int){}`},
+		{pat: `&_`, expr: `(_ int, _ string){}`, want: `&(int, string){}`},
+		{pat: `&_`, expr: `(_ int, _ string){5}`, want: `&(int, string){int}`},
+
+		{pat: `int`, expr: `(){}`, err: `cannot unify`},
+		{pat: `int`, expr: `(_ int){}`, err: `cannot unify`},
+		{pat: `int`, expr: `(_ int, _ string){}`, err: `cannot unify`},
+		{pat: `int`, expr: `(_ int, _ string){5}`, err: `cannot unify`},
+
+		{pat: `(){}`, expr: `(){}`, want: `(){}`},
+		{pat: `(){}`, expr: `(){5}`, want: `(){}`},
+		{pat: `(){}`, expr: `(){panic("")}`, want: `(){}`},
+		{pat: `(){}`, expr: `(_ int){}`, err: `cannot unify`},
+		{pat: `(){}`, expr: `(_ int, _ string){}`, err: `cannot unify`},
+		{pat: `(){}`, expr: `(_ int, _ string){5}`, err: `cannot unify`},
+
+		{pat: `&(){}`, expr: `(){}`, want: `&(){}`},
+		{pat: `&(){}`, expr: `(){5}`, want: `&(){}`},
+		{pat: `&(){}`, expr: `(){panic("")}`, want: `&(){}`},
+		{pat: `&(){}`, expr: `(_ int){}`, err: `cannot unify`},
+		{pat: `&(){}`, expr: `(_ int, _ string){}`, err: `cannot unify`},
+		{pat: `&(){}`, expr: `(_ int, _ string){5}`, err: `cannot unify`},
+
+		{pat: `(int){}`, expr: `(){}`, err: `cannot unify`},
+		{pat: `(int){}`, expr: `(){5}`, err: `cannot unify`},
+		{pat: `(int){}`, expr: `(){panic("")}`, err: `cannot unify`},
+		{pat: `(int){}`, expr: `(_ int){}`, want: `(int){}`},
+		{pat: `(int){}`, expr: `(_ int, _ string){}`, err: `cannot unify`},
+		{pat: `(int){}`, expr: `(_ int){5}`, want: `(int){}`},
+		{pat: `(int){}`, expr: `(_ int){panic("")}`, want: `(int){}`},
+		{pat: `(int){}`, expr: `(_ string){5}`, err: `cannot unify`},
+
+		{pat: `(int, string){}`, expr: `(){}`, err: `cannot unify`},
+		{pat: `(int, string){}`, expr: `(){5}`, err: `cannot unify`},
+		{pat: `(int, string){}`, expr: `(){panic("")}`, err: `cannot unify`},
+		{pat: `(int, string){}`, expr: `(_ int){}`, err: `cannot unify`},
+		{pat: `(int, string){}`, expr: `(_ int, _ string){}`, want: `(int, string){}`},
+		{pat: `(int, string){}`, expr: `(_ int, _ string){5}`, want: `(int, string){}`},
+		{pat: `(int, string){}`, expr: `(_ int, _ string){panic("")}`, want: `(int, string){}`},
+		{pat: `(int, string){}`, expr: `(_ int){5}`, err: `cannot unify`},
+
+		{pat: `(int){int}`, expr: `(){}`, err: `cannot unify`},
+		{pat: `(int){int}`, expr: `(){5}`, err: `cannot unify`},
+		{pat: `(int){int}`, expr: `(){panic("")}`, err: `cannot unify`},
+		{pat: `(int){int}`, expr: `(_ int){}`, err: `cannot unify`},
+		{pat: `(int){int}`, expr: `(_ int, _ string){}`, err: `cannot unify`},
+		{pat: `(int){int}`, expr: `(_ int){5}`, want: `(int){int}`},
+		{pat: `(int){int}`, expr: `(_ int){panic("")}`, want: `(int){int}`},
+
+		{pat: `(){_}`, expr: `(){}`, want: `(){}`},
+		{pat: `(){_}`, expr: `(){5}`, want: `(){int}`},
+		{pat: `(_){}`, expr: `(_ int){}`, want: `(int){}`},
+		{pat: `(_, _){}`, expr: `(_ int, _ string){}`, want: `(int, string){}`},
+		{pat: `(_, _){_}`, expr: `(_ int, _ string){5}`, want: `(int, string){int}`},
+		{pat: `(_, string){_}`, expr: `(_ int, a){5}`, want: `(int, string){int}`},
+		{pat: `(_, _){}`, expr: `(a, b){}`, err: `cannot infer`},
+
+		{src: `type t (){}`, pat: `t`, expr: `(){}`, want: `t`},
+		{src: `type t (){}`, pat: `&t`, expr: `(){}`, want: `&t`},
+		{src: `type t &(){}`, pat: `t`, expr: `(){}`, want: `t`},
+		{src: `type t &(){}`, pat: `&t`, expr: `(){}`, err: `cannot unify`},
+
+		{src: `type T t (T){}`, pat: `int t`, expr: `(){}`, err: `cannot unify`},
+		{src: `type T t (T){}`, pat: `int t`, expr: `(_ int){}`, want: `int t`},
+		{src: `type T t (T){}`, pat: `&int t`, expr: `(_ int){}`, want: `&int t`},
+		{src: `type T t &(T){}`, pat: `int t`, expr: `(_ int){}`, want: `int t`},
+		{src: `type T t &(T){}`, pat: `&int t`, expr: `(_ int){}`, err: `cannot unify`},
+
+		{src: `type T t (T){}`, pat: `_ t`, expr: `(){}`, err: `cannot unify`},
+		{src: `type T t (T){}`, pat: `_ t`, expr: `(_ int){}`, want: `int t`},
+		{src: `type T t (T){}`, pat: `&_ t`, expr: `(_ int){}`, want: `&int t`},
+		{src: `type T t &(T){}`, pat: `_ t`, expr: `(_ int){}`, want: `int t`},
+		{src: `type T t &(T){}`, pat: `&_ t`, expr: `(_ int){}`, err: `cannot unify`},
+
+		{src: `type T t (){T}`, pat: `int t`, expr: `(){}`, err: `cannot unify`},
+		{src: `type T t (){T}`, pat: `int t`, expr: `(){panic("")}`, want: `int t`},
+		{src: `type T t (){T}`, pat: `int t`, expr: `(){5}`, want: `int t`},
+		{src: `type T t (){T}`, pat: `&int t`, expr: `(){5}`, want: `&int t`},
+		{src: `type T t &(){T}`, pat: `int t`, expr: `(){5}`, want: `int t`},
+		{src: `type T t &(){T}`, pat: `&int t`, expr: `(){5}`, err: `cannot unify`},
+
+		{src: `type T t (){T}`, pat: `_ t`, expr: `(){}`, want: `[.] t`},
+		{src: `type T t (){T}`, pat: `_ t`, expr: `(){panic("")}`, want: `[.] t`},
+		{src: `type T t (){T}`, pat: `_ t`, expr: `(){5}`, want: `int t`},
+		{src: `type T t (){T}`, pat: `&_ t`, expr: `(){5}`, want: `&int t`},
+		{src: `type T t &(){T}`, pat: `_ t`, expr: `(){5}`, want: `int t`},
+		{src: `type T t &(){T}`, pat: `&_ t`, expr: `(){5}`, err: `cannot unify`},
+
+		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(){}`, err: `cannot unify`},
+		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(_ int){}`, want: `(int, [.]) t`},
+		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(_ int){panic("")}`, want: `(int, [.]) t`},
+		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(_ int){5}`, want: `(int, int) t`},
+		{src: `type (T, U) t (T){U}`, pat: `&(_, _) t`, expr: `(_ int){5}`, want: `&(int, int) t`},
+		{src: `type (T, U) t &(T){U}`, pat: `(_, _) t`, expr: `(_ int){5}`, want: `(int, int) t`},
+		{src: `type (T, U) t &(T){U}`, pat: `&(_, _) t`, expr: `(_ int){5}`, err: `cannot unify`},
 	}
 	for _, test := range tests {
 		t.Run(test.name(), test.run)
