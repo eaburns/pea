@@ -2196,25 +2196,34 @@ func endsInReturnOrPanic(es []Expr) bool {
 }
 
 // checkStrLit checks a string literal.
-// 	* If the pattern is a ground type with
-// 	  a literal type that is the built-in string type
-// 	  or a reference to the built-in string type,
-// 	  then the type of the literal is the pattern's type.
-// 	* Otherwise the type is string.
+//
+// If the pattern's type is a string type or reference to a string type,
+// the type of the literal is the pattern's type.
+// Otherwise the type of the literal is the unification
+// of the built-in type string and the pattern.
+//
+// The returned Expr is never nil even if there are errors.
 func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {
 	lit := &StrLit{Text: parserLit.Data, L: parserLit.L}
 	switch {
-	case !pat.isGroundType():
-		fallthrough
-	default:
-		lit.T = refType(&BasicType{Kind: String, L: parserLit.L})
-		return deref(lit), nil
-	case isStringRefType(pat.groundType()):
+	case isStringRefType(pat.typ):
 		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, nil
-	case isStringType(pat.groundType()):
+	case isStringType(pat.typ):
 		lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
+	default:
+		bind := unify(pat, &BasicType{Kind: String, L: parserLit.L})
+		switch {
+		case bind == nil:
+			return lit, []Error{newError(lit, "cannot unify string with %s", pat)}
+		case isRefType(literalType(pat.typ)):
+			lit.T = subType(bind, pat.typ)
+			return lit, nil
+		default:
+			lit.T = subType(bind, refType(pat.typ))
+			return deref(lit), nil
+		}
 	}
 }
 

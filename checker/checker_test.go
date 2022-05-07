@@ -785,7 +785,7 @@ func TestCheckFuncReturnCall(t *testing.T) {
 		{
 			name: "return type mismatch",
 			src:  "func foo() int { return: \"hello\" }",
-			err:  `cannot convert argument "hello" \(string\) to int`,
+			err:  `cannot unify string with int`,
 		},
 	}
 	for _, test := range tests {
@@ -1858,7 +1858,7 @@ func TestOverloadResolution(t *testing.T) {
 			name: "argument type mismatch",
 			src:  "func x(i int)",
 			call: "x(\"hello\")",
-			err:  `cannot convert argument "hello" \(string\) to int`,
+			err:  `cannot unify string with int`,
 		},
 		{
 			name: "0-ary no return function found",
@@ -2428,13 +2428,13 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "var a := int :: 1",
 			call: "a := \"\"",
 			ret:  "int",
-			err:  `cannot convert argument "" \(string\) to int`,
+			err:  `cannot unify string with int`,
 		},
 		{
 			name: "built-in assign, lhs/rhs mismatch",
 			src:  "var a := int :: 1",
 			call: "a := \"\"",
-			err:  `cannot convert argument "" \(string\) to int`,
+			err:  `cannot unify string with int`,
 		},
 		{
 			name: "built-in new array, no expected type",
@@ -3070,7 +3070,7 @@ func TestOverloadResolution(t *testing.T) {
 				func bar(_ int, _ string, _ int, _ int32)
 			`,
 			call: "bar(5, \"hello\", foo#new_x(), 12)",
-			err:  `cannot convert argument "hello" \(string\) to float32`,
+			err:  `convert argument new_x\(\) \(foo#x\) to int`,
 			otherMod: testMod{
 				path: "foo",
 				src: `
@@ -3918,14 +3918,14 @@ func TestArrayLiteralInference(t *testing.T) {
 		{pat: "[int]", expr: `[]`, want: `[int]`},
 		{pat: "[int]", expr: `[error]`, err: `not found`},
 		{pat: "[int]", expr: `[5]`, want: `[int]`},
-		{pat: "[int]", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{pat: "[int]", expr: `["hello"]`, err: `cannot unify string with int`},
 		{pat: "[int]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]\] with int`},
 		{pat: "[int]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]\] with int`},
 
 		{pat: "&[int]", expr: `[]`, want: `&[int]`},
 		{pat: "&[int]", expr: `[error]`, err: `not found`},
 		{pat: "&[int]", expr: `[5]`, want: `&[int]`},
-		{pat: "&[int]", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{pat: "&[int]", expr: `["hello"]`, err: `cannot unify string with int`},
 		{pat: "&[int]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]\] with int`},
 		{pat: "&[int]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]\] with int`},
 
@@ -3946,42 +3946,42 @@ func TestArrayLiteralInference(t *testing.T) {
 		{pat: "[T]", expr: `[]`, want: `[T]`},
 		{pat: "[T]", expr: `[error]`, err: `not found`},
 		{pat: "[T]", expr: `[5]`, err: `cannot convert 5 \(int\) to type T`},
-		{pat: "[T]", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type T`},
+		{pat: "[T]", expr: `["hello"]`, err: `cannot unify string with T`},
 		{pat: "[T]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with T`},
 		{pat: "[T]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with T`},
 
 		{pat: "&[T]", expr: `[]`, want: `&[T]`},
 		{pat: "&[T]", expr: `[error]`, err: `not found`},
 		{pat: "&[T]", expr: `[5]`, err: `cannot convert 5 \(int\) to type T`},
-		{pat: "&[T]", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type T`},
+		{pat: "&[T]", expr: `["hello"]`, err: `cannot unify string with T`},
 		{pat: "&[T]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with T`},
 		{pat: "&[T]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with T`},
 
 		{src: "type t [int]", pat: "t", expr: `[]`, want: `t`},
 		{src: "type t [int]", pat: "t", expr: `[error]`, err: `not found`},
 		{src: "type t [int]", pat: "t", expr: `[5]`, want: `t`},
-		{src: "type t [int]", pat: "t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type t [int]", pat: "t", expr: `["hello"]`, err: `cannot unify string with int`},
 		{src: "type t [int]", pat: "t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with int`},
 		{src: "type t [int]", pat: "t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
 
 		{src: "type t [int]", pat: "&t", expr: `[]`, want: `&t`},
 		{src: "type t [int]", pat: "&t", expr: `[error]`, err: `not found`},
 		{src: "type t [int]", pat: "&t", expr: `[5]`, want: `&t`},
-		{src: "type t [int]", pat: "&t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type t [int]", pat: "&t", expr: `["hello"]`, err: `cannot unify string with int`},
 		{src: "type t [int]", pat: "&t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with int`},
 		{src: "type t [int]", pat: "&t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
 
 		{src: "type T t [T]", pat: "int t", expr: `[]`, want: `int t`},
 		{src: "type T t [T]", pat: "int t", expr: `[error]`, err: `not found`},
 		{src: "type T t [T]", pat: "int t", expr: `[5]`, want: `int t`},
-		{src: "type T t [T]", pat: "int t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type T t [T]", pat: "int t", expr: `["hello"]`, err: `cannot unify string with int`},
 		{src: "type T t [T]", pat: "int t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with int`},
 		{src: "type T t [T]", pat: "int t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
 
 		{src: "type T t [T]", pat: "&int t", expr: `[]`, want: `&int t`},
 		{src: "type T t [T]", pat: "&int t", expr: `[error]`, err: `not found`},
 		{src: "type T t [T]", pat: "&int t", expr: `[5]`, want: `&int t`},
-		{src: "type T t [T]", pat: "&int t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type T t [T]", pat: "&int t", expr: `["hello"]`, err: `cannot unify string with int`},
 		{src: "type T t [T]", pat: "&int t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]\] with int`},
 		{src: "type T t [T]", pat: "&int t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
 
@@ -4002,7 +4002,7 @@ func TestArrayLiteralInference(t *testing.T) {
 		{src: "type t &[int]", pat: "t", expr: `[]`, want: `t`},
 		{src: "type t &[int]", pat: "t", expr: `[error]`, err: `not found`},
 		{src: "type t &[int]", pat: "t", expr: `[5]`, want: `t`},
-		{src: "type t &[int]", pat: "t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type t &[int]", pat: "t", expr: `["hello"]`, err: `cannot unify string with int`},
 		{src: "type t &[int]", pat: "t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]\] with int`},
 		{src: "type t &[int]", pat: "t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]\] with int`},
 
@@ -4016,7 +4016,7 @@ func TestArrayLiteralInference(t *testing.T) {
 		{src: "type T t &[T]", pat: "int t", expr: `[]`, want: `int t`},
 		{src: "type T t &[T]", pat: "int t", expr: `[error]`, err: `not found`},
 		{src: "type T t &[T]", pat: "int t", expr: `[5]`, want: `int t`},
-		{src: "type T t &[T]", pat: "int t", expr: `["hello"]`, err: `cannot convert "hello" \(string\) to type int`},
+		{src: "type T t &[T]", pat: "int t", expr: `["hello"]`, err: `cannot unify string with int`},
 		{src: "type T t &[T]", pat: "int t", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with int`},
 		{src: "type T t &[T]", pat: "int t", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with int`},
 
@@ -4426,6 +4426,32 @@ func TestBlockLiteralInference(t *testing.T) {
 		{src: `type (T, U) t &(T){U}`, pat: `&(_, _) t`, expr: `(_ int){5}`, err: `cannot unify`},
 	}
 	for _, test := range tests {
+		t.Run(test.name(), test.run)
+	}
+}
+
+func TestStringLiteralInference(t *testing.T) {
+	tests := []exprTypeTest{
+		{pat: `string`, expr: `"hello"`, want: `string`},
+		{pat: `&string`, expr: `"hello"`, want: `&string`},
+		{pat: `_`, expr: `"hello"`, want: `string`},
+		{pat: `&_`, expr: `"hello"`, want: `&string`},
+		{pat: `int`, expr: `"hello"`, err: `cannot unify`},
+		{src: `type t string`, pat: `t`, expr: `"hello"`, want: `t`},
+		{src: `type t string`, pat: `&t`, expr: `"hello"`, want: `&t`},
+		{src: `type t &string`, pat: `t`, expr: `"hello"`, want: `t`},
+		{src: `type t &string`, pat: `&t`, expr: `"hello"`, err: `cannot unify`},
+		{src: `type T t T`, pat: `string t`, expr: `"hello"`, want: `string t`},
+		{src: `type T t T`, pat: `&string t`, expr: `"hello"`, want: `&string t`},
+		{src: `type T t T`, pat: `_ t`, expr: `"hello"`, err: `cannot unify`},
+		{src: `type T t T`, pat: `&_ t`, expr: `"hello"`, err: `cannot unify`},
+		{src: `type T t &T`, pat: `string t`, expr: `"hello"`, want: `string t`},
+		{src: `type T t &T`, pat: `&string t`, expr: `"hello"`, err: `cannot unify`},
+		{src: `type T t &T`, pat: `_ t`, expr: `"hello"`, err: `cannot unify`},
+		{src: `type T t &T`, pat: `&_ t`, expr: `"hello"`, err: `cannot unify`},
+	}
+	for _, test := range tests {
+		t.Log(test.src)
 		t.Run(test.name(), test.run)
 	}
 }
