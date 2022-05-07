@@ -153,18 +153,18 @@ test find_containers {
 	assert: exec(re, [uint8 :: 'a', 'b', 'c']) equals: [0, 3],
 	assert: exec(re, vector#new([uint8 :: 'a', 'b', 'c'])) equals: [0, 3],
 	assert: exec(re, ring_buffer#new([uint8 :: 'a', 'b', 'c'])) equals: [0, 3],
-	assert: exec(re, [rune :: 'a', 'b', 'c']) equals: [0, 3],
-	assert: exec(re, vector#new([rune :: 'a', 'b', 'c'])) equals: [0, 3],
-	assert: exec(re, ring_buffer#new([rune :: 'a', 'b', 'c'])) equals: [0, 3],
+	assert: exec(re, ['a', 'b', 'c']) equals: [0, 3],
+	assert: exec(re, vector#new(['a', 'b', 'c'])) equals: [0, 3],
+	assert: exec(re, ring_buffer#new(['a', 'b', 'c'])) equals: [0, 3],
 
 	re := must(compile("☺")),
 	assert: exec(re, "☺") equals: [0, 3],
 	assert: exec(re, [uint8 :: '\xe2', '\x98', '\xba']) equals: [0, 3],
 	assert: exec(re, vector#new([uint8 :: '\xe2', '\x98', '\xba'])) equals: [0, 3],
 	assert: exec(re, ring_buffer#new([uint8 :: '\xe2', '\x98', '\xba'])) equals: [0, 3],
-	assert: exec(re, [rune :: '☺']) equals: [0, 1],
-	assert: exec(re, vector#new([rune :: '☺'])) equals: [0, 1],
-	assert: exec(re, ring_buffer#new([rune :: '☺'])) equals: [0, 1],
+	assert: exec(re, ['☺']) equals: [0, 1],
+	assert: exec(re, vector#new(['☺'])) equals: [0, 1],
+	assert: exec(re, ring_buffer#new(['☺'])) equals: [0, 1],
 }
 
 test do_not_consume_caller_argument {
@@ -172,9 +172,9 @@ test do_not_consume_caller_argument {
 	// This should not consume the container passed in by the caller,
 	// but just a separate slice of that container.
 	re := must(compile("ab")),
-	v := vector#new([rune :: 'a', 'b', 'c']),
+	v := vector#new(['a', 'b', 'c']),
 	assert: exec(re, v) equals: [0, 2],
-	assert: v equals: vector#new([rune :: 'a', 'b', 'c']),
+	assert: v equals: vector#new(['a', 'b', 'c']),
 }
 
 // TODO: move vector = and printing to the vector module.

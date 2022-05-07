@@ -330,23 +330,23 @@ func escape(src &string) rune or_error {
 	if: r = eof then: {
 		return: error("incomplete escape sequence")
 	} else: r = 'a' then: {
-		return: ok(rune :: '\x07')
+		return: ok('\x07')
 	} else: r = 't' then: {
-		return: ok(rune :: '\t')
+		return: ok('\t')
 	} else: r = 'n' then: {
-		return: ok(rune :: '\n')
+		return: ok('\n')
 	} else: r = 'v' then: {
-		return: ok(rune :: '\x0B')
+		return: ok('\x0B')
 	} else: r = 'f' then: {
-		return: ok(rune :: '\x0C')
+		return: ok('\x0C')
 	} else: r = 'r' then: {
-		return: ok(rune :: '\x0D')
+		return: ok('\x0D')
 	} else: (rune :: 33) <= r && r <= 64 ||
 		{ (rune :: 91) <= r && r <=  96 } ||
 		{ (rune :: 123) <= r && r <=  126 } then: {
 		// These are the ASCII punctuation ranges.
 		// TODO: handle escaping other unicode punctuation.
-		return: ok(rune :: r)
+		return: ok(r)
 	},
 	return: error("unknown escape sequence"),
 }

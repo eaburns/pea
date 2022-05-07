@@ -2228,15 +2228,14 @@ func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {
 }
 
 // checkCharLit checks a character literal.
-// 	* Character literals are checked just as int literals
-// 	  with the literal value being the unicode code point value
-// 	  of the character.
-// TODO: should default to int32, not int.
+//
+// The same as an integer literal, but with the default type being int32, not int.
 func checkCharLit(parserLit *parser.CharLit, pat typePattern) (Expr, []Error) {
-	return checkIntLit(&parser.IntLit{
+	parserIntLit := &parser.IntLit{
 		Text: strconv.FormatInt(int64(parserLit.Rune), 10),
 		L:    parserLit.L,
-	}, pat)
+	}
+	return _checkIntLit(parserIntLit, pat, Int32)
 }
 
 // checkIntLit checks an integer literal.
@@ -2251,11 +2250,15 @@ func checkCharLit(parserLit *parser.CharLit, pat typePattern) (Expr, []Error) {
 // 	  then the type of the literal is the pattern's type.
 // 	* Otherwise the type of the literal is int.
 func checkIntLit(parserLit *parser.IntLit, pat typePattern) (Expr, []Error) {
+	return _checkIntLit(parserLit, pat, Int)
+}
+
+func _checkIntLit(parserLit *parser.IntLit, pat typePattern, defaultKind BasicTypeKind) (Expr, []Error) {
 	switch {
 	case !pat.isGroundType():
 		fallthrough
 	default:
-		t := &BasicType{Kind: Int, L: parserLit.L}
+		t := &BasicType{Kind: defaultKind, L: parserLit.L}
 		lit, errs := newIntLit(parserLit, t)
 		lit.T = refType(t)
 		return deref(lit), errs

@@ -4567,7 +4567,7 @@ func TestLiteralInference(t *testing.T) {
 			},
 		},
 
-		{expr: "'a'", want: "int"}, // TODO: should be int32
+		{expr: "'a'", want: "int32"},
 		{expr: "'a'", infer: "int32", want: "int32"},
 
 		{expr: `"abc"`, want: "string"},
