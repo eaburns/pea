@@ -2239,47 +2239,64 @@ func checkCharLit(parserLit *parser.CharLit, pat typePattern) (Expr, []Error) {
 }
 
 // checkIntLit checks an integer literal.
-// 	* If the pattern is a ground type
-// 	  with a literal type that is a built-in int type
-// 	  or a reference to a built-in int type,
-// 	  then the type of the literal is the pattern's type.
-// 	  It is an error if the value is not representable by the int type.
-// 	* If the pattern is a ground type
-// 	  with a literal type that is a built-in float type,
-// 	  or a reference to a built-in float type,
-// 	  then the type of the literal is the pattern's type.
-// 	* Otherwise the type of the literal is int.
+//
+// If the pattern's type is an integer type or reference to an integer type,
+// the type of the literal is the pattern's type.
+// If the pattern's type is a floating point type or reference to a floating point type,
+// the type of the literal is the pattern's type.
+// Otherwise the type of the literal is the unification
+// of the built-in type int and the pattern.
+//
+// It is an error if the value is not representable by the type.
+//
+// The returned Expr is never nil even if there are errors.
 func checkIntLit(parserLit *parser.IntLit, pat typePattern) (Expr, []Error) {
 	return _checkIntLit(parserLit, pat, Int)
 }
 
-func _checkIntLit(parserLit *parser.IntLit, pat typePattern, defaultKind BasicTypeKind) (Expr, []Error) {
-	switch {
-	case !pat.isGroundType():
-		fallthrough
-	default:
-		t := &BasicType{Kind: defaultKind, L: parserLit.L}
-		lit, errs := newIntLit(parserLit, t)
-		lit.T = refType(t)
-		return deref(lit), errs
-	case isFloatType(pat.groundType()) || isFloatRefType(pat.groundType()):
+func _checkIntLit(parserLit *parser.IntLit, pat typePattern, defaultKind BasicTypeKind) (expr Expr, errs []Error) {
+	if isFloatType(pat.typ) || isFloatRefType(pat.typ) {
 		floatLit := &parser.FloatLit{Text: parserLit.Text, L: parserLit.L}
 		return checkFloatLit(floatLit, pat)
-	case isIntRefType(pat.groundType()):
-		lit, errs := newIntLit(parserLit, pat.groundType())
+	}
+
+	lit := &IntLit{Text: parserLit.Text, L: parserLit.L}
+	if _, ok := lit.Val.SetString(lit.Text, 0); !ok {
+		panic("malformed int")
+	}
+	defer func() {
+		if err := checkValueSize(lit); err != nil {
+			errs = append(errs, err)
+		}
+	}()
+	switch {
+	case isIntRefType(pat.typ):
 		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
-		return lit, errs
-	case isIntType(pat.groundType()):
-		lit, errs := newIntLit(parserLit, pat.groundType())
+		return lit, nil
+	case isIntType(pat.typ):
 		lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
-		return deref(lit), errs
+		return deref(lit), nil
+	default:
+		switch bind := unify(pat, &BasicType{Kind: defaultKind, L: lit.L}); {
+		case bind == nil:
+			return lit, []Error{newError(lit, "cannot unify %s with %s", defaultKind, pat)}
+		case isRefType(literalType(pat.typ)):
+			lit.T = subType(bind, pat.typ)
+			return lit, nil
+		default:
+			lit.T = subType(bind, refType(pat.typ))
+			return deref(lit), nil
+		}
 	}
 }
 
-func newIntLit(parserLit *parser.IntLit, typ Type) (*IntLit, []Error) {
+func checkValueSize(lit *IntLit) Error {
 	var bits uint
 	var signed bool
-	switch basicKind(typ) {
+	kind := basicKind(lit.T)
+	switch kind {
+	case noBasicTypeKind:
+		return nil
 	case Int:
 		bits = 64 // TODO: set by a flag
 		signed = true
@@ -2314,7 +2331,7 @@ func newIntLit(parserLit *parser.IntLit, typ Type) (*IntLit, []Error) {
 		bits = 64
 		signed = false
 	default:
-		panic(fmt.Sprintf("impossible int kind: %s", typ))
+		panic(fmt.Sprintf("impossible int kind: %s", kind))
 	}
 	var min, max *big.Int
 	if signed {
@@ -2331,18 +2348,13 @@ func newIntLit(parserLit *parser.IntLit, typ Type) (*IntLit, []Error) {
 		max = max.Lsh(max, bits)
 		max = max.Sub(max, big.NewInt(1))
 	}
-	lit := &IntLit{Text: parserLit.Text, L: parserLit.L}
-	if _, ok := lit.Val.SetString(parserLit.Text, 0); !ok {
-		panic("malformed int")
-	}
-	var errs []Error
 	switch {
 	case lit.Val.Cmp(min) < 0:
-		errs = append(errs, newError(lit, "%s underflows type %s", lit.Text, typ))
+		return newError(lit, "%s underflows %s", lit.Text, kind)
 	case lit.Val.Cmp(max) > 0:
-		errs = append(errs, newError(lit, "%s overflows type %s", lit.Text, typ))
+		return newError(lit, "%s overflows %s", lit.Text, kind)
 	}
-	return lit, errs
+	return nil
 }
 
 // checkFloatLit checks a float literal.

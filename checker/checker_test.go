@@ -3623,76 +3623,6 @@ func TestCaptureOnCall(t *testing.T) {
 	}
 }
 
-func TestNumLiteralErrors(t *testing.T) {
-	tests := []struct {
-		src  string
-		err  string
-		mods []testMod
-	}{
-		{src: "var x := int8 :: -128", err: ""},
-		{src: "var x := int8 :: -129", err: "underflow"},
-		{src: "var x := int8 :: 127", err: ""},
-		{src: "var x := int8 :: 128", err: "overflow"},
-		{src: "var x := int16 :: -32768", err: ""},
-		{src: "var x := int16 :: -327690", err: "underflow"},
-		{src: "var x := int16 :: 32767", err: ""},
-		{src: "var x := int16 :: 32768", err: "overflow"},
-		{src: "var x := int32 :: -2147483648", err: ""},
-		{src: "var x := int32 :: -2147483649", err: "underflow"},
-		{src: "var x := int32 :: 2147483647", err: ""},
-		{src: "var x := int32 :: 2147483648", err: "overflow"},
-		{src: "var x := int64 :: -9223372036854775808", err: ""},
-		{src: "var x := int64 :: -9223372036854775809", err: "underflow"},
-		{src: "var x := int64 :: 9223372036854775807", err: ""},
-		{src: "var x := int64 :: 9223372036854775808", err: "overflow"},
-		{src: "var x := uint8 :: 0", err: ""},
-		{src: "var x := uint8 :: -1", err: "underflow"},
-		{src: "var x := uint8 :: 255", err: ""},
-		{src: "var x := uint8 :: 256", err: "overflow"},
-		{src: "var x := uint16 :: 0", err: ""},
-		{src: "var x := uint16 :: -1", err: "underflow"},
-		{src: "var x := uint16 :: 65535", err: ""},
-		{src: "var x := uint16 :: 65536", err: "overflow"},
-		{src: "var x := uint32 :: 0", err: ""},
-		{src: "var x := uint32 :: -1", err: "underflow"},
-		{src: "var x := uint32 :: 4294967295", err: ""},
-		{src: "var x := uint32 :: 4294967296", err: "overflow"},
-		{src: "var x := uint64 :: 0", err: ""},
-		{src: "var x := uint64 :: -1", err: "underflow"},
-		{src: "var x := uint64 :: 18446744073709551615", err: ""},
-		{src: "var x := uint64 :: 18446744073709551616", err: "overflow"},
-		{src: "var x := int :: 1.00", err: ""},
-		{src: "var x := int :: 1.01", err: "truncates"},
-		{src: "var x := float32 :: 0.0", err: ""},
-		{src: "var x := float32 :: 3.1415926535", err: ""},
-		{src: "var x := float32 :: 123", err: ""},
-		{src: "var x := float64 :: 0.0", err: ""},
-		{src: "var x := float64 :: 3.1415926535", err: ""},
-		{src: "var x := float64 :: 123", err: ""},
-		{src: "type t int var x := t :: 1", err: ""},
-		{src: "type t int var x := t :: 1.00", err: ""},
-		{src: "type t uint8 var x := t :: 256", err: "overflow"},
-		{src: "type t float32 var x := t :: 3.14", err: ""},
-		{src: "type t float32 var x := t :: 123", err: ""},
-	}
-	for _, test := range tests {
-		test := test
-		t.Run(test.src, func(t *testing.T) {
-			_, errs := check("test", []string{test.src}, test.mods)
-			switch {
-			case test.err == "" && len(errs) == 0:
-				break
-			case test.err == "" && len(errs) > 0:
-				t.Errorf("unexpected error: %s", errs[0])
-			case test.err != "" && len(errs) == 0:
-				t.Errorf("expected error matching %s, got nil", test.err)
-			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
-				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
-			}
-		})
-	}
-}
-
 func TestBlockResultIdentType(t *testing.T) {
 	tests := []struct {
 		name string
@@ -3945,14 +3875,14 @@ func TestArrayLiteralInference(t *testing.T) {
 
 		{pat: "[T]", expr: `[]`, want: `[T]`},
 		{pat: "[T]", expr: `[error]`, err: `not found`},
-		{pat: "[T]", expr: `[5]`, err: `cannot convert 5 \(int\) to type T`},
+		{pat: "[T]", expr: `[5]`, err: `cannot unify int with T`},
 		{pat: "[T]", expr: `["hello"]`, err: `cannot unify string with T`},
 		{pat: "[T]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with T`},
 		{pat: "[T]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with T`},
 
 		{pat: "&[T]", expr: `[]`, want: `&[T]`},
 		{pat: "&[T]", expr: `[error]`, err: `not found`},
-		{pat: "&[T]", expr: `[5]`, err: `cannot convert 5 \(int\) to type T`},
+		{pat: "&[T]", expr: `[5]`, err: `cannot unify int with T`},
 		{pat: "&[T]", expr: `["hello"]`, err: `cannot unify string with T`},
 		{pat: "&[T]", expr: `[[[5]]]`, err: `cannot unify \[\[int\]] with T`},
 		{pat: "&[T]", expr: `[[[5], []], []]`, err: `cannot unify \[\[int\]] with T`},
@@ -4044,7 +3974,7 @@ func TestArrayLiteralInference(t *testing.T) {
 		{pat: "[[int]]", expr: `[]`, want: `[[int]]`},
 		{pat: "[[int]]", expr: `[[]]`, want: `[[int]]`},
 		{pat: "[[int]]", expr: `[error]`, err: `not found`},
-		{pat: "[[int]]", expr: `[5]`, err: `cannot convert 5 \(int\) to type \[int\]`},
+		{pat: "[[int]]", expr: `[5]`, err: `cannot unify int with \[int\]`},
 		{pat: "[[int]]", expr: `[[5], []]`, want: `[[int]]`},
 
 		{
@@ -4247,14 +4177,14 @@ func TestStructLiteralInference(t *testing.T) {
 
 		{pat: `[.x T]`, expr: `[.x error, .y 3.14]`, err: `not found`},
 		{pat: `[.x T]`, expr: `[.]`, err: `cannot unify`},
-		{pat: `[.x T]`, expr: `[.x 5]`, err: `cannot convert 5 \(int\) to type T`},
+		{pat: `[.x T]`, expr: `[.x 5]`, err: `cannot unify int with T`},
 		{pat: `[.x T]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
 		{pat: `[.x T]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
 		{pat: `[.x T]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
 
 		{pat: `&[.x T]`, expr: `[.x error, .y 3.14]`, err: `not found`},
 		{pat: `&[.x T]`, expr: `[.]`, err: `cannot unify`},
-		{pat: `&[.x T]`, expr: `[.x 5]`, err: `cannot convert 5 \(int\) to type T`},
+		{pat: `&[.x T]`, expr: `[.x 5]`, err: `cannot unify int with T`},
 		{pat: `&[.x T]`, expr: `[.x 5, .y 3.14]`, err: `cannot unify`},
 		{pat: `&[.x T]`, expr: `[.y 5, .x 3.14]`, err: `cannot unify`},
 		{pat: `&[.x T]`, expr: `[.x [.x [.x 5]]]`, err: `cannot unify`},
@@ -4453,6 +4383,124 @@ func TestStringLiteralInference(t *testing.T) {
 	for _, test := range tests {
 		t.Log(test.src)
 		t.Run(test.name(), test.run)
+	}
+}
+
+func TestIntLiteralInference(t *testing.T) {
+	tests := []exprTypeTest{
+		{pat: `uint`, expr: `5`, want: `uint`},
+		{pat: `uint8`, expr: `5`, want: `uint8`},
+		{pat: `uint16`, expr: `5`, want: `uint16`},
+		{pat: `uint32`, expr: `5`, want: `uint32`},
+		{pat: `uint64`, expr: `5`, want: `uint64`},
+		{pat: `int`, expr: `5`, want: `int`},
+		{pat: `int8`, expr: `5`, want: `int8`},
+		{pat: `int16`, expr: `5`, want: `int16`},
+		{pat: `int32`, expr: `5`, want: `int32`},
+		{pat: `int64`, expr: `5`, want: `int64`},
+		{pat: `float32`, expr: `5`, want: `float32`},
+		{pat: `float64`, expr: `5`, want: `float64`},
+		{pat: `&int`, expr: `5`, want: `&int`},
+		{pat: `_`, expr: `5`, want: `int`},
+		{pat: `&_`, expr: `5`, want: `&int`},
+		{pat: `string`, expr: `5`, err: `cannot unify`},
+		{src: `type t int`, pat: `t`, expr: `5`, want: `t`},
+		{src: `type t int`, pat: `&t`, expr: `5`, want: `&t`},
+		{src: `type t &int`, pat: `t`, expr: `5`, want: `t`},
+		{src: `type t &int`, pat: `&t`, expr: `5`, err: `cannot unify`},
+		{src: `type T t T`, pat: `int t`, expr: `5`, want: `int t`},
+		{src: `type T t T`, pat: `&int t`, expr: `5`, want: `&int t`},
+		{src: `type T t T`, pat: `_ t`, expr: `5`, err: `cannot unify`},
+		{src: `type T t T`, pat: `&_ t`, expr: `5`, err: `cannot unify`},
+		{src: `type T t &T`, pat: `int t`, expr: `5`, want: `int t`},
+		{src: `type T t &T`, pat: `&int t`, expr: `5`, err: `cannot unify`},
+		{src: `type T t &T`, pat: `_ t`, expr: `5`, err: `cannot unify`},
+		{src: `type T t &T`, pat: `&_ t`, expr: `5`, err: `cannot unify`},
+
+		{pat: `int8`, expr: `-128`, want: `int8`},
+		{pat: `int8`, expr: `-129`, err: `underflow`},
+		{pat: `int8`, expr: `127`, want: `int8`},
+		{pat: `int8`, expr: `128`, err: `overflow`},
+		{pat: `int16`, expr: `-32768`, want: `int16`},
+		{pat: `int16`, expr: `-327690`, err: `underflow`},
+		{pat: `int16`, expr: `32767`, want: `int16`},
+		{pat: `int16`, expr: `32768`, err: `overflow`},
+		{pat: `int32`, expr: `-2147483648`, want: `int32`},
+		{pat: `int32`, expr: `-2147483649`, err: `underflow`},
+		{pat: `int32`, expr: `2147483647`, want: `int32`},
+		{pat: `int32`, expr: `2147483648`, err: `overflow`},
+		{pat: `int64`, expr: `-9223372036854775808`, want: `int64`},
+		{pat: `int64`, expr: `-9223372036854775809`, err: `underflow`},
+		{pat: `int64`, expr: `9223372036854775807`, want: `int64`},
+		{pat: `int64`, expr: `9223372036854775808`, err: `overflow`},
+		{pat: `uint8`, expr: `0`, want: `uint8`},
+		{pat: `uint8`, expr: `-1`, err: `underflow`},
+		{pat: `uint8`, expr: `255`, want: `uint8`},
+		{pat: `uint8`, expr: `256`, err: `overflow`},
+		{pat: `uint16`, expr: `0`, want: `uint16`},
+		{pat: `uint16`, expr: `-1`, err: `underflow`},
+		{pat: `uint16`, expr: `65535`, want: `uint16`},
+		{pat: `uint16`, expr: `65536`, err: `overflow`},
+		{pat: `uint32`, expr: `0`, want: `uint32`},
+		{pat: `uint32`, expr: `-1`, err: `underflow`},
+		{pat: `uint32`, expr: `4294967295`, want: `uint32`},
+		{pat: `uint32`, expr: `4294967296`, err: `overflow`},
+		{pat: `uint64`, expr: `0`, want: `uint64`},
+		{pat: `uint64`, expr: `-1`, err: `underflow`},
+		{pat: `uint64`, expr: `18446744073709551615`, want: `uint64`},
+		{pat: `uint64`, expr: `18446744073709551616`, err: `overflow`},
+		{pat: `float64`, expr: `123`, want: `float64`},
+	}
+	for _, test := range tests {
+		t.Run(test.name(), test.run)
+	}
+}
+
+func TestNumLiteralErrors(t *testing.T) {
+	tests := []struct {
+		src  string
+		err  string
+		mods []testMod
+	}{
+		/*
+			TODO: move these to TestFloatLiteralInference once converted to type patterns
+
+			{pat: `int`, expr: `1.00`, want: `int`},
+			{pat: `int`, expr: `1.01`, err: `truncates`},
+			{pat: `float32`, expr: `0.0`, want: `float32`},
+			{pat: `float32`, expr: `3.1415926535`, want: `float32`},
+			{pat: `float32`, expr: `123`, want: `float32`},
+			{pat: `float64`, expr: `0.0`, want: `float64`},
+			{pat: `float64`, expr: `3.1415926535`, want: `float64`},
+		*/
+		{src: "var x := int :: 1.00", err: ""},
+		{src: "var x := int :: 1.01", err: "truncates"},
+		{src: "var x := float32 :: 0.0", err: ""},
+		{src: "var x := float32 :: 3.1415926535", err: ""},
+		{src: "var x := float32 :: 123", err: ""},
+		{src: "var x := float64 :: 0.0", err: ""},
+		{src: "var x := float64 :: 3.1415926535", err: ""},
+		{src: "var x := float64 :: 123", err: ""},
+		{src: "type t int var x := t :: 1", err: ""},
+		{src: "type t int var x := t :: 1.00", err: ""},
+		{src: "type t float32 var x := t :: 3.14", err: ""},
+		{src: "type t float32 var x := t :: 123", err: ""},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.src, func(t *testing.T) {
+			_, errs := check("test", []string{test.src}, test.mods)
+			switch {
+			case test.err == "" && len(errs) == 0:
+				break
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
 	}
 }
 
