@@ -4456,51 +4456,47 @@ func TestIntLiteralInference(t *testing.T) {
 	}
 }
 
-func TestNumLiteralErrors(t *testing.T) {
-	tests := []struct {
-		src  string
-		err  string
-		mods []testMod
-	}{
-		/*
-			TODO: move these to TestFloatLiteralInference once converted to type patterns
+func TestFloatLiteralInference(t *testing.T) {
+	tests := []exprTypeTest{
+		{pat: `uint`, expr: `5.0`, want: `uint`},
+		{pat: `uint8`, expr: `5.0`, want: `uint8`},
+		{pat: `uint16`, expr: `5.0`, want: `uint16`},
+		{pat: `uint32`, expr: `5.0`, want: `uint32`},
+		{pat: `uint64`, expr: `5.0`, want: `uint64`},
+		{pat: `int`, expr: `5.0`, want: `int`},
+		{pat: `int8`, expr: `5.0`, want: `int8`},
+		{pat: `int16`, expr: `5.0`, want: `int16`},
+		{pat: `int32`, expr: `5.0`, want: `int32`},
+		{pat: `int64`, expr: `5.0`, want: `int64`},
+		{pat: `float32`, expr: `5.0`, want: `float32`},
+		{pat: `float64`, expr: `5.0`, want: `float64`},
+		{pat: `&int`, expr: `5.0`, want: `&int`},
+		{pat: `_`, expr: `5.0`, want: `float64`},
+		{pat: `&_`, expr: `5.0`, want: `&float64`},
+		{pat: `string`, expr: `5.0`, err: `cannot unify`},
+		{src: `type t float64`, pat: `t`, expr: `5.0`, want: `t`},
+		{src: `type t float64`, pat: `&t`, expr: `5.0`, want: `&t`},
+		{src: `type t &float64`, pat: `t`, expr: `5.0`, want: `t`},
+		{src: `type t &float64`, pat: `&t`, expr: `5.0`, err: `cannot unify`},
+		{src: `type T t T`, pat: `int t`, expr: `5.0`, want: `int t`},
+		{src: `type T t T`, pat: `&int t`, expr: `5.0`, want: `&int t`},
+		{src: `type T t T`, pat: `_ t`, expr: `5.0`, err: `cannot unify`},
+		{src: `type T t T`, pat: `&_ t`, expr: `5.0`, err: `cannot unify`},
+		{src: `type T t &T`, pat: `int t`, expr: `5.0`, want: `int t`},
+		{src: `type T t &T`, pat: `&int t`, expr: `5.0`, err: `cannot unify`},
+		{src: `type T t &T`, pat: `_ t`, expr: `5.0`, err: `cannot unify`},
+		{src: `type T t &T`, pat: `&_ t`, expr: `5.0`, err: `cannot unify`},
 
-			{pat: `int`, expr: `1.00`, want: `int`},
-			{pat: `int`, expr: `1.01`, err: `truncates`},
-			{pat: `float32`, expr: `0.0`, want: `float32`},
-			{pat: `float32`, expr: `3.1415926535`, want: `float32`},
-			{pat: `float32`, expr: `123`, want: `float32`},
-			{pat: `float64`, expr: `0.0`, want: `float64`},
-			{pat: `float64`, expr: `3.1415926535`, want: `float64`},
-		*/
-		{src: "var x := int :: 1.00", err: ""},
-		{src: "var x := int :: 1.01", err: "truncates"},
-		{src: "var x := float32 :: 0.0", err: ""},
-		{src: "var x := float32 :: 3.1415926535", err: ""},
-		{src: "var x := float32 :: 123", err: ""},
-		{src: "var x := float64 :: 0.0", err: ""},
-		{src: "var x := float64 :: 3.1415926535", err: ""},
-		{src: "var x := float64 :: 123", err: ""},
-		{src: "type t int var x := t :: 1", err: ""},
-		{src: "type t int var x := t :: 1.00", err: ""},
-		{src: "type t float32 var x := t :: 3.14", err: ""},
-		{src: "type t float32 var x := t :: 123", err: ""},
+		{pat: `int`, expr: `1.00`, want: `int`},
+		{pat: `int`, expr: `1.01`, err: `truncates`},
+		{pat: `float32`, expr: `0.0`, want: `float32`},
+		{pat: `float32`, expr: `3.1415926535`, want: `float32`},
+		{pat: `float32`, expr: `123`, want: `float32`},
+		{pat: `float64`, expr: `0.0`, want: `float64`},
+		{pat: `float64`, expr: `3.1415926535`, want: `float64`},
 	}
 	for _, test := range tests {
-		test := test
-		t.Run(test.src, func(t *testing.T) {
-			_, errs := check("test", []string{test.src}, test.mods)
-			switch {
-			case test.err == "" && len(errs) == 0:
-				break
-			case test.err == "" && len(errs) > 0:
-				t.Errorf("unexpected error: %s", errs[0])
-			case test.err != "" && len(errs) == 0:
-				t.Errorf("expected error matching %s, got nil", test.err)
-			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
-				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
-			}
-		})
+		t.Run(test.name(), test.run)
 	}
 }
 

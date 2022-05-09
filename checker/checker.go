@@ -2358,29 +2358,24 @@ func checkValueSize(lit *IntLit) Error {
 }
 
 // checkFloatLit checks a float literal.
-// 	* If the pattern is a ground type
-// 	  with a literal type that is a built-in float type
-// 	  or a reference to a built-in float type,
-// 	  then the type of the expression is the pattern's type.
-// 	* If the pattern is a ground type
-// 	  with a literal type that is a built-in int type
-// 	  or a reference to a built-in int type,
-// 	  then the type of the expression is the pattern's type.
-// 	  It is an error if the literal value is not a whole integer value
-// 	  representable by the int typ.
-// 	* Otherwise, the type is float64.
+//
+// If the pattern's type is a floating point type or reference to a floating point type,
+// the type of the literal is the pattern's type.
+// If the pattern's type is an integer type or reference to an integer type,
+// the type of the literal is the pattern's type.
+// Otherwise the type of the literal is the unification
+// of the built-in type float64 and the pattern.
+//
+// It is an error if the value is not representable by the type.
+//
+// The returned Expr is never nil even if there are errors.
 func checkFloatLit(parserLit *parser.FloatLit, pat typePattern) (Expr, []Error) {
 	lit := &FloatLit{Text: parserLit.Text, L: parserLit.L}
 	if _, _, err := lit.Val.Parse(parserLit.Text, 10); err != nil {
 		panic("malformed float")
 	}
 	switch {
-	case !pat.isGroundType():
-		fallthrough
-	default:
-		lit.T = refType(&BasicType{Kind: Float64, L: parserLit.L})
-		return deref(lit), nil
-	case isIntType(pat.groundType()) || isIntRefType(pat.groundType()):
+	case isIntType(pat.typ) || isIntRefType(pat.typ):
 		var i big.Int
 		var errs []Error
 		if _, acc := lit.Val.Int(&i); acc != big.Exact {
@@ -2391,12 +2386,23 @@ func checkFloatLit(parserLit *parser.FloatLit, pat typePattern) (Expr, []Error) 
 			errs = append(errs, es...)
 		}
 		return intLit, errs
-	case isFloatRefType(pat.groundType()):
+	case isFloatRefType(pat.typ):
 		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, nil
-	case isFloatType(pat.groundType()):
+	case isFloatType(pat.typ):
 		lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
+	default:
+		switch bind := unify(pat, &BasicType{Kind: Float64, L: lit.L}); {
+		case bind == nil:
+			return lit, []Error{newError(lit, "cannot unify %s with %s", Float64, pat)}
+		case isRefType(literalType(pat.typ)):
+			lit.T = subType(bind, pat.typ)
+			return lit, nil
+		default:
+			lit.T = subType(bind, refType(pat.typ))
+			return deref(lit), nil
+		}
 	}
 }
 
