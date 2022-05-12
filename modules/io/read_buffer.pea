@@ -27,12 +27,12 @@ Func read_buffer(r R, buf [uint8]) read_buffer : read(R, [uint8])read_result {
 
 Func read(r read_buffer, d [uint8])read_result {
 	if: r.p = r.n then: {
-		r.read(r.data) ok? (n int) {
+		r.read(r.data) ok? (n){
 			r.p := 0,
 			r.n := n
 		} end? {
 			return: [end?]
-		} error? (err) {
+		} error? (err){
 			return: [error? err]
 		}
 	},
@@ -86,11 +86,11 @@ Type S read_line_result [
 //
 // On error, the bytes of the buffer are returned along with the error.
 Func read_line(r read_buffer) string read_line_result {
-	return: read_line_slice(r) ok? (bytes [uint8]) {
+	return: read_line_slice(r) ok? (bytes){
 		string read_line_result :: [ok? string :: bytes]
 	} end? {
 		[end?]
-	} error? (err) {
+	} error? (err){
 		[error? err]
 	}
 }
@@ -122,7 +122,7 @@ Func read_line_slice(r read_buffer) [uint8] read_line_result {
 			r.p := 0,
 		},
 
-		r.read(r.data[r.n, r.data.length]) ok? (n int) {
+		r.read(r.data[r.n, r.data.length]) ok? (n){
 			r.n += n
 		} end? {
 			if: r.n = 0 then: {
@@ -131,7 +131,7 @@ Func read_line_slice(r read_buffer) [uint8] read_line_result {
 			line := r.data[0, r.n],
 			r.n := 0,
 			return: [ok? line]
-		} error? (err) {
+		} error? (err){
 			return: [error? [.read r.data[0, r.n], .error err]]
 		},
 	},
@@ -176,11 +176,11 @@ test read_line {
 	// Line is too big.
 	buf := [uint8] :: new("hello\n".length - 3, uint8 :: 0),
 	b := read_buffer(string_reader :: [.str "hello\nworld\n"], buf),
-	read_line_slice(b) ok? (l [uint8]) {
+	read_line_slice(b) ok? (l){
 		panic(print#string("got ok? " ++ l ++ ", expected error? line too big"))
 	} end? {
 		panic("got end?, expected error? line too big")
-	} error? (err) {
+	} error? (err){
 		msg := message(err.error),
 		if: msg != "line too big" then: {
 			panic(print#string("got error? " ++ msg ++ " expected error? line too big"))
@@ -227,11 +227,11 @@ func read_buffer(s string) read_buffer {
 // TODO: make assert:ok: and assert_end: exported functions of io.
 
 func assert:ok:(res read_result, n int) {
-	res ok? (m int) {
+	res ok? (m){
 		if: m != n then: {
 			panic(print#string("got ok? " ++ m ++ " ++ expected ok? " ++ n)),
 		}
-	} error? (err) {
+	} error? (err){
 		panic(print#string("got error? " ++ err ++ " ++ expected ok? " ++ n))
 	} end? {
 		panic(print#string("got end? ++ expected ok? " ++ n))
@@ -239,19 +239,19 @@ func assert:ok:(res read_result, n int) {
 }
 
 func assert_end:(res read_result) {
-	res ok? (n int) {
+	res ok? (n){
 		panic(print#string("got ok? " ++ n ++ " ++ expected end? "))
-	} error? (err) {
+	} error? (err){
 		panic(print#string("got error? " ++ err ++ " ++ expected end?"))
 	}
 }
 
 func assert:ok:(res [uint8] read_line_result, line [uint8]) {
-	res ok? (l [uint8]) {
+	res ok? (l){
 		if: l != line then: {
 			panic(print#string("got ok? " ++ l ++ " ++ expected ok? " ++ line)),
 		}
-	} error? (err) {
+	} error? (err){
 		panic(print#string("got error? " ++ err.error ++ " ++ expected ok? " ++ line))
 	} end? {
 		panic(print#string("got end? ++ expected ok? " ++ line))
@@ -259,9 +259,9 @@ func assert:ok:(res [uint8] read_line_result, line [uint8]) {
 }
 
 func assert_end:(res [uint8] read_line_result) {
-	res ok? (l [uint8]) {
+	res ok? (l){
 		panic(print#string("got ok? " ++ l ++ " ++ expected end?"))
-	} error? (err) {
+	} error? (err){
 		panic(print#string("got error? " ++ err.error ++ " ++ expected end?"))
 	}
 }

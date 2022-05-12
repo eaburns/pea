@@ -56,7 +56,7 @@ test if_some {
 
 // Calls n() if the case of o is none?.
 Func if:none:(o T option, n (){}) {
-	o some? (_ T){} none? n
+	o some? (_){} none? n
 }
 
 test if_none {

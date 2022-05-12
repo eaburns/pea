@@ -81,7 +81,7 @@ Func contains(h S, n S) bool :
 	[](S, int, int) S,
 	=(S, S)bool
 {
-	return: index(h, n) some? (_ int){true} none? {false}
+	return: index(h, n) some? (_){true} none? {false}
 }
 
 test contains {

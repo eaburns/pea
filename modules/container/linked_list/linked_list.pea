@@ -22,8 +22,8 @@ type T node &[
 ]
 
 func same_node(x T node option, y T node option) bool {
-	x_addr := x some? (x T node) { uintref :: x } none? { 0 },
-	y_addr := y some? (y T node) { uintref :: y } none? { 0 },
+	x_addr := x some? (x){ uintref :: x } none? { 0 },
+	y_addr := y some? (y){ uintref :: y } none? { 0 },
 	return: x_addr = y_addr
 }
 
@@ -51,7 +51,7 @@ func push(l T linked_list, t T) T node {
 		n.next := some(h),
 		n.prev := h.prev,
 		// If the node is in the list, it's prev and next are always non-none.
-		h.prev some?(p T node) {p.next := some(n)} none? {panic("impossible")},
+		h.prev some?(p){p.next := some(n)} none? {panic("impossible")},
 		h.prev := some(n),
 	} none: {
 		l.head := some(n),
@@ -116,8 +116,8 @@ func remove(l T linked_list, x T node) {
 	if: same_node(some(x), l.head) then: {
 		l.head := none(),
 	} else: {
-		x.next some? (n T node){n.prev := x.prev} none? {panic("impossible")},
-		x.prev some? (p T node){p.next := x.next} none? {panic("impossible")},
+		x.next some? (n){n.prev := x.prev} none? {panic("impossible")},
+		x.prev some? (p){p.next := x.next} none? {panic("impossible")},
 	},
 	--l.len,
 	x.prev := none(),
@@ -128,7 +128,7 @@ func remove(l T linked_list, x T node) {
 //
 // This function operates in constant time.
 Func pop_front(l T linked_list) T option {
-	h :=  l.head some? (h T node) {
+	h :=  l.head some? (h){
 		h
 	} none? {
 		return: none()
@@ -172,12 +172,12 @@ test pop_front {
 //
 // This function operates in constant time.
 Func pop_back(l T linked_list) T option {
-	h :=  l.head some? (h T node) {
+	h :=  l.head some? (h){
 		h
 	} none? {
 		return: none()
 	},
-	t := h.prev some? (t T node){t} none? {panic("impossible")},
+	t := h.prev some? (t){t} none? {panic("impossible")},
 	remove(l, t),
 	return: some(t.value)
 }

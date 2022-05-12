@@ -67,7 +67,7 @@ type instruction [
 // Returns the compiled regular expression or an error.
 Func compile(src string) regexp or_error {
 	src0 := src,
-	re := choice(src, 0) ok? (re regexp) {re} error? (e){
+	re := choice(src, 0) ok? (re){re} error? (e){
 		return: error(e)
 	},
 	re := group_prog(re),
@@ -77,7 +77,7 @@ Func compile(src string) regexp or_error {
 }
 
 func choice(src &string, depth int) regexp or_error {
-	left := concat(src, depth) ok? (re regexp) {re} error? (e){
+	left := concat(src, depth) ok? (re){re} error? (e){
 		return: error(e)
 	},
 	if: peek(src) != '|' then: {
@@ -87,29 +87,29 @@ func choice(src &string, depth int) regexp or_error {
 		return: error("unexpected |")
 	},
 	next(src), // consume '|'
-	return: choice(src, depth) error? (e error) {
+	return: choice(src, depth) error? (e){
 		regexp or_error :: error(e)
-	} ok? (right regexp) {
+	} ok? (right){
 		ok(choice_prog(left, right))
 	}
 }
 
 func concat(src &string, depth int) regexp or_error {
-	left := repeat(src, depth) ok? (re regexp) {re} error? (e){
+	left := repeat(src, depth) ok? (re){re} error? (e){
 		return: error(e)
 	},
 	if: is_empty(left) then: {
 		return: ok(left)
 	},
-	return: concat(src, depth) error? (e error) {
+	return: concat(src, depth) error? (e){
 		regexp or_error :: error(e)
-	} ok? (right regexp) {
+	} ok? (right){
 		ok(cat_prog(left, right))
 	}
 }
 
 func repeat(src &string, depth int) regexp or_error {
-	re := term(src, depth) ok? (re regexp) {re} error? (e){
+	re := term(src, depth) ok? (re){re} error? (e){
 		return: error(e)
 	},
 	if: is_empty(re) then: {
@@ -154,7 +154,7 @@ func term(src &string, depth int) regexp or_error {
 	} else: r = '[' then: {
 		return: char_class(src)
 	} else: r = '\\' then: {
-		r := escape(src) ok? (r rune){r} error? (e){return: error(e)}
+		r := escape(src) ok? (r){r} error? (e){return: error(e)}
 	},
 	return: ok(op_prog([rune? r]))
 }
@@ -168,7 +168,7 @@ func group(src &string, depth int) regexp or_error {
 		},
 		cap := false,
 	},
-	re := choice(src, depth+1) ok? (re regexp) {re} error? (e){
+	re := choice(src, depth+1) ok? (re){re} error? (e){
 		return: error(e)
 	},
 	if: next(src) != ')' then: {
@@ -211,7 +211,7 @@ func char_class(src &string) regexp or_error {
 			},
 			r := next(src),
 			if: r = '\\' then: {
-				r := escape(src) ok? (r rune){r} error? (e){return: error(e)}
+				r := escape(src) ok? (r){r} error? (e){return: error(e)}
 			},
 			if: p >= r then: {
 				return: error("bad range"),
@@ -220,7 +220,7 @@ func char_class(src &string) regexp or_error {
 			p := -1
 		} else: {
 			if: r = '\\' then: {
-				r := escape(src) ok? (r rune){r} error? (e){return: error(e)},
+				r := escape(src) ok? (r){r} error? (e){return: error(e)},
 			},
 			if: p >= 0 then: {
 				class push_back: [.start p, .end p],
@@ -379,7 +379,7 @@ Func read(s &S) read_result :
 	[](S, int)uint8,
 	[](S, int, int)S
 {
-	return: utf8#consume(s) some? (rw [.rune rune, .width int]){
+	return: utf8#consume(s) some? (rw){
 		read_result :: [rune? rw]
 	} none? {
 		[end?]
@@ -479,7 +479,7 @@ func exec(vm vm, s S) [int64] : read(&S)read_result {
 func read:(vm vm, s &S) : read(&S)read_result {
 	vm.cur_rune := vm.next_rune,
 	vm.at += (int64 :: vm.next_width),
-	read(s) rune? (rw [.rune rune, .width int]) {
+	read(s) rune? (rw) {
 		vm.next_rune := rw.rune,
 		vm.next_width := rw.width,
 	} end? {

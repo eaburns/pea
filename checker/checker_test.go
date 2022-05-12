@@ -866,7 +866,7 @@ func TestCheckFuncScope(t *testing.T) {
 					return: x
 				}
 			`,
-			err: "cannot convert argument x \\(int\\) to string",
+			err: "cannot convert x \\(int\\) to type string",
 		},
 		// Local can't shadow a module level variable,
 		// because a local cannot be defined if the identifier
@@ -878,7 +878,7 @@ func TestCheckFuncScope(t *testing.T) {
 					return: x
 				}
 			`,
-			err: "cannot convert argument x \\(int\\) to \\(\\){}",
+			err: "cannot convert x \\(int\\) to type \\(\\){}",
 		},
 		{
 			name: "local shadows interface func",
@@ -888,7 +888,7 @@ func TestCheckFuncScope(t *testing.T) {
 					return: x
 				}
 			`,
-			err: "cannot convert argument x \\(int\\) to \\(\\){}",
+			err: "cannot convert x \\(int\\) to type \\(\\){}",
 		},
 	}
 	for _, test := range tests {
@@ -1315,7 +1315,7 @@ func TestConversions(t *testing.T) {
 				// because none of the types are literal.
 				func f(x a) { y := a_or_b :: [a?], y := x }
 			`,
-			err: `cannot convert argument x \(a\) to a_or_b`,
+			err: `cannot convert x \(a\) to type a_or_b`,
 		},
 		{
 			name: "union subset conversion for non-literals ok if explicit",
@@ -1376,7 +1376,7 @@ func TestConversions(t *testing.T) {
 				type bar string
 				func f(x foo) bar {return: x}
 			`,
-			err: `cannot convert argument x \(foo\) to bar`,
+			err: `cannot convert x \(foo\) to type bar`,
 		},
 		{
 			name: "explicit conversion to defined type",
@@ -1432,7 +1432,7 @@ func TestConversions(t *testing.T) {
 				type bar string
 				func f(x foo) &bar {return: x}
 			`,
-			err: `cannot convert argument x \(foo\) to &bar`,
+			err: `cannot convert x \(foo\) to type &bar`,
 		},
 		{
 			name: "explicit conversion to defined reference type",
@@ -2369,7 +2369,7 @@ func TestOverloadResolution(t *testing.T) {
 				var point_a_var point_a
 			`,
 			call: "f(point_a_var)",
-			err:  `cannot convert argument point_a_var \(point_a\) to point_b`,
+			err:  `cannot convert point_a_var \(point_a\) to type point_b`,
 		},
 		{
 			name: "convert defined to literal type",
@@ -3070,7 +3070,7 @@ func TestOverloadResolution(t *testing.T) {
 				func bar(_ int, _ string, _ int, _ int32)
 			`,
 			call: "bar(5, \"hello\", foo#new_x(), 12)",
-			err:  `convert argument new_x\(\) \(foo#x\) to int`,
+			err:  `cannot convert new_x\(\) \(foo#x\) to type int`,
 			otherMod: testMod{
 				path: "foo",
 				src: `
@@ -3208,6 +3208,33 @@ func TestOverloadResolution(t *testing.T) {
 			// but its type is wrong, so it still errors.
 			err: `foo#bar\(int\): cannot convert returned \[\.\] to string`,
 		},
+		{
+			name: "infer struct field type",
+			src: `
+				func f(_ [.x int32, .y string])
+				func f(_ [.x int32, .y float64])
+			`,
+			call: "f([.x 5, .y 3.14])",
+			want: "f([.x int32, .y float64])",
+		},
+		{
+			name: "infer union case type",
+			src: `
+				func f(_ [a? int32, b?, c? string])
+				func f(_ [a? int32, b?, c? float64])
+			`,
+			call: "f([c? 3.14])",
+			want: "f([a? int32, b?, c? float64])",
+		},
+		{
+			name: "infer block argument type",
+			src: `
+				func f(_ (int){float64})
+				func f(_ (int){string})
+			`,
+			call: "f((a){3.14})",
+			want: "f((int){float64})",
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -3238,7 +3265,7 @@ func TestOverloadResolution(t *testing.T) {
 					t.Errorf("got %s, want %s", got, test.want)
 				}
 			case test.err == "" && len(errs) > 0:
-				t.Errorf("unexpected error: %s", errs[0])
+				t.Errorf("unexpected error: %s", fmt.Sprintf("%s", errs))
 			case test.err != "" && len(errs) == 0:
 				t.Errorf("expected error matching %s, got nil", test.err)
 			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
@@ -3543,6 +3570,21 @@ func TestSwitchReturnTypes(t *testing.T) {
 		var _ := [.] :: m() a? {1}
 		var _ := [.] :: m() a? {} b? {}
 		func m() a_or_b
+	`
+	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
+		t.Errorf("%v\n", errs)
+	}
+}
+
+func TestSwitchArgumentInference(t *testing.T) {
+	const src = `
+		type a_or_b [a? int, b? string]
+		// No need to specify the type of parameter i;
+		// it is inferred from the type pattern of a?b?.
+		var _ := [.] :: m() a? (i){int(i)}  b? (s){string(s)}
+		func m() a_or_b
+		func int(_ int)
+		func string(_ string)
 	`
 	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
 		t.Errorf("%v\n", errs)

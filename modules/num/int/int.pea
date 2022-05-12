@@ -94,9 +94,9 @@ test parse_uint64 {
 // Digits greater than 9 are represented by lower-case or capital letters,
 // beginning with a (or A) as 10 through z (or Z) as 35.
 Func parse_uint8(s string, base int) uint8 or_error {
-	return: parse_uint64_max(s, base, uint64 :: max_uint8) ok? (x uint64){
+	return: parse_uint64_max(s, base, uint64 :: max_uint8) ok? (x){
 		ok(uint8 :: x)
-	} error? (err) {
+	} error? (err){
 		error(err)
 	}
 }
@@ -115,9 +115,9 @@ test parse_uint8_base16 {
 // Digits greater than 9 are represented by lower-case or capital letters,
 // beginning with a (or A) as 10 through z (or Z) as 35.
 Func parse_uint16(s string, base int) uint16 or_error {
-	return: parse_uint64_max(s, base, uint64 :: max_uint16) ok? (x uint64){
+	return: parse_uint64_max(s, base, uint64 :: max_uint16) ok? (x){
 		ok(uint16 :: x)
-	} error? (err) {
+	} error? (err){
 		error(err)
 	}
 }
@@ -136,9 +136,9 @@ test parse_uint16_base16 {
 // Digits greater than 9 are represented by lower-case or capital letters,
 // beginning with a (or A) as 10 through z (or Z) as 35.
 Func parse_uint32(s string, base int) uint32 or_error {
-	return: parse_uint64_max(s, base, uint64 :: max_uint32) ok? (x uint64){
+	return: parse_uint64_max(s, base, uint64 :: max_uint32) ok? (x){
 		ok(uint32 :: x)
-	} error? (err) {
+	} error? (err){
 		error(err)
 	}
 }

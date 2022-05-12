@@ -1225,31 +1225,29 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 }
 
 func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.Expr, funcs []Func) (Expr, []Func, []note, []Error) {
-	var notes []note
-	if t := commonGroundParmType(funcs, i); t != nil {
-		arg, errs := checkExpr(x, parserArg, pattern(t))
-		if len(errs) > 0 {
-			return nil, nil, nil, errs
-		}
-		arg, err := convert(arg, t, false)
-		if err != nil {
-			funcs, notes = filterByGroundedArg(funcs, i, arg)
-		}
-		return arg, funcs, notes, errs
+	pats := make([]typePattern, 0, len(funcs))
+	for _, f := range funcs {
+		pats = append(pats, f.parm(i))
 	}
+	pat := common(pats...)
+
 	var arg Expr
 	var errs []Error
 	// If this is the LHS of an assignment to an Ident,
 	// don't mark it as "used" if it is a local variable.
 	if lhs, ok := parserArg.(parser.Ident); ok && i == 0 && parserID.Name == ":=" {
-		arg, errs = checkID(x, lhs, false, any())
+		arg, errs = checkID(x, lhs, false, pat)
 	} else {
-		arg, errs = checkAndConvertExpr(x, parserArg, any())
+		arg, errs = checkExpr(x, parserArg, pat)
+		if len(errs) > 0 {
+			return nil, nil, nil, errs
+		}
 	}
 	if len(errs) > 0 {
 		return arg, nil, nil, errs
 	}
-	funcs, notes = filterByGroundedArg(funcs, i, arg)
+	var notes []note
+	funcs, notes = filterByArg(funcs, i, arg)
 	return arg, funcs, notes, errs
 }
 
@@ -1279,7 +1277,7 @@ func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, pat typePa
 	notes = append(notes, ns...)
 
 	for i, arg := range args {
-		funcs, ns = filterByGroundedArg(funcs, i, arg)
+		funcs, ns = filterByArg(funcs, i, arg)
 		notes = append(notes, ns...)
 	}
 	return funcs, notes
@@ -1337,7 +1335,7 @@ func commonGroundParmType(funcs []Func, i int) Type {
 	return t
 }
 
-func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
+func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	if arg.Type() == nil {
 		// There was an error checking the argument.
 		// Just silently filter out all functions.
@@ -1367,7 +1365,7 @@ func filterByGroundedArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 			n++
 			continue
 		}
-		notes = append(notes, newNote("%s: cannot convert argument %s (%s) to %s",
+		notes = append(notes, newNote("%s: cannot convert %s (%s) to type %s",
 			f, arg, arg.Type(), parmType).setLoc(parmType))
 	}
 	return funcs[:n], notes

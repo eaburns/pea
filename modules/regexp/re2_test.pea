@@ -80,7 +80,7 @@ test re2_exhaustive {
 }
 
 func run_re2_tests(path string) {
-	f := sys#fs#open_file(path) error? (e error){panic(message(e))},
+	f := sys#fs#open_file(path) error? (e){panic(message(e))},
 	in := io#read_buffer(f),
 
 	in_strings := false,
@@ -217,11 +217,11 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
 		},
 		return()
 	},
-	re := compile(regexp) ok? (re regexp){re} error? (e){
+	re := compile(regexp) ok? (re){re} error? (e){
 		panic(print#string("failed to compile [" ++ regexp ++ "]: " ++ message(e))),
 	},
 	for: strs each: (str){
-		line := read_line(in) ok? (line string){
+		line := read_line(in) ok? (line){
 			line
 		} end? {
 			panic("unexpected end of input")
@@ -299,7 +299,7 @@ func parse_int64_or_empty(x string) int64 {
 	if: x = "" then: {
 		return: -1
 	},
-	return: int#parse_uint64(x) ok? (i uint64){
+	return: int#parse_uint64(x) ok? (i){
 		int64:: i
 	} error? (e){
 		panic(print#string("bad int: " ++ x)),

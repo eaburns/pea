@@ -57,7 +57,7 @@ Func error?(res write_result, e (error){int}) int {
 // Returns the number of bytes written;
 // panics if there was an error.
 Func must(res write_result) int {
-	return: res error? (e error) { panic(print#string(e)) }
+	return: res error? (e){ panic(print#string(e)) }
 }
 
 // Reads until buf is full.
@@ -65,7 +65,7 @@ Func must(res write_result) int {
 Func read_full(r R, buf [uint8])error option : read(R, [uint8])read_result {
 	total := 0,
 	while: {total < buf.length} do: {
-		read(r, buf[total, buf.length]) ok? (n int){
+		read(r, buf[total, buf.length]) ok? (n){
 			total += n,
 		} end? {
 			return: error("unexpected end-of-input")
@@ -82,11 +82,11 @@ Func read_all(r R) [uint8] or_error : read(R, [uint8]) read_result {
 	total := 0,
 	buf := [uint8] :: new(128, uint8 :: 0),
 	while: {true} do: {
-		read(r, buf[total, buf.length]) error? (e error) {
+		read(r, buf[total, buf.length]) error? (e){
 			return: [error? e]
 		} end? {
 			return: [ok? buf[0, total]]
-		} ok? (n) {
+		} ok? (n){
 			total := total + n
 		},
 		if: total = buf.length then: {

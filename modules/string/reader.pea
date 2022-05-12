@@ -57,11 +57,11 @@ test reader {
 // TODO: make assert:ok: and assert_end: exported functions of io.
 
 func assert:ok:(res io#read_result, n int) {
-	res ok? (m int) {
+	res ok? (m){
 		if: m != n then: {
 			panic(print#string("got ok? " ++ m ++ " ++ expected ok? " ++ n))
 		}
-	} error? (err) {
+	} error? (err){
 		panic(print#string("got error? " ++ err ++ " ++ expected ok? " ++ n))
 	} end? {
 		panic(print#string("got end? ++ expected ok? " ++ n))
@@ -69,9 +69,9 @@ func assert:ok:(res io#read_result, n int) {
 }
 
 func assert_end:(res io#read_result) {
-	res ok? (n int) {
+	res ok? (n){
 		panic(print#string("got ok? " ++ n ++ " ++ expected end?"))
-	} error? (err) {
+	} error? (err){
 		panic(print#string("got error? " ++ err ++ " ++ expected end?"))
 	}
 }

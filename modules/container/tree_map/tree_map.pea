@@ -82,9 +82,9 @@ Func at:put:(m (K, V) tree_map, k K, v V) V option {
 	},
 	upsert(m, m.root, k, v) ok? {
 		// nothing to do
-	} prev? (v V) {
+	} prev? (v){
 		return: some(v)
-	} split? (split) {
+	} split? (split){
 		new_root := (K, V) node :: [
 			.n 1,
 			.keys new(m.max_keys+1, split.med),
@@ -117,9 +117,9 @@ func upsert(m (K, V) tree_map, n (K, V) node, k K, v V) (K, V) upsert_result {
 	} else: {
 		upsert(m, n.kids[i], k, v) ok? {
 			return: [ok?]
-		} prev? (v V) {
+		} prev? (v){
 			return: [prev? v]
-		} split? (split) {
+		} split? (split){
 			i := find_key_index(m, n, split.med.k),
 			insert: n key: split.med at: i,
 			insert: n kid: split.right at: i+1,

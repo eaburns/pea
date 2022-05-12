@@ -21,8 +21,8 @@ Func addr(ip sys#net#ip#addr, port uint16) addr {
 
 // Returns whether the two addrs are equal.
 Func =(a addr, b addr) bool {
-	ip_a := a.network ip? (ip sys#net#ip#addr){ip},
-	ip_b := b.network ip? (ip sys#net#ip#addr){ip},
+	ip_a := a.network ip? (ip){ip},
+	ip_b := b.network ip? (ip){ip},
 	return: ip_a = ip_b && a.port = b.port
 }
 
@@ -40,7 +40,7 @@ test equal {
 // If the network address is an IPv6 addresses, the format is [x:x:x:x:x:x:x:x]:p,
 // where x is a hexadecimal number 0-ffff and p is the port number.
 Func print(p print#printer, addr addr) print#printer {
-	ip := addr.network ip? (ip sys#net#ip#addr){ip},
+	ip := addr.network ip? (ip){ip},
 	if: ip.length = 4 then: {
 		p ++ ip
 	} else: {
@@ -87,22 +87,22 @@ Func listener(addr string) listener or_error {
 }
 
 test listener_error {
-	listener("bad host:bad port") ok? (_ listener) {
+	listener("bad host:bad port") ok? (_){
 		panic("expected error")
 	},
-	listener("bad host:") ok? (_ listener) {
+	listener("bad host:") ok? (_){
 		panic("expected error")
 	},
-	listener(":bad port") ok? (_ listener) {
+	listener(":bad port") ok? (_){
 		panic("expected error")
 	},
 }
 
 test listener_empty {
-	l := listener("") ok? (l listener){l} error? (err){
+	l := listener("") ok? (l){l} error? (err){
 		panic(message(err))
 	},
-	addr(l).network ip? (ip sys#net#ip#addr){
+	addr(l).network ip? (ip){
 		assert: ip one_of: [
 			sys#net#ip#addr(0, 0, 0, 0),
 			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0),
@@ -111,10 +111,10 @@ test listener_empty {
 	assert_false: addr(l).port = 0,
 	assert_ok: close(l),
 
-	l := listener(":") ok? (l listener){l} error? (err){
+	l := listener(":") ok? (l){l} error? (err){
 		panic(message(err))
 	},
-	addr(l).network ip? (ip sys#net#ip#addr){
+	addr(l).network ip? (ip){
 		assert: ip one_of: [
 			sys#net#ip#addr(0, 0, 0, 0),
 			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0),
@@ -135,17 +135,17 @@ func assert:one_of:(t T, ts [T]) : =(T, T)bool, ++(print#printer, T)print#printe
 }
 
 test listener_empty_port {
-	l := listener("127.0.0.1") ok? (l listener){l} error? (err){
+	l := listener("127.0.0.1") ok? (l){l} error? (err){
 		panic(message(err))
 	},
-	addr(l).network ip? (ip sys#net#ip#addr) {
+	addr(l).network ip? (ip) {
 		assert: ip equals: sys#net#ip#addr(127, 0, 0, 1)
 	},
 	assert_ok: close(l),
 }
 
 test listener_empty_addr {
-	l := listener(":8888") ok? (l listener){l} error? (err){
+	l := listener(":8888") ok? (l){l} error? (err){
 		panic(message(err))
 	},
 	assert: addr(l).port equals: 8888,

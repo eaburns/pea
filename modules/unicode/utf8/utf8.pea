@@ -30,7 +30,7 @@ Func consume(s &S) [.rune rune, .width int] option :
 	 [](S, int)uint8,
 	 [](S, int, int)S
 {
-	return: decode(s) some? (rw [.rune rune, .width int]) {
+	return: decode(s) some? (rw) {
 		s := s[rw.width, s.length],
 		some(rw)
 	} none? {
@@ -129,7 +129,7 @@ Func decode(s S) [.rune rune, .width int] option : .length(S)int, [](S, int)uint
 	if: s.length < 1 then: {
 		return: none()
 	},
-	info := rune_info(s[0]) some? (i [.width int, .mask rune, .min rune]){
+	info := rune_info(s[0]) some? (i){
 		i
 	} none? {
 		return: some([.rune unicode#replacement, .width 1])

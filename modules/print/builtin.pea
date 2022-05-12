@@ -304,7 +304,7 @@ test print_pointer {
 // Adds the string representation of the option to the printer
 // and returns the printer.
 Func print(p printer, o T option) printer : ++(printer, T)printer {
-	return: o some? (t T) {
+	return: o some? (t){
 		p ++ "some(" ++ t ++ ")",
 	} none? {
 		p ++ "none()"
@@ -329,7 +329,7 @@ Func print(p printer, err error) printer {
 // Adds the string representation of the or_error to the printer
 // and returns the printer.
 Func print(p printer, t_or T or_error) printer : ++(printer, T)printer {
-	return: t_or ok? (t T) {
+	return: t_or ok? (t){
 		p ++ "ok(" ++ t ++ ")"
 	} error? (e) {
 		p ++ "error(" ++ e ++ ")"

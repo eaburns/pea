@@ -50,7 +50,7 @@ Type F open_result [
 // Returns the opened file if there was no error,
 // otherwise returns the result of calling e with the error.
 Func error?(res F open_result, e (error){F}) F {
-	return: res ok? (file F){
+	return: res ok? (file){
 		file
 	} exists? (err){
 		e(err)
@@ -128,14 +128,14 @@ test create_dir_read_remove {
 	r := must(open_dir(path)),
 	ents := [string] :: [],
 	while: {
-		read_dir(r) ok? (ent string) {
+		read_dir(r) ok? (ent){
 			ents := new(ents.length + 1, (i int) {
 				i < ents.length true? { ents[i] } false? { ent }
 			}),
 			true
 		} eof? {
 			false
-		} error? (err) {
+		} error? (err){
 			panic(print#string(err))
 		}
 	} do: {},
@@ -155,17 +155,17 @@ test open_entry {
 	assert_ok: touch(path + "file"),
 
 	ent := open(path) error? (err){ panic(print#string("open failed: " ++ err)) },
-	ent file? (f file) {
+	ent file? (f){
 		close(f),
 		panic("got file, expected dir")
-	} dir? (d dir) {
+	} dir? (d){
 		close(d)
 	},
 
 	ent := open(path + "file") error? (err){ panic(print#string("open failed: " ++ err)) },
-	ent file? (f file) {
+	ent file? (f){
 		close(f),
-	} dir? (d dir) {
+	} dir? (d){
 		close(d),
 		panic("got dir, expected file")
 	},
