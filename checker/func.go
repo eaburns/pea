@@ -535,7 +535,7 @@ func (b *Builtin) sub(bind map[*TypeParm]Type) note {
 		valType := valueType(typ)
 		if isArrayType(valType) {
 			b.Parms[0] = valType
-			b.Ret = refType(literalType(valType).(*ArrayType).ElemType)
+			b.Ret = refLiteral(literalType(valType).(*ArrayType).ElemType)
 		} else if isStringType(valType) {
 			b.Parms[0] = valType
 			b.Ret = _uint8

@@ -667,10 +667,10 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
 	def.Expr = &Call{
 		Func: &Builtin{
 			Op:    Assign,
-			Parms: []Type{refType(def.T), expr.Type()},
+			Parms: []Type{refLiteral(def.T), expr.Type()},
 			Ret:   expr.Type(),
 		},
-		Args: []Expr{&Var{Def: def, T: refType(def.T), L: def.L}, expr},
+		Args: []Expr{&Var{Def: def, T: refLiteral(def.T), L: def.L}, expr},
 		T:    &StructType{L: def.L},
 		L:    def.L,
 	}
@@ -966,11 +966,11 @@ func newLocalAssign(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Exp
 		Expr: &Call{
 			Func: &Builtin{
 				Op:    Assign,
-				Parms: []Type{refType(expr.Type()), expr.Type()},
+				Parms: []Type{refLiteral(expr.Type()), expr.Type()},
 				Ret:   expr.Type(),
 			},
 			Args: []Expr{
-				&Local{Def: local, T: refType(expr.Type()), L: id.L},
+				&Local{Def: local, T: refLiteral(expr.Type()), L: id.L},
 				expr,
 			},
 			T: &StructType{L: call.L},
@@ -1168,7 +1168,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		T:    &RefType{Type: ret, L: ret.Loc()},
 		L:    parserCall.L,
 	}
-	for isRefType(expr.Type()) {
+	for isRefLiteral(expr.Type()) {
 		expr = deref(expr)
 	}
 	return expr, nil
@@ -1556,7 +1556,7 @@ func checkExprCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []E
 		ret = &RefType{Type: fun.FuncType.Ret, L: fun.FuncType.Ret.Loc()}
 	}
 	expr = &Call{Func: fun, Args: args, T: ret, L: parserCall.L}
-	for isRefType(expr.Type()) {
+	for isRefLiteral(expr.Type()) {
 		expr = deref(expr)
 	}
 	return expr, errs
@@ -1683,13 +1683,13 @@ func useID(x scope, l loc.Loc, useLocal bool, id id) id {
 func idToExpr(id id, l loc.Loc) Expr {
 	switch id := id.(type) {
 	case *VarDef:
-		return deref(&Var{Def: id, T: refType(id.T), L: l})
+		return deref(&Var{Def: id, T: refLiteral(id.T), L: l})
 	case *ParmDef:
-		return deref(&Parm{Def: id, T: refType(id.T), L: l})
+		return deref(&Parm{Def: id, T: refLiteral(id.T), L: l})
 	case *LocalDef:
-		return deref(&Local{Def: id, T: refType(id.T), L: l})
+		return deref(&Local{Def: id, T: refLiteral(id.T), L: l})
 	case *BlockCap:
-		return deref(&Cap{Def: id, T: refType(id.T), L: l})
+		return deref(&Cap{Def: id, T: refLiteral(id.T), L: l})
 	case Func:
 		return wrapCallInBlock(id, id.ret().groundType(), l)
 	default:
@@ -1729,17 +1729,17 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 	assign := &Call{
 		Func: &Builtin{
 			Op:    Assign,
-			Parms: []Type{refType(localDef.T), call.Type()},
+			Parms: []Type{refLiteral(localDef.T), call.Type()},
 			Ret:   call.Type(),
 		},
 		Args: []Expr{
-			&Local{Def: localDef, T: refType(localDef.T), L: l},
+			&Local{Def: localDef, T: refLiteral(localDef.T), L: l},
 			call,
 		},
 		T: &StructType{L: l},
 		L: l,
 	}
-	local := deref(&Local{Def: localDef, T: refType(localDef.T), L: l})
+	local := deref(&Local{Def: localDef, T: refLiteral(localDef.T), L: l})
 	result, err := convert(local, wantRet, false)
 	if err != nil {
 		panic(fmt.Sprintf("impossible: %s", err))
@@ -1749,7 +1749,7 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 		Locals: []*LocalDef{localDef},
 		Ret:    wantRet,
 		Exprs:  []Expr{assign, result},
-		T:      refType(&FuncType{Parms: parms, Ret: wantRet, L: l}),
+		T:      refLiteral(&FuncType{Parms: parms, Ret: wantRet, L: l}),
 		L:      l,
 	}
 	for i := range parms {
@@ -1758,7 +1758,7 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 		blk.Parms[i].L = l
 		call.Args[i] = deref(&Parm{
 			Def: &blk.Parms[i],
-			T:   refType(parms[i]),
+			T:   refLiteral(parms[i]),
 			L:   l,
 		})
 	}
@@ -1799,17 +1799,17 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 
 	switch basicKind(typ) {
 	case Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
-		if !isRefType(typ) && (isIntType(expr.Type()) || isFloatType(expr.Type())) {
+		if !isRefLiteral(typ) && (isIntType(expr.Type()) || isFloatType(expr.Type())) {
 			cvt.Kind = NumConvert
 			return cvt, errs
 		}
 	case UintRef:
-		if !isRefType(typ) && isRefType(definedBaseType(expr.Type())) {
+		if !isRefLiteral(typ) && isRefLiteral(definedBaseType(expr.Type())) {
 			cvt.Kind = NumConvert
 			return cvt, errs
 		}
 	case String:
-		if !isRefType(typ) && isByteArray(expr.Type()) {
+		if !isRefLiteral(typ) && isByteArray(expr.Type()) {
 			cvt.Kind = StrConvert
 			return cvt, errs
 		}
@@ -1877,17 +1877,17 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, 
 	switch bind := unify(pat, lit.Array); {
 	case bind == nil:
 		return lit, []Error{newError(lit, "cannot unify %s with %s", lit.Array, pat)}
-	case isRefType(literalType(pat.typ)):
+	case isRefType(pat.typ):
 		lit.T = subType(bind, pat.typ)
 	default:
 		// The underlying literal is always a reference, so add a ref here,
 		// but we will deref it below before returning the expression.
-		lit.T = subType(bind, refType(pat.typ))
+		lit.T = subType(bind, refLiteral(pat.typ))
 	}
 	if !pat.withType(lit.T).isGroundType() {
 		return lit, []Error{newError(lit, "cannot infer array type, got %s", lit.T)}
 	}
-	if isRefType(literalType(pat.typ)) {
+	if isRefType(pat.typ) {
 		return lit, nil
 	}
 	return deref(lit), nil
@@ -1951,12 +1951,12 @@ func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr
 	switch bind := unify(pat, lit.Struct); {
 	case bind == nil:
 		return lit, []Error{newError(lit, "cannot unify %s with %s", lit.Struct, pat)}
-	case isRefType(literalType(pat.typ)):
+	case isRefType(pat.typ):
 		lit.T = subType(bind, pat.typ)
 	default:
 		// The underlying literal is always a reference, so add a ref here,
 		// but we will deref it below before returning the expression.
-		lit.T = subType(bind, refType(pat.typ))
+		lit.T = subType(bind, refLiteral(pat.typ))
 	}
 	if !pat.withType(lit.T).isGroundType() {
 		// I believe this is impossible. If not, it should be an error.
@@ -1965,7 +1965,7 @@ func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr
 		panic("impossible")
 		// return lit, []Error{newError(lit, "cannot infer struct type, got %s", lit.T)}
 	}
-	if isRefType(literalType(pat.typ)) {
+	if isRefType(pat.typ) {
 		return lit, nil
 	}
 	return deref(lit), nil
@@ -2029,17 +2029,17 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, pat typePattern) (Expr, 
 	switch bind := unify(pat, lit.Union); {
 	case bind == nil:
 		return lit, []Error{newError(lit, "cannot unify %s with %s", lit.Union, pat)}
-	case isRefType(literalType(pat.typ)):
+	case isRefType(pat.typ):
 		lit.T = subType(bind, pat.typ)
 	default:
 		// The underlying literal is always a reference, so add a ref here,
 		// but we will deref it below before returning the expression.
-		lit.T = subType(bind, refType(pat.typ))
+		lit.T = subType(bind, refLiteral(pat.typ))
 	}
 	if !pat.withType(lit.T).isGroundType() {
 		return lit, []Error{newError(lit, "cannot infer union type, got %s", lit.T)}
 	}
-	if isRefType(literalType(pat.typ)) {
+	if isRefType(pat.typ) {
 		return lit, nil
 	}
 	return deref(lit), nil
@@ -2152,12 +2152,12 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 	switch bind := unify(pat, funType); {
 	case bind == nil:
 		return lit, []Error{newError(lit, "cannot unify %s with %s", funType, pat)}
-	case isRefType(literalType(pat.typ)):
+	case isRefType(pat.typ):
 		lit.T = subType(bind, pat.typ)
 	default:
 		// The underlying literal is always a reference, so add a ref here,
 		// but we will deref it below before returning the expression.
-		lit.T = subType(bind, refType(pat.typ))
+		lit.T = subType(bind, refLiteral(pat.typ))
 	}
 	if !pat.withType(lit.T).isGroundType() {
 		// I believe this is impossible. If not, it should be an error.
@@ -2166,7 +2166,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 		panic("impossible")
 		//return lit, []Error{newError(lit, "cannot infer block type, got %s", lit.T)}
 	}
-	if isRefType(literalType(pat.typ)) {
+	if isRefType(pat.typ) {
 		return lit, nil
 	}
 	return deref(lit), nil
@@ -2210,18 +2210,18 @@ func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {
 		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, nil
 	case isStringType(pat.typ):
-		lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
+		lit.T = refLiteral(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
 	default:
 		bind := unify(pat, &BasicType{Kind: String, L: parserLit.L})
 		switch {
 		case bind == nil:
 			return lit, []Error{newError(lit, "cannot unify string with %s", pat)}
-		case isRefType(literalType(pat.typ)):
+		case isRefType(pat.typ):
 			lit.T = subType(bind, pat.typ)
 			return lit, nil
 		default:
-			lit.T = subType(bind, refType(pat.typ))
+			lit.T = subType(bind, refLiteral(pat.typ))
 			return deref(lit), nil
 		}
 	}
@@ -2274,17 +2274,17 @@ func _checkIntLit(parserLit *parser.IntLit, pat typePattern, defaultKind BasicTy
 		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, nil
 	case isIntType(pat.typ):
-		lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
+		lit.T = refLiteral(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
 	default:
 		switch bind := unify(pat, &BasicType{Kind: defaultKind, L: lit.L}); {
 		case bind == nil:
 			return lit, []Error{newError(lit, "cannot unify %s with %s", defaultKind, pat)}
-		case isRefType(literalType(pat.typ)):
+		case isRefType(pat.typ):
 			lit.T = subType(bind, pat.typ)
 			return lit, nil
 		default:
-			lit.T = subType(bind, refType(pat.typ))
+			lit.T = subType(bind, refLiteral(pat.typ))
 			return deref(lit), nil
 		}
 	}
@@ -2390,17 +2390,17 @@ func checkFloatLit(parserLit *parser.FloatLit, pat typePattern) (Expr, []Error) 
 		lit.T = copyTypeWithLoc(pat.groundType(), lit.L)
 		return lit, nil
 	case isFloatType(pat.typ):
-		lit.T = refType(copyTypeWithLoc(pat.groundType(), lit.L))
+		lit.T = refLiteral(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
 	default:
 		switch bind := unify(pat, &BasicType{Kind: Float64, L: lit.L}); {
 		case bind == nil:
 			return lit, []Error{newError(lit, "cannot unify %s with %s", Float64, pat)}
-		case isRefType(literalType(pat.typ)):
+		case isRefType(pat.typ):
 			lit.T = subType(bind, pat.typ)
 			return lit, nil
 		default:
-			lit.T = subType(bind, refType(pat.typ))
+			lit.T = subType(bind, refLiteral(pat.typ))
 			return deref(lit), nil
 		}
 	}

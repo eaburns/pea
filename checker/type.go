@@ -11,16 +11,30 @@ func isEmptyStruct(typ Type) bool {
 	return ok && len(s.Fields) == 0
 }
 
-func refType(typ Type) Type {
+func refLiteral(typ Type) Type {
 	if typ == nil {
 		return nil
 	}
 	return &RefType{Type: typ, L: typ.Loc()}
 }
 
-func isRefType(typ Type) bool {
+func isRefLiteral(typ Type) bool {
 	_, ok := typ.(*RefType)
 	return ok
+}
+
+func isRefType(typ Type) bool {
+	switch typ := typ.(type) {
+	case *RefType:
+		return true
+	case *DefType:
+		if typ.Inst != nil &&
+			typ.Inst.Type != nil &&
+			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+			return isRefType(typ.Inst.Type)
+		}
+	}
+	return false
 }
 
 func trim1Ref(typ Type) Type {
@@ -33,7 +47,7 @@ func trim1Ref(typ Type) Type {
 	return typ
 }
 
-func arrayType(typ Type) Type {
+func arrayLiteral(typ Type) Type {
 	if typ == nil {
 		return nil
 	}

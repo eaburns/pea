@@ -260,7 +260,7 @@ func (c *Call) subExpr(bindings bindings) Expr {
 	return &Call{
 		Func: &ExprFunc{Expr: expr, FuncType: expr.Type().(*FuncType)},
 		Args: args,
-		T:    refType(retType),
+		T:    refLiteral(retType),
 		L:    c.L,
 	}
 }
