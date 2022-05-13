@@ -466,8 +466,10 @@ func subType(sub map[*TypeParm]Type, typ Type) Type {
 		copy.Ret = subType(sub, typ.Ret)
 		return &copy
 	case *TypeVar:
-		if s, ok := sub[typ.Def]; ok {
-			return s
+		if sub != nil {
+			if s, ok := sub[typ.Def]; ok {
+				return s
+			}
 		}
 		copy := *typ
 		return &copy

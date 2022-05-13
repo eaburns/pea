@@ -615,7 +615,10 @@ func eqType(a, b Type) bool {
 		return ok && a.Kind == b.Kind
 	case *TypeVar:
 		b, ok := b.(*TypeVar)
-		return ok && a.Def == b.Def
+		if !ok {
+			return false
+		}
+		return ok && (a.Def == nil && b.Def == nil && a.Name == b.Name || a.Def == b.Def)
 	default:
 		panic(fmt.Sprintf("impossible Type type: %T", a))
 	}
@@ -720,6 +723,7 @@ func copyTypeWithLoc(typ Type, l loc.Loc) Type {
 		}
 	case *DefType:
 		copy := *typ
+		copy.Args = append([]Type{}, typ.Args...) // copy the slice
 		for i := range copy.Args {
 			copy.Args[i] = copyTypeWithLoc(copy.Args[i], l)
 		}

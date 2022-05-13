@@ -422,6 +422,330 @@ func TestCommonPattern(t *testing.T) {
 	}
 }
 
+func TestPatternIntersection(t *testing.T) {
+	tests := []struct {
+		src  string
+		a    string
+		b    string
+		want string
+	}{
+		// Sub _ with all the different kinds of types.
+		{a: `_`, b: `_`, want: `_`},
+		{a: `_`, b: `int`, want: `int`},
+		{src: `type t int`, a: `_`, b: `t`, want: `t`},
+		{src: `type (T, U) t int`, a: `_`, b: `(int, string) t`, want: `(int, string) t`},
+		{a: `_`, b: `T`, want: `T`},
+		{a: `_`, b: `&int`, want: `&int`},
+		{a: `_`, b: `[int]`, want: `[int]`},
+		{a: `_`, b: `[.x int]`, want: `[.x int]`},
+		{a: `_`, b: `[x?]`, want: `[x?]`},
+		{a: `_`, b: `[x? int]`, want: `[x? int]`},
+		{a: `_`, b: `(int, string){float32}`, want: `(int, string){float32}`},
+
+		// Sub _ with all the different kinds of types, leading to recursive sub error.
+		{src: `type T t int`, a: `[.x _0, .y _0]`, b: `[.x _1 t, .y _1]`, want: ``},
+		{a: `[.x _0, .y _0]`, b: `[.x &_1, .y _1]`, want: ``},
+		{a: `[.x _0, .y _0]`, b: `[.x [_1], .y _1]`, want: ``},
+		{a: `[.x _0, .y _0]`, b: `[.x [.y _1], .y _1]`, want: ``},
+		{a: `[.x _0, .y _0]`, b: `[.x [y? _1], .y _1]`, want: ``},
+		{a: `[.x _0, .y _0]`, b: `[.x (_1){}, .y _1]`, want: ``},
+		{a: `[.x _0, .y _0]`, b: `[.x (){_1}, .y _1]`, want: ``},
+
+		// Sub into all different spots.
+		{a: `[.x int, .y _]`, b: `[.x _0, .y _0]`, want: `[.x int, .y int]`},
+		{a: `[.x int, .y _]`, b: `[.x _0, .y &_0]`, want: `[.x int, .y &int]`},
+		{src: `type T t int`, a: `[.x int, .y _]`, b: `[.x _0, .y _0 t]`, want: `[.x int, .y int t]`},
+		{a: `[.x int, .y _]`, b: `[.x _0, .y [_0]]`, want: `[.x int, .y [int]]`},
+		{a: `[.x int, .y _]`, b: `[.x _0, .y [.a _0]]`, want: `[.x int, .y [.a int]]`},
+		{a: `[.x int, .y _]`, b: `[.x _0, .y [a? _0]]`, want: `[.x int, .y [a? int]]`},
+		{a: `[.x int, .y _]`, b: `[.x _0, .y (_0){}]`, want: `[.x int, .y (int){}]`},
+		{a: `[.x int, .y _]`, b: `[.x _0, .y (){_0}]`, want: `[.x int, .y (){int}]`},
+		{a: `[.x int, .y _]`, b: `[.x _0, .y (_0, _0){_0}]`, want: `[.x int, .y (int, int){int}]`},
+
+		{a: `int`, b: `int`, want: `int`},
+		{a: `int`, b: `float32`, want: ``},
+		{a: `int`, b: `&int`, want: ``},
+		{a: `int`, b: `_`, want: `int`},
+		{a: `_`, b: `int`, want: `int`},
+
+		{src: `type t int 	type u string`, a: `t`, b: `t`, want: `t`},
+		{src: `type t int 	type u string`, a: `t`, b: `[int]`, want: ``},
+		{src: `type t int 	type u string`, a: `t`, b: `u`, want: ``},
+		{src: `type t int 	type u string`, a: `t`, b: `_`, want: `t`},
+		{src: `type t int 	type u string`, a: `_`, b: `u`, want: `u`},
+
+		{src: `type T t T`, a: `int t`, b: `int t`, want: `int t`},
+		{src: `type T t T`, a: `string t`, b: `int t`, want: ``},
+		{src: `type T t T`, a: `int t`, b: `_ t`, want: `int t`},
+		{src: `type T t T`, a: `_ t`, b: `int t`, want: `int t`},
+		{src: `type T t T`, a: `_ t`, b: `_ t`, want: `_ t`},
+		{src: `type T t T 	type U u U`, a: `int t`, b: `int u`, want: ``},
+		{src: `type T t T 	type U u U`, a: `_ t`, b: `int u`, want: ``},
+		{src: `type T t T 	type U u U`, a: `int t`, b: `_ u`, want: ``},
+		{src: `type T t T 	type U u U`, a: `_ t`, b: `_ u`, want: ``},
+
+		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(int, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(_, int) t`, b: `(int, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, _) t`, b: `(int, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(_, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(int, _) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(_, _) t`, b: `(int, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(_, _) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(_, int) t`, b: `(int, _) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, _) t`, b: `(_, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, _) t`, b: `(int, _) t`, want: `(int, _) t`},
+		{src: `type (T, U) t int`, a: `(_, int) t`, b: `(_, int) t`, want: `(_, int) t`},
+		{src: `type (T, U) t int`, a: `(_, _) t`, b: `(_, _) t`, want: `(_, _) t`},
+		{src: `type (T, U) t int`, a: `(_, string) t`, b: `(int, _) t`, want: `(int, string) t`},
+		{src: `type (T, U) t int`, a: `(int, string) t`, b: `(_, int) t`, want: ``},
+		{src: `type (T, U) t int`, a: `(int, _) t`, b: `(string, _) t`, want: ``},
+		{src: `type (T, U) t int`, a: `(_0, _0) t`, b: `(string, _) t`, want: `(string, string) t`},
+		{src: `type (T, U) t int`, a: `(_0, _0) t`, b: `(string, int) t`, want: ``},
+
+		{a: `T`, b: `T`, want: `T`},
+		{a: `T`, b: `U`, want: `T`},
+		{a: `T`, b: `int`, want: ``},
+		{a: `T`, b: `_`, want: `T`},
+		{a: `_`, b: `T`, want: `T`},
+
+		{a: `&int`, b: `&int`, want: `&int`},
+		{a: `&int`, b: `int`, want: ``},
+		{a: `&int`, b: `&float32`, want: ``},
+		{a: `&int`, b: `&_`, want: `&int`},
+		{a: `&_`, b: `&int`, want: `&int`},
+		{a: `&_`, b: `&_`, want: `&_`},
+
+		{a: `[int]`, b: `[int]`, want: `[int]`},
+		{a: `[int]`, b: `int`, want: ``},
+		{a: `[int]`, b: `string`, want: ``},
+		{a: `[int]`, b: `[_]`, want: `[int]`},
+		{a: `[_]`, b: `[int]`, want: `[int]`},
+		{a: `[_]`, b: `[_]`, want: `[_]`},
+
+		{a: `[.]`, b: `[.]`, want: `[.]`},
+		{a: `[.x int]`, b: `[.x int]`, want: `[.x int]`},
+		{a: `[.x int, .y string]`, b: `[.x int, .y string]`, want: `[.x int, .y string]`},
+		{a: `[.x int]`, b: `int`, want: ``},
+		{a: `[.x int]`, b: `[.x int, .y string]`, want: ``},
+		{a: `[.x int]`, b: `[.y int]`, want: ``},
+		{a: `[.x int]`, b: `[.x _]`, want: `[.x int]`},
+		{a: `[.x _]`, b: `[.x int]`, want: `[.x int]`},
+		{a: `[.x _]`, b: `[.x _]`, want: `[.x _]`},
+		{a: `[.x _, .y string]`, b: `[.x int, .y string]`, want: `[.x int, .y string]`},
+		{a: `[.x int, .y _]`, b: `[.x int, .y string]`, want: `[.x int, .y string]`},
+		{a: `[.x int, .y string]`, b: `[.x _, .y string]`, want: `[.x int, .y string]`},
+		{a: `[.x int, .y string]`, b: `[.x int, .y _]`, want: `[.x int, .y string]`},
+		{a: `[.x _, .y string]`, b: `[.x _, .y string]`, want: `[.x _, .y string]`},
+		{a: `[.x int, .y _]`, b: `[.x int, .y _]`, want: `[.x int, .y _]`},
+		{a: `[.x _, .y _]`, b: `[.x _, .y _]`, want: `[.x _, .y _]`},
+		{a: `[.x _, .y _]`, b: `[.x _]`, want: ``},
+		{a: `[.x _, .y int]`, b: `[.x _, .y string]`, want: ``},
+		{a: `[.x _, .y int]`, b: `[.x _, .y T]`, want: ``},
+		{a: `[.x _, .y T]`, b: `[.x _, .y string]`, want: ``},
+		{a: `[.x _, .y T]`, b: `[.x U, .y T]`, want: `[.x U, .y T]`},
+
+		{a: `[x?]`, b: `[x?]`, want: `[x?]`},
+		{a: `[x? float64]`, b: `[x? float64]`, want: `[x? float64]`},
+		{a: `[x? int, y?, z? string]`, b: `[x? int, y?, z? string]`, want: `[x? int, y?, z? string]`},
+		{a: `[x? float64, y?]`, b: `int`, want: ``},
+		{a: `[x? float64, y?]`, b: `[x? float64]`, want: ``},
+		{a: `[x? float64, y?]`, b: `[a? float64, y?]`, want: ``},
+		{a: `[x? float64, y?]`, b: `[x? float64, y? int]`, want: ``},
+		{a: `[x? float64, y? string]`, b: `[x? float64, y? int]`, want: ``},
+		{a: `[x? _, y?, z? string]`, b: `[x? int, y?, z? string]`, want: `[x? int, y?, z? string]`},
+		{a: `[x? int, y?, z? string]`, b: `[x? _, y?, z? string]`, want: `[x? int, y?, z? string]`},
+		{a: `[x? _, y?, z? string]`, b: `[x? int]`, want: ``},
+		{a: `[x? _, y?, z? string]`, b: `[x? int, y?, z? int]`, want: ``},
+		{a: `[x? _, y?, z? string]`, b: `[x? int, y? string, z? string]`, want: ``},
+		{a: `[x? _0, y? _0]`, b: `[x? int, y? _]`, want: `[x? int, y? int]`},
+		{a: `[x? _0, y? _0]`, b: `[x? _, y? int]`, want: `[x? int, y? int]`},
+		{a: `[x? _0, y? _0]`, b: `[x? string, y? int]`, want: ``},
+
+		{a: `(){}`, b: `(){}`, want: `(){}`},
+		{a: `(int){}`, b: `(int){}`, want: `(int){}`},
+		{a: `(){int}`, b: `(){int}`, want: `(){int}`},
+		{a: `(int){int}`, b: `(int){int}`, want: `(int){int}`},
+		{a: `(int, string){int}`, b: `(int, string){int}`, want: `(int, string){int}`},
+		{a: `(int, string){int}`, b: `int`, want: ``},
+		{a: `(int, string){int}`, b: `(int, string, float32){int}`, want: ``},
+		{a: `(int, string){int}`, b: `(string, int){int}`, want: ``},
+
+		{a: `(_, string){int}`, b: `(int, string){int}`, want: `(int, string){int}`},
+		{a: `(int, _){int}`, b: `(int, string){int}`, want: `(int, string){int}`},
+		{a: `(int, string){_}`, b: `(int, string){int}`, want: `(int, string){int}`},
+		{a: `(int, string){int}`, b: `(_, string){int}`, want: `(int, string){int}`},
+		{a: `(int, string){int}`, b: `(int, _){int}`, want: `(int, string){int}`},
+		{a: `(int, string){int}`, b: `(int, string){_}`, want: `(int, string){int}`},
+		{a: `(_, _){_}`, b: `(int, string){int}`, want: `(int, string){int}`},
+		{a: `(_, string){int}`, b: `(int, _){int}`, want: `(int, string){int}`},
+		{a: `(int, _){int}`, b: `(_, string){int}`, want: `(int, string){int}`},
+		{a: `(int, _){int}`, b: `(_){int}`, want: ``},
+		{a: `(int, _){int}`, b: `(string, int){int}`, want: ``},
+		{a: `(int, _){int}`, b: `(_, int){string}`, want: ``},
+		{a: `(_0, _0){int}`, b: `(int, _){int}`, want: `(int, int){int}`},
+		{a: `(_0, _0){_0}`, b: `(int, _){_}`, want: `(int, int){int}`},
+		{a: `(_0, _0){_0}`, b: `(_, int){_}`, want: `(int, int){int}`},
+		{a: `(_0, _0){_0}`, b: `(_, _){int}`, want: `(int, int){int}`},
+		{a: `(_0, _0){_0}`, b: `(string, int){int}`, want: ``},
+		{a: `(_0, _0){_0}`, b: `(int, string){int}`, want: ``},
+		{a: `(_0, _0){_0}`, b: `(int, int){string}`, want: ``},
+		{a: `(_0, _0){_1}`, b: `(int, int){string}`, want: `(int, int){string}`},
+
+		{a: `[.x _0, .y _0]`, b: `[.x _, .y int]`, want: `[.x int, .y int]`},
+		{a: `[.x _0, .y _0]`, b: `[.x _0, .y _0]`, want: `[.x _0, .y _0]`},
+		{a: `[.x _0, .y _0]`, b: `[.x _0, .y _1]`, want: `[.x _0, .y _0]`},
+		{a: `[.x _0, .y _1]`, b: `[.x _0, .y _0]`, want: `[.x _0, .y _0]`},
+		{a: `[.x _0, .y _1]`, b: `[.x _0, .y _1]`, want: `[.x _, .y _]`},
+		{a: `[.x _0, .y _0]`, b: `[.x int, .y int]`, want: `[.x int, .y int]`},
+		{a: `[.x _0, .y _0]`, b: `[.x string, .y int]`, want: ``},
+		{a: `[.x string, .y int]`, b: `[.x _0, .y _0]`, want: ``},
+		{a: `[.x int, .y int]`, b: `[.x _0, .y _0]`, want: `[.x int, .y int]`},
+		{a: `[.x _0, .y _0, .z int]`, b: `[.x string, .y _0, .z _0]`, want: ``},
+		{a: `[.x _0, .y _1, .z int]`, b: `[.x string, .y _0, .z _0]`, want: `[.x string, .y int, .z int]`},
+		{a: `[.x _0, .y _0, .z int]`, b: `[.x string, .y _1, .z _0]`, want: `[.x string, .y string, .z int]`},
+		{
+			a:    `[.a _0,     .b _0, .c _1, .d _1, .e _2, .f _2, .g int]`,
+			b:    `[.a string, .b _0, .c _0, .d _1, .e _1, .f _2, .g _2]`,
+			want: ``,
+		},
+		{
+			a:    `[.a _0, .b _0, .c _1, .d _1, .e int, .f _1]`,
+			b:    `[.a _0, .b _0, .c _1, .d _1, .e _0, .f string]`,
+			want: `[.a int, .b int, .c string, .d string, .e int, .f string]`,
+		},
+		{a: `[.x [.y [.z _]]]`, b: `[.x [.y [.z int]]]`, want: `[.x [.y [.z int]]]`},
+		{a: `[.x [.y [.z int]]]`, b: `[.x [.y [.z _]]]`, want: `[.x [.y [.z int]]]`},
+		{a: `[.x [.y [.z _]]]`, b: `[.x [.y [.z _]]]`, want: `[.x [.y [.z _]]]`},
+		{a: `[.x [.y [.z int]]]`, b: `[.x [.y _]]`, want: `[.x [.y [.z int]]]`},
+		{a: `[.x [.y [.z int]]]`, b: `[.x _]`, want: `[.x [.y [.z int]]]`},
+		{a: `[.x [.y [.z _]]]`, b: `[.x _]`, want: `[.x [.y [.z _]]]`},
+		{a: `[.x [.y [.z _]]]`, b: `_`, want: `[.x [.y [.z _]]]`},
+		{
+			a: `[.a _0, .x [.y [.z _0]]]`,
+			b: `[.a _1, .x _1]`,
+			// This would be recursive.
+			want: ``,
+		},
+		{
+			a: `[.a [.y [.z _0]], .x _0]`,
+			b: `[.a _1, .x _1]`,
+			// This would be recursive.
+			want: ``,
+		},
+		{
+			a: `[.a _0, .b [.y [.z _0]], .c _]`,
+			b: `[.a int, .b _2,              .c _2]`,
+			// Sub int into _0, and then into [.x [.z _0]] which was bound to _2.
+			want: `[.a int, .b [.y [.z int]], .c [.y [.z int]]]`,
+		},
+		{
+			a: `[.a _0, .b [.y [.z _1]], .c _1]`,
+			b: `[.a _2, .b _2,              .c int]`,
+			// Merge _0 and _2, then sub [.y. [.z _1]] for _2 (and _0),
+			// and then later sub int for _1.
+			want: `[.a [.y [.z int]], .b [.y [.z int]], .c int]`,
+		},
+		{
+			a:    `[.a _0,    .b [.x _1], .c _1, .d _2]`,
+			b:    `[.a _3,    .b _3,       .c int, .d _3]`,
+			want: `[.a [.x int], .b [.x int], .c int, .d [.x int]]`,
+		},
+
+		// Multi-step recursive substitution.
+		{
+			// _0 = [.x _10]
+			// _10 = [.x _1]
+			// _1 = [.x _11]
+			// _11 = [.x _0]
+			a: `[.a _0,		.b [.x _1],	.c _1,		.d [.x _0]]`,
+			b: `[.a [.x _10],	.b _10,	.c [.x _11],	.d _11]`,
+			want: ``,
+		},
+	}
+	for _, test := range tests {
+		t.Run("intersect("+test.a+", "+test.b+")", func(t *testing.T) {
+			mod, errs := check("test", []string{test.src}, nil)
+			if len(errs) > 0 {
+				t.Fatalf("failed to parse and check: %s", errs[0])
+			}
+			a, err := parseTestPattern(t, mod, test.a)
+			if err != nil {
+				t.Fatalf("failed to parse type pattern %s: %s", test.a, err)
+			}
+			b, err := parseTestPattern(t, mod, test.b)
+			if err != nil {
+				t.Fatalf("failed to parse type pattern %s: %s", test.b, err)
+			}
+
+			// Given unique names.
+			for i := range a.parms {
+				a.parms[i].Name = fmt.Sprintf("A%d", i)
+			}
+			copyTypeParmNamesToVars(a.typ)
+			for i := range b.parms {
+				b.parms[i].Name = fmt.Sprintf("B%d", i)
+			}
+			copyTypeParmNamesToVars(b.typ)
+
+			switch isect, bind, note := intersection(a, b); {
+			case test.want == "" && isect != nil:
+				t.Fatalf("intersect(%s, %s)=%s, want nil", test.a, test.b, isect)
+			case test.want == "":
+				return // OK
+			case test.want != "" && isect == nil:
+				var n string
+				if note != nil {
+					n = " (" + note.(*_error).msg + ")"
+				}
+				t.Fatalf("intersect(%s, %s)=nil%s, want %s", test.a, test.b, n, test.want)
+			case test.want != "" && isect.String() != test.want:
+				t.Fatalf("intersect(%s, %s)=%s, want %s", test.a, test.b, isect, test.want)
+			default:
+				if aPrime := subType(bind, a.typ); !eqType(aPrime, isect.typ) {
+					t.Errorf("sub(bind, %s)=%s, want %s", a.typ, aPrime, isect.typ)
+				}
+				if bPrime := subType(bind, b.typ); !eqType(bPrime, isect.typ) {
+					t.Errorf("sub(bind, %s)=%s, want %s", b.typ, bPrime, isect.typ)
+				}
+			}
+		})
+	}
+}
+
+func copyTypeParmNamesToVars(t Type) {
+	switch t := t.(type) {
+	case *DefType:
+		for i := range t.Args {
+			copyTypeParmNamesToVars(t.Args[i])
+		}
+	case *RefType:
+		copyTypeParmNamesToVars(t.Type)
+	case *ArrayType:
+		copyTypeParmNamesToVars(t.ElemType)
+	case *StructType:
+		for i := range t.Fields {
+			copyTypeParmNamesToVars(t.Fields[i].Type)
+		}
+	case *UnionType:
+		for i := range t.Cases {
+			copyTypeParmNamesToVars(t.Cases[i].Type)
+		}
+	case *FuncType:
+		for i := range t.Parms {
+			copyTypeParmNamesToVars(t.Parms[i])
+		}
+		copyTypeParmNamesToVars(t.Ret)
+	case *TypeVar:
+		if t.Def != nil {
+			t.Name = t.Def.Name
+		}
+	case *BasicType:
+	case nil:
+	default:
+		panic(fmt.Sprintf("bad type type: %T", t))
+	}
+}
+
 func TestPatternUnify(t *testing.T) {
 	tests := []struct {
 		src  string
