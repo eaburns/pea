@@ -443,7 +443,8 @@ func subType(sub map[*TypeParm]Type, typ Type) Type {
 		copy.ElemType = subType(sub, typ.ElemType)
 		return &copy
 	case *StructType:
-		var copy StructType
+		copy := *typ
+		copy.Fields = nil
 		for i := range typ.Fields {
 			f := typ.Fields[i]
 			f.Type = subType(sub, f.Type)
@@ -451,7 +452,8 @@ func subType(sub map[*TypeParm]Type, typ Type) Type {
 		}
 		return &copy
 	case *UnionType:
-		var copy UnionType
+		copy := *typ
+		copy.Cases = nil
 		for i := range typ.Cases {
 			c := typ.Cases[i]
 			c.Type = subType(sub, c.Type)
@@ -459,7 +461,8 @@ func subType(sub map[*TypeParm]Type, typ Type) Type {
 		}
 		return &copy
 	case *FuncType:
-		var copy FuncType
+		copy := *typ
+		copy.Parms = nil
 		for _, p := range typ.Parms {
 			copy.Parms = append(copy.Parms, subType(sub, p))
 		}
