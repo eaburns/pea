@@ -51,6 +51,13 @@ func (pat typePattern) withType(typ Type) typePattern {
 	return pat
 }
 
+// instType returns the type in the definition of a defined type type pattern,
+// substituted with the type arguments of the defined type.
+// instType panics if pat is not a defined type type pattern.
+func (pat typePattern) instType() typePattern {
+	return pat.withType(pat.typ.(*DefType).Inst.Type)
+}
+
 // typeArg returns the type argument type of a defined type type pattern;
 // panics if pat is not a defined type type pattern.
 func (pat typePattern) typeArg(i int) typePattern {
@@ -566,21 +573,184 @@ func unifyStrict(pat typePattern, typ Type, bind map[*TypeParm]Type) bool {
 	}
 }
 
+// convertType converts src to dst and returns the map of any bound type parameters.
+func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, Error) {
+	var bind map[*TypeParm]Type
+	if cvt, notes := _convert(nil, src, dst, explicit, &bind); cvt == nil {
+		err := newError(src.typ, "cannot convert %s to %s", src, dst)
+		err.setNotes(notes)
+		return nil, err
+	}
+	return bind, nil
+}
+
+// convertExpr returns the expression resulting from converting expr to the given type pattern.
+func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, Error) {
+	if expr.Type() == nil {
+		return expr, nil
+	}
+
+	var unused map[*TypeParm]Type
+	cvt, notes := _convert(nil, pattern(expr.Type()), dst, explicit, &unused)
+	if cvt == nil {
+		goto fail
+	}
+	if src, ok := expr.(*Convert); ok && !explicit && src.Explicit && !eqType(src.Type(), cvt.Type()) {
+		// If the src expression is an explicit convert,
+		// and this is an implicit convert,
+		// it is an error if the types are not equal.
+		goto fail
+	}
+	// Set the L and Explicit fields;
+	for p := cvt; p != nil; p, _ = p.Expr.(*Convert) {
+		p.L = expr.Loc()
+		p.Explicit = explicit
+
+		if p.Kind == Ref {
+			// Two cases, either p.Expr == nil or p.Expr != nil.
+			// If p.Expr != nil, then it must not be a Deref,
+			// since _convert fixes those, so it's an error.
+			// If p.Expr==nil, then we need to check expr.
+			if p.Expr != nil {
+				goto fail
+			}
+			if src, ok := expr.(*Convert); !ok || src.Kind != Deref {
+				// It is currently an error for convertExpr to generate a Ref conversion.
+				// TODO: implement Ref conversion, and ditch this error.
+				goto fail
+			} else {
+				p.Kind = Noop
+				p.Expr = src.Expr
+				if src.Expr == nil {
+					// TODO: we should never have a nil expr
+					return cvt, nil
+				}
+				break
+			}
+		}
+		if p.Expr == nil {
+			p.Expr = expr
+			break
+		}
+	}
+	if cvt.Kind == Noop && !cvt.Explicit && eqType(cvt.Expr.Type(), cvt.Type()) {
+		// If this is an implicit no-op that isn't changing the type, just pop it off.
+		return cvt.Expr, nil
+	}
+	return cvt, nil
+fail:
+	err := newError(expr, "cannot convert %s (%s) to %s", expr, expr.Type(), dst)
+	err.setNotes(notes)
+	return expr, err
+}
+
+// _convert returns a chain of *Convert nodes giving the conversion from src to dst.
+// The returned *Converts have only the kind, T, and Expr fields set.
+//
+// The bind parameter is a pointer to a map from type parameters to their bound types.
+// The pointed-to map may be a nil map (the pointer itself must not be nil).
+// If any type parameters are bound, _convert will first allocate a map if the map is nil,
+// and it will add the new bindings to the map.
+//
+// If the conversion fails, the returned notes slice may be non-empty
+// if there is extra information to explain why the conversion failed.
+func _convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeParm]Type) (*Convert, []note) {
+	switch {
+	case eqType(src.typ, dst.typ):
+		return conversion(cvt, Noop, dst.typ), nil
+
+	case isEmptyStruct(dst.typ):
+		return conversion(cvt, Drop, _empty), nil
+
+	case explicit && isRefLiteral(src.typ) && isUintRef(dst.typ):
+		return conversion(cvt, NumConvert, dst.typ), nil
+
+	case explicit && isBasicNum(src.typ) && isBasicNum(dst.typ) && !isUintRef(dst.typ):
+		return conversion(cvt, NumConvert, dst.typ), nil
+
+	case explicit && isByteArray(src.typ) && isStringType(dst.typ):
+		return conversion(cvt, StrConvert, dst.typ), nil
+
+	case (explicit || isLiteralType(dst.typ)) && isDefinedType(src.typ):
+		cvt = conversion(cvt, Noop, src.instType().typ)
+		return _convert(cvt, src.instType(), dst, explicit, bind)
+
+	case (explicit || isLiteralType(src.typ)) && isDefinedType(dst.typ):
+		cvt, notes := _convert(cvt, src, dst.instType(), explicit, bind)
+		if cvt == nil {
+			return nil, notes
+		}
+		return conversion(cvt, Noop, subType(*bind, dst.typ)), nil
+
+	// isUnionSubsetConvertible checks that both are literal unions
+	// and dst is a strict superset.
+	// It takes dst as the first argument and src as the second.
+	// TODO: make isUnionSubsetConvertible more intuitive.
+	// TODO: make union conversion need to be explicit
+	case isUnionSubsetConvertible(dst.typ, src.typ):
+		return conversion(cvt, UnionConvert, dst.typ), nil
+
+	case isRefLiteral(src.typ):
+		cvt = conversion(cvt, Deref, src.refElem().typ)
+		return _convert(cvt, src.refElem(), dst, explicit, bind)
+
+	case isRefLiteral(dst.typ):
+		cvt, notes := _convert(cvt, src, dst.refElem(), explicit, bind)
+		if cvt == nil {
+			return nil, notes
+		}
+		return conversion(cvt, Ref, subType(*bind, dst.typ)), nil
+
+	default:
+		isect, n := intersection(src, dst, bind)
+		if isect == nil {
+			if n == nil {
+				return nil, nil
+			}
+			return nil, []note{n}
+		}
+		return conversion(cvt, Noop, isect.typ), nil
+	}
+}
+
+func conversion(cvt *Convert, kind ConvertKind, typ Type) *Convert {
+	switch {
+	case cvt == nil:
+		return &Convert{Kind: kind, Expr: nil, T: typ}
+	case kind == Ref && cvt.Kind == Deref:
+		// Pop-off the implicit Deref.
+		cvt, _ = cvt.Expr.(*Convert) // allow nil
+		return conversion(cvt, Noop, typ)
+	case kind == Noop:
+		// Drop this Noop and change the type of the incoming Convert.
+		cvt.T = typ
+		return cvt
+	case cvt.Kind == Noop:
+		// Just reuse the incoming Noop Convert.
+		cvt.Kind = kind
+		cvt.T = typ
+		return cvt
+	default:
+		return &Convert{Kind: kind, Expr: cvt, T: typ}
+	}
+}
+
 // intersection returns the intersection of two type patterns or nil if there intersection is empty.
 //
-// If the intersection is not empty, the second return value
-// is a map from the type parameters in a and b to the corresponding types in the intersection.
-// The map may be nil. This indicates no type parameters were substituted.
+// The bind parameter is a pointer to a map from type parameters to their bound types.
+// The pointed-to map may be a nil map (the pointer itself must not be nil).
+// If any type parameters are bound, intersection will first allocate a map if the map is nil,
+// and it will add the new bindings to the map.
 //
-// If the intersection is empty, the third return may be non-nil
+// If the intersection is empty returned notes may be non-nil
 // if there is a note to give more information as to why.
-func intersection(a, b typePattern) (*typePattern, map[*TypeParm]Type, note) {
+func intersection(a, b typePattern, bind *map[*TypeParm]Type) (*typePattern, note) {
 	if len(a.parms) == 0 && len(b.parms) == 0 {
 		// Fast-path the common case of checking two types.
 		if !eqType(a.typ, b.typ) {
-			return nil, nil, nil
+			return nil, nil
 		}
-		return &a, nil, nil
+		return &a, nil
 	}
 
 	// Make a set for each type parameter,
@@ -594,13 +764,13 @@ func intersection(a, b typePattern) (*typePattern, map[*TypeParm]Type, note) {
 		sets.find(b.parms[i])
 	}
 	if !unionSets(&sets, a, b) {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// Find the unique binding for each type parameter set.
 	// If there are multiple bindings, it's an error (note).
 	if note := bindSets(&sets, a, b); note != nil {
-		return nil, nil, note
+		return nil, note
 	}
 	var parms []*TypeParm
 	for _, parm := range sets.setSlice {
@@ -616,21 +786,23 @@ func intersection(a, b typePattern) (*typePattern, map[*TypeParm]Type, note) {
 	// If the substitution would create infinite recursion, it's an error (note).
 	// Also establish a mapping for each type parameter in the input types
 	// to their ultimate substitution.
-	bind := make(map[*TypeParm]Type)
+	if *bind == nil {
+		*bind = make(map[*TypeParm]Type)
+	}
 	for _, parm := range sets.setSlice {
 		s := sets.find(parm)
 		if !s.substituted {
 			sub, note := subSets(&sets, make(map[*set]bool), nil, s.bind)
 			if sub == nil {
-				return nil, nil, note
+				return nil, note
 			}
 			s.bind = sub
 			s.substituted = true
 		}
-		bind[parm] = s.bind
+		(*bind)[parm] = s.bind
 	}
-	isect := &typePattern{parms: parms, typ: subType(bind, a.typ)}
-	return isect, bind, nil
+	isect := &typePattern{parms: parms, typ: subType(*bind, a.typ)}
+	return isect, nil
 }
 
 func unionSets(sets *disjointSets, a, b typePattern) bool {

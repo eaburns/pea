@@ -549,6 +549,8 @@ func (c ConvertKind) String() string {
 		return "Drop"
 	case Deref:
 		return "Deref"
+	case Ref:
+		return "Ref"
 	case NumConvert:
 		return "NumConvert"
 	case StrConvert:

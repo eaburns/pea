@@ -448,6 +448,12 @@ const (
 	// Deref is a dereference conversion.
 	Deref
 
+	// Ref is a reference conversion.
+	// Currently this is only used as a return from convert
+	// in the case that the expr is nil.
+	// This is never returned by a call to Check.
+	Ref
+
 	// StrConvert is a conversion from [int8] to string.
 	StrConvert
 

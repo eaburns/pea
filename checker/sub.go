@@ -424,6 +424,9 @@ func (f *FloatLit) subExpr(bindings bindings) Expr {
 }
 
 func subType(sub map[*TypeParm]Type, typ Type) Type {
+	if sub == nil {
+		return typ
+	}
 	switch typ := typ.(type) {
 	case nil:
 		return nil
