@@ -741,7 +741,7 @@ func TestConvert(t *testing.T) {
 				t.Fatalf("failed to parse type pattern %s: %s", test.dst, err)
 			}
 			var bind map[*TypeParm]Type
-			cvt, _ := _convert(nil, src, dst, test.explicit, &bind)
+			cvt, _ := convert(nil, src, dst, test.explicit, &bind)
 			if cvt == nil {
 				if len(test.want) != 0 {
 					t.Fatalf("convert(%s, %s, %v)=nil, want %v",

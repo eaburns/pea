@@ -576,7 +576,7 @@ func unifyStrict(pat typePattern, typ Type, bind map[*TypeParm]Type) bool {
 // convertType converts src to dst and returns the map of any bound type parameters.
 func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, Error) {
 	var bind map[*TypeParm]Type
-	if cvt, notes := _convert(nil, src, dst, explicit, &bind); cvt == nil {
+	if cvt, notes := convert(nil, src, dst, explicit, &bind); cvt == nil {
 		err := newError(src.typ, "cannot convert %s to %s", src, dst)
 		err.setNotes(notes)
 		return nil, err
@@ -591,7 +591,7 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, Error) {
 	}
 
 	var unused map[*TypeParm]Type
-	cvt, notes := _convert(nil, pattern(expr.Type()), dst, explicit, &unused)
+	cvt, notes := convert(nil, pattern(expr.Type()), dst, explicit, &unused)
 	if cvt == nil {
 		goto fail
 	}
@@ -609,7 +609,7 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, Error) {
 		if p.Kind == Ref {
 			// Two cases, either p.Expr == nil or p.Expr != nil.
 			// If p.Expr != nil, then it must not be a Deref,
-			// since _convert fixes those, so it's an error.
+			// since convert fixes those, so it's an error.
 			// If p.Expr==nil, then we need to check expr.
 			if p.Expr != nil {
 				goto fail
@@ -644,17 +644,17 @@ fail:
 	return expr, err
 }
 
-// _convert returns a chain of *Convert nodes giving the conversion from src to dst.
+// convert returns a chain of *Convert nodes giving the conversion from src to dst.
 // The returned *Converts have only the kind, T, and Expr fields set.
 //
 // The bind parameter is a pointer to a map from type parameters to their bound types.
 // The pointed-to map may be a nil map (the pointer itself must not be nil).
-// If any type parameters are bound, _convert will first allocate a map if the map is nil,
+// If any type parameters are bound, convert will first allocate a map if the map is nil,
 // and it will add the new bindings to the map.
 //
 // If the conversion fails, the returned notes slice may be non-empty
 // if there is extra information to explain why the conversion failed.
-func _convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeParm]Type) (*Convert, []note) {
+func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeParm]Type) (*Convert, []note) {
 	switch {
 	case eqType(src.typ, dst.typ):
 		return conversion(cvt, Noop, dst.typ), nil
@@ -673,10 +673,10 @@ func _convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*Type
 
 	case (explicit || isLiteralType(dst.typ)) && isDefinedType(src.typ):
 		cvt = conversion(cvt, Noop, src.instType().typ)
-		return _convert(cvt, src.instType(), dst, explicit, bind)
+		return convert(cvt, src.instType(), dst, explicit, bind)
 
 	case (explicit || isLiteralType(src.typ)) && isDefinedType(dst.typ):
-		cvt, notes := _convert(cvt, src, dst.instType(), explicit, bind)
+		cvt, notes := convert(cvt, src, dst.instType(), explicit, bind)
 		if cvt == nil {
 			return nil, notes
 		}
@@ -692,10 +692,10 @@ func _convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*Type
 
 	case isRefLiteral(src.typ):
 		cvt = conversion(cvt, Deref, src.refElem().typ)
-		return _convert(cvt, src.refElem(), dst, explicit, bind)
+		return convert(cvt, src.refElem(), dst, explicit, bind)
 
 	case isRefLiteral(dst.typ):
-		cvt, notes := _convert(cvt, src, dst.refElem(), explicit, bind)
+		cvt, notes := convert(cvt, src, dst.refElem(), explicit, bind)
 		if cvt == nil {
 			return nil, notes
 		}

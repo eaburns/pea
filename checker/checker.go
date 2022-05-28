@@ -873,7 +873,7 @@ func checkAndConvertExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr
 	if expr == nil || !pat.isGroundType() {
 		return expr, errs
 	}
-	expr, err := convert(expr, pat.groundType(), false)
+	expr, err := convertExpr(expr, pat, false)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -906,7 +906,7 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat typePatt
 			expr, es = checkExpr(x, parserExpr, pat)
 			if expr != nil && !isBuiltin(expr, Panic) && !isBuiltin(expr, Return) {
 				var err Error
-				if expr, err = convert(expr, pat.groundType(), false); err != nil {
+				if expr, err = convertExpr(expr, pat, false); err != nil {
 					es = append(es, err)
 				}
 			}
@@ -980,27 +980,6 @@ func newLocalAssign(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Exp
 		L: id.L,
 	}
 	return local, assign, errs
-}
-
-func convert(expr Expr, typ Type, explicit bool) (Expr, Error) {
-	if typ == nil {
-		return expr, nil
-	}
-	return convertExpr(expr, pattern(typ), explicit)
-}
-
-func unionConvert(expr Expr, typ Type, explicit bool) Expr {
-	if unionLit, ok := expr.(*UnionLit); ok {
-		unionLit.T = typ
-		return unionLit
-	}
-	return &Convert{
-		Kind:     UnionConvert,
-		Explicit: explicit,
-		Expr:     expr,
-		T:        typ,
-		L:        expr.Loc(),
-	}
 }
 
 func checkCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []Error) {
@@ -1089,8 +1068,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	fun := useFunc(x, parserCall.L, funcs[0])
 	ret := fun.ret().groundType()
 	for i, arg := range args {
-		p := fun.parm(i).groundType()
-		args[i], _ = convert(arg, p, false)
+		args[i], _ = convertExpr(arg, fun.parm(i), false)
 	}
 	var expr Expr = &Call{
 		Func: fun,
@@ -1289,14 +1267,12 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 				continue
 			}
 		}
-		parmType := f.parm(i).groundType()
-		if _, err := convert(arg, parmType, false); err == nil {
-			funcs[n] = f
-			n++
+		if _, err := convertExpr(arg, f.parm(i), false); err != nil {
+			notes = append(notes, err.(*_error))
 			continue
 		}
-		notes = append(notes, newNote("%s: cannot convert %s (%s) to %s",
-			f, arg, arg.Type(), parmType).setLoc(parmType))
+		funcs[n] = f
+		n++
 	}
 	return funcs[:n], notes
 }
@@ -1397,11 +1373,11 @@ func ambiguousCall(name string, funcs []Func, l loc.Loc) Error {
 // can implicitly convert to the dst type.
 func canImplicitConvert(src, dst Type) bool {
 	/*
-		This works by calling convert()
+		This works by calling convertExpr()
 		on a Deref expression of the src type
 		to the dst type.
 		Deref allows for &-conversion,
-		which works in convert()
+		which works in convertExpr()
 		by looking for and pealing off
 		a top-level Deref expression.
 
@@ -1439,7 +1415,7 @@ func canImplicitConvert(src, dst Type) bool {
 	// Our dummy node needs a non-zero loc,
 	// since errors can only be created with a non-zero loc.
 	// We are going to ignore the error, so any non-zero loc works.
-	_, err := convert(&Convert{Kind: Deref, T: src, L: someNonZeroLoc}, dst, false)
+	_, err := convertExpr(&Convert{Kind: Deref, T: src, L: someNonZeroLoc}, pattern(dst), false)
 	return err == nil
 }
 
@@ -1538,7 +1514,7 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, pat typePattern, i
 		var n int
 		for _, id := range ids {
 			expr := idToExpr(id, parserID.L)
-			if _, err := convert(expr, pat.groundType(), false); err != nil {
+			if _, err := convertExpr(expr, pat, false); err != nil {
 				n := newNote("cannot convert %s (%s) to %s", expr, expr.Type(), pat.groundType()).setLoc(expr)
 				notFoundNotes = append(notFoundNotes, n)
 				continue
@@ -1668,7 +1644,7 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 		L: l,
 	}
 	local := deref(&Local{Def: localDef, T: refLiteral(localDef.T), L: l})
-	result, err := convert(local, wantRet, false)
+	result, err := convertExpr(local, pattern(wantRet), false)
 	if err != nil {
 		panic(fmt.Sprintf("impossible: %s", err))
 	}
@@ -1748,13 +1724,27 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	// Here we do the implicit conversion,
 	// and stick a Noop conversion node on top of it
 	// to track that it was requested explicitly.
-	expr, err := convert(expr, typ, true)
+	expr, err := convertExpr(expr, pattern(typ), true)
 	if err != nil {
 		errs = append(errs, err)
 	}
 	cvt.Expr = expr
 	cvt.Kind = Noop
 	return cvt, errs
+}
+
+func unionConvert(expr Expr, typ Type, explicit bool) Expr {
+	if unionLit, ok := expr.(*UnionLit); ok {
+		unionLit.T = typ
+		return unionLit
+	}
+	return &Convert{
+		Kind:     UnionConvert,
+		Explicit: explicit,
+		Expr:     expr,
+		T:        typ,
+		L:        expr.Loc(),
+	}
 }
 
 // checkArrayLit checks an array literal.
