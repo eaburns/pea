@@ -984,79 +984,9 @@ func newLocalAssign(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Exp
 
 func convert(expr Expr, typ Type, explicit bool) (Expr, Error) {
 	if typ == nil {
-		panic("convert to no type")
-	}
-	if expr == nil || expr.Type() == nil {
 		return expr, nil
 	}
-	srcType := expr.Type()
-	dstType := typ
-
-	if convert, ok := expr.(*Convert); !explicit && ok && convert.Explicit {
-		if eqType(srcType, dstType) {
-			return expr, nil
-		}
-		return expr, newError(expr, "cannot convert %s (%s) to type %s",
-			expr, expr.Type(), typ)
-	}
-
-	if isEmptyStruct(dstType) && !isEmptyStruct(srcType) {
-		return &Convert{
-			Kind:     Drop,
-			Explicit: explicit,
-			Expr:     expr,
-			T:        dstType,
-			L:        expr.Loc(),
-		}, nil
-	}
-
-	if isLiteralType(srcType) {
-		if dstLitType := literalType(dstType); dstLitType != nil {
-			dstType = dstLitType
-		}
-		if isUnionSubsetConvertible(dstType, srcType) {
-			// Only consider union convert if the valpe types are not equal;
-			// if they are equal, then a noop convert is fine.
-			if !eqType(valueType(srcType), valueType(dstType)) {
-				return unionConvert(expr, typ, explicit), nil
-			}
-		}
-	} else if isLiteralType(dstType) {
-		if srcLitType := literalType(srcType); srcLitType != nil {
-			srcType = srcLitType
-		}
-		if isUnionSubsetConvertible(dstType, srcType) {
-			// Only consider union convert if the valpe types are not equal;
-			// if they are equal, then a noop convert is fine.
-			if !eqType(valueType(srcType), valueType(dstType)) {
-				return unionConvert(expr, typ, explicit), nil
-			}
-		}
-	}
-
-	srcValueType := valueType(srcType)
-	dstValueType := valueType(dstType)
-	if !eqType(dstValueType, srcValueType) {
-		return expr, newError(expr, "cannot convert %s (%s) to type %s",
-			expr, expr.Type(), typ)
-	}
-
-	expr0 := expr
-	srcRefDepth, dstRefDepth := refDepth(srcType), refDepth(dstType)
-	for srcRefDepth < dstRefDepth {
-		convert, ok := expr.(*Convert)
-		if !ok || convert.Kind != Deref {
-			return expr0, newError(expr0, "cannot convert %s (%s) to type %s",
-				expr0, expr0.Type(), typ)
-		}
-		expr = convert.Expr
-		srcRefDepth++
-	}
-	for dstRefDepth < srcRefDepth {
-		expr = deref(expr)
-		srcRefDepth--
-	}
-	return expr, nil
+	return convertExpr(expr, pattern(typ), explicit)
 }
 
 func unionConvert(expr Expr, typ Type, explicit bool) Expr {
@@ -1365,7 +1295,7 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 			n++
 			continue
 		}
-		notes = append(notes, newNote("%s: cannot convert %s (%s) to type %s",
+		notes = append(notes, newNote("%s: cannot convert %s (%s) to %s",
 			f, arg, arg.Type(), parmType).setLoc(parmType))
 	}
 	return funcs[:n], notes
@@ -1609,7 +1539,7 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, pat typePattern, i
 		for _, id := range ids {
 			expr := idToExpr(id, parserID.L)
 			if _, err := convert(expr, pat.groundType(), false); err != nil {
-				n := newNote("cannot convert %s (%s) to type %s", expr, expr.Type(), pat.groundType()).setLoc(expr)
+				n := newNote("cannot convert %s (%s) to %s", expr, expr.Type(), pat.groundType()).setLoc(expr)
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}

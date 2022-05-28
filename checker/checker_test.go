@@ -866,7 +866,7 @@ func TestCheckFuncScope(t *testing.T) {
 					return: x
 				}
 			`,
-			err: "cannot convert x \\(int\\) to type string",
+			err: "cannot convert x \\(int\\) to string",
 		},
 		// Local can't shadow a module level variable,
 		// because a local cannot be defined if the identifier
@@ -878,7 +878,7 @@ func TestCheckFuncScope(t *testing.T) {
 					return: x
 				}
 			`,
-			err: "cannot convert x \\(int\\) to type \\(\\){}",
+			err: "cannot convert x \\(int\\) to \\(\\){}",
 		},
 		{
 			name: "local shadows interface func",
@@ -888,7 +888,7 @@ func TestCheckFuncScope(t *testing.T) {
 					return: x
 				}
 			`,
-			err: "cannot convert x \\(int\\) to type \\(\\){}",
+			err: "cannot convert x \\(int\\) to \\(\\){}",
 		},
 	}
 	for _, test := range tests {
@@ -1086,7 +1086,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				func f(x int) { uintref :: x }
 			`,
-			err: "cannot convert x \\(int\\) to type uintref",
+			err: "cannot convert x \\(int\\) to uintref",
 		},
 		{
 			// We can convert a reference to x, however.
@@ -1264,7 +1264,7 @@ func TestConversions(t *testing.T) {
 				type a_or_b [a?, b? int]
 				func f(x [c? float32]) { a_or_b :: x }
 			`,
-			err: `cannot convert x \(\[c\? float32\]\) to type a_or_b`,
+			err: `cannot convert x \(\[c\? float32\]\) to a_or_b`,
 		},
 		{
 			name: "union subset conversion fails case type mismatch",
@@ -1272,7 +1272,7 @@ func TestConversions(t *testing.T) {
 				type a_or_b [a?, b? int]
 				func f(x [b? float32]) { a_or_b :: x }
 			`,
-			err: `cannot convert x \(\[b\? float32\]\) to type a_or_b`,
+			err: `cannot convert x \(\[b\? float32\]\) to a_or_b`,
 		},
 		{
 			name: "union subset conversion fails typed untyped case mismatch 1",
@@ -1280,7 +1280,7 @@ func TestConversions(t *testing.T) {
 				type a_or_b [a?, b? int]
 				func f(x [b?]) { a_or_b :: x }
 			`,
-			err: `cannot convert x \(\[b\?\]\) to type a_or_b`,
+			err: `cannot convert x \(\[b\?\]\) to a_or_b`,
 		},
 		{
 			name: "union subset conversion fails typed untyped case mismatch 2",
@@ -1288,7 +1288,7 @@ func TestConversions(t *testing.T) {
 				type a_or_b [a?, b? int]
 				func f(x [a? int]) { a_or_b :: x }
 			`,
-			err: `cannot convert x \(\[a\? int\]\) to type a_or_b`,
+			err: `cannot convert x \(\[a\? int\]\) to a_or_b`,
 		},
 		{
 			name: "union subset conversion fails superset",
@@ -1296,7 +1296,7 @@ func TestConversions(t *testing.T) {
 				type a_or_b [a?, b? int]
 				func f(x [a?, b? int, c?]) { a_or_b :: x }
 			`,
-			err: `cannot convert x \(\[a\?, b\? int, c\?\]\) to type a_or_b`,
+			err: `cannot convert x \(\[a\?, b\? int, c\?\]\) to a_or_b`,
 		},
 		{
 			name: "union subset conversion fails reference",
@@ -1304,7 +1304,7 @@ func TestConversions(t *testing.T) {
 				type a_or_b [a?, b? int]
 				func f(x &[a?]) { &a_or_b :: x }
 			`,
-			err: `cannot convert x \(&\[a\?\]\) to type &a_or_b`,
+			err: `cannot convert x \(&\[a\?\]\) to &a_or_b`,
 		},
 		{
 			name: "union subset conversion fails for non-literals",
@@ -1315,7 +1315,7 @@ func TestConversions(t *testing.T) {
 				// because none of the types are literal.
 				func f(x a) { y := a_or_b :: [a?], y := x }
 			`,
-			err: `cannot convert x \(a\) to type a_or_b`,
+			err: `cannot convert x \(a\) to a_or_b`,
 		},
 		{
 			name: "union subset conversion for non-literals ok if explicit",
@@ -1376,7 +1376,7 @@ func TestConversions(t *testing.T) {
 				type bar string
 				func f(x foo) bar {return: x}
 			`,
-			err: `cannot convert x \(foo\) to type bar`,
+			err: `cannot convert x \(foo\) to bar`,
 		},
 		{
 			name: "explicit conversion to defined type",
@@ -1432,7 +1432,7 @@ func TestConversions(t *testing.T) {
 				type bar string
 				func f(x foo) &bar {return: x}
 			`,
-			err: `cannot convert x \(foo\) to type &bar`,
+			err: `cannot convert x \(foo\) to &bar`,
 		},
 		{
 			name: "explicit conversion to defined reference type",
@@ -1825,7 +1825,7 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "func x() int",
 			call: "x()",
 			ret:  "string",
-			err:  `cannot convert x\(\) \(int\) to type string`,
+			err:  `cannot convert x\(\) \(int\) to string`,
 		},
 		{
 			name: "expected return type mismatch, multiple candidates",
@@ -2056,7 +2056,7 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "point_var.y",
 			ret:  "string",
-			err:  `cannot convert .* \(float64\) to type string`,
+			err:  `cannot convert .* \(float64\) to string`,
 		},
 		{
 			name: "built-in selector mismatches, but func def matches",
@@ -2285,7 +2285,7 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "make() a? () {1} ",
 			ret:  "int",
-			err:  `cannot convert .* \(\[\.\]\) to type int`,
+			err:  `cannot convert .* \(\[\.\]\) to int`,
 		},
 		{
 			name: "built-in switch not a union type",
@@ -2369,7 +2369,7 @@ func TestOverloadResolution(t *testing.T) {
 				var point_a_var point_a
 			`,
 			call: "f(point_a_var)",
-			err:  `cannot convert point_a_var \(point_a\) to type point_b`,
+			err:  `cannot convert point_a_var \(point_a\) to point_b`,
 		},
 		{
 			name: "convert defined to literal type",
@@ -2452,20 +2452,20 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "type byte_array_ref &[int8]",
 			call: "new(5, 0)",
 			ret:  "byte_array_ref",
-			err:  `cannot convert .* \(\[int\]\) to type byte_array_ref`,
+			err:  `cannot convert .* \(\[int\]\) to byte_array_ref`,
 		},
 		{
 			name: "built-in new array, expected non-array type",
 			call: "new(5, 0)",
 			ret:  "string",
-			err:  `cannot convert .* \(\[int\]\) to type string`,
+			err:  `cannot convert .* \(\[int\]\) to string`,
 		},
 		{
 			name: "built-in new array, expected non-array def type",
 			src:  "type test_type [.x int]",
 			call: "new(5, 0)",
 			ret:  "test_type",
-			err:  `cannot convert .* \(\[int\]\) to type test_type`,
+			err:  `cannot convert .* \(\[int\]\) to test_type`,
 		},
 		{
 			name: "built-in bit-wise not, expected type",
@@ -2715,7 +2715,7 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in array slice, expected type not an array",
 			call: "[5, 6, 7][1, 2]",
 			ret:  "int",
-			err:  `cannot convert .* \(\[int\]\) to type int`,
+			err:  `cannot convert .* \(\[int\]\) to int`,
 		},
 		{
 			name: "built-in array slice, arg not an array",
@@ -3070,7 +3070,7 @@ func TestOverloadResolution(t *testing.T) {
 				func bar(_ int, _ string, _ int, _ int32)
 			`,
 			call: "bar(5, \"hello\", foo#new_x(), 12)",
-			err:  `cannot convert new_x\(\) \(foo#x\) to type int`,
+			err:  `cannot convert new_x\(\) \(foo#x\) to int`,
 			otherMod: testMod{
 				path: "foo",
 				src: `
