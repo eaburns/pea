@@ -1087,6 +1087,11 @@ func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Typ
 			return &copy, nil
 		}
 		set := sets.find(typ.Def)
+		if eqType(set.bind, typ) {
+			// Self bindings are not an error.
+			copy := *typ
+			return &copy, nil
+		}
 		if onPath[set] {
 			var pathStr string
 			for i, elem := range path {

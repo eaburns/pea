@@ -1096,6 +1096,38 @@ func TestPatternIntersectionIgnoreBoundTypeParameters(t *testing.T) {
 	}
 }
 
+func TestPatternSelfIntersection(t *testing.T) {
+	const src = `
+		type T list [node? [.data T, .next T list], nil?]
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("failed to parse and check: %s", errs[0])
+	}
+	pat, err := parseTestPattern(t, mod, "_ list")
+	if err != nil {
+		t.Fatalf("failed to parse pattern: %s", errs)
+	}
+
+	var bind map[*TypeParm]Type
+	isect, note := intersection(pat, pattern(pat.typ), &bind)
+	if isect == nil {
+		t.Fatalf("intersection(%s, %s) failed %s", pat, pattern(pat.typ), note)
+	}
+	if !eqType(isect.typ, pat.typ) || len(isect.parms) != 0 {
+		t.Fatalf("intersection(%s, %s)=%s, wanted %s\n", pat, pattern(pat.typ), isect, pat.typ)
+	}
+
+	bind = nil
+	isect, note = intersection(pattern(pat.typ), pat, &bind)
+	if isect == nil {
+		t.Fatalf("intersection(%s, %s) failed %s", pattern(pat.typ), pat, note)
+	}
+	if !eqType(isect.typ, pat.typ) || len(isect.parms) != 0 {
+		t.Fatalf("intersection(%s, %s)=%s, wanted %s\n", pattern(pat.typ), pat, isect, pat.typ)
+	}
+}
+
 func copyTypeParmNamesToVars(t Type) {
 	switch t := t.(type) {
 	case *DefType:
