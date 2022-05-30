@@ -574,12 +574,16 @@ func unifyStrict(pat typePattern, typ Type, bind map[*TypeParm]Type) bool {
 }
 
 // convertType converts src to dst and returns the map of any bound type parameters.
-func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, Error) {
+// The second return is a non-nil note on error or nil on success.
+// We use a note here instead of an Error to allow the src type to lack a location;
+// Errors must have a location, but notes needn't.
+func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note) {
 	var bind map[*TypeParm]Type
 	if cvt, notes := convert(nil, src, dst, explicit, &bind); cvt == nil {
-		err := newError(src.typ, "cannot convert %s to %s", src, dst)
-		err.setNotes(notes)
-		return nil, err
+		n := newNote("cannot convert %s to %s", src, dst)
+		n.setLoc(src.typ)
+		n.setNotes(notes)
+		return nil, n
 	}
 	return bind, nil
 }
