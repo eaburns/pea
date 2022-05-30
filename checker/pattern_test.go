@@ -708,6 +708,15 @@ func TestConvert(t *testing.T) {
 
 		// Intersection.
 		{src: "int", dst: "_", want: c("int", Noop, "int")},
+		{src: "int_val", dst: "_", want: c("int_val", Noop, "int_val")},
+		{src: "&int", dst: "_", want: c("&int", Noop, "&int")},
+		{src: "T", dst: "_", want: c("T", Noop, "T")},
+		{src: "[int]", dst: "_", want: c("[int]", Noop, "[int]")},
+		{src: "[.x int]", dst: "_", want: c("[.x int]", Noop, "[.x int]")},
+		{src: "[x? int]", dst: "_", want: c("[x? int]", Noop, "[x? int]")},
+		{src: "(int){float64}", dst: "_", want: c("(int){float64}", Noop, "(int){float64}")},
+		{src: "&int", dst: "&_", want: c("&int", Noop, "&int")},
+		{src: "int", dst: "&_", want: c("int", Ref, "&int")},
 		{src: "[.x int]", dst: "[.x _]", want: c("[.x int]", Noop, "[.x int]")},
 		{src: "(int, string) pair", dst: "[.x _, .y _]", want: c("(int, string) pair", Noop, "[.x int, .y string]")},
 		{src: "[.x int, .y string]", dst: "(_, _) pair", want: c("[.x int, .y string]", Noop, "(int, string) pair")},

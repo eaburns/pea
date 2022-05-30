@@ -659,9 +659,17 @@ fail:
 // If the conversion fails, the returned notes slice may be non-empty
 // if there is extra information to explain why the conversion failed.
 func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeParm]Type) (*Convert, []note) {
+	isect, isectNote := intersection(src, dst, bind)
+	if isect != nil {
+		return conversion(cvt, Noop, isect.typ), nil
+	}
 	switch {
-	case eqType(src.typ, dst.typ):
-		return conversion(cvt, Noop, dst.typ), nil
+	default:
+		// If nothing below matched, return the note from the intersection error.
+		if isectNote == nil {
+			return nil, nil
+		}
+		return nil, []note{isectNote}
 
 	case isEmptyStruct(dst.typ):
 		return conversion(cvt, Drop, _empty), nil
@@ -704,16 +712,6 @@ func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeP
 			return nil, notes
 		}
 		return conversion(cvt, Ref, subType(*bind, dst.typ)), nil
-
-	default:
-		isect, n := intersection(src, dst, bind)
-		if isect == nil {
-			if n == nil {
-				return nil, nil
-			}
-			return nil, []note{n}
-		}
-		return conversion(cvt, Noop, isect.typ), nil
 	}
 }
 
