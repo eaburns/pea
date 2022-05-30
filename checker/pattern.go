@@ -757,16 +757,11 @@ func intersection(a, b typePattern, bind *map[*TypeParm]Type) (*typePattern, not
 		return &a, nil
 	}
 
-	// Make a set for each type parameter,
-	// and unions the sets of type parameters
-	// that would bind with each other.
+	// Make a set for each type parameter with >0 bound variables
+	// and unions the sets of type parameters that would bind with each other.
 	var sets disjointSets
-	for i := range a.parms {
-		sets.find(a.parms[i])
-	}
-	for i := range b.parms {
-		sets.find(b.parms[i])
-	}
+	findBoundVars(&sets, a)
+	findBoundVars(&sets, b)
 	if !unionSets(&sets, a, b) {
 		return nil, nil
 	}
@@ -807,6 +802,42 @@ func intersection(a, b typePattern, bind *map[*TypeParm]Type) (*typePattern, not
 	}
 	isect := &typePattern{parms: parms, typ: subType(*bind, a.typ)}
 	return isect, nil
+}
+
+func findBoundVars(sets *disjointSets, pat typePattern) {
+	switch typ := pat.typ.(type) {
+	case *DefType:
+		for i := range typ.Args {
+			findBoundVars(sets, pat.typeArg(i))
+		}
+	case *RefType:
+		findBoundVars(sets, pat.refElem())
+	case *ArrayType:
+		findBoundVars(sets, pat.arrayElem())
+	case *StructType:
+		for i := range typ.Fields {
+			findBoundVars(sets, pat.field(i))
+		}
+	case *UnionType:
+		for i := range typ.Cases {
+			if typ.Cases[i].Type == nil {
+				continue
+			}
+			findBoundVars(sets, pat.Case(i))
+		}
+	case *FuncType:
+		for i := range typ.Parms {
+			findBoundVars(sets, pat.parm(i))
+		}
+		findBoundVars(sets, pat.ret())
+	case *BasicType:
+	case *TypeVar:
+		if pat.bound(typ) {
+			sets.find(typ.Def)
+		}
+	default:
+		panic(fmt.Sprintf("impossible Type type: %T", typ))
+	}
 }
 
 func unionSets(sets *disjointSets, a, b typePattern) bool {

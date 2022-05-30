@@ -1059,6 +1059,43 @@ func TestPatternIntersection(t *testing.T) {
 	}
 }
 
+func TestPatternIntersectionIgnoreBoundTypeParameters(t *testing.T) {
+	const src = `
+		type T list [node? [.data T, .next T list], nil?]
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("failed to parse and check: %s", errs[0])
+	}
+	pat0, err := parseTestPattern(t, mod, "_ list")
+	if err != nil {
+		t.Fatalf("failed to parse pat0: %s", errs)
+	}
+	pat0.parms = append(pat0.parms,
+		&TypeParm{Name: "U0"},
+		&TypeParm{Name: "U1"},
+		&TypeParm{Name: "U2"})
+
+	pat1, err := parseTestPattern(t, mod, "int list")
+	if err != nil {
+		t.Fatalf("failed to parse pat1: %s", errs)
+	}
+
+	var bind map[*TypeParm]Type
+	isect, note := intersection(pat0, pat1, &bind)
+	if isect == nil {
+		t.Fatalf("intersection(%s, %s) failed %s", pat0, pat1, note)
+	}
+	if bind == nil {
+		t.Fatalf("intersection(%s, %s) got bindings nil, expected a binding to %s",
+			pat0, pat1, pat0.parms[0].Name)
+	}
+	if _, ok := bind[pat0.parms[0]]; !ok || len(bind) != 1 {
+		t.Fatalf("intersection(%s, %s) got bindings %v, expected a binding to %s",
+			pat0, pat1, bindAsSlice(bind), pat0.parms[0].Name)
+	}
+}
+
 func copyTypeParmNamesToVars(t Type) {
 	switch t := t.(type) {
 	case *DefType:
