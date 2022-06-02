@@ -1268,7 +1268,7 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 			}
 		}
 		if _, err := convertExpr(arg, f.parm(i), false); err != nil {
-			notes = append(notes, err.(*_error))
+			notes = append(notes, err.(note))
 			continue
 		}
 		funcs[n] = f
