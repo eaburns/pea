@@ -427,10 +427,24 @@ func (f *FuncDef) findIDs(name string) []id {
 		}
 	}
 	ids := findIDs(f.File, name)
+nextIface:
 	for i := range f.Iface {
-		if f.Iface[i].Name == name {
-			ids = append(ids, &f.Iface[i])
+		iface := &f.Iface[i]
+		if iface.Name != name {
+			continue
 		}
+
+		// If there was an error checking this interface, don't return it.
+		if iface.Ret == nil {
+			continue
+		}
+		for _, p := range iface.Parms {
+			if p == nil {
+				continue nextIface
+			}
+		}
+
+		ids = append(ids, iface)
 	}
 	if name == "return:" {
 		ids = append(ids, &Builtin{
@@ -474,6 +488,7 @@ func (x *addedImportScope) findIDs(name string) []id {
 
 func findInDefs(defs []Def, name string, exportedOnly bool) []id {
 	var ids []id
+nextDef:
 	for _, def := range defs {
 		switch def := def.(type) {
 		case *VarDef:
@@ -490,6 +505,18 @@ func findInDefs(defs []Def, name string, exportedOnly bool) []id {
 			if def.Name != name {
 				continue
 			}
+
+			// If there was an error checking this function's signature,
+			// Don't return it.
+			if def.Ret == nil {
+				continue
+			}
+			for _, p := range def.Parms {
+				if p.T == nil {
+					continue nextDef
+				}
+			}
+
 			var typeArgs []Type
 			for i := range def.TypeParms {
 				typeArgs = append(typeArgs, &TypeVar{
