@@ -444,6 +444,8 @@ func TestConvert(t *testing.T) {
 		type func_int_to_int (int){int}
 		type (X, Y) pair [.x X, .y Y]
 		type (X, Y) pair2 [.x X, .y Y]
+
+		type T pointer &T
 	`
 	c := func(xs ...interface{}) []interface{} { return xs }
 	tests := []struct {
@@ -453,6 +455,9 @@ func TestConvert(t *testing.T) {
 		// want is the source type string, ConvertKinds, and final type string.
 		want []interface{}
 	}{
+		{src: "[int]", dst: "[int] pointer", want: c("[int]", Ref, "[int] pointer")},
+		{src: "[int]", dst: "_ pointer", want: c("[int]", Ref, "[int] pointer")},
+
 		// Anything can implicitly convert to [.].
 		{src: "[.]", dst: "[.]", want: c("[.]", Noop, "[.]")},
 		{src: "int", dst: "[.]", want: c("int", Drop, "[.]")},

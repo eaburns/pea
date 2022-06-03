@@ -603,6 +603,7 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, Error) {
 		// If the src expression is an explicit convert,
 		// and this is an implicit convert,
 		// it is an error if the types are not equal.
+		notes = append(notes, newNote("cannot implicitly convert an explicit conversion"))
 		goto fail
 	}
 	// Set the L and Explicit fields;
@@ -616,11 +617,13 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, Error) {
 			// since convert fixes those, so it's an error.
 			// If p.Expr==nil, then we need to check expr.
 			if p.Expr != nil {
+				notes = append(notes, newNote("cannot reference %s", p.Expr))
 				goto fail
 			}
 			if src, ok := expr.(*Convert); !ok || src.Kind != Deref {
 				// It is currently an error for convertExpr to generate a Ref conversion.
 				// TODO: implement Ref conversion, and ditch this error.
+				notes = append(notes, newNote("cannot reference %s", expr))
 				goto fail
 			} else {
 				p.Kind = Noop
