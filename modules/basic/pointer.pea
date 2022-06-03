@@ -4,14 +4,23 @@
 // re-points it to a new object.
 // (Assigning to a reference, assigns to the referred value.)
 // Like references, pointers to not have a null or nil value.
-Type T pointer &T
+Type T pointer [.data &T]
+
+// TODO: pointer is implemented as [.data &T] instead of just &T.
+// The reason is that any literal type is implicitly convertible to T pointer if pointer is &T.
+// For example [int] is implicity convertible to [int] pointer (which is just &[int]).
+// By using [.data &T], this is less likely to happen;
+// the only type implicitly convertible is [.data &T].
+// In the future, pointer should be in its own module,
+// and the representation should be made opaque
+// to prevent any implicit conversion.
 
 // Returns a pointer to the reference to a value.
 Func &(t &T) T pointer {
-	return: (T pointer :: t)
+	return: [.data t]
 }
 
 // Returns a reference to the value of a pointer.
 Func *(t T pointer) &T {
-	return: (&T :: t)
+	return: t.data
 }

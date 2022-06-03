@@ -293,7 +293,7 @@ test print_float64 {
 // Adds the string representation of the pointer value to the printer
 // and returns the printer.
 Func print(p printer, t T pointer) printer : ++(printer, T) printer {
-	return: p ++ (T :: (&T :: t))
+	return: p ++ *t
 }
 
 test print_pointer {
