@@ -1845,14 +1845,26 @@ func TestOverloadResolution(t *testing.T) {
 			want: "x()[uint8]",
 		},
 		{
-			name: "explicit conversion on return, fail with mult-candidate",
+			name: "explicit conversion on return, OK with mult-candidate",
 			src: `
 				func x() [uint8]
 				func x() [int]
 			`,
 			call: "string :: x()",
 			ret:  "string",
-			err:  `not found`,
+			want: "x()[uint8]",
+		},
+		{
+			name: "explicit conversion on return, fail with mult-candidate",
+			src: `
+				type my_string string
+				func x() my_string
+				func x() [uint8]
+				func x() [int]
+			`,
+			call: "string :: x()",
+			ret:  "string",
+			err:  "not found",
 		},
 		{
 			name: "argument type mismatch",

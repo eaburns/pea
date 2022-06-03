@@ -589,13 +589,13 @@ func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note)
 }
 
 // convertExpr returns the expression resulting from converting expr to the given type pattern.
-func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, Error) {
+func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, map[*TypeParm]Type, Error) {
 	if expr.Type() == nil {
-		return expr, nil
+		return expr, nil, nil
 	}
 
-	var unused map[*TypeParm]Type
-	cvt, notes := convert(nil, pattern(expr.Type()), dst, explicit, &unused)
+	var bind map[*TypeParm]Type
+	cvt, notes := convert(nil, pattern(expr.Type()), dst, explicit, &bind)
 	if cvt == nil {
 		goto fail
 	}
@@ -630,7 +630,7 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, Error) {
 				p.Expr = src.Expr
 				if src.Expr == nil {
 					// TODO: we should never have a nil expr
-					return cvt, nil
+					return cvt, bind, nil
 				}
 				break
 			}
@@ -642,13 +642,13 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, Error) {
 	}
 	if cvt.Kind == Noop && !cvt.Explicit && eqType(cvt.Expr.Type(), cvt.Type()) {
 		// If this is an implicit no-op that isn't changing the type, just pop it off.
-		return cvt.Expr, nil
+		return cvt.Expr, bind, nil
 	}
-	return cvt, nil
+	return cvt, bind, nil
 fail:
 	err := newError(expr, "cannot convert %s (%s) to %s", expr, expr.Type(), dst)
 	err.setNotes(notes)
-	return expr, err
+	return expr, nil, err
 }
 
 // convert returns a chain of *Convert nodes giving the conversion from src to dst.

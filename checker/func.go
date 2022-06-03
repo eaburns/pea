@@ -360,7 +360,7 @@ func (s *Select) ret() typePattern { return pattern(s.Ret) }
 func (s *Select) sub(bind map[*TypeParm]Type) note {
 	typ, ok := bind[s.TypeParm]
 	if !ok {
-		panic("impossible")
+		return nil
 	}
 	switch v := valueType(typ); {
 	case isStructType(v):

@@ -873,7 +873,7 @@ func checkAndConvertExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr
 	if expr == nil || !pat.isGroundType() {
 		return expr, errs
 	}
-	expr, err := convertExpr(expr, pat, false)
+	expr, _, err := convertExpr(expr, pat, false)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -906,7 +906,7 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat typePatt
 			expr, es = checkExpr(x, parserExpr, pat)
 			if expr != nil && !isBuiltin(expr, Panic) && !isBuiltin(expr, Return) {
 				var err Error
-				if expr, err = convertExpr(expr, pat, false); err != nil {
+				if expr, _, err = convertExpr(expr, pat, false); err != nil {
 					es = append(es, err)
 				}
 			}
@@ -1068,7 +1068,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	fun := useFunc(x, parserCall.L, funcs[0])
 	ret := fun.ret().groundType()
 	for i, arg := range args {
-		args[i], _ = convertExpr(arg, fun.parm(i), false)
+		args[i], _, _ = convertExpr(arg, fun.parm(i), false)
 	}
 	var expr Expr = &Call{
 		Func: fun,
@@ -1252,23 +1252,13 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		// For the moment, we don't bother trying to unify if the type is already grounded.
-		// The difference is just in who reports the error: unify or converson.
-		// TODO: always unify types and change the expected error in tests.
-		if pat := f.parm(i); !pat.isGroundType() {
-			bind := unify(pat, arg.Type())
-			if bind == nil {
-				n := newNote("%s: cannot unify argument %d: %s and %s", f, i, pat, arg.Type()).setLoc(arg)
-				notes = append(notes, n)
-				continue
-			}
-			if n := f.sub(bind); n != nil {
-				notes = append(notes, n)
-				continue
-			}
-		}
-		if _, err := convertExpr(arg, f.parm(i), false); err != nil {
+		_, bind, err := convertExpr(arg, f.parm(i), false)
+		if err != nil {
 			notes = append(notes, err.(note))
+			continue
+		}
+		if note := f.sub(bind); note != nil {
+			notes = append(notes, note)
 			continue
 		}
 		funcs[n] = f
@@ -1278,38 +1268,55 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 }
 
 func filterByReturn(funcs []Func, typ Type) ([]Func, []note) {
-	var n int
+	const (
+		explicit = true
+		implicit = false
+	)
 	var notes []note
-	for _, f := range funcs {
-		// For the moment, we don't bother trying to unify if the type is already grounded.
-		// The difference is just in who reports the error: unify or converson.
-		// TODO: always unify types and change the expected error in tests.
-		if pat := f.ret(); !pat.isGroundType() {
-			bind := unify(pat, typ)
-			if bind == nil {
-				// TODO: the location here should be the call location, not the want location.
-				n := newNote("%s: cannot unify return: %s and %s", f, pat, typ).setLoc(typ)
-				notes = append(notes, n)
-				continue
-			}
-			if n := f.sub(bind); n != nil {
-				notes = append(notes, n)
-				continue
-			}
-		}
-		retType := f.ret().groundType()
 
-		// If there is only 1 function, don't bother checking conversion.
-		// If it cannot convert, it will fail upstream.
-		// The reason for this special case is that canImplicitConvert
-		// only accepts implicit conversions.
-		// If the parent node is an explicit conversion,
-		// we want it to be accepted in the common case
-		// that there is only one function overload acceptable at this point.
-		if len(funcs) > 1 && !canImplicitConvert(retType, typ) {
-			notes = append(notes, newNote("%s: cannot convert returned %s to %s", f, retType, typ).setLoc(f))
+	if len(funcs) == 1 {
+		// Just try to substitute it, ignoring conversion errors.
+		// If it fails to convert the parent expression will report the error,
+		// with more information that we would report here,
+		// because it will use convertExpr which has the expression
+		// printed in the error message, but here we just have the type.
+		bind, _ := convertType(funcs[0].ret(), pattern(typ), implicit)
+		if note := funcs[0].sub(bind); note != nil {
+			return nil, append(notes, note)
+		}
+		return funcs, nil
+	}
+
+	// First filter out anything that can't even explicitly convert to the desired type.
+	var n int
+	for _, f := range funcs {
+		bind, note := convertType(f.ret(), pattern(typ), explicit)
+		if note != nil {
+			notes = append(notes, note)
 			continue
 		}
+		if note := f.sub(bind); note != nil {
+			notes = append(notes, note)
+			continue
+		}
+		funcs[n] = f
+		n++
+	}
+	funcs = funcs[:n]
+
+	if len(funcs) == 1 {
+		return funcs, nil
+	}
+
+	// If there is still ambiguity, filter out anything that cannot implicitly convert.
+	n = 0
+	for _, f := range funcs {
+		if _, note := convertType(f.ret(), pattern(typ), implicit); note != nil {
+			notes = append(notes, note)
+			continue
+		}
+		// There's no need to sub again.
+		// The functions must have been subbed by the first loop.
 		funcs[n] = f
 		n++
 	}
@@ -1415,7 +1422,7 @@ func canImplicitConvert(src, dst Type) bool {
 	// Our dummy node needs a non-zero loc,
 	// since errors can only be created with a non-zero loc.
 	// We are going to ignore the error, so any non-zero loc works.
-	_, err := convertExpr(&Convert{Kind: Deref, T: src, L: someNonZeroLoc}, pattern(dst), false)
+	_, _, err := convertExpr(&Convert{Kind: Deref, T: src, L: someNonZeroLoc}, pattern(dst), false)
 	return err == nil
 }
 
@@ -1514,7 +1521,7 @@ func resolveID(x scope, parserID parser.Ident, useLocal bool, pat typePattern, i
 		var n int
 		for _, id := range ids {
 			expr := idToExpr(id, parserID.L)
-			if _, err := convertExpr(expr, pat, false); err != nil {
+			if _, _, err := convertExpr(expr, pat, false); err != nil {
 				n := newNote("cannot convert %s (%s) to %s", expr, expr.Type(), pat.groundType()).setLoc(expr)
 				notFoundNotes = append(notFoundNotes, n)
 				continue
@@ -1644,7 +1651,7 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 		L: l,
 	}
 	local := deref(&Local{Def: localDef, T: refLiteral(localDef.T), L: l})
-	result, err := convertExpr(local, pattern(wantRet), false)
+	result, _, err := convertExpr(local, pattern(wantRet), false)
 	if err != nil {
 		panic(fmt.Sprintf("impossible: %s", err))
 	}
@@ -1724,7 +1731,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	// Here we do the implicit conversion,
 	// and stick a Noop conversion node on top of it
 	// to track that it was requested explicitly.
-	expr, err := convertExpr(expr, pattern(typ), true)
+	expr, _, err := convertExpr(expr, pattern(typ), true)
 	if err != nil {
 		errs = append(errs, err)
 	}
