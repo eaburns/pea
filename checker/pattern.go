@@ -664,6 +664,9 @@ fail:
 func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeParm]Type) (*Convert, []note) {
 	isect, isectNote := intersection(src, dst, bind)
 	if isect != nil {
+		if !isect.isGroundType() {
+			return nil, []note{newNote("cannot infer type %s", isect)}
+		}
 		return conversion(cvt, Noop, isect.typ), nil
 	}
 	switch {

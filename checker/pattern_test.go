@@ -734,6 +734,11 @@ func TestConvert(t *testing.T) {
 		{src: "int_val", dst: "[.x int]", explicit: true, want: nil},
 		{src: "[.x int]", dst: "[x? int]", explicit: true, want: nil},
 		{src: "(){}", dst: "[int]", explicit: true, want: nil},
+
+		// It is an error if the conversion does not fully ground the resulting type.
+		{src: "_", dst: "_", explicit: false, want: nil},
+		{src: "_", dst: "_", explicit: true, want: nil},
+		{src: "[.x _, .y _]", dst: "[.x int, .y _]", want: nil},
 	}
 	for _, test := range tests {
 		test := test
@@ -1070,6 +1075,29 @@ func TestPatternIntersection(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestPatternIntersectionOfTwoVariables(t *testing.T) {
+	mod, errs := check("test", []string{""}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("failed to parse and check: %s", errs[0])
+	}
+	a, err := parseTestPattern(t, mod, "_")
+	if err != nil {
+		t.Fatalf("failed to parse type pattern _: %s", err)
+	}
+	b, err := parseTestPattern(t, mod, "_")
+	if err != nil {
+		t.Fatalf("failed to parse type pattern _: %s", err)
+	}
+	var bind map[*TypeParm]Type
+	isect, _ := intersection(a, b, &bind)
+	if isect == nil {
+		t.Fatalf("intersection(%s, %s)=nil, wanted _", a, b)
+	}
+	if isect.isGroundType() {
+		t.Fatalf("intersection(%s, %s).isGroundType()=true, want false", a, b)
 	}
 }
 
