@@ -229,60 +229,33 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) *unifyFuncFailure {
 		}
 	}
 	for i := 0; i < f.arity(); i++ {
-		p := funcType.Parms[i]
-		// For the moment, we don't bother trying to unify if the type is already grounded.
-		// The difference is just in who reports the error: unify or converson.
-		// TODO: always unify types and change the expected error in tests.
-		if pat := f.parm(i); !pat.isGroundType() {
-			bind := unify(pat, p)
-			if bind == nil {
-				n := newNote("%s: cannot unify argument %d: %s and %s", f, i, pat, p).setLoc(p)
-				return &unifyFuncFailure{note: n, parms: i}
-			}
-			if n := f.sub(bind); n != nil {
-				return &unifyFuncFailure{note: n, parms: i}
-			}
-		}
-		t := f.parm(i).groundType()
-		if !canImplicitConvert(p, t) {
-			note := newNote("%s: cannot convert argument %s to %s", f, p, t).setLoc(t)
-			return &unifyFuncFailure{note: note, parms: i}
-		}
-	}
-
-	// Some implementations of unifyRet (Builtin for example)
-	// assume that the parameters were unified first.
-	// So make sure to do unifyRet after unifyParm.
-	// For the moment, we don't bother trying to unify if the type is already grounded.
-	// The difference is just in who reports the error: unify or converson.
-	// TODO: always unify types and change the expected error in tests.
-	if pat := f.ret(); !pat.isGroundType() {
-		bind := unify(pat, funcType.Ret)
-		if bind == nil {
-			n := newNote("%s: cannot unify return: %s and %s", f, pat, funcType.Ret).setLoc(funcType.Ret)
-			return &unifyFuncFailure{note: n, parms: f.arity()}
+		bind, n := convertType(pattern(funcType.Parms[i]), f.parm(i), false)
+		if n != nil {
+			n = newNote("%s: cannot convert parameter %d %s to %s",
+				f, i, funcType.Parms[i], f.parm(i))
+			return &unifyFuncFailure{note: n, parms: i}
 		}
 		if n := f.sub(bind); n != nil {
-			return &unifyFuncFailure{note: n, parms: f.arity()}
+			n1 := newNote("%s: parameter %d type substitution failed", f, i)
+			n1.setNotes([]note{n})
+			return &unifyFuncFailure{note: n1, parms: i}
 		}
 	}
-	t := f.ret().groundType()
+
 	// Allowing any implicit convert here can lead to normally illegal
 	// reference conversions. Consider:
-	/*
-		func foo(s S) &S : [](S, int, int)S {
-			return: &S :: s[5, 6]
-		}
-
-		func main() {
-			str_ref := &string :: "",
-			foo(str_ref)
-		}
-	*/
+	//	func foo(s S) &S : [](S, int, int)S {
+	//		return: &S :: s[5, 6]
+	//	}
+	//
+	//	func main() {
+	//		str_ref := &string :: "",
+	//		foo(str_ref)
+	//	}
 	// The when substituting &string for S,
 	// the iface argument would be the built-in
 	// [](string, int, int)string.
-	// The return of s[5, 6] is a defer of &string, type string.
+	// The return of s[5, 6] is a deref of &string, type string.
 	// We cannot convert string to &S=&&string.
 	// to a variable and returning that variable.
 	// These are fixed during substitution.
@@ -291,10 +264,15 @@ func unifyFunc(x scope, l loc.Loc, f Func, typ Type) *unifyFuncFailure {
 	// Then the assigned variable is returned with conversion
 	// to the iface return type.
 	// This extra variable allows the additional reference to be added.
-	if !canImplicitConvert(t, funcType.Ret) {
-		note := newNote("%s: cannot convert returned %s to %s",
-			f, t, funcType.Ret).setLoc(t)
-		return &unifyFuncFailure{note: note, parms: f.arity()}
+	bind, n := convertType(f.ret(), pattern(funcType.Ret), false)
+	if n != nil {
+		n = newNote("%s: cannot convert returned %s to %s", f, f.ret(), funcType.Ret)
+		return &unifyFuncFailure{note: n, parms: f.arity()}
+	}
+	if n := f.sub(bind); n != nil {
+		n1 := newNote("%s: return type substitution failed", f)
+		n1.setNotes([]note{n})
+		return &unifyFuncFailure{note: n1, parms: f.arity()}
 	}
 
 	if note := instIface(x, l, f); note != nil {
