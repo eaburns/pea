@@ -1040,14 +1040,8 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		}
 	}
 
-	if pat.isGroundType() {
-		var ns []note
-		funcs, ns = filterByReturn(funcs, pat.groundType())
-		notes = append(notes, ns...)
-	} else {
-		funcs, ns = filterUngroundReturns(funcs)
-		notes = append(notes, ns...)
-	}
+	funcs, ns = filterByReturnType(funcs, pat)
+	notes = append(notes, ns...)
 	if len(funcs) > 0 {
 		markVerbose(notes)
 	}
@@ -1267,7 +1261,7 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func filterByReturn(funcs []Func, typ Type) ([]Func, []note) {
+func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
 	const (
 		explicit = true
 		implicit = false
@@ -1280,9 +1274,14 @@ func filterByReturn(funcs []Func, typ Type) ([]Func, []note) {
 		// with more information that we would report here,
 		// because it will use convertExpr which has the expression
 		// printed in the error message, but here we just have the type.
-		bind, _ := convertType(funcs[0].ret(), pattern(typ), implicit)
+		bind, convertNote := convertType(funcs[0].ret(), pat, implicit)
 		if note := funcs[0].sub(bind); note != nil {
 			return nil, append(notes, note)
+		}
+		if !funcs[0].ret().isGroundType() {
+			// If the ret is not grounded, it means bind was nil;
+			// the conversion failed and we could not infer the return type.
+			return nil, []note{convertNote}
 		}
 		return funcs, nil
 	}
@@ -1290,7 +1289,7 @@ func filterByReturn(funcs []Func, typ Type) ([]Func, []note) {
 	// First filter out anything that can't even explicitly convert to the desired type.
 	var n int
 	for _, f := range funcs {
-		bind, note := convertType(f.ret(), pattern(typ), explicit)
+		bind, note := convertType(f.ret(), pat, explicit)
 		if note != nil {
 			notes = append(notes, note)
 			continue
@@ -1311,7 +1310,7 @@ func filterByReturn(funcs []Func, typ Type) ([]Func, []note) {
 	// If there is still ambiguity, filter out anything that cannot implicitly convert.
 	n = 0
 	for _, f := range funcs {
-		if _, note := convertType(f.ret(), pattern(typ), implicit); note != nil {
+		if _, note := convertType(f.ret(), pat, implicit); note != nil {
 			notes = append(notes, note)
 			continue
 		}
@@ -1319,20 +1318,6 @@ func filterByReturn(funcs []Func, typ Type) ([]Func, []note) {
 		// The functions must have been subbed by the first loop.
 		funcs[n] = f
 		n++
-	}
-	return funcs[:n], notes
-}
-
-func filterUngroundReturns(funcs []Func) ([]Func, []note) {
-	var n int
-	var notes []note
-	for _, f := range funcs {
-		if f.ret().isGroundType() {
-			funcs[n] = f
-			n++
-			continue
-		}
-		notes = append(notes, newNote("%s: cannot infer return type", f).setLoc(f))
 	}
 	return funcs[:n], notes
 }
