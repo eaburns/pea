@@ -321,9 +321,19 @@ func (m *Mod) findIDs(name string) []id {
 	}
 	for i := range builtins {
 		if builtins[i].N == name {
-			// copy
 			b := builtins[i]
-			b.Parms = append([]Type{}, b.Parms...)
+			b.Parms = append([]Type{}, b.Parms...) // copy
+			if b.TypeParm != nil {
+				// create a unique type parameter to replaced _P.
+				b.TypeParm = &TypeParm{Name: "T"}
+				bind := map[*TypeParm]Type{
+					_P: &TypeVar{Name: b.TypeParm.Name, Def: b.TypeParm},
+				}
+				for i := range b.Parms {
+					b.Parms[i] = subType(bind, b.Parms[i])
+				}
+				b.Ret = subType(bind, b.Ret)
+			}
 			ids = append(ids, &b)
 		}
 	}
@@ -331,6 +341,8 @@ func (m *Mod) findIDs(name string) []id {
 }
 
 var (
+	// _P is a placeholder; before returning a Builtin from the scope,
+	// it is always replaced with a brand new TypeParam.
 	_P      = &TypeParm{Name: "T"}
 	_T      = &TypeVar{Name: _P.Name, Def: _P}
 	_uint8  = basic(Uint8)
