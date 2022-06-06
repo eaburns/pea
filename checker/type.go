@@ -103,7 +103,7 @@ func literalType(typ Type) Type {
 
 func isDefinedType(typ Type) bool {
 	_, ok := typ.(*DefType)
-	return ok
+	return ok || isBool(typ)
 }
 
 func isLiteralType(typ Type) bool {
@@ -315,6 +315,11 @@ func isStringRefType(typ Type) bool {
 func isUintRef(typ Type) bool {
 	basic, ok := typ.(*BasicType)
 	return ok && basic.Kind == UintRef
+}
+
+func isBool(typ Type) bool {
+	basic, ok := typ.(*BasicType)
+	return ok && basic.Kind == Bool
 }
 
 func isBasicNum(typ Type) bool {

@@ -642,6 +642,9 @@ func TestConvert(t *testing.T) {
 		// &int is not array, struct, union, or func literal type, it is a literal reference to a named type.
 		{src: "int_ref", dst: "&int", want: nil},
 		{src: "&int", dst: "int_ref", want: nil},
+		// bool is defined as [false?, true?].
+		{src: "bool", dst: "[false?, true?]", want: c("bool", Noop, "[false?, true?]")},
+		{src: "[false?, true?]", dst: "bool", want: c("[false?, true?]", Noop, "bool")},
 
 		// A union can explicitly convert to a union with a superset of the cases.
 		{src: "[x?]", dst: "[x?]", explicit: true, want: c("[x?]", Noop, "[x?]")},
