@@ -101,9 +101,9 @@ func literalType(typ Type) Type {
 	}
 }
 
-func isDefinedType(typ Type) bool {
-	_, ok := typ.(*DefType)
-	return ok || isBool(typ)
+func isVisibleDefinedType(typ Type) bool {
+	defType, ok := typ.(*DefType)
+	return ok && (!defType.Def.File.Mod.Imported || defType.Def.Exp) || isBool(typ)
 }
 
 func isLiteralType(typ Type) bool {

@@ -1207,6 +1207,9 @@ func copyTypeParmNamesToVars(t Type) {
 	}
 }
 
+// These are the old unify() tests.
+// unify() is gone, but the same tests should work with convertType(),
+// so we have repurposed them.
 func TestPatternUnify(t *testing.T) {
 	tests := []struct {
 		src  string
@@ -1503,7 +1506,7 @@ func TestPatternUnify(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("unify(%s, %s)", test.typ, test.pat), func(t *testing.T) {
+		t.Run(fmt.Sprintf("convertType(%s, %s)", test.typ, test.pat), func(t *testing.T) {
 			mod, errs := check("test", []string{test.src}, nil)
 			if len(errs) > 0 {
 				t.Fatalf("failed to parse and check: %s", errs[0])
@@ -1516,14 +1519,14 @@ func TestPatternUnify(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to parse type: %s", err)
 			}
-			bind := unify(pat, typ)
+			bind, note := convertTypeDisallowInnerRef(pattern(typ), pat, false)
 			if test.want == "" {
-				if bind != nil {
-					t.Errorf("got %s %v, want nil", subType(bind, typ), bindAsSlice(bind))
+				if note == nil {
+					t.Errorf("got %s %v, want error", subType(bind, typ), bindAsSlice(bind))
 				}
 			} else {
-				if bind == nil {
-					t.Errorf("got nil, want %s", test.want)
+				if note != nil {
+					t.Errorf("got error %s, want %s", note, test.want)
 				} else if sub := subType(bind, pat.typ); sub.String() != test.want {
 					t.Errorf("got %s %v, want %s", sub, bindAsSlice(bind), test.want)
 				}

@@ -431,152 +431,6 @@ func common(pats ...typePattern) typePattern {
 	return pat
 }
 
-// unify returns a binding of types to type parameters of pat
-// that make pat's type implicitly convertible to typ,
-// or nil if there is no such binding.
-//
-// Note that the binding is optimistic.
-// Specificially, it assumes any expression of type typ
-// can be referenced, but this is not true.
-// So unify can succeed with a non-nil binding,
-// even if the actual expression cannot be converted
-// to the pattern.
-func unify(pat typePattern, typ Type) map[*TypeParm]Type {
-	if v, ok := pat.typ.(*TypeVar); ok && pat.bound(v) {
-		bind := make(map[*TypeParm]Type)
-		bind[v.Def] = typ
-		return bind
-	}
-
-	switch {
-	case isLiteralType(pat.typ):
-		if lit := literalType(typ); lit != nil {
-			typ = lit
-		}
-	case isLiteralType(typ):
-		if lit := literalType(pat.typ); lit != nil {
-			pat.typ = lit
-		}
-	}
-
-	switch typRefDepth, patRefDepth := refDepth(typ), refDepth(pat.typ); {
-	case typRefDepth > patRefDepth:
-		// Dereference conversion.
-		for typRefDepth > patRefDepth {
-			typ = typ.(*RefType).Type
-			typRefDepth--
-		}
-	case patRefDepth == typRefDepth+1:
-		// Single reference conversion.
-		// The actual conversion can fail
-		// for non-referencable expressions.
-		pat.typ = pat.typ.(*RefType).Type
-		patRefDepth--
-	}
-
-	bind := make(map[*TypeParm]Type)
-	if !unifyStrict(pat, typ, bind) {
-		return nil
-	}
-	return bind
-}
-
-// unifyStrict adds to bind bindings of types to type parameters of pat
-// such that substituting the binding makes pat's type equivalent to typ,
-// and returns whether the unification was successful.
-// It is an error for multiple bindings to the same type variable to have differing types.
-func unifyStrict(pat typePattern, typ Type, bind map[*TypeParm]Type) bool {
-	switch patType := pat.typ.(type) {
-	case *DefType:
-		typ, ok := typ.(*DefType)
-		if !ok || patType.Def != typ.Def {
-			return false
-		}
-		for i, patArg := range patType.Args {
-			if !unifyStrict(pat.withType(patArg), typ.Args[i], bind) {
-				return false
-			}
-		}
-		return true
-	case *RefType:
-		typ, ok := typ.(*RefType)
-		if !ok {
-			return false
-		}
-		return unifyStrict(pat.withType(patType.Type), typ.Type, bind)
-	case *ArrayType:
-		typ, ok := typ.(*ArrayType)
-		if !ok {
-			return false
-		}
-		return unifyStrict(pat.withType(patType.ElemType), typ.ElemType, bind)
-	case *StructType:
-		typ, ok := typ.(*StructType)
-		if !ok || len(patType.Fields) != len(typ.Fields) {
-			return false
-		}
-		for i := range patType.Fields {
-			if patType.Fields[i].Name != typ.Fields[i].Name {
-				return false
-			}
-			patFieldType := patType.Fields[i].Type
-			typFieldType := typ.Fields[i].Type
-			if !unifyStrict(pat.withType(patFieldType), typFieldType, bind) {
-				return false
-			}
-		}
-		return true
-	case *UnionType:
-		typ, ok := typ.(*UnionType)
-		if !ok || len(patType.Cases) != len(typ.Cases) {
-			return false
-		}
-		for i := range patType.Cases {
-			patCaseType := patType.Cases[i].Type
-			typCaseType := typ.Cases[i].Type
-			if patType.Cases[i].Name != typ.Cases[i].Name ||
-				(patCaseType == nil) != (typCaseType == nil) {
-				return false
-			}
-			if patCaseType == nil {
-				continue
-			}
-			if !unifyStrict(pat.withType(patCaseType), typCaseType, bind) {
-				return false
-			}
-		}
-		return true
-	case *FuncType:
-		typ, ok := typ.(*FuncType)
-		if !ok || len(patType.Parms) != len(typ.Parms) {
-			return false
-		}
-		for i := range patType.Parms {
-			if !unifyStrict(pat.withType(patType.Parms[i]), typ.Parms[i], bind) {
-				return false
-			}
-		}
-		return unifyStrict(pat.withType(patType.Ret), typ.Ret, bind)
-	case *BasicType:
-		if !eqType(patType, typ) {
-			return false
-		}
-		return true
-	case *TypeVar:
-		if !pat.bound(patType) {
-			return eqType(patType, typ)
-		}
-		prev, ok := bind[patType.Def]
-		if !ok {
-			bind[patType.Def] = typ
-			return true
-		}
-		return eqType(prev, typ)
-	default:
-		panic(fmt.Sprintf("impossible Type type: %T", pat))
-	}
-}
-
 // convertType converts src to dst and returns the map of any bound type parameters.
 // The second return is a non-nil note on error or nil on success.
 // We use a note here instead of an Error to allow the src type to lack a location;
@@ -588,6 +442,32 @@ func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note)
 		n.setLoc(src.typ)
 		n.setNotes(notes)
 		return nil, n
+	}
+	return bind, nil
+}
+
+// convertTypeDisallowInnerRef is like convertType, but returns an error
+// if any any conversion, but the innermost is a Ref.
+// This is to support checking literal expressions
+// in a way compatible with the old unify() function.
+//
+// TODO: get rid of this by adding support for Ref conversions
+// and by making literal expressions be based in value types.
+func convertTypeDisallowInnerRef(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note) {
+	var bind map[*TypeParm]Type
+	cvt, notes := convert(nil, src, dst, explicit, &bind)
+	if cvt == nil {
+		n := newNote("cannot convert %s to %s", src, dst)
+		n.setLoc(src.typ)
+		n.setNotes(notes)
+		return nil, n
+	}
+	for p := cvt; p != nil; p, _ = p.Expr.(*Convert) {
+		if p.Expr != nil && p.Kind == Ref {
+			n := newNote("cannot convert %s to %s", src, dst)
+			n.setLoc(src.typ)
+			return nil, n
+		}
 	}
 	return bind, nil
 }
@@ -693,11 +573,11 @@ func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeP
 	case explicit && isByteArray(src.typ) && isStringType(dst.typ):
 		return conversion(cvt, StrConvert, dst.typ), nil
 
-	case (explicit || isLiteralType(dst.typ)) && isDefinedType(src.typ):
+	case (explicit || isLiteralType(dst.typ)) && isVisibleDefinedType(src.typ):
 		cvt = conversion(cvt, Noop, src.instType().typ)
 		return convert(cvt, src.instType(), dst, explicit, bind)
 
-	case (explicit || isLiteralType(src.typ)) && isDefinedType(dst.typ):
+	case (explicit || isLiteralType(src.typ)) && isVisibleDefinedType(dst.typ):
 		cvt, notes := convert(cvt, src, dst.instType(), explicit, bind)
 		if cvt == nil {
 			return nil, notes

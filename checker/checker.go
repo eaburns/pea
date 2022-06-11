@@ -1784,9 +1784,9 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, 
 		return lit, errs
 	}
 	lit.Array.ElemType = elemPat.typ
-	switch bind := unify(pat, lit.Array); {
-	case bind == nil:
-		return lit, []Error{newError(lit, "cannot unify %s with %s", lit.Array, pat)}
+	switch bind, note := convertTypeDisallowInnerRef(pattern(lit.Array), pat, false); {
+	case note != nil:
+		return lit, []Error{note.(Error)}
 	case isRefType(pat.typ):
 		lit.T = subType(bind, pat.typ)
 	default:
@@ -1858,9 +1858,11 @@ func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr
 	if len(errs) > 0 {
 		return lit, errs
 	}
-	switch bind := unify(pat, lit.Struct); {
-	case bind == nil:
-		return lit, []Error{newError(lit, "cannot unify %s with %s", lit.Struct, pat)}
+	switch bind, note := convertTypeDisallowInnerRef(pattern(lit.Struct), pat, false); {
+	case note != nil:
+		return lit, []Error{note.(Error)}
+	case isEmptyStruct(pat.typ) && !isEmptyStruct(lit.Struct):
+		return lit, []Error{newError(lit, "invalid empty struct literal")}
 	case isRefType(pat.typ):
 		lit.T = subType(bind, pat.typ)
 	default:
@@ -1936,9 +1938,9 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, pat typePattern) (Expr, 
 		}
 		lit.Case.Type = lit.Val.Type()
 	}
-	switch bind := unify(pat, lit.Union); {
-	case bind == nil:
-		return lit, []Error{newError(lit, "cannot unify %s with %s", lit.Union, pat)}
+	switch bind, note := convertTypeDisallowInnerRef(pattern(lit.Union), pat, false); {
+	case note != nil:
+		return lit, []Error{note.(Error)}
 	case isRefType(pat.typ):
 		lit.T = subType(bind, pat.typ)
 	default:
@@ -2005,18 +2007,16 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 		if len(fun.Parms) == len(lit.Parms) {
 			retPat = pat.withType(fun.Ret)
 			for i := range lit.Parms {
-				p := &lit.Parms[i]
-				if lit.Parms[i].T == nil {
-					lit.Parms[i].T = fun.Parms[i]
-					continue
+				litParm := any()
+				if lit.Parms[i].T != nil {
+					litParm = pattern(lit.Parms[i].T)
 				}
-				parmPat := pat.withType(fun.Parms[i])
-				bind := unify(parmPat, p.T)
-				if bind == nil {
-					err := newError(p, "cannot unify %s with %s", p.T, parmPat)
-					errs = append(errs, err)
+				patParm := pat.withType(fun.Parms[i])
+				bind, note := convertType(litParm, patParm, false)
+				if note != nil {
+					errs = append(errs, note.(Error))
 				}
-				lit.Parms[i].T = subType(bind, parmPat.typ)
+				lit.Parms[i].T = subType(bind, patParm.typ)
 			}
 		}
 	}
@@ -2059,9 +2059,9 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 	if len(errs) > 0 {
 		return lit, errs
 	}
-	switch bind := unify(pat, funType); {
-	case bind == nil:
-		return lit, []Error{newError(lit, "cannot unify %s with %s", funType, pat)}
+	switch bind, note := convertTypeDisallowInnerRef(pat.withType(funType), pat, false); {
+	case note != nil:
+		return lit, []Error{note.(Error)}
 	case isRefType(pat.typ):
 		lit.T = subType(bind, pat.typ)
 	default:
@@ -2123,10 +2123,10 @@ func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {
 		lit.T = refLiteral(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
 	default:
-		bind := unify(pat, &BasicType{Kind: String, L: parserLit.L})
-		switch {
-		case bind == nil:
-			return lit, []Error{newError(lit, "cannot unify string with %s", pat)}
+		typ := &BasicType{Kind: String, L: parserLit.L}
+		switch bind, note := convertType(pattern(typ), pat, false); {
+		case note != nil:
+			return lit, []Error{note.(Error)}
 		case isRefType(pat.typ):
 			lit.T = subType(bind, pat.typ)
 			return lit, nil
@@ -2187,9 +2187,10 @@ func _checkIntLit(parserLit *parser.IntLit, pat typePattern, defaultKind BasicTy
 		lit.T = refLiteral(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
 	default:
-		switch bind := unify(pat, &BasicType{Kind: defaultKind, L: lit.L}); {
-		case bind == nil:
-			return lit, []Error{newError(lit, "cannot unify %s with %s", defaultKind, pat)}
+		typ := &BasicType{Kind: defaultKind, L: lit.L}
+		switch bind, note := convertType(pattern(typ), pat, false); {
+		case note != nil:
+			return lit, []Error{note.(Error)}
 		case isRefType(pat.typ):
 			lit.T = subType(bind, pat.typ)
 			return lit, nil
@@ -2303,9 +2304,10 @@ func checkFloatLit(parserLit *parser.FloatLit, pat typePattern) (Expr, []Error) 
 		lit.T = refLiteral(copyTypeWithLoc(pat.groundType(), lit.L))
 		return deref(lit), nil
 	default:
-		switch bind := unify(pat, &BasicType{Kind: Float64, L: lit.L}); {
-		case bind == nil:
-			return lit, []Error{newError(lit, "cannot unify %s with %s", Float64, pat)}
+		typ := &BasicType{Kind: Float64, L: lit.L}
+		switch bind, note := convertType(pattern(typ), pat, false); {
+		case note != nil:
+			return lit, []Error{note.(Error)}
 		case isRefType(pat.typ):
 			lit.T = subType(bind, pat.typ)
 			return lit, nil
