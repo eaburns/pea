@@ -567,7 +567,7 @@ func (c *Convert) buildString(s *strings.Builder) *strings.Builder {
 		return c.Expr.buildString(s)
 	}
 	c.T.buildString(s)
-	s.WriteString(" : ")
+	s.WriteString(" :: ")
 	c.Expr.buildString(s)
 	return s
 }
