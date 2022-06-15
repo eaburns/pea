@@ -1,0 +1,9 @@
+// 5
+func main() {
+	ary := [0, 1, 2, 3],
+	x := &int :: ary[0],
+	x := 5,
+	print_int(ary[0])
+}
+
+func print_int(_ int)

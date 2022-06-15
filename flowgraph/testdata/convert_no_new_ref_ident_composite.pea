@@ -1,0 +1,12 @@
+// 44
+func main() {
+	x := &[.x int, .y int] :: threes,
+	y := &[.x int, .y int] :: threes,
+	y.x := 4,
+	print_int(x.x),
+	print_int(y.x)
+}
+
+var threes := [.x int, .y int] :: [.x 3, .y 3]
+
+func print_int(_ int)

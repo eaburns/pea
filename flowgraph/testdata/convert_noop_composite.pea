@@ -1,0 +1,12 @@
+// 5
+func main() {
+	print_int(get_x_no_inline([.x 5, .y 6]))
+}
+
+type (X, Y) pair &[.x X, .y Y]
+
+func get_x_no_inline(p (X, Y) pair) X {
+	return: p.x
+}
+
+func print_int(_ int)

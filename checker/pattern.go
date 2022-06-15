@@ -446,32 +446,6 @@ func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note)
 	return bind, nil
 }
 
-// convertTypeDisallowInnerRef is like convertType, but returns an error
-// if any any conversion, but the innermost is a Ref.
-// This is to support checking literal expressions
-// in a way compatible with the old unify() function.
-//
-// TODO: get rid of this by adding support for Ref conversions
-// and by making literal expressions be based in value types.
-func convertTypeDisallowInnerRef(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note) {
-	var bind map[*TypeParm]Type
-	cvt, notes := convert(nil, src, dst, explicit, &bind)
-	if cvt == nil {
-		n := newNote("cannot convert %s to %s", src, dst)
-		n.setLoc(src.typ)
-		n.setNotes(notes)
-		return nil, n
-	}
-	for p := cvt; p != nil; p, _ = p.Expr.(*Convert) {
-		if p.Expr != nil && p.Kind == Ref {
-			n := newNote("cannot convert %s to %s", src, dst)
-			n.setLoc(src.typ)
-			return nil, n
-		}
-	}
-	return bind, nil
-}
-
 // convertExpr returns the expression resulting from converting expr to the given type pattern.
 func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, map[*TypeParm]Type, Error) {
 	if expr.Type() == nil {
@@ -490,49 +464,87 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, map[*TypeParm
 		notes = append(notes, newNote("cannot implicitly convert an explicit conversion"))
 		goto fail
 	}
-	// Set the L and Explicit fields;
 	for p := cvt; p != nil; p, _ = p.Expr.(*Convert) {
 		p.L = expr.Loc()
 		p.Explicit = explicit
-
-		if p.Kind == Ref {
-			// Two cases, either p.Expr == nil or p.Expr != nil.
-			// If p.Expr != nil, then it must not be a Deref,
-			// since convert fixes those, so it's an error.
-			// If p.Expr==nil, then we need to check expr.
-			if p.Expr != nil {
-				notes = append(notes, newNote("cannot reference %s", p.Expr))
-				goto fail
-			}
-			if src, ok := expr.(*Convert); !ok || src.Kind != Deref {
-				// It is currently an error for convertExpr to generate a Ref conversion.
-				// TODO: implement Ref conversion, and ditch this error.
-				notes = append(notes, newNote("cannot reference %s", expr))
-				goto fail
-			} else {
-				p.Kind = Noop
-				p.Expr = src.Expr
-				if src.Expr == nil {
-					// TODO: we should never have a nil expr
-					return cvt, bind, nil
-				}
-				break
-			}
-		}
-		if p.Expr == nil {
-			p.Expr = expr
-			break
-		}
 	}
-	if cvt.Kind == Noop && !cvt.Explicit && eqType(cvt.Expr.Type(), cvt.Type()) {
-		// If this is an implicit no-op that isn't changing the type, just pop it off.
-		return cvt.Expr, bind, nil
-	}
-	return cvt, bind, nil
+	return doConvertExpr(expr, cvt), bind, nil
 fail:
 	err := newError(expr, "cannot convert %s (%s) to %s", expr, expr.Type(), dst)
 	err.setNotes(notes)
 	return expr, nil, err
+}
+
+// doConvertExpr returns an Expr that is expr converted as-per cvt,
+// which is a chain of *Convert nodes as returned by convert().
+// The returned Expression may use the cvt *Convert nodes.
+func doConvertExpr(expr Expr, cvt *Convert) Expr {
+	if cvt == nil {
+		return expr
+	}
+	next, _ := cvt.Expr.(*Convert)
+	cvt.Expr = doConvertExpr(expr, next)
+	switch {
+	case cvt.Kind == Ref:
+		// Ref conversions that convert an identifier
+		// result in the reference to the identifier's variable.
+		if id := identifierRef(cvt.Expr); id != nil {
+			return id
+		}
+		// Ref conversions that convert a call
+		// to a reference-returning function
+		// result in the returned reference.
+		if call := callRef(cvt.Expr); call != nil {
+			return call
+		}
+	case cvt.Kind == Noop && !cvt.Explicit && eqType(cvt.Expr.Type(), cvt.Type()):
+		// Pop-off meaningless noop conversions.
+		return cvt.Expr
+	}
+	return cvt
+}
+
+// identifierRef returns the reference to an identifier
+// if Expr is a Var, Local, Parm, or Cap deref;
+// otherwise nil.
+func identifierRef(expr Expr) Expr {
+	deref, ok := expr.(*Convert)
+	if !ok || deref.Kind != Deref {
+		return nil
+	}
+	switch deref.Expr.(type) {
+	case *Var, *Local, *Parm, *Cap:
+		return deref.Expr
+	}
+	return nil
+}
+
+// callRef returns the reference result of a call
+// to a reference-returning function
+// if Expr is a deref of a deref of a call
+// to a reference-returning function;
+// otherwise nil.
+func callRef(expr Expr) Expr {
+	// A call to a ref-returning function has two Derefs:
+	// the outer Deref derefs the returned reference,
+	// and the inner Deref derefs the hidden return variable.
+	//
+	// Our goal is to check the inner deref's expr for a call
+	// to a reference-returning function,
+	// and if we find one, return the outer deref's expr.
+	outerDeref, ok := expr.(*Convert)
+	if !ok || outerDeref.Kind != Deref {
+		return nil
+	}
+	innerDeref, ok := outerDeref.Expr.(*Convert)
+	if !ok || innerDeref.Kind != Deref {
+		return nil
+	}
+	call, ok := innerDeref.Expr.(*Call)
+	if !ok || !isRefLiteral(call.Func.ret().typ) {
+		return nil
+	}
+	return outerDeref.Expr
 }
 
 // convert returns a chain of *Convert nodes giving the conversion from src to dst.

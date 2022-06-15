@@ -1539,6 +1539,24 @@ func (bb *blockBuilder) convert(cvt *checker.Convert) (*blockBuilder, Value) {
 			v = bb.load(v)
 		}
 		return bb, v
+	case checker.Ref:
+		var v Value
+		bb, expr := bb.expr(cvt.Expr)
+		if dst := bb.buildType(cvt.Expr.Type()); dst.isSmall() {
+			v = bb.alloc(dst)
+			bb.store(v, expr)
+		} else {
+			// There is already a hidden alloc here to hold the non-small value.
+			// Just use that one, don't copy to a new one.
+			v = expr
+		}
+		if refType := bb.buildType(cvt.Type()); refType.String() != v.Type().String() {
+			// The type checker may change the type to a compatible reference,
+			// essentially collapsing a Noop convert into the Ref convert.
+			// If so, we need to bitcast.
+			v = bb.bitCast(v, refType)
+		}
+		return bb, v
 	case checker.StrConvert:
 		return bb.buildStrConvert(cvt)
 	case checker.NumConvert:

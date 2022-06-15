@@ -1,0 +1,10 @@
+// 34
+func main() {
+	p := &point_ref :: [.x 3, .y 4],
+	print_int(p.x),
+	print_int(p.y),
+}
+
+type point_ref &[.x int, .y int]
+
+func print_int(_ int)

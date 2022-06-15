@@ -1,0 +1,8 @@
+// 3
+func main() {
+	x := 3.14,
+	y := &int :: x,
+	print_int(y)
+}
+
+func print_int(_ int)

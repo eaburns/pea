@@ -1,0 +1,12 @@
+// 44
+func main() {
+	x := &int :: three,
+	y := &int :: three,
+	y := 4,
+	print_int(x),
+	print_int(y),
+}
+
+var three := int :: 3
+
+func print_int(_ int)

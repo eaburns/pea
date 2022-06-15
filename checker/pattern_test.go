@@ -444,6 +444,8 @@ func TestConvert(t *testing.T) {
 		type func_int_to_int (int){int}
 		type (X, Y) pair [.x X, .y Y]
 		type (X, Y) pair2 [.x X, .y Y]
+		type (X, Y) pair_ref &[.x X, .y Y]
+		type T abc_union_ref &[a?, b? T, c?]
 
 		type T pointer &T
 	`
@@ -742,6 +744,23 @@ func TestConvert(t *testing.T) {
 		{src: "_", dst: "_", explicit: false, want: nil},
 		{src: "_", dst: "_", explicit: true, want: nil},
 		{src: "[.x _, .y _]", dst: "[.x int, .y _]", want: nil},
+
+		{
+			src:  "[.x int, .y int]",
+			dst:  "(int, int) pair_ref",
+			want: c("[.x int, .y int]", Ref, "(int, int) pair_ref"),
+		},
+
+		// This doesn't convert, because [b? int] is not a subset of [a?, b? T, c?].
+		// This is because int != T.
+		// TODO: We should union subset conversion to use intersect?
+		{
+			src: "[b? int]",
+			// type T abc_union_ref &[a?, b? T, c?]
+			dst:      "_ abc_union_ref",
+			explicit: true,
+			want:     nil,
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -1519,7 +1538,7 @@ func TestPatternUnify(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to parse type: %s", err)
 			}
-			bind, note := convertTypeDisallowInnerRef(pattern(typ), pat, false)
+			bind, note := convertType(pattern(typ), pat, false)
 			if test.want == "" {
 				if note == nil {
 					t.Errorf("got %s %v, want error", subType(bind, typ), bindAsSlice(bind))

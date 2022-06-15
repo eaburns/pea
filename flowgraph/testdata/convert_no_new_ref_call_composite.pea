@@ -1,0 +1,16 @@
+// 44
+func main() {
+	x := &[.x int, .y int] :: threes_no_inline(),
+	y := &[.x int, .y int] :: threes_no_inline(),
+	y.x := 4,
+	print_int(x.x),
+	print_int(y.x)
+}
+
+var threes := [.x int, .y int] :: [.x 3, .y 3]
+
+func threes_no_inline() &[.x int, .y int] {
+	return: threes
+}
+
+func print_int(_ int)

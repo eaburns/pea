@@ -461,6 +461,22 @@ func TestUnusedLocal(t *testing.T) {
 	}
 }
 
+func TestUsedLocal(t *testing.T) {
+	const src = `
+		func main() {
+			ary := [0, 1, 2, 3],
+			x := &int :: ary[0],
+			x := 5,
+			print_int(ary[0])
+		}
+		func print_int(_ int)
+	`
+	_, errs := check("test", []string{src}, nil)
+	if len(errs) != 0 {
+		t.Fatalf("expected no errors, got %v", errs)
+	}
+}
+
 func TestFuncNewLocal(t *testing.T) {
 	const src = `
 		// x and y are locals of the func.
@@ -785,7 +801,7 @@ func TestCheckFuncReturnCall(t *testing.T) {
 		{
 			name: "return type mismatch",
 			src:  "func foo() int { return: \"hello\" }",
-			err:  `cannot convert string to int`,
+			err:  `cannot convert "hello" \(string\) to int`,
 		},
 	}
 	for _, test := range tests {
@@ -1299,12 +1315,11 @@ func TestConversions(t *testing.T) {
 			err: `cannot convert x \(\[a\?, b\? int, c\?\]\) to a_or_b`,
 		},
 		{
-			name: "union subset conversion fails reference",
+			name: "union subset conversion ok reference added",
 			src: `
 				type a_or_b [a?, b? int]
 				func f(x &[a?]) { &a_or_b :: x }
 			`,
-			err: `cannot convert x \(&\[a\?\]\) to &a_or_b`,
 		},
 		{
 			name: "union subset conversion fails for non-literals",
@@ -1870,7 +1885,7 @@ func TestOverloadResolution(t *testing.T) {
 			name: "argument type mismatch",
 			src:  "func x(i int)",
 			call: "x(\"hello\")",
-			err:  `cannot convert string to int`,
+			err:  `cannot convert "hello" \(string\) to int`,
 		},
 		{
 			name: "0-ary no return function found",
@@ -2440,13 +2455,13 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "var a := int :: 1",
 			call: "a := \"\"",
 			ret:  "int",
-			err:  `cannot convert string to int`,
+			err:  `cannot convert "" \(string\) to int`,
 		},
 		{
 			name: "built-in assign, lhs/rhs mismatch",
 			src:  "var a := int :: 1",
 			call: "a := \"\"",
-			err:  `cannot convert string to int`,
+			err:  `cannot convert "" \(string\) to int`,
 		},
 		{
 			name: "built-in new array, no expected type",
@@ -3902,14 +3917,14 @@ func TestArrayLiteralInference(t *testing.T) {
 		{pat: "[int]", expr: `[]`, want: `[int]`},
 		{pat: "[int]", expr: `[error]`, err: `not found`},
 		{pat: "[int]", expr: `[5]`, want: `[int]`},
-		{pat: "[int]", expr: `["hello"]`, err: `cannot convert string to int`},
+		{pat: "[int]", expr: `["hello"]`, err: `cannot convert`},
 		{pat: "[int]", expr: `[[[5]]]`, err: `cannot convert`},
 		{pat: "[int]", expr: `[[[5], []], []]`, err: `cannot convert`},
 
 		{pat: "&[int]", expr: `[]`, want: `&[int]`},
 		{pat: "&[int]", expr: `[error]`, err: `not found`},
 		{pat: "&[int]", expr: `[5]`, want: `&[int]`},
-		{pat: "&[int]", expr: `["hello"]`, err: `cannot convert string to int`},
+		{pat: "&[int]", expr: `["hello"]`, err: `cannot convert`},
 		{pat: "&[int]", expr: `[[[5]]]`, err: `cannot convert`},
 		{pat: "&[int]", expr: `[[[5], []], []]`, err: `cannot convert`},
 
@@ -3930,42 +3945,42 @@ func TestArrayLiteralInference(t *testing.T) {
 		{pat: "[T]", expr: `[]`, want: `[T]`},
 		{pat: "[T]", expr: `[error]`, err: `not found`},
 		{pat: "[T]", expr: `[5]`, err: `cannot convert`},
-		{pat: "[T]", expr: `["hello"]`, err: `cannot convert string to T`},
+		{pat: "[T]", expr: `["hello"]`, err: `cannot convert`},
 		{pat: "[T]", expr: `[[[5]]]`, err: `cannot convert`},
 		{pat: "[T]", expr: `[[[5], []], []]`, err: `cannot convert`},
 
 		{pat: "&[T]", expr: `[]`, want: `&[T]`},
 		{pat: "&[T]", expr: `[error]`, err: `not found`},
 		{pat: "&[T]", expr: `[5]`, err: `cannot convert`},
-		{pat: "&[T]", expr: `["hello"]`, err: `cannot convert string to T`},
+		{pat: "&[T]", expr: `["hello"]`, err: `cannot convert`},
 		{pat: "&[T]", expr: `[[[5]]]`, err: `cannot convert`},
 		{pat: "&[T]", expr: `[[[5], []], []]`, err: `cannot convert`},
 
 		{src: "type t [int]", pat: "t", expr: `[]`, want: `t`},
 		{src: "type t [int]", pat: "t", expr: `[error]`, err: `not found`},
 		{src: "type t [int]", pat: "t", expr: `[5]`, want: `t`},
-		{src: "type t [int]", pat: "t", expr: `["hello"]`, err: `cannot convert string to int`},
+		{src: "type t [int]", pat: "t", expr: `["hello"]`, err: `cannot convert`},
 		{src: "type t [int]", pat: "t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type t [int]", pat: "t", expr: `[[[5], []], []]`, err: `cannot convert`},
 
 		{src: "type t [int]", pat: "&t", expr: `[]`, want: `&t`},
 		{src: "type t [int]", pat: "&t", expr: `[error]`, err: `not found`},
 		{src: "type t [int]", pat: "&t", expr: `[5]`, want: `&t`},
-		{src: "type t [int]", pat: "&t", expr: `["hello"]`, err: `cannot convert string to int`},
+		{src: "type t [int]", pat: "&t", expr: `["hello"]`, err: `cannot convert`},
 		{src: "type t [int]", pat: "&t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type t [int]", pat: "&t", expr: `[[[5], []], []]`, err: `cannot convert`},
 
 		{src: "type T t [T]", pat: "int t", expr: `[]`, want: `int t`},
 		{src: "type T t [T]", pat: "int t", expr: `[error]`, err: `not found`},
 		{src: "type T t [T]", pat: "int t", expr: `[5]`, want: `int t`},
-		{src: "type T t [T]", pat: "int t", expr: `["hello"]`, err: `cannot convert string to int`},
+		{src: "type T t [T]", pat: "int t", expr: `["hello"]`, err: `cannot convert`},
 		{src: "type T t [T]", pat: "int t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type T t [T]", pat: "int t", expr: `[[[5], []], []]`, err: `cannot convert`},
 
 		{src: "type T t [T]", pat: "&int t", expr: `[]`, want: `&int t`},
 		{src: "type T t [T]", pat: "&int t", expr: `[error]`, err: `not found`},
 		{src: "type T t [T]", pat: "&int t", expr: `[5]`, want: `&int t`},
-		{src: "type T t [T]", pat: "&int t", expr: `["hello"]`, err: `cannot convert string to int`},
+		{src: "type T t [T]", pat: "&int t", expr: `["hello"]`, err: `cannot convert`},
 		{src: "type T t [T]", pat: "&int t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type T t [T]", pat: "&int t", expr: `[[[5], []], []]`, err: `cannot convert`},
 
@@ -3986,13 +4001,13 @@ func TestArrayLiteralInference(t *testing.T) {
 		{src: "type t &[int]", pat: "t", expr: `[]`, want: `t`},
 		{src: "type t &[int]", pat: "t", expr: `[error]`, err: `not found`},
 		{src: "type t &[int]", pat: "t", expr: `[5]`, want: `t`},
-		{src: "type t &[int]", pat: "t", expr: `["hello"]`, err: `cannot convert string to int`},
+		{src: "type t &[int]", pat: "t", expr: `["hello"]`, err: `cannot convert`},
 		{src: "type t &[int]", pat: "t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type t &[int]", pat: "t", expr: `[[[5], []], []]`, err: `cannot convert`},
 
 		{src: "type t &[int]", pat: "&t", expr: `[]`, err: `cannot infer`},
 		{src: "type t &[int]", pat: "&t", expr: `[error]`, err: `not found`},
-		{src: "type t &[int]", pat: "&t", expr: `[5]`, err: `cannot convert`},
+		{src: "type t &[int]", pat: "&t", expr: `[5]`, want: `&t`},
 		{src: "type t &[int]", pat: "&t", expr: `["hello"]`, err: `cannot convert`},
 		{src: "type t &[int]", pat: "&t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type t &[int]", pat: "&t", expr: `[[[5], []], []]`, err: `cannot convert`},
@@ -4000,13 +4015,13 @@ func TestArrayLiteralInference(t *testing.T) {
 		{src: "type T t &[T]", pat: "int t", expr: `[]`, want: `int t`},
 		{src: "type T t &[T]", pat: "int t", expr: `[error]`, err: `not found`},
 		{src: "type T t &[T]", pat: "int t", expr: `[5]`, want: `int t`},
-		{src: "type T t &[T]", pat: "int t", expr: `["hello"]`, err: `cannot convert string to int`},
+		{src: "type T t &[T]", pat: "int t", expr: `["hello"]`, err: `cannot convert`},
 		{src: "type T t &[T]", pat: "int t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type T t &[T]", pat: "int t", expr: `[[[5], []], []]`, err: `cannot convert`},
 
 		{src: "type T t &[T]", pat: "&int t", expr: `[]`, err: `cannot infer`},
 		{src: "type T t &[T]", pat: "&int t", expr: `[error]`, err: `not found`},
-		{src: "type T t &[T]", pat: "&int t", expr: `[5]`, err: `cannot convert`},
+		{src: "type T t &[T]", pat: "&int t", expr: `[5]`, want: `&int t`},
 		{src: "type T t &[T]", pat: "&int t", expr: `["hello"]`, err: `cannot convert`},
 		{src: "type T t &[T]", pat: "&int t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type T t &[T]", pat: "&int t", expr: `[[[5], []], []]`, err: `cannot convert`},
@@ -4020,10 +4035,10 @@ func TestArrayLiteralInference(t *testing.T) {
 
 		{src: "type T t &[T]", pat: "&_ t", expr: `[]`, err: `cannot infer`},
 		{src: "type T t &[T]", pat: "&_ t", expr: `[error]`, err: `not found`},
-		{src: "type T t &[T]", pat: "&_ t", expr: `[5]`, err: `cannot convert`},
-		{src: "type T t &[T]", pat: "&_ t", expr: `["hello"]`, err: `cannot convert`},
-		{src: "type T t &[T]", pat: "&_ t", expr: `[[[5]]]`, err: `cannot convert`},
-		{src: "type T t &[T]", pat: "&_ t", expr: `[[[5], []], []]`, err: `cannot convert`},
+		{src: "type T t &[T]", pat: "&_ t", expr: `[5]`, want: `&int t`},
+		{src: "type T t &[T]", pat: "&_ t", expr: `["hello"]`, want: `&string t`},
+		{src: "type T t &[T]", pat: "&_ t", expr: `[[[5]]]`, want: `&[[int]] t`},
+		{src: "type T t &[T]", pat: "&_ t", expr: `[[[5], []], []]`, want: `&[[int]] t`},
 
 		{pat: "[[int]]", expr: `[]`, want: `[[int]]`},
 		{pat: "[[int]]", expr: `[[]]`, want: `[[int]]`},
@@ -4101,8 +4116,8 @@ func TestUnionLiteralInference(t *testing.T) {
 
 		{src: `type t &[a?, b? int, c?]`, pat: `t`, expr: `[a?]`, want: `t`},
 		{src: `type t &[a?, b? int, c?]`, pat: `t`, expr: `[b? 5]`, want: `t`},
-		{src: `type t &[a?, b? int, c?]`, pat: `&t`, expr: `[a?]`, err: `cannot convert`},
-		{src: `type t &[a?, b? int, c?]`, pat: `&t`, expr: `[b? 5]`, err: `cannot convert`},
+		{src: `type t &[a?, b? int, c?]`, pat: `&t`, expr: `[a?]`, want: `&t`},
+		{src: `type t &[a?, b? int, c?]`, pat: `&t`, expr: `[b? 5]`, want: `&t`},
 
 		{src: `type T t [a?, b? T, c?]`, pat: `int t`, expr: `[a?]`, want: `int t`},
 		{src: `type T t [a?, b? T, c?]`, pat: `int t`, expr: `[b? 5]`, want: `int t`},
@@ -4111,8 +4126,8 @@ func TestUnionLiteralInference(t *testing.T) {
 
 		{src: `type T t &[a?, b? T, c?]`, pat: `int t`, expr: `[a?]`, want: `int t`},
 		{src: `type T t &[a?, b? T, c?]`, pat: `int t`, expr: `[b? 5]`, want: `int t`},
-		{src: `type T t &[a?, b? T, c?]`, pat: `&int t`, expr: `[a?]`, err: `cannot convert`},
-		{src: `type T t &[a?, b? T, c?]`, pat: `&int t`, expr: `[b? 5]`, err: `cannot convert`},
+		{src: `type T t &[a?, b? T, c?]`, pat: `&int t`, expr: `[a?]`, want: `&int t`},
+		{src: `type T t &[a?, b? T, c?]`, pat: `&int t`, expr: `[b? 5]`, want: `&int t`},
 
 		{src: `type T t [a?, b? T, c?]`, pat: `_ t`, expr: `[a?]`, err: `cannot infer`},
 		{src: `type T t [a?, b? T, c?]`, pat: `_ t`, expr: `[b? 5]`, want: `int t`},
@@ -4121,7 +4136,10 @@ func TestUnionLiteralInference(t *testing.T) {
 
 		{src: `type T t &[a?, b? T, c?]`, pat: `_ t`, expr: `[a?]`, err: `cannot infer`},
 		{src: `type T t &[a?, b? T, c?]`, pat: `_ t`, expr: `[b? 5]`, want: `int t`},
-		{src: `type T t &[a?, b? T, c?]`, pat: `&_ t`, expr: `[a?]`, err: `cannot convert`},
+		{src: `type T t &[a?, b? T, c?]`, pat: `&_ t`, expr: `[a?]`, err: `cannot infer`},
+
+		// This should probably be '&int t', not an error.
+		// But since int!=T, [b? int] is not currently considered a subset.
 		{src: `type T t &[a?, b? T, c?]`, pat: `&_ t`, expr: `[b? 5]`, err: `cannot convert`},
 	}
 	for _, test := range tests {
@@ -4160,6 +4178,7 @@ func TestStructLiteralInference(t *testing.T) {
 		{pat: `&int`, expr: `[.x [.x [.x 5]]]`, err: `cannot convert`},
 
 		{pat: `[.]`, expr: `[.x error]`, err: `not found`},
+		{pat: `[.]`, expr: `[.x error]`, err: `invalid empty struct literal`},
 		{pat: `[.]`, expr: `[.]`, want: `[.]`},
 		{pat: `[.]`, expr: `[.x 5]`, err: `invalid empty struct literal`},
 		{pat: `[.]`, expr: `[.x 5, .y 3.14]`, err: `invalid empty struct literal`},
@@ -4168,10 +4187,10 @@ func TestStructLiteralInference(t *testing.T) {
 
 		{pat: `&[.]`, expr: `[.x error]`, err: `not found`},
 		{pat: `&[.]`, expr: `[.]`, want: `&[.]`},
-		{pat: `&[.]`, expr: `[.x 5]`, err: `cannot convert`},
-		{pat: `&[.]`, expr: `[.x 5, .y 3.14]`, err: `cannot convert`},
-		{pat: `&[.]`, expr: `[.y 5, .x 3.14]`, err: `cannot convert`},
-		{pat: `&[.]`, expr: `[.x [.x [.x 5]]]`, err: `cannot convert`},
+		{pat: `&[.]`, expr: `[.x 5]`, err: `invalid empty struct literal`},
+		{pat: `&[.]`, expr: `[.x 5, .y 3.14]`, err: `invalid empty struct literal`},
+		{pat: `&[.]`, expr: `[.y 5, .x 3.14]`, err: `invalid empty struct literal`},
+		{pat: `&[.]`, expr: `[.x [.x [.x 5]]]`, err: `invalid empty struct literal`},
 
 		{pat: `[.x int]`, expr: `[.x error]`, err: `not found`},
 		{pat: `[.x int]`, expr: `[.]`, err: `cannot convert`},
@@ -4247,7 +4266,7 @@ func TestStructLiteralInference(t *testing.T) {
 		{src: `type t [.x int]`, pat: `&t`, expr: `[.x 5]`, want: `&t`},
 
 		{src: `type t &[.x int]`, pat: `t`, expr: `[.x 5]`, want: `t`},
-		{src: `type t &[.x int]`, pat: `&t`, expr: `[.x 5]`, err: `cannot convert`},
+		{src: `type t &[.x int]`, pat: `&t`, expr: `[.x 5]`, want: `&t`},
 
 		{src: `type T t [.x T]`, pat: `int t`, expr: `[.x 5]`, want: `int t`},
 		{src: `type T t [.x T]`, pat: `int t`, expr: `[.x [.x 5]]`, err: `cannot convert`},
@@ -4260,12 +4279,12 @@ func TestStructLiteralInference(t *testing.T) {
 
 		{src: `type T t &[.x T]`, pat: `int t`, expr: `[.x 5]`, want: `int t`},
 		{src: `type T t &[.x T]`, pat: `int t`, expr: `[.x [.x 5]]`, err: `cannot convert`},
-		{src: `type T t &[.x T]`, pat: `&int t`, expr: `[.x 5]`, err: `cannot convert`},
+		{src: `type T t &[.x T]`, pat: `&int t`, expr: `[.x 5]`, want: `&int t`},
 		{src: `type T t &[.x T]`, pat: `&int t`, expr: `[.x [.x 5]]`, err: `cannot convert`},
 		{src: `type T t &[.x T]`, pat: `_ t`, expr: `[.x 5]`, want: `int t`},
 		{src: `type T t &[.x T]`, pat: `_ t`, expr: `[.x [.x 5]]`, want: `[.x int] t`},
-		{src: `type T t &[.x T]`, pat: `&_ t`, expr: `[.x 5]`, err: `cannot convert`},
-		{src: `type T t &[.x T]`, pat: `&_ t`, expr: `[.x [.x 5]]`, err: `cannot convert`},
+		{src: `type T t &[.x T]`, pat: `&_ t`, expr: `[.x 5]`, want: `&int t`},
+		{src: `type T t &[.x T]`, pat: `&_ t`, expr: `[.x [.x 5]]`, want: `&[.x int] t`},
 
 		{
 			src:  `type (X, Y) pair [.x X, .y Y]`,
@@ -4373,33 +4392,33 @@ func TestBlockLiteralInference(t *testing.T) {
 		{src: `type t (){}`, pat: `t`, expr: `(){}`, want: `t`},
 		{src: `type t (){}`, pat: `&t`, expr: `(){}`, want: `&t`},
 		{src: `type t &(){}`, pat: `t`, expr: `(){}`, want: `t`},
-		{src: `type t &(){}`, pat: `&t`, expr: `(){}`, err: `cannot convert`},
+		{src: `type t &(){}`, pat: `&t`, expr: `(){}`, want: `&t`},
 
 		{src: `type T t (T){}`, pat: `int t`, expr: `(){}`, err: `cannot convert`},
 		{src: `type T t (T){}`, pat: `int t`, expr: `(_ int){}`, want: `int t`},
 		{src: `type T t (T){}`, pat: `&int t`, expr: `(_ int){}`, want: `&int t`},
 		{src: `type T t &(T){}`, pat: `int t`, expr: `(_ int){}`, want: `int t`},
-		{src: `type T t &(T){}`, pat: `&int t`, expr: `(_ int){}`, err: `cannot convert`},
+		{src: `type T t &(T){}`, pat: `&int t`, expr: `(_ int){}`, want: `&int t`},
 
 		{src: `type T t (T){}`, pat: `_ t`, expr: `(){}`, err: `cannot convert`},
 		{src: `type T t (T){}`, pat: `_ t`, expr: `(_ int){}`, want: `int t`},
 		{src: `type T t (T){}`, pat: `&_ t`, expr: `(_ int){}`, want: `&int t`},
 		{src: `type T t &(T){}`, pat: `_ t`, expr: `(_ int){}`, want: `int t`},
-		{src: `type T t &(T){}`, pat: `&_ t`, expr: `(_ int){}`, err: `cannot convert`},
+		{src: `type T t &(T){}`, pat: `&_ t`, expr: `(_ int){}`, want: `&int t`},
 
 		{src: `type T t (){T}`, pat: `int t`, expr: `(){}`, err: `cannot convert`},
 		{src: `type T t (){T}`, pat: `int t`, expr: `(){panic("")}`, want: `int t`},
 		{src: `type T t (){T}`, pat: `int t`, expr: `(){5}`, want: `int t`},
 		{src: `type T t (){T}`, pat: `&int t`, expr: `(){5}`, want: `&int t`},
 		{src: `type T t &(){T}`, pat: `int t`, expr: `(){5}`, want: `int t`},
-		{src: `type T t &(){T}`, pat: `&int t`, expr: `(){5}`, err: `cannot convert`},
+		{src: `type T t &(){T}`, pat: `&int t`, expr: `(){5}`, want: `&int t`},
 
 		{src: `type T t (){T}`, pat: `_ t`, expr: `(){}`, want: `[.] t`},
 		{src: `type T t (){T}`, pat: `_ t`, expr: `(){panic("")}`, want: `[.] t`},
 		{src: `type T t (){T}`, pat: `_ t`, expr: `(){5}`, want: `int t`},
 		{src: `type T t (){T}`, pat: `&_ t`, expr: `(){5}`, want: `&int t`},
 		{src: `type T t &(){T}`, pat: `_ t`, expr: `(){5}`, want: `int t`},
-		{src: `type T t &(){T}`, pat: `&_ t`, expr: `(){5}`, err: `cannot convert`},
+		{src: `type T t &(){T}`, pat: `&_ t`, expr: `(){5}`, want: `&int t`},
 
 		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(){}`, err: `cannot convert`},
 		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(_ int){}`, want: `(int, [.]) t`},
@@ -4407,7 +4426,7 @@ func TestBlockLiteralInference(t *testing.T) {
 		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(_ int){5}`, want: `(int, int) t`},
 		{src: `type (T, U) t (T){U}`, pat: `&(_, _) t`, expr: `(_ int){5}`, want: `&(int, int) t`},
 		{src: `type (T, U) t &(T){U}`, pat: `(_, _) t`, expr: `(_ int){5}`, want: `(int, int) t`},
-		{src: `type (T, U) t &(T){U}`, pat: `&(_, _) t`, expr: `(_ int){5}`, err: `cannot convert`},
+		{src: `type (T, U) t &(T){U}`, pat: `&(_, _) t`, expr: `(_ int){5}`, want: `&(int, int) t`},
 	}
 	for _, test := range tests {
 		t.Run(test.name(), test.run)
@@ -4423,19 +4442,20 @@ func TestStringLiteralInference(t *testing.T) {
 		{pat: `int`, expr: `"hello"`, err: `cannot convert`},
 		{src: `type t string`, pat: `t`, expr: `"hello"`, want: `t`},
 		{src: `type t string`, pat: `&t`, expr: `"hello"`, want: `&t`},
+		{src: `type t int`, pat: `t`, expr: `"hello"`, err: `cannot convert`},
+		{src: `type t int`, pat: `&t`, expr: `"hello"`, err: `cannot convert`},
 		{src: `type t &string`, pat: `t`, expr: `"hello"`, want: `t`},
-		{src: `type t &string`, pat: `&t`, expr: `"hello"`, err: `cannot convert`},
+		{src: `type t &string`, pat: `&t`, expr: `"hello"`, want: `&t`},
 		{src: `type T t T`, pat: `string t`, expr: `"hello"`, want: `string t`},
 		{src: `type T t T`, pat: `&string t`, expr: `"hello"`, want: `&string t`},
-		{src: `type T t T`, pat: `_ t`, expr: `"hello"`, err: `cannot convert`},
-		{src: `type T t T`, pat: `&_ t`, expr: `"hello"`, err: `cannot convert`},
+		{src: `type T t T`, pat: `_ t`, expr: `"hello"`, want: `string t`},
+		{src: `type T t T`, pat: `&_ t`, expr: `"hello"`, want: `&string t`},
 		{src: `type T t &T`, pat: `string t`, expr: `"hello"`, want: `string t`},
-		{src: `type T t &T`, pat: `&string t`, expr: `"hello"`, err: `cannot convert`},
-		{src: `type T t &T`, pat: `_ t`, expr: `"hello"`, err: `cannot convert`},
-		{src: `type T t &T`, pat: `&_ t`, expr: `"hello"`, err: `cannot convert`},
+		{src: `type T t &T`, pat: `&string t`, expr: `"hello"`, want: `&string t`},
+		{src: `type T t &T`, pat: `_ t`, expr: `"hello"`, want: `string t`},
+		{src: `type T t &T`, pat: `&_ t`, expr: `"hello"`, want: `&string t`},
 	}
 	for _, test := range tests {
-		t.Log(test.src)
 		t.Run(test.name(), test.run)
 	}
 }
@@ -4461,15 +4481,15 @@ func TestIntLiteralInference(t *testing.T) {
 		{src: `type t int`, pat: `t`, expr: `5`, want: `t`},
 		{src: `type t int`, pat: `&t`, expr: `5`, want: `&t`},
 		{src: `type t &int`, pat: `t`, expr: `5`, want: `t`},
-		{src: `type t &int`, pat: `&t`, expr: `5`, err: `cannot convert`},
+		{src: `type t &int`, pat: `&t`, expr: `5`, want: `&t`},
 		{src: `type T t T`, pat: `int t`, expr: `5`, want: `int t`},
 		{src: `type T t T`, pat: `&int t`, expr: `5`, want: `&int t`},
-		{src: `type T t T`, pat: `_ t`, expr: `5`, err: `cannot convert`},
-		{src: `type T t T`, pat: `&_ t`, expr: `5`, err: `cannot convert`},
+		{src: `type T t T`, pat: `_ t`, expr: `5`, want: `int t`},
+		{src: `type T t T`, pat: `&_ t`, expr: `5`, want: `&int t`},
 		{src: `type T t &T`, pat: `int t`, expr: `5`, want: `int t`},
-		{src: `type T t &T`, pat: `&int t`, expr: `5`, err: `cannot convert`},
-		{src: `type T t &T`, pat: `_ t`, expr: `5`, err: `cannot convert`},
-		{src: `type T t &T`, pat: `&_ t`, expr: `5`, err: `cannot convert`},
+		{src: `type T t &T`, pat: `&int t`, expr: `5`, want: `&int t`},
+		{src: `type T t &T`, pat: `_ t`, expr: `5`, want: `int t`},
+		{src: `type T t &T`, pat: `&_ t`, expr: `5`, want: `&int t`},
 
 		{pat: `int8`, expr: `-128`, want: `int8`},
 		{pat: `int8`, expr: `-129`, err: `underflow`},
@@ -4531,15 +4551,15 @@ func TestFloatLiteralInference(t *testing.T) {
 		{src: `type t float64`, pat: `t`, expr: `5.0`, want: `t`},
 		{src: `type t float64`, pat: `&t`, expr: `5.0`, want: `&t`},
 		{src: `type t &float64`, pat: `t`, expr: `5.0`, want: `t`},
-		{src: `type t &float64`, pat: `&t`, expr: `5.0`, err: `cannot convert`},
+		{src: `type t &float64`, pat: `&t`, expr: `5.0`, want: `&t`},
 		{src: `type T t T`, pat: `int t`, expr: `5.0`, want: `int t`},
 		{src: `type T t T`, pat: `&int t`, expr: `5.0`, want: `&int t`},
-		{src: `type T t T`, pat: `_ t`, expr: `5.0`, err: `cannot convert`},
-		{src: `type T t T`, pat: `&_ t`, expr: `5.0`, err: `cannot convert`},
+		{src: `type T t T`, pat: `_ t`, expr: `5.0`, want: `float64 t`},
+		{src: `type T t T`, pat: `&_ t`, expr: `5.0`, want: `&float64 t`},
 		{src: `type T t &T`, pat: `int t`, expr: `5.0`, want: `int t`},
-		{src: `type T t &T`, pat: `&int t`, expr: `5.0`, err: `cannot convert`},
-		{src: `type T t &T`, pat: `_ t`, expr: `5.0`, err: `cannot convert`},
-		{src: `type T t &T`, pat: `&_ t`, expr: `5.0`, err: `cannot convert`},
+		{src: `type T t &T`, pat: `&int t`, expr: `5.0`, want: `&int t`},
+		{src: `type T t &T`, pat: `_ t`, expr: `5.0`, want: `float64 t`},
+		{src: `type T t &T`, pat: `&_ t`, expr: `5.0`, want: `&float64 t`},
 
 		{pat: `int`, expr: `1.00`, want: `int`},
 		{pat: `int`, expr: `1.01`, err: `truncates`},
@@ -4579,13 +4599,13 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "1.0", infer: "t", want: "t", src: "type t &int"},
 		{expr: "1.0", infer: "[int]", want: "float64"},
 		{expr: "1.0", infer: "string", want: "float64"},
-		{expr: "1.0", infer: "&t", want: "float64", src: "type t &float32"},
+		{expr: "1.0", infer: "&t", want: "&t", src: "type t &float32"},
 		{expr: "1.0", infer: "float64 t", want: "float64 t", src: "type T t T"},
 		{expr: "1.0", infer: "int32 t", want: "int32 t", src: "type T t T"},
 		{expr: "1.0", infer: "float32 t", want: "float32 t", src: "type T t T"},
 		{expr: "1.0", infer: "&float64 t", want: "&float64 t", src: "type T t T"},
 		{expr: "1.0", infer: "float64 t", want: "float64 t", src: "type T t &T"},
-		{expr: "1.0", infer: "&float64 t", want: "float64", src: "type T t &T"},
+		{expr: "1.0", infer: "&float64 t", want: "&float64 t", src: "type T t &T"},
 		{expr: "1.0", infer: "string t", want: "float64", src: "type T t T"},
 		{expr: "1.0", infer: "int t", want: "float64", src: "type T t [T]"},
 		{
@@ -4627,7 +4647,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "1", infer: "t", want: "t", src: "type t float32"},
 		{expr: "1", infer: "&t", want: "&t", src: "type t float32"},
 		{expr: "1", infer: "t", want: "t", src: "type t &float32"},
-		{expr: "1", infer: "&t", want: "int", src: "type t &int16"},
+		{expr: "1", infer: "&t", want: "&t", src: "type t &int16"},
 		{expr: "1", infer: "string", want: "int"},
 		{expr: "1", infer: "[int]", want: "int"},
 		{expr: "1", infer: "int t", want: "int t", src: "type T t T"},
@@ -4635,7 +4655,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "1", infer: "float32 t", want: "float32 t", src: "type T t T"},
 		{expr: "1", infer: "&int32 t", want: "&int32 t", src: "type T t T"},
 		{expr: "1", infer: "int32 t", want: "int32 t", src: "type T t &T"},
-		{expr: "1", infer: "&int32 t", want: "int", src: "type T t &T"},
+		{expr: "1", infer: "&int32 t", want: "&int32 t", src: "type T t &T"},
 		{expr: "1", infer: "string t", want: "int", src: "type T t T"},
 		{expr: "1", infer: "int t", want: "int", src: "type T t [T]"},
 		{
@@ -4673,12 +4693,12 @@ func TestLiteralInference(t *testing.T) {
 		{expr: `"abc"`, infer: "t", want: "t", src: "type t string"},
 		{expr: `"abc"`, infer: "&t", want: "&t", src: "type t string"},
 		{expr: `"abc"`, infer: "t", want: "t", src: "type t &string"},
-		{expr: `"abc"`, infer: "&t", want: "string", src: "type t &string"},
+		{expr: `"abc"`, infer: "&t", want: "&t", src: "type t &string"},
 		{expr: `"abc"`, infer: "int", want: "string"},
 		{expr: `"abc"`, infer: "string t", want: "string t", src: "type T t T"},
 		{expr: `"abc"`, infer: "&string t", want: "&string t", src: "type T t T"},
 		{expr: `"abc"`, infer: "string t", want: "string t", src: "type T t &T"},
-		{expr: `"abc"`, infer: "&string t", want: "string", src: "type T t &T"},
+		{expr: `"abc"`, infer: "&string t", want: "&string t", src: "type T t &T"},
 		{expr: `"abc"`, infer: "string t", want: "string", src: "type T t [T]"},
 		{
 			expr:  `"abc"`,
@@ -4724,12 +4744,12 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "(){1}", infer: "(){t}", want: "(){t}", src: "type t int"},
 		{expr: "(){1}", infer: "(){&t}", want: "(){&t}", src: "type t int"},
 		{expr: "(){1}", infer: "(){t}", want: "(){t}", src: "type t &int"},
-		{expr: "(){1}", infer: "(){t}", want: "(){t}", src: "type t [int]"},
+		{expr: "(){1}", infer: "(){t}", want: "(){int}", src: "type t [int]"},
 		{expr: "(){1}", infer: "t", want: "t", src: "type t (){int}"},
 		{expr: "(){1}", infer: "t", want: "t", src: "type t (){int32}"},
 		{expr: "(){1}", infer: "&t", want: "&t", src: "type t (){int}"},
 		{expr: "(){1}", infer: "t", want: "t", src: "type t &(){int}"},
-		{expr: "(){1}", infer: "&t", want: "(){int}", src: "type t &(){int}"},
+		{expr: "(){1}", infer: "&t", want: "&t", src: "type t &(){int}"},
 		{expr: "(){1}", infer: "string", want: "(){int}"},
 		{expr: "(){1}", infer: "int t", want: "int t", src: "type T t (){T}"},
 		{expr: "(){1}", infer: "int32 t", want: "int32 t", src: "type T t (){T}"},
@@ -4738,15 +4758,15 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "(){1}", infer: "float64 t", want: "float64 t", src: "type T t &(){T}"},
 		{expr: "(){1}", infer: "&float64 t", want: "(){int}", src: "type T t &(){T}"},
 		{expr: "(i int){}", infer: "int t", want: "int t", src: "type T t (T){}"},
-		{expr: "(i int){}", infer: "int32 t", want: "(int){}", src: "type T t (T){}"},
+		{expr: "(i int){}", infer: "int32 t", want: "int32 t", src: "type T t (T){}"},
 		{expr: "(i int){}", infer: "&int t", want: "&int t", src: "type T t (T){}"},
 		{expr: "(i int){}", infer: "int t", want: "int t", src: "type T t &(T){}"},
-		{expr: "(i int){}", infer: "&int t", want: "(int){}", src: "type T t &(T){}"},
+		{expr: "(i int){}", infer: "&int t", want: "&int t", src: "type T t &(T){}"},
 		{expr: "(){1}", infer: "int t", want: "(){int}", src: "type T t (T){T}"},
 		{expr: "(i int){1}", infer: "int t", want: "int t", src: "type T t (T){T}"},
-		{expr: "(s string){1}", infer: "int t", want: "(string){int}", src: "type T t (T){T}"},
+		{expr: "(s string){1}", infer: "int t", want: "int t", src: "type T t (T){T}"},
 		{expr: "(i int, s string){1}", infer: "int t", want: "(int, string){int}", src: "type T t (T){T}"},
-		{expr: `(i int){"foo"}`, infer: "int t", want: "int t", src: "type T t (T){T}"},
+		{expr: `(i int){"foo"}`, infer: "int t", want: "(int){string}", src: "type T t (T){T}"},
 		{
 			expr:  `(i int){"foo"}`,
 			infer: "other#foo",
@@ -4800,7 +4820,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[none?]", infer: "t", want: "t", src: "type t [none?, some? int]"},
 		{expr: "[none?]", infer: "&t", want: "&t", src: "type t [none?, some? int]"},
 		{expr: "[none?]", infer: "t", want: "t", src: "type t &[none?, some? int]"},
-		{expr: "[none?]", infer: "&t", want: "[none?]", src: "type t &[none?, some? int]"},
+		{expr: "[none?]", infer: "&t", want: "&t", src: "type t &[none?, some? int]"},
 		{expr: "[some? 1]", want: "[some? int]"},
 		{expr: "[some? (i int){1.0}]", want: "[some? (int){float64}]"},
 		{expr: "[a? 1]", infer: "[a? int32]", want: "[a? int32]"},
@@ -4819,7 +4839,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[a? 1]", infer: "t", want: "t", src: "type t [a? int32, b?]"},
 		{expr: "[a? 1]", infer: "&t", want: "&t", src: "type t [a? int, b?]"},
 		{expr: "[a? 1]", infer: "t", want: "t", src: "type t &[a? int, b?]"},
-		{expr: "[a? 1]", infer: "&t", want: "[a? int]", src: "type t &[a? int, b?]"},
+		{expr: "[a? 1]", infer: "&t", want: "&t", src: "type t &[a? int, b?]"},
 		{expr: "[a? 1]", infer: "t", want: "[a? int]", src: "type t [c? int, b?]"},
 		{expr: "[a? 1]", infer: "t", want: "[a? int]", src: "type t [a?, b?]"},
 		{expr: "[some? 1]", infer: "int opt", want: "int opt", src: "type T opt [none?, some? T]"},
@@ -4860,7 +4880,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[.x 5]", want: "[.x int]"},
 		{expr: "[.x [.y 5]]", want: "[.x [.y int]]"},
 		{expr: "[.x 5]", infer: "[.x int32]", want: "[.x int32]"},
-		{expr: "[.x 5]", infer: "[.x string]", want: "[.x string]"},
+		{expr: "[.x 5]", infer: "[.x string]", want: "[.x int]"},
 		{expr: "[.x 5]", infer: "&[.x int32]", want: "&[.x int32]"},
 		{expr: "[.x 5]", infer: "[.x &int]", want: "[.x &int]"},
 		{expr: "[.x 5, .y 1]", infer: "[.x int8, .y float32]", want: "[.x int8, .y float32]"},
@@ -4868,7 +4888,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[.x 5, .y 1]", infer: "[.y int8, .x float32]", want: "[.x int, .y int]"},
 		{expr: "[.x 5]", infer: "[.x int8, .y float32]", want: "[.x int]"},
 		{expr: "[.x 5, .y 1]", infer: "[.x int8]", want: "[.x int, .y int]"},
-		{expr: "[.x 5, .y 1]", infer: "[.x int8, .y string]", want: "[.x int8, .y string]"},
+		{expr: "[.x 5, .y 1]", infer: "[.x int8, .y string]", want: "[.x int8, .y int]"},
 		{expr: "[.x 5]", infer: "t", want: "t", src: "type t [.x int]"},
 		{expr: "[.x 5]", infer: "t", want: "t", src: "type t [.x int32]"},
 		{expr: "[.x 5]", infer: "&t", want: "&t", src: "type t [.x int32]"},
@@ -4922,7 +4942,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[5]", infer: "t", want: "t", src: "type t [int]"},
 		{expr: "[5]", infer: "&t", want: "&t", src: "type t [int]"},
 		{expr: "[5]", infer: "t", want: "t", src: "type t &[int]"},
-		{expr: "[5]", infer: "&t", want: "[int]", src: "type t &[int]"},
+		{expr: "[5]", infer: "&t", want: "&t", src: "type t &[int]"},
 		{expr: "[5]", infer: "int t", want: "int t", src: "type T t [T]"},
 		{
 			expr:  `[5, 6]`,
@@ -4973,7 +4993,8 @@ func TestLiteralInference(t *testing.T) {
 			// Ignore the error. Many of the test cases are type mismatches.
 			// That's fine. Here we are testing the resulting literal type,
 			// not correct reporting of type mismatch.
-			expr, _ := checkAndConvertExpr(mod.Files[0], parserExpr, patternOrAny(infer))
+			expr, es := checkAndConvertExpr(mod.Files[0], parserExpr, patternOrAny(infer))
+			t.Logf("%v\n", es)
 			want := findTypeDef(t, "want", mod).Type
 			if !eqType(expr.Type(), want) {
 				t.Errorf("got %s, want %s", expr.Type(), want)

@@ -1,0 +1,16 @@
+// 44
+func main() {
+	x := &int :: three_no_inline(),
+	y := &int :: three_no_inline(),
+	y := 4,
+	print_int(x),
+	print_int(y),
+}
+
+var three := int :: 3
+
+func three_no_inline() &int {
+	return: three
+}
+
+func print_int(_ int)
