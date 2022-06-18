@@ -508,7 +508,7 @@ func TestFuncNewLocal(t *testing.T) {
 		t.Errorf("func locals differ: %s", diff)
 	}
 
-	block := fun.Exprs[1].(*Convert).Expr.(*BlockLit)
+	block := fun.Exprs[1].(*BlockLit)
 	want = []*LocalDef{
 		{Name: "z", T: &BasicType{Kind: Int}},
 	}
@@ -547,7 +547,7 @@ func TestTestNewLocal(t *testing.T) {
 		t.Errorf("test locals differ: %s", diff)
 	}
 
-	block := test.Exprs[1].(*Convert).Expr.(*BlockLit)
+	block := test.Exprs[1].(*BlockLit)
 	want = []*LocalDef{
 		{Name: "z", T: &BasicType{Kind: Int}},
 	}
@@ -578,7 +578,7 @@ func TestBlockNewLocal(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	block := findVarDef(t, "testVar", mod).Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit)
+	block := findVarDef(t, "testVar", mod).Expr.(*Call).Args[1].(*BlockLit)
 	want := []*LocalDef{
 		{Name: "x", T: &BasicType{Kind: Int}},
 		{Name: "y", T: &BasicType{Kind: String}},
@@ -587,7 +587,7 @@ func TestBlockNewLocal(t *testing.T) {
 		t.Errorf("outer-block locals differ: %s", diff)
 	}
 
-	block2 := block.Exprs[1].(*Convert).Expr.(*BlockLit)
+	block2 := block.Exprs[1].(*BlockLit)
 	want = []*LocalDef{
 		{Name: "z", T: &BasicType{Kind: Int}},
 	}
@@ -738,7 +738,7 @@ func TestNewLocalTypes(t *testing.T) {
 			switch mod, errs := check("test", []string{src}, nil); {
 			case test.err == "" && len(errs) == 0:
 				xxx := findVarDef(t, "xxx", mod)
-				got := xxx.Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit).Locals[0].Type()
+				got := xxx.Expr.(*Call).Args[1].(*BlockLit).Locals[0].Type()
 				want := findVarDef(t, "want", mod).Type()
 				if !eqType(got, want) {
 					t.Errorf("got %s, want %s", got, want)
@@ -3281,7 +3281,7 @@ func TestOverloadResolution(t *testing.T) {
 			case test.err == "" && len(errs) == 0:
 				expr := findVarDef(t, "zz", mod).Expr.(*Call).Args[1]
 				if test.ret == "" {
-					expr = expr.(*Convert).Expr.(*BlockLit).Exprs[0].(*Convert).Expr.(*Call).Args[1]
+					expr = expr.(*BlockLit).Exprs[0].(*Convert).Expr.(*Call).Args[1]
 				}
 				call := findCall(expr)
 				if call == nil {
@@ -3630,8 +3630,8 @@ func TestCaptureParm(t *testing.T) {
 	}
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
-	bOuter := x.Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit)
-	bInner := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
+	bOuter := x.Expr.(*Call).Args[1].(*BlockLit)
+	bInner := bOuter.Exprs[0].(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))
 	}
@@ -3652,8 +3652,8 @@ func TestCaptureCapture(t *testing.T) {
 	}
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
-	bOuter := x.Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit)
-	bMid := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
+	bOuter := x.Expr.(*Call).Args[1].(*BlockLit)
+	bMid := bOuter.Exprs[0].(*BlockLit)
 	if len(bMid.Caps) != 1 {
 		t.Fatalf("got %d mid caps, expected 1", len(bMid.Caps))
 	}
@@ -3661,7 +3661,7 @@ func TestCaptureCapture(t *testing.T) {
 		t.Errorf("expected parameter capture, got %v", bMid.Caps[0])
 	}
 
-	bInner := bMid.Exprs[0].(*Convert).Expr.(*BlockLit)
+	bInner := bMid.Exprs[0].(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d inner caps, expected 1", len(bInner.Caps))
 	}
@@ -3682,8 +3682,8 @@ func TestCaptureOnCall(t *testing.T) {
 	}
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
-	bOuter := x.Expr.(*Call).Args[1].(*Convert).Expr.(*BlockLit)
-	bInner := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
+	bOuter := x.Expr.(*Call).Args[1].(*BlockLit)
+	bInner := bOuter.Exprs[0].(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))
 	}

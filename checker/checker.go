@@ -1649,7 +1649,7 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 		Locals: []*LocalDef{localDef},
 		Ret:    wantRet,
 		Exprs:  []Expr{assign, result},
-		T:      refLiteral(&FuncType{Parms: parms, Ret: wantRet, L: l}),
+		T:      &FuncType{Parms: parms, Ret: wantRet, L: l},
 		L:      l,
 	}
 	for i := range parms {
@@ -1662,7 +1662,7 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 			L:   l,
 		})
 	}
-	return deref(blk)
+	return blk
 }
 
 // checkConvert checks a type conversion.
@@ -1785,13 +1785,13 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, 
 		}
 	}
 	lit.Array.ElemType = elemPat.typ
-	lit.T = refLiteral(lit.Array)
-	expr, _, err := convertExpr(deref(lit), pat, false)
+	lit.T = lit.Array
+	expr, _, err := convertExpr(lit, pat, false)
 	switch {
 	case err != nil:
 		errs = append(errs, err)
 	case !elemPat.isGroundType():
-		err := newError(lit, "cannot infer array type, got %s", expr.Type())
+		err := newError(lit, "cannot infer array type, got %s", pat.withType(expr.Type()))
 		errs = append(errs, err)
 	}
 	return expr, errs
@@ -1852,8 +1852,8 @@ func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr
 			L:    parserField.L,
 		})
 	}
-	lit.T = refLiteral(lit.Struct)
-	expr, _, err := convertExpr(deref(lit), pat, false)
+	lit.T = lit.Struct
+	expr, _, err := convertExpr(lit, pat, false)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -1915,13 +1915,13 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, pat typePattern) (Expr, 
 		}
 		lit.Case.Type = lit.Val.Type()
 	}
-	lit.T = refLiteral(lit.Union)
-	expr, _, err := convertExpr(deref(lit), pat, false)
+	lit.T = lit.Union
+	expr, _, err := convertExpr(lit, pat, false)
 	switch {
 	case err != nil:
 		errs = append(errs, err)
 	case !pat.withType(expr.Type()).isGroundType():
-		err := newError(lit, "cannot infer union type, got %s", expr.Type())
+		err := newError(lit, "cannot infer union type, got %s", pat.withType(expr.Type()))
 		errs = append(errs, err)
 	}
 	return expr, errs
@@ -2025,8 +2025,8 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 		}
 	}
 	funType.Ret = lit.Ret
-	lit.T = refLiteral(funType)
-	expr, _, err := convertExpr(deref(lit), pat, false)
+	lit.T = funType
+	expr, _, err := convertExpr(lit, pat, false)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -2067,13 +2067,13 @@ func endsInReturnOrPanic(es []Expr) bool {
 func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {
 	lit := &StrLit{
 		Text: parserLit.Data,
-		T:    refLiteral(&BasicType{Kind: String, L: parserLit.L}),
+		T:    &BasicType{Kind: String, L: parserLit.L},
 		L:    parserLit.L,
 	}
 	// We use explicit conversion here to allow a string literal
 	// which otherwise as named type (string)
 	// to convert to any other named string type.
-	expr, _, err := convertExpr(deref(lit), pat, true)
+	expr, _, err := convertExpr(lit, pat, true)
 	if err != nil {
 		return expr, []Error{err}
 	}
@@ -2114,7 +2114,7 @@ func _checkIntLit(parserLit *parser.IntLit, pat typePattern, defaultKind BasicTy
 	}
 	lit := &IntLit{
 		Text: parserLit.Text,
-		T:    refLiteral(&BasicType{Kind: intKind(pat.typ, defaultKind), L: parserLit.L}),
+		T:    &BasicType{Kind: intKind(pat.typ, defaultKind), L: parserLit.L},
 		L:    parserLit.L,
 	}
 	if _, ok := lit.Val.SetString(lit.Text, 0); !ok {
@@ -2128,7 +2128,7 @@ func _checkIntLit(parserLit *parser.IntLit, pat typePattern, defaultKind BasicTy
 	// We use explicit conversion here to allow an integer literal
 	// which otherwise as named type (int, int32, uint, …)
 	// to convert to any other named integer type.
-	expr, _, err := convertExpr(deref(lit), pat, true)
+	expr, _, err := convertExpr(lit, pat, true)
 	if err != nil {
 		return expr, []Error{err}
 	}
@@ -2236,7 +2236,7 @@ func checkValueSize(lit *IntLit) Error {
 func checkFloatLit(parserLit *parser.FloatLit, pat typePattern) (Expr, []Error) {
 	lit := &FloatLit{
 		Text: parserLit.Text,
-		T:    refLiteral(&BasicType{Kind: floatKind(pat.typ), L: parserLit.L}),
+		T:    &BasicType{Kind: floatKind(pat.typ), L: parserLit.L},
 		L:    parserLit.L,
 	}
 	if _, _, err := lit.Val.Parse(parserLit.Text, 10); err != nil {
@@ -2257,7 +2257,7 @@ func checkFloatLit(parserLit *parser.FloatLit, pat typePattern) (Expr, []Error) 
 	// We use explicit conversion here to allow a floating point literal
 	// which otherwise as named type (float32 or float64)
 	// to convert to any other named floating point type.
-	expr, _, err := convertExpr(deref(lit), pat, true)
+	expr, _, err := convertExpr(lit, pat, true)
 	if err != nil {
 		return expr, []Error{err}
 	}

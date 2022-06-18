@@ -850,15 +850,9 @@ func (bb *blockBuilder) expr(expr checker.Expr) (*blockBuilder, Value) {
 	case *checker.StrLit:
 		return bb, bb.strLit(expr)
 	case *checker.IntLit:
-		t := bb.buildType(expr.T).(*AddrType).Elem
-		a := bb.alloc(t)
-		bb.store(a, bb.checkerIntLit(expr, t))
-		return bb, a
+		return bb, bb.checkerIntLit(expr, bb.buildType(expr.T))
 	case *checker.FloatLit:
-		t := bb.buildType(expr.T).(*AddrType).Elem
-		a := bb.alloc(t)
-		bb.store(a, bb.floatLit(expr.Text, t))
-		return bb, a
+		return bb, bb.floatLit(expr.Text, bb.buildType(expr.T))
 	default:
 		panic(fmt.Sprintf("bad checker.Expr type: %T", expr))
 	}
@@ -1292,11 +1286,8 @@ func (bb *blockBuilder) buildOp(call *checker.Call) (*blockBuilder, Value) {
 		bb.ifEq(args[1], 0, yes, no)
 		yes.op(Panic, nil, yes.strLit(&checker.StrLit{
 			Text: "divide by zero",
-			T: &checker.RefType{
-				Type: &checker.BasicType{Kind: checker.String, L: call.L},
-				L:    call.L,
-			},
-			L: call.L,
+			T:    &checker.BasicType{Kind: checker.String, L: call.L},
+			L:    call.L,
 		}))
 		yes.done = true
 		bb = no
@@ -1873,7 +1864,7 @@ func (bb *blockBuilder) unionConvertUnionToUnion(cvt *checker.Convert, dstStruct
 
 func (bb *blockBuilder) arrayLit(lit *checker.ArrayLit) (*blockBuilder, Value) {
 	mod := bb.fun.mod
-	arrayType := bb.buildType(lit.T).(*AddrType).Elem.(*StructType)
+	arrayType := bb.buildType(lit.T).(*StructType)
 	elemType := arrayType.Fields[1].Type.(*ArrayType).Elem
 
 	a := bb.alloc(arrayType)
@@ -1904,7 +1895,7 @@ func (bb *blockBuilder) arrayLit(lit *checker.ArrayLit) (*blockBuilder, Value) {
 }
 
 func (bb *blockBuilder) structLit(lit *checker.StructLit) (*blockBuilder, Value) {
-	structType := bb.buildType(lit.T).(*AddrType).Elem.(*StructType)
+	structType := bb.buildType(lit.T).(*StructType)
 	if structType.isEmpty() {
 		return bb, nil
 	}
@@ -1932,23 +1923,22 @@ func (bb *blockBuilder) unionLit(lit *checker.UnionLit) (*blockBuilder, Value) {
 	if lit.Val != nil {
 		bb, v = bb.expr(lit.Val)
 	}
-	t := bb.buildType(lit.T).(*AddrType).Elem
-	a := bb.alloc(bb.buildType(lit.T).(*AddrType).Elem)
 	n := caseNum(lit.Union, lit.Case.Name)
-	switch t := t.(type) {
+	switch t := bb.buildType(lit.T).(type) {
 	case *IntType:
-		bb.store(a, bb.intLit(strconv.Itoa(n), bb.fun.mod.intType()))
+		return bb, bb.intLit(strconv.Itoa(n), bb.fun.mod.intType())
 	case *AddrType:
 		if v == nil {
-			bb.store(a, bb.null(t))
+			return bb, bb.null(t)
 		} else {
-			bb.store(a, v)
+			return bb, v
 		}
 	case *StructType:
+		a := bb.alloc(t)
 		tag := bb.field(a, t.Fields[0])
 		bb.store(tag, bb.intLit(strconv.Itoa(n), bb.fun.mod.intType()))
 		if v == nil {
-			break
+			return bb, a
 		}
 		data := bb.field(a, t.Fields[1])
 		c := unionCase(t.Fields[1].Type.(*UnionType), lit.Case.Name)
@@ -1958,10 +1948,10 @@ func (bb *blockBuilder) unionLit(lit *checker.UnionLit) (*blockBuilder, Value) {
 		} else {
 			bb.copy(cas, v)
 		}
+		return bb, a
 	default:
 		panic(fmt.Sprintf("bad union type: %s", t))
 	}
-	return bb, a
 }
 
 func caseNum(u *checker.UnionType, name string) int {
@@ -1986,7 +1976,7 @@ func unionCase(u *UnionType, name string) *CaseDef {
 }
 
 func (bb *blockBuilder) blockLit(lit *checker.BlockLit) (*blockBuilder, Value) {
-	headerType := bb.buildType(lit.Type()).(*AddrType).Elem.(*StructType)
+	headerType := bb.buildType(lit.Type()).(*StructType)
 	a := bb.alloc(headerType)
 	fb := bb.fun.mod.buildBlockLit(bb.fun, lit)
 	funcVal := bb.Func(fb)
@@ -2057,7 +2047,7 @@ func (bb *blockBuilder) strLit(lit *checker.StrLit) Value {
 	strDef := &StrDef{Mod: mod.Mod, Num: len(mod.Strings), Text: lit.Text}
 	mod.Strings = append(mod.Strings, strDef)
 
-	strType := bb.buildType(lit.T).(*AddrType).Elem.(*StructType)
+	strType := bb.buildType(lit.T).(*StructType)
 	a := bb.alloc(strType)
 	lenVal := bb.intLit(strconv.Itoa(len(lit.Text)), mod.intType())
 	lenField := bb.field(a, strType.Fields[0])
