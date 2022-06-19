@@ -1505,7 +1505,9 @@ func (bb *blockBuilder) convert(cvt *checker.Convert) (*blockBuilder, Value) {
 	switch cvt.Kind {
 	case checker.Noop:
 		bb, expr := bb.expr(cvt.Expr)
-
+		if expr == nil {
+			return bb, expr
+		}
 		dst := bb.buildType(cvt.Type())
 		if !dst.isSmall() {
 			// If the no-op convert converts one non-small type to another,

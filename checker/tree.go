@@ -546,6 +546,7 @@ type BlockLit struct {
 	Locals []*LocalDef
 	Ret    Type // result type of the block
 	Exprs  []Expr
+	Func   *FuncType
 	T      Type
 	L      loc.Loc
 }

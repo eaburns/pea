@@ -4005,7 +4005,7 @@ func TestArrayLiteralInference(t *testing.T) {
 		{src: "type t &[int]", pat: "t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type t &[int]", pat: "t", expr: `[[[5], []], []]`, err: `cannot convert`},
 
-		{src: "type t &[int]", pat: "&t", expr: `[]`, err: `cannot infer`},
+		{src: "type t &[int]", pat: "&t", expr: `[]`, want: `&t`},
 		{src: "type t &[int]", pat: "&t", expr: `[error]`, err: `not found`},
 		{src: "type t &[int]", pat: "&t", expr: `[5]`, want: `&t`},
 		{src: "type t &[int]", pat: "&t", expr: `["hello"]`, err: `cannot convert`},
@@ -4019,7 +4019,7 @@ func TestArrayLiteralInference(t *testing.T) {
 		{src: "type T t &[T]", pat: "int t", expr: `[[[5]]]`, err: `cannot convert`},
 		{src: "type T t &[T]", pat: "int t", expr: `[[[5], []], []]`, err: `cannot convert`},
 
-		{src: "type T t &[T]", pat: "&int t", expr: `[]`, err: `cannot infer`},
+		{src: "type T t &[T]", pat: "&int t", expr: `[]`, want: `&int t`},
 		{src: "type T t &[T]", pat: "&int t", expr: `[error]`, err: `not found`},
 		{src: "type T t &[T]", pat: "&int t", expr: `[5]`, want: `&int t`},
 		{src: "type T t &[T]", pat: "&int t", expr: `["hello"]`, err: `cannot convert`},
@@ -4138,9 +4138,7 @@ func TestUnionLiteralInference(t *testing.T) {
 		{src: `type T t &[a?, b? T, c?]`, pat: `_ t`, expr: `[b? 5]`, want: `int t`},
 		{src: `type T t &[a?, b? T, c?]`, pat: `&_ t`, expr: `[a?]`, err: `cannot infer`},
 
-		// This should probably be '&int t', not an error.
-		// But since int!=T, [b? int] is not currently considered a subset.
-		{src: `type T t &[a?, b? T, c?]`, pat: `&_ t`, expr: `[b? 5]`, err: `cannot convert`},
+		{src: `type T t &[a?, b? T, c?]`, pat: `&_ t`, expr: `[b? 5]`, want: `&int t`},
 	}
 	for _, test := range tests {
 		t.Run(test.name(), test.run)
@@ -4756,7 +4754,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "(){1}", infer: "float64 t", want: "float64 t", src: "type T t (){T}"},
 		{expr: "(){1}", infer: "&float64 t", want: "&float64 t", src: "type T t (){T}"},
 		{expr: "(){1}", infer: "float64 t", want: "float64 t", src: "type T t &(){T}"},
-		{expr: "(){1}", infer: "&float64 t", want: "(){int}", src: "type T t &(){T}"},
+		{expr: "(){1}", infer: "&float64 t", want: "&float64 t", src: "type T t &(){T}"},
 		{expr: "(i int){}", infer: "int t", want: "int t", src: "type T t (T){}"},
 		{expr: "(i int){}", infer: "int32 t", want: "int32 t", src: "type T t (T){}"},
 		{expr: "(i int){}", infer: "&int t", want: "&int t", src: "type T t (T){}"},
@@ -4896,11 +4894,11 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "[.x 5, .y 4]", infer: "t", want: "[.x int, .y int]", src: "type t [.x int]"},
 		{expr: "[.x 5, .y 4]", infer: "t", want: "[.x int, .y int]", src: "type t [.y int, .x int]"},
 		{expr: "[.x 5]", infer: "t", want: "t", src: "type t &[.x int32]"},
-		{expr: "[.x 5]", infer: "&t", want: "[.x int]", src: "type t &[.x int32]"},
+		{expr: "[.x 5]", infer: "&t", want: "&t", src: "type t &[.x int32]"},
 		{expr: "[.x 5]", infer: "int8 t", want: "int8 t", src: "type T t [.x T]"},
 		{expr: "[.x 5]", infer: "&int8 t", want: "&int8 t", src: "type T t [.x T]"},
 		{expr: "[.x 5]", infer: "int8 t", want: "int8 t", src: "type T t &[.x T]"},
-		{expr: "[.x 5]", infer: "&int8 t", want: "[.x int]", src: "type T t &[.x T]"},
+		{expr: "[.x 5]", infer: "&int8 t", want: "&int8 t", src: "type T t &[.x T]"},
 		{expr: `[.x 5, .y "x"]`, infer: "(int, string) pair", want: "(int, string) pair", src: "type (X, Y) pair [.x X, .y Y]"},
 		{expr: `[.x 5, .y "x"]`, infer: "(int8, string) pair", want: "(int8, string) pair", src: "type (X, Y) pair [.x X, .y Y]"},
 		{

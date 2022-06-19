@@ -843,22 +843,9 @@ func checkExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error)
 		return checkConvert(x, parserExpr)
 	case *parser.SubExpr:
 		return checkExpr(x, parserExpr.Expr, pat)
-	case *parser.ArrayLit:
-		return checkArrayLit(x, parserExpr, pat)
-	case *parser.StructLit:
-		return checkStructLit(x, parserExpr, pat)
-	case *parser.UnionLit:
-		return checkUnionLit(x, parserExpr, pat)
-	case *parser.BlockLit:
-		return checkBlockLit(x, parserExpr, pat)
-	case *parser.StrLit:
-		return checkStrLit(parserExpr, pat)
-	case *parser.CharLit:
-		return checkCharLit(parserExpr, pat)
-	case *parser.IntLit:
-		return checkIntLit(parserExpr, pat)
-	case *parser.FloatLit:
-		return checkFloatLit(parserExpr, pat)
+	case *parser.ArrayLit, *parser.StructLit, *parser.UnionLit, *parser.BlockLit,
+		*parser.StrLit, *parser.CharLit, *parser.IntLit, *parser.FloatLit:
+		return checkLit(x, parserExpr, pat)
 	case *parser.ModSel:
 		return checkModSel(x, parserExpr, pat)
 	case parser.Ident:
@@ -1743,29 +1730,74 @@ func unionConvert(expr Expr, typ Type, explicit bool) Expr {
 	}
 }
 
-// checkArrayLit checks an array literal.
-//
-// If the pattern's type is an array type or reference to an array type,
-// the 0th element is checked with the pattern's array element pattern.
-// Subsequent expressions are checked with the pattern of element 0's type.
-//
-// Otherwise, it is an error if there are no expressions in the literal.
-// The 0th element is checked with a new pattern with a single bound type variable.
-// Subsequent expressions are checked with the pattern of element 0's type.
-//
-// The type of the literal is the unification of a literal array type with the pattern.
-// The element type of the literal array is the type of expression 0, or
-// if there are no elements and the pattern is an array or array reference type,
-// then the pattern's array element type.
-// It is an error if the unification fails or contains type variables bound in the pattern.
-//
-// The returned Expr is never nil even if there are errors.
+func checkLit(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
+	expr, errs := _checkLit(x, parserExpr, pat)
+	if len(errs) > 0 {
+		return expr, errs
+	}
+	switch expr, _, err := convertExpr(expr, pat, true); {
+	case err != nil:
+		return expr, []Error{err}
+	case !pat.withType(expr.Type()).isGroundType():
+		err := newError(parserExpr, "cannot infer literal type, got %s",
+			pat.withType(expr.Type()))
+		return expr, []Error{err}
+	default:
+		// The convert succeeded, but the result is marked as an explicit conversion.
+		// This is not an explicit conversion expression, so we need to
+		// remove any Noops added solely to mark the Explicit bit,
+		// and clear the Explicit bit on the top-most remaining conversion, if any.
+		// This will allow the resulting expression to be implicitly converted.
+		for {
+			cvt, ok := expr.(*Convert)
+			if !ok {
+				break
+			}
+			if cvt.Kind != Noop || !eqType(cvt.Type(), cvt.Expr.Type()) {
+				cvt.Explicit = false
+				break
+			}
+			// Remove excess noops added solely to mark explicit conversion.
+			expr = cvt.Expr
+		}
+		return expr, nil
+	}
+}
+
+func _checkLit(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
+	switch {
+	case isRefLiteral(pat.typ):
+		return _checkLit(x, parserExpr, pat.refElem())
+	case isVisibleDefinedType(pat.typ):
+		return _checkLit(x, parserExpr, pat.instType())
+	}
+	switch parserExpr := parserExpr.(type) {
+	case *parser.ArrayLit:
+		return checkArrayLit(x, parserExpr, pat)
+	case *parser.StructLit:
+		return checkStructLit(x, parserExpr, pat)
+	case *parser.UnionLit:
+		return checkUnionLit(x, parserExpr, pat)
+	case *parser.BlockLit:
+		return checkBlockLit(x, parserExpr, pat)
+	case *parser.StrLit:
+		return checkStrLit(parserExpr, pat)
+	case *parser.CharLit:
+		return checkCharLit(parserExpr, pat)
+	case *parser.IntLit:
+		return checkIntLit(parserExpr, pat)
+	case *parser.FloatLit:
+		return checkFloatLit(parserExpr, pat)
+	default:
+		panic(fmt.Sprintf("impossible literal type: %T", parserExpr))
+	}
+}
+
 func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, []Error) {
-	lit := &ArrayLit{Array: &ArrayType{L: parserLit.L}, L: parserLit.L}
 	elemPat := any()
-	if isArrayType(pat.typ) || isArrayRefType(pat.typ) {
-		ary := trim1Ref(literalType(pat.typ)).(*ArrayType)
-		elemPat = pat.withType(ary.ElemType)
+	lit := &ArrayLit{Array: &ArrayType{L: parserLit.L}, L: parserLit.L}
+	if _, ok := pat.typ.(*ArrayType); ok {
+		elemPat = pat.arrayElem()
 	} else if len(parserLit.Exprs) == 0 {
 		return lit, []Error{newError(lit, "cannot infer array type")}
 	}
@@ -1786,47 +1818,23 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, 
 	}
 	lit.Array.ElemType = elemPat.typ
 	lit.T = lit.Array
-	expr, _, err := convertExpr(lit, pat, false)
-	switch {
-	case err != nil:
-		errs = append(errs, err)
-	case !elemPat.isGroundType():
-		err := newError(lit, "cannot infer array type, got %s", pat.withType(expr.Type()))
-		errs = append(errs, err)
-	}
-	return expr, errs
+	return lit, errs
 }
 
-// checkStructLit checks a struct literal.
-//
-// If the pattern's type is a struct type or reference to a struct type
-// and the number, names, and order of fields match the literal expression, then
-// the field expressions are checked with the pattern's corresponding field pattern.
-// Otherwise, the field expressions are checked with a new pattern
-// with a single bound type variable.
-//
-// The type of the literal is the unification of a literal struct type with the pattern.
-// The field types of the literal struct type used in the unification
-// are the types of each corresponding field expression.
-// It is an error if the unification fails or contains type variables bound in the pattern.
-//
-// The returned Expr is never nil even if there are errors.
 func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr, []Error) {
 	var errs []Error
 	var fieldPats []typePattern
-	lit := &StructLit{L: parserLit.L}
-	if isStructType(pat.typ) || isStructRefType(pat.typ) {
-		str := trim1Ref(literalType(pat.typ)).(*StructType)
-		if isEmptyStruct(str) && len(parserLit.FieldVals) > 0 {
-			errs = append(errs, newError(lit, "invalid empty struct literal"))
+	if st, ok := pat.typ.(*StructType); ok {
+		if isEmptyStruct(st) && len(parserLit.FieldVals) > 0 {
+			errs = append(errs, newError(parserLit, "invalid empty struct literal"))
 		}
-		if len(str.Fields) == len(parserLit.FieldVals) {
+		if len(st.Fields) == len(parserLit.FieldVals) {
 			for i := range parserLit.FieldVals {
-				if str.Fields[i].Name != parserLit.FieldVals[i].Name.Name {
+				if st.Fields[i].Name != parserLit.FieldVals[i].Name.Name {
 					fieldPats = nil
 					break
 				}
-				fieldPats = append(fieldPats, pat.withType(str.Fields[i].Type))
+				fieldPats = append(fieldPats, pat.field(i))
 			}
 		}
 	}
@@ -1835,11 +1843,16 @@ func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr
 			fieldPats = append(fieldPats, any())
 		}
 	}
-	lit.Struct = &StructType{L: lit.L}
+
+	lit := &StructLit{
+		Struct: &StructType{L: parserLit.L},
+		L:      parserLit.L,
+	}
+	lit.T = lit.Struct
 	for i, parserField := range parserLit.FieldVals {
-		expr, fs := checkAndConvertExpr(x, parserField.Val, fieldPats[i])
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
+		expr, es := checkAndConvertExpr(x, parserField.Val, fieldPats[i])
+		if len(es) > 0 {
+			errs = append(errs, es...)
 		}
 		// TODO: there should be no nil exprs
 		if expr == nil {
@@ -1852,45 +1865,14 @@ func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr
 			L:    parserField.L,
 		})
 	}
-	lit.T = lit.Struct
-	expr, _, err := convertExpr(lit, pat, false)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	return expr, errs
+	return lit, errs
 }
 
-// checkUnionLit checks a union literal.
-//
-// If the literal has an expresson and
-// the pattern's type is a union type or reference to a union type and
-// the union type has a case that is typed,
-// the expression is checked with the pattern's corresponding case pattern.
-// Otherwise, the case expression is checked with a new pattern
-// with a single bound type variable.
-//
-// If the pattern is a union type or a reference to a union type,
-// the type of the literal is the unification with the pattern
-// of the literal union type of the pattern
-// with the type of the case corresponding to the literal, if typed,
-// replaced with the type of the literal expression.
-//
-// Otherwise if the pattern is not a union type or reference to a union type,
-// the type of the literal is the unification with the pattern
-// of the literal union type that consists of just the literal case;
-// if the literal has an expression,
-// the case is typed with the type of the expression,
-// otherwise it is untyped.
-//
-// It is an error if the unification fails or contains type variables bound in the pattern.
-//
-// The returned Expr is never nil even if there are errors.
 func checkUnionLit(x scope, parserLit *parser.UnionLit, pat typePattern) (Expr, []Error) {
-	caseName := parserLit.CaseVal.Name.Name
-	lit := &UnionLit{L: parserLit.L}
 	exprPat := any()
-	if isUnionType(pat.typ) || isUnionRefType(pat.typ) {
-		uni := trim1Ref(literalType(pat.typ)).(*UnionType)
+	lit := &UnionLit{L: parserLit.L}
+	caseName := parserLit.CaseVal.Name.Name
+	if uni, ok := pat.typ.(*UnionType); ok {
 		if c := findCase(caseName, uni); c != nil && (c.Type == nil) == (parserLit.CaseVal.Val == nil) {
 			if c.Type != nil {
 				exprPat = pat.withType(c.Type)
@@ -1916,15 +1898,7 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, pat typePattern) (Expr, 
 		lit.Case.Type = lit.Val.Type()
 	}
 	lit.T = lit.Union
-	expr, _, err := convertExpr(lit, pat, false)
-	switch {
-	case err != nil:
-		errs = append(errs, err)
-	case !pat.withType(expr.Type()).isGroundType():
-		err := newError(lit, "cannot infer union type, got %s", pat.withType(expr.Type()))
-		errs = append(errs, err)
-	}
-	return expr, errs
+	return lit, nil
 }
 
 func findCase(name string, u *UnionType) *CaseDef {
@@ -1936,58 +1910,30 @@ func findCase(name string, u *UnionType) *CaseDef {
 	return nil
 }
 
-// checkBlockLit checks a block literal.
-//
-// If the pattern is not a function type or reference to a function type,
-// it is an error if any parameters of the literal do not have explicit types.
-//
-// The expressions in the literal body are checked with a new pattern
-// containing a single, bound type variable.
-// However, if the pattern is a function type or reference to a function type,
-// the last expression in the literal body is checked with the type
-// of the pattern's function return pattern.
-//
-// The type of the literal is the unification of a literal function type with the pattern.
-// The parameter types of the literal function type used in the unification
-// are the explicit parameter type for each parameter where specified;
-// for parameters without an explicitly specified type,
-// the type is that of the pattern's corresponding parameter
-// (recall that the pattern must be a function or reference to a function
-// in order for non-explicitly-typed parameters to be allowed).
-// The return type of the function literal is the type of the last expression in the body,
-// or if the pattern is a function or reference to a function
-// and the pattern's function return type is [.], then the return type is [.],
-// or if the pattern's function return type a ground type in the pattern
-// and the last expression in the body  is a panic or return,
-// then the type is the pattern's return type.
-// It is an error if the unification fails or contains type variables bound in the pattern.
-//
 // TODO: move [.] special case into unify.
 // TODO: panic/return special case for block literals goes away by adding !-type from return and panic, and moving the handling into unify.
-//
-// The returned Expr is never nil even if there are errors.
 func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, []Error) {
-	lit := &BlockLit{L: parserLit.L}
+	lit := &BlockLit{
+		L:    parserLit.L,
+		Func: &FuncType{L: parserLit.L},
+	}
 	var errs []Error
 	lit.Parms, errs = makeFuncParms(x, parserLit.Parms)
+
 	retPat := any()
-	funType := &FuncType{L: lit.L}
-	if isFuncType(pat.typ) || isFuncRefType(pat.typ) {
-		fun := trim1Ref(literalType(pat.typ)).(*FuncType)
-		if len(fun.Parms) == len(lit.Parms) {
-			retPat = pat.withType(fun.Ret)
-			for i := range lit.Parms {
-				litParm := any()
-				if lit.Parms[i].T != nil {
-					litParm = pattern(lit.Parms[i].T)
-				}
-				patParm := pat.withType(fun.Parms[i])
-				bind, note := convertType(litParm, patParm, false)
-				if note != nil {
-					errs = append(errs, note.(Error))
-				}
-				lit.Parms[i].T = subType(bind, patParm.typ)
+	if fun, ok := pat.typ.(*FuncType); ok && len(fun.Parms) == len(lit.Parms) {
+		retPat = pat.withType(fun.Ret)
+		for i := range lit.Parms {
+			litParm := any()
+			if lit.Parms[i].T != nil {
+				litParm = pattern(lit.Parms[i].T)
 			}
+			patParm := pat.withType(fun.Parms[i])
+			bind, note := convertType(litParm, patParm, false)
+			if note != nil {
+				errs = append(errs, note.(Error))
+			}
+			lit.Parms[i].T = subType(bind, patParm.typ)
 		}
 	}
 	for _, p := range lit.Parms {
@@ -1996,7 +1942,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 			errs = append(errs, err)
 			continue
 		}
-		funType.Parms = append(funType.Parms, p.T)
+		lit.Func.Parms = append(lit.Func.Parms, p.T)
 	}
 	var es []Error
 	x = &blockLitScope{parent: x, BlockLit: lit}
@@ -2009,12 +1955,9 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 			errs = append(errs, newError(l, "%s unused", l.Name))
 		}
 	}
-	if isFuncType(pat.typ) || isFuncRefType(pat.typ) {
-		fun := trim1Ref(literalType(pat.typ)).(*FuncType)
-		if isEmptyStruct(fun.Ret) ||
-			(pat.withType(fun.Ret).isGroundType() && endsInReturnOrPanic(lit.Exprs)) {
-			lit.Ret = copyTypeWithLoc(fun.Ret, lit.L)
-		}
+	if fun, ok := pat.typ.(*FuncType); ok &&
+		(isEmptyStruct(fun.Ret) || (pat.ret().isGroundType() && endsInReturnOrPanic(lit.Exprs))) {
+		lit.Ret = copyTypeWithLoc(fun.Ret, lit.L)
 	}
 	if lit.Ret == nil {
 		if len(lit.Exprs) > 0 {
@@ -2024,13 +1967,9 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 			lit.Ret = &StructType{L: lit.L}
 		}
 	}
-	funType.Ret = lit.Ret
-	lit.T = funType
-	expr, _, err := convertExpr(lit, pat, false)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	return expr, errs
+	lit.Func.Ret = lit.Ret
+	lit.T = lit.Func
+	return lit, errs
 }
 
 func endsInReturnOrPanic(es []Expr) bool {
@@ -2056,33 +1995,15 @@ func endsInReturnOrPanic(es []Expr) bool {
 	return b.Op == Return || b.Op == Panic
 }
 
-// checkStrLit checks a string literal.
-//
-// If the pattern's type is a string type or reference to a string type,
-// the type of the literal is the pattern's type.
-// Otherwise the type of the literal is the unification
-// of the built-in type string and the pattern.
-//
-// The returned Expr is never nil even if there are errors.
 func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {
 	lit := &StrLit{
 		Text: parserLit.Data,
 		T:    &BasicType{Kind: String, L: parserLit.L},
 		L:    parserLit.L,
 	}
-	// We use explicit conversion here to allow a string literal
-	// which otherwise as named type (string)
-	// to convert to any other named string type.
-	expr, _, err := convertExpr(lit, pat, true)
-	if err != nil {
-		return expr, []Error{err}
-	}
-	return expr, nil
+	return lit, nil
 }
 
-// checkCharLit checks a character literal.
-//
-// The same as an integer literal, but with the default type being int32, not int.
 func checkCharLit(parserLit *parser.CharLit, pat typePattern) (Expr, []Error) {
 	parserIntLit := &parser.IntLit{
 		Text: strconv.FormatInt(int64(parserLit.Rune), 10),
@@ -2091,30 +2012,23 @@ func checkCharLit(parserLit *parser.CharLit, pat typePattern) (Expr, []Error) {
 	return _checkIntLit(parserIntLit, pat, Int32)
 }
 
-// checkIntLit checks an integer literal.
-//
-// If the pattern's type is an integer type or reference to an integer type,
-// the type of the literal is the pattern's type.
-// If the pattern's type is a floating point type or reference to a floating point type,
-// the type of the literal is the pattern's type.
-// Otherwise the type of the literal is the unification
-// of the built-in type int and the pattern.
-//
-// It is an error if the value is not representable by the type.
-//
-// The returned Expr is never nil even if there are errors.
 func checkIntLit(parserLit *parser.IntLit, pat typePattern) (Expr, []Error) {
 	return _checkIntLit(parserLit, pat, Int)
 }
 
-func _checkIntLit(parserLit *parser.IntLit, pat typePattern, defaultKind BasicTypeKind) (expr Expr, errs []Error) {
-	if isFloatType(pat.typ) || isFloatRefType(pat.typ) {
-		floatLit := &parser.FloatLit{Text: parserLit.Text, L: parserLit.L}
-		return checkFloatLit(floatLit, pat)
+func _checkIntLit(parserLit *parser.IntLit, pat typePattern, kind BasicTypeKind) (expr Expr, errs []Error) {
+	if basic, ok := pat.typ.(*BasicType); ok {
+		switch basic.Kind {
+		case Float32, Float64:
+			floatLit := &parser.FloatLit{Text: parserLit.Text, L: parserLit.L}
+			return checkFloatLit(floatLit, pat)
+		case Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64:
+			kind = basic.Kind
+		}
 	}
 	lit := &IntLit{
 		Text: parserLit.Text,
-		T:    &BasicType{Kind: intKind(pat.typ, defaultKind), L: parserLit.L},
+		T:    &BasicType{Kind: kind, L: parserLit.L},
 		L:    parserLit.L,
 	}
 	if _, ok := lit.Val.SetString(lit.Text, 0); !ok {
@@ -2125,33 +2039,7 @@ func _checkIntLit(parserLit *parser.IntLit, pat typePattern, defaultKind BasicTy
 			errs = append(errs, err)
 		}
 	}()
-	// We use explicit conversion here to allow an integer literal
-	// which otherwise as named type (int, int32, uint, …)
-	// to convert to any other named integer type.
-	expr, _, err := convertExpr(lit, pat, true)
-	if err != nil {
-		return expr, []Error{err}
-	}
-	return expr, nil
-}
-
-func intKind(typ Type, defaultKind BasicTypeKind) BasicTypeKind {
-	switch typ := typ.(type) {
-	case *RefType:
-		return intKind(typ.Type, defaultKind)
-	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
-			return intKind(typ.Inst.Type, defaultKind)
-		}
-	case *BasicType:
-		switch typ.Kind {
-		case Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64:
-			return typ.Kind
-		}
-	}
-	return defaultKind
+	return lit, nil
 }
 
 func checkValueSize(lit *IntLit) Error {
@@ -2221,66 +2109,37 @@ func checkValueSize(lit *IntLit) Error {
 	return nil
 }
 
-// checkFloatLit checks a float literal.
-//
-// If the pattern's type is a floating point type or reference to a floating point type,
-// the type of the literal is the pattern's type.
-// If the pattern's type is an integer type or reference to an integer type,
-// the type of the literal is the pattern's type.
-// Otherwise the type of the literal is the unification
-// of the built-in type float64 and the pattern.
-//
-// It is an error if the value is not representable by the type.
-//
-// The returned Expr is never nil even if there are errors.
 func checkFloatLit(parserLit *parser.FloatLit, pat typePattern) (Expr, []Error) {
+	var val big.Float
+	if _, _, err := val.Parse(parserLit.Text, 10); err != nil {
+		panic(fmt.Sprintf("malformed float: %s", err))
+	}
+	kind := Float64
+	if basic, ok := pat.typ.(*BasicType); ok {
+		switch basic.Kind {
+		case Float32, Float64:
+			kind = basic.Kind
+		case Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64:
+			var i big.Int
+			var errs []Error
+			if _, acc := val.Int(&i); acc != big.Exact {
+				err := newError(parserLit, "%s truncates %s", basic.Kind, parserLit.Text)
+				errs = append(errs, err)
+			}
+			intLit, es := checkIntLit(&parser.IntLit{Text: i.String(), L: parserLit.L}, pat)
+			if len(es) > 0 {
+				errs = append(errs, es...)
+			}
+			return intLit, errs
+		}
+	}
 	lit := &FloatLit{
 		Text: parserLit.Text,
-		T:    &BasicType{Kind: floatKind(pat.typ), L: parserLit.L},
+		T:    &BasicType{Kind: kind, L: parserLit.L},
+		Val:  val,
 		L:    parserLit.L,
 	}
-	if _, _, err := lit.Val.Parse(parserLit.Text, 10); err != nil {
-		panic("malformed float")
-	}
-	if isIntType(pat.typ) || isIntRefType(pat.typ) {
-		var i big.Int
-		var errs []Error
-		if _, acc := lit.Val.Int(&i); acc != big.Exact {
-			errs = append(errs, newError(lit, "%s truncates %s", pat.groundType(), lit.Text))
-		}
-		intLit, es := checkIntLit(&parser.IntLit{Text: i.String(), L: parserLit.L}, pat)
-		if len(es) > 0 {
-			errs = append(errs, es...)
-		}
-		return intLit, errs
-	}
-	// We use explicit conversion here to allow a floating point literal
-	// which otherwise as named type (float32 or float64)
-	// to convert to any other named floating point type.
-	expr, _, err := convertExpr(lit, pat, true)
-	if err != nil {
-		return expr, []Error{err}
-	}
-	return expr, nil
-}
-
-func floatKind(typ Type) BasicTypeKind {
-	switch typ := typ.(type) {
-	case *RefType:
-		return floatKind(typ.Type)
-	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
-			return floatKind(typ.Inst.Type)
-		}
-	case *BasicType:
-		switch typ.Kind {
-		case Float32, Float64:
-			return typ.Kind
-		}
-	}
-	return Float64
+	return lit, nil
 }
 
 func deref(expr Expr) Expr {
