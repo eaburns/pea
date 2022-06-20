@@ -614,8 +614,7 @@ func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeP
 		}
 		return conversion(cvt, Noop, subType(*bind, dst.typ)), nil
 
-	// TODO: make union conversion need to be explicit
-	case isUnionSubset(src.typ, dst.typ):
+	case explicit && isUnionSubset(src.typ, dst.typ):
 		return conversion(cvt, UnionConvert, dst.typ), nil
 
 	case isRefLiteral(src.typ):
