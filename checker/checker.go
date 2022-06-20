@@ -1204,24 +1204,6 @@ func checkArgsFallback(x scope, parserArgs []parser.Expr) []Error {
 	return errs
 }
 
-func commonGroundParmType(funcs []Func, i int) Type {
-	var t Type
-	for _, f := range funcs {
-		if !f.parm(i).isGroundType() {
-			return nil
-		}
-		parmType := f.parm(i).groundType()
-		if t == nil {
-			t = parmType
-			continue
-		}
-		if !eqType(t, parmType) {
-			return nil
-		}
-	}
-	return t
-}
-
 func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	if arg.Type() == nil {
 		// There was an error checking the argument.
@@ -1344,56 +1326,6 @@ func ambiguousCall(name string, funcs []Func, l loc.Loc) Error {
 	err := newError(l, "%s: ambiguous call", name)
 	err.setNotes(notes)
 	return err
-}
-
-// canImplicitConvert returns whether the src type
-// can implicitly convert to the dst type.
-func canImplicitConvert(src, dst Type) bool {
-	/*
-		This works by calling convertExpr()
-		on a Deref expression of the src type
-		to the dst type.
-		Deref allows for &-conversion,
-		which works in convertExpr()
-		by looking for and pealing off
-		a top-level Deref expression.
-
-		This cannot lead to risk of addressing
-		a non-addressable expression:
-
-		The only non-addressable expression
-		is a &-conversion.
-		If S is the result of an &-conversion,
-		then S must be the & of some type, say T:
-		S=&T.
-
-		For an implicit conversion to add too many &,
-		it must be an implicit &-conversion.
-		This means that D = &S, so D = &S = &&T.
-		However &&T is not gramatical,
-		so there is no way to write such a type D.
-
-		Note that implicit conversions
-		cannot convert into a defined type.
-		So there is no risk of D being &&T
-		written as some defined type U=&T with D=&U,
-		because such an implicit conversion
-		isn't allowed, and convert will fail.
-	*/
-
-	someNonZeroLoc := loc.Loc{1, 1}
-	// To test whether a return type is convertable,
-	// we create a dummy Deref
-	// and try to convert it to the desired type.
-	// If there is no error, then we've got it.
-	// We use Deref, because the result of a call
-	// is always a Deref node.
-	//
-	// Our dummy node needs a non-zero loc,
-	// since errors can only be created with a non-zero loc.
-	// We are going to ignore the error, so any non-zero loc works.
-	_, _, err := convertExpr(&Convert{Kind: Deref, T: src, L: someNonZeroLoc}, pattern(dst), false)
-	return err == nil
 }
 
 func checkExprCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []Error) {

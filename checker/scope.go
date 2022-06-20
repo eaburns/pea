@@ -401,7 +401,6 @@ var (
 )
 
 func basic(k BasicTypeKind) Type { return &BasicType{Kind: k} }
-func byteArray() Type            { return &ArrayType{ElemType: basic(Uint8)} }
 
 func splitCaseNames(str string) []string {
 	var i int

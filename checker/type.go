@@ -228,40 +228,6 @@ func isBasicNum(typ Type) bool {
 	}
 }
 
-func isIntType(typ Type) bool {
-	switch typ := typ.(type) {
-	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
-			return isIntType(typ.Inst.Type)
-		}
-	case *BasicType:
-		switch typ.Kind {
-		case Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64:
-			return true
-		}
-	}
-	return false
-}
-
-func isFloatType(typ Type) bool {
-	switch typ := typ.(type) {
-	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
-			return isFloatType(typ.Inst.Type)
-		}
-	case *BasicType:
-		switch typ.Kind {
-		case Float32, Float64:
-			return true
-		}
-	}
-	return false
-}
-
 func basicType(typ Type) Type {
 	switch typ := typ.(type) {
 	case nil:
@@ -324,32 +290,6 @@ func valueType(typ Type) Type {
 		}
 		n++
 		typ = ref.Type
-	}
-}
-
-func definedBaseType(typ Type) Type {
-	switch typ := typ.(type) {
-	case nil:
-		return nil
-	case *RefType:
-		if typ.Type == nil {
-			return nil
-		}
-		dt := definedBaseType(typ.Type)
-		if dt == nil {
-			return nil
-		}
-		return &RefType{Type: dt, L: typ.L}
-	case *DefType:
-		if typ.Inst == nil || typ.Inst.Type == nil {
-			return nil
-		}
-		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
-			return nil
-		}
-		return definedBaseType(typ.Inst.Type)
-	default:
-		return typ
 	}
 }
 

@@ -21,11 +21,6 @@ func any() typePattern {
 	return typePattern{parms: []*TypeParm{p}, typ: v}
 }
 
-func (pat typePattern) isAny() bool {
-	typ, ok := pat.typ.(*TypeVar)
-	return ok && pat.bound(typ)
-}
-
 // pattern returns the type pattern for a ground type.
 // pattern panics if typ is nil.
 func pattern(typ Type) typePattern {

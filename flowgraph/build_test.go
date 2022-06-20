@@ -133,13 +133,3 @@ func check(t *testing.T, src string) *checker.Mod {
 	}
 	return mod
 }
-
-func findTypeDef(t *testing.T, name string, mod *checker.Mod) *checker.TypeDef {
-	for _, def := range mod.Defs {
-		if d, ok := def.(*checker.TypeDef); ok && d.Name == name {
-			return d
-		}
-	}
-	t.Fatalf("failed to find type definition %s", name)
-	panic("impossible")
-}
