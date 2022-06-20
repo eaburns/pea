@@ -448,10 +448,10 @@ func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note)
 
 // convertExpr returns the expression resulting from converting expr to the given type pattern.
 func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, map[*TypeParm]Type, Error) {
-	if expr.Type() == nil {
+	// TODO: expr should not be nil.
+	if expr == nil || expr.Type() == nil {
 		return expr, nil, nil
 	}
-
 	var bind map[*TypeParm]Type
 	cvt, notes := convert(nil, pattern(expr.Type()), dst, explicit, &bind)
 	if cvt == nil {
@@ -489,12 +489,30 @@ func doConvertExpr(expr Expr, cvt *Convert) Expr {
 		// Ref conversions that convert an identifier
 		// result in the reference to the identifier's variable.
 		if id := identifierRef(cvt.Expr); id != nil {
+			if cvt.Explicit {
+				return &Convert{
+					Kind:     Noop,
+					Explicit: true,
+					Expr:     id,
+					T:        id.Type(),
+					L:        id.Loc(),
+				}
+			}
 			return id
 		}
 		// Ref conversions that convert a call
 		// to a reference-returning function
 		// result in the returned reference.
 		if call := callRef(cvt.Expr); call != nil {
+			if cvt.Explicit {
+				return &Convert{
+					Kind:     Noop,
+					Explicit: true,
+					Expr:     call,
+					T:        call.Type(),
+					L:        call.Loc(),
+				}
+			}
 			return call
 		}
 	case cvt.Kind == Noop && !cvt.Explicit && eqType(cvt.Expr.Type(), cvt.Type()):

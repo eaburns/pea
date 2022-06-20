@@ -1652,10 +1652,6 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
 	return blk
 }
 
-// checkConvert checks a type conversion.
-// 	* The expected type of the subexpression is the conversion type,
-// 	  and it is an error if the subexpression type is not explicitly convertible
-// 	  to the conversion type.
 func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	typ, errs := makeType(x, parserConvert.Type)
 	// typ may be nil if there was an error in the type, so use patternOrAny.
@@ -1663,71 +1659,11 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	if len(es) > 0 {
 		errs = append(errs, es...)
 	}
-	if expr == nil || expr.Type() == nil {
-		return expr, errs
-	}
-	cvt := &Convert{
-		Explicit: true,
-		Expr:     expr,
-		T:        typ,
-		L:        parserConvert.L,
-	}
-
-	if eqType(definedBaseType(expr.Type()), definedBaseType(typ)) {
-		// Explicit conversion between equivalent defined types is OK and a noop.
-		cvt.Expr = expr
-		cvt.Kind = Noop
-		return cvt, errs
-	}
-
-	if isUnionSubsetConvertible(literalType(typ), literalType(expr.Type())) {
-		return unionConvert(expr, typ, true), nil
-	}
-
-	switch basicKind(typ) {
-	case Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
-		if !isRefLiteral(typ) && (isIntType(expr.Type()) || isFloatType(expr.Type())) {
-			cvt.Kind = NumConvert
-			return cvt, errs
-		}
-	case UintRef:
-		if !isRefLiteral(typ) && isRefLiteral(definedBaseType(expr.Type())) {
-			cvt.Kind = NumConvert
-			return cvt, errs
-		}
-	case String:
-		if !isRefLiteral(typ) && isByteArray(expr.Type()) {
-			cvt.Kind = StrConvert
-			return cvt, errs
-		}
-	}
-
-	// The conversion would happen implicitly,
-	// but it was made explicit in the code.
-	// Here we do the implicit conversion,
-	// and stick a Noop conversion node on top of it
-	// to track that it was requested explicitly.
 	expr, _, err := convertExpr(expr, pattern(typ), true)
 	if err != nil {
 		errs = append(errs, err)
 	}
-	cvt.Expr = expr
-	cvt.Kind = Noop
-	return cvt, errs
-}
-
-func unionConvert(expr Expr, typ Type, explicit bool) Expr {
-	if unionLit, ok := expr.(*UnionLit); ok {
-		unionLit.T = typ
-		return unionLit
-	}
-	return &Convert{
-		Kind:     UnionConvert,
-		Explicit: explicit,
-		Expr:     expr,
-		T:        typ,
-		L:        expr.Loc(),
-	}
+	return expr, errs
 }
 
 func checkLit(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
