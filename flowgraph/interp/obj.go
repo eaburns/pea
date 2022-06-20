@@ -538,7 +538,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 	switch typ := typ.(type) {
 	case *flowgraph.IntType:
 		switch {
-		case typ.Size == 8 && typ.Unsigned == false:
+		case typ.Size == 8 && typ.Unsigned:
 			switch obj := obj.(type) {
 			case Float32:
 				return Int8(obj)
@@ -551,7 +551,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
-		case typ.Size == 16 && typ.Unsigned == false:
+		case typ.Size == 16 && !typ.Unsigned:
 			switch obj := obj.(type) {
 			case Float32:
 				return Int16(obj)
@@ -564,7 +564,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
-		case typ.Size == 32 && typ.Unsigned == false:
+		case typ.Size == 32 && !typ.Unsigned:
 			switch obj := obj.(type) {
 			case Float32:
 				return Int32(obj)
@@ -577,7 +577,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
-		case typ.Size == 64 && typ.Unsigned == false:
+		case typ.Size == 64 && !typ.Unsigned:
 			switch obj := obj.(type) {
 			case Float32:
 				return Int64(obj)
@@ -590,7 +590,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
-		case typ.Size == 8 && typ.Unsigned == true:
+		case typ.Size == 8 && typ.Unsigned:
 			switch obj := obj.(type) {
 			case Float32:
 				return Uint8(obj)
@@ -605,7 +605,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
-		case typ.Size == 16 && typ.Unsigned == true:
+		case typ.Size == 16 && typ.Unsigned:
 			switch obj := obj.(type) {
 			case Float32:
 				return Uint16(obj)
@@ -620,7 +620,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
-		case typ.Size == 32 && typ.Unsigned == true:
+		case typ.Size == 32 && typ.Unsigned:
 			switch obj := obj.(type) {
 			case Float32:
 				return Uint32(obj)
@@ -635,7 +635,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 			default:
 				panic(fmt.Sprintf("impossible convert from %T", obj))
 			}
-		case typ.Size == 64 && typ.Unsigned == true:
+		case typ.Size == 64 && typ.Unsigned:
 			switch obj := obj.(type) {
 			case Float32:
 				return Uint64(obj)

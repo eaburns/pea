@@ -272,8 +272,7 @@ func common(pats ...typePattern) typePattern {
 	var nextParm int
 	var pat typePattern
 
-	var newVar func() *TypeVar
-	newVar = func() *TypeVar {
+	newVar := func() *TypeVar {
 		n := "_" + strconv.Itoa(nextParm)
 		nextParm++
 		p := &TypeParm{Name: n}

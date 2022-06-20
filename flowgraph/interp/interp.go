@@ -358,7 +358,7 @@ func (interp *Interp) step() {
 		case flowgraph.Panic:
 			panic(goString(frame.vals[instr.Args[0]]))
 		case flowgraph.Print:
-			fmt.Fprintf(interp.Out, goString(frame.vals[instr.Args[0]]))
+			fmt.Fprint(interp.Out, goString(frame.vals[instr.Args[0]]))
 		case flowgraph.IndexOOBString:
 			index := frame.vals[instr.Args[0]].Val()
 			length := frame.vals[instr.Args[1]].Val()

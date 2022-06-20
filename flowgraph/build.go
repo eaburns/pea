@@ -1669,7 +1669,6 @@ func unionType(typ checker.Type) *checker.UnionType {
 				},
 			}
 		}
-		break
 	}
 	panic(fmt.Sprintf("not a union type: %s", typ))
 }
