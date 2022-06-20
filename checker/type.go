@@ -172,33 +172,6 @@ func isUnionRefType(typ Type) bool {
 	return false
 }
 
-func isUnionSubsetConvertible(dst, src Type) bool {
-	srcUnion, ok := src.(*UnionType)
-	if !ok {
-		return false
-	}
-	dstUnion, ok := dst.(*UnionType)
-	return ok && isUnionSubset(dstUnion, srcUnion)
-}
-
-func isUnionSubset(set, subset *UnionType) bool {
-	if len(subset.Cases) > len(set.Cases) {
-		return false
-	}
-	cases := make(map[string]*CaseDef)
-	for i, c := range set.Cases {
-		cases[c.Name] = &set.Cases[i]
-	}
-	for _, subsetCase := range subset.Cases {
-		setCase, ok := cases[subsetCase.Name]
-		if !ok || (subsetCase.Type == nil) != (setCase.Type == nil) ||
-			(setCase.Type != nil && !eqType(subsetCase.Type, setCase.Type)) {
-			return false
-		}
-	}
-	return true
-}
-
 func isByteArray(typ Type) bool {
 	return isArrayType(typ) &&
 		basicKind(literalType(typ).(*ArrayType).ElemType) == Uint8

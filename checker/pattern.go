@@ -614,12 +614,8 @@ func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeP
 		}
 		return conversion(cvt, Noop, subType(*bind, dst.typ)), nil
 
-	// isUnionSubsetConvertible checks that both are literal unions
-	// and dst is a strict superset.
-	// It takes dst as the first argument and src as the second.
-	// TODO: make isUnionSubsetConvertible more intuitive.
 	// TODO: make union conversion need to be explicit
-	case isUnionSubsetConvertible(dst.typ, src.typ):
+	case isUnionSubset(src.typ, dst.typ):
 		return conversion(cvt, UnionConvert, dst.typ), nil
 
 	case isRefLiteral(src.typ):
@@ -633,6 +629,29 @@ func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeP
 		}
 		return conversion(cvt, Ref, subType(*bind, dst.typ)), nil
 	}
+}
+
+func isUnionSubset(src, dst Type) bool {
+	srcUnion, ok := src.(*UnionType)
+	if !ok {
+		return false
+	}
+	dstUnion, ok := dst.(*UnionType)
+	if !ok || len(srcUnion.Cases) > len(dstUnion.Cases) {
+		return false
+	}
+	cases := make(map[string]*CaseDef)
+	for i, c := range dstUnion.Cases {
+		cases[c.Name] = &dstUnion.Cases[i]
+	}
+	for _, srcCase := range srcUnion.Cases {
+		dstCase, ok := cases[srcCase.Name]
+		if !ok || (srcCase.Type == nil) != (dstCase.Type == nil) ||
+			(srcCase.Type != nil && !eqType(srcCase.Type, dstCase.Type)) {
+			return false
+		}
+	}
+	return true
 }
 
 func conversion(cvt *Convert, kind ConvertKind, typ Type) *Convert {
