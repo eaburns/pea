@@ -96,21 +96,21 @@ const (
 	_DecLit                     int = 90
 	_HexLit                     int = 91
 	_FloatLit                   int = 92
-	_Kwd                        int = 93
-	_CaseId                     int = 94
-	_ModId                      int = 95
-	_Id                         int = 96
-	_Name                       int = 97
-	_TypeVar                    int = 98
-	_Reserved                   int = 99
-	_D                          int = 100
-	_X                          int = 101
-	_L                          int = 102
-	_O                          int = 103
-	__                          int = 104
-	_Space                      int = 105
-	_Cmnt                       int = 106
-	_Eof                        int = 107
+	_TypeVar                    int = 93
+	_Kwd                        int = 94
+	_CaseId                     int = 95
+	_ModId                      int = 96
+	_Id                         int = 97
+	__                          int = 98
+	_NAME                       int = 99
+	_RESERVED                   int = 100
+	_D                          int = 101
+	_X                          int = 102
+	_L                          int = 103
+	_O                          int = 104
+	_SPACE                      int = 105
+	_COMMENT                    int = 106
+	_EOF                        int = 107
 	_Bin__AsgnOp__AsgnArg       int = 108
 	_NameArg__Kwd__KwArg        int = 109
 	_NameArg__Kwd__KwArg1       int = 110
@@ -281,7 +281,7 @@ func _ImportsOnlyAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// imports:Import* !Import .* Eof
+	// imports:Import* !Import .* _ EOF
 	// imports:Import*
 	{
 		pos1 := pos
@@ -329,8 +329,12 @@ func _ImportsOnlyAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		pos = pos11
 		break
 	}
-	// Eof
-	if !_accept(parser, _EofAccepts, &pos, &perr) {
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// EOF
+	if !_accept(parser, _EOFAccepts, &pos, &perr) {
 		goto fail
 	}
 	return _memoize(parser, _ImportsOnly, start, pos, perr)
@@ -351,7 +355,7 @@ func _ImportsOnlyFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _ImportsOnly}
 	// action
-	// imports:Import* !Import .* Eof
+	// imports:Import* !Import .* _ EOF
 	// imports:Import*
 	{
 		pos1 := pos
@@ -410,8 +414,12 @@ func _ImportsOnlyFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		pos = pos11
 		break
 	}
-	// Eof
-	if !_fail(parser, _EofFail, errPos, failure, &pos) {
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// EOF
+	if !_fail(parser, _EOFFail, errPos, failure, &pos) {
 		goto fail
 	}
 	parser.fail[key] = failure
@@ -440,7 +448,7 @@ func _ImportsOnlyAction(parser *_Parser, start int) (int, *[]*Import) {
 	// action
 	{
 		start0 := pos
-		// imports:Import* !Import .* Eof
+		// imports:Import* !Import .* _ EOF
 		// imports:Import*
 		{
 			pos2 := pos
@@ -491,8 +499,14 @@ func _ImportsOnlyAction(parser *_Parser, start int) (int, *[]*Import) {
 			pos = pos12
 			break
 		}
-		// Eof
-		if p, n := _EofAction(parser, pos); n == nil {
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// EOF
+		if p, n := _EOFAction(parser, pos); n == nil {
 			goto fail
 		} else {
 			pos = p
@@ -517,7 +531,7 @@ func _FileAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// imports:Import* defs:Def* Eof
+	// imports:Import* defs:Def* _ EOF
 	// imports:Import*
 	{
 		pos1 := pos
@@ -552,8 +566,12 @@ func _FileAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[1] = parser.text[pos6:pos]
 	}
-	// Eof
-	if !_accept(parser, _EofAccepts, &pos, &perr) {
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// EOF
+	if !_accept(parser, _EOFAccepts, &pos, &perr) {
 		goto fail
 	}
 	return _memoize(parser, _File, start, pos, perr)
@@ -574,7 +592,7 @@ func _FileFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _File}
 	// action
-	// imports:Import* defs:Def* Eof
+	// imports:Import* defs:Def* _ EOF
 	// imports:Import*
 	{
 		pos1 := pos
@@ -609,8 +627,12 @@ func _FileFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		}
 		labels[1] = parser.text[pos6:pos]
 	}
-	// Eof
-	if !_fail(parser, _EofFail, errPos, failure, &pos) {
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// EOF
+	if !_fail(parser, _EOFFail, errPos, failure, &pos) {
 		goto fail
 	}
 	parser.fail[key] = failure
@@ -640,7 +662,7 @@ func _FileAction(parser *_Parser, start int) (int, *File) {
 	// action
 	{
 		start0 := pos
-		// imports:Import* defs:Def* Eof
+		// imports:Import* defs:Def* _ EOF
 		// imports:Import*
 		{
 			pos2 := pos
@@ -685,8 +707,14 @@ func _FileAction(parser *_Parser, start int) (int, *File) {
 			}
 			labels[1] = parser.text[pos7:pos]
 		}
-		// Eof
-		if p, n := _EofAction(parser, pos); n == nil {
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// EOF
+		if p, n := _EOFAction(parser, pos); n == nil {
 			goto fail
 		} else {
 			pos = p
@@ -12900,7 +12928,7 @@ func _DotNameAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ "." _ name:Id
+	// _ "." name:Id
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
@@ -12911,10 +12939,6 @@ func _DotNameAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto fail
 	}
 	pos++
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
 	// name:Id
 	{
 		pos1 := pos
@@ -12942,7 +12966,7 @@ func _DotNameFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _DotName}
 	// action
-	// _ "." _ name:Id
+	// _ "." name:Id
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
@@ -12958,10 +12982,6 @@ func _DotNameFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto fail
 	}
 	pos++
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
 	// name:Id
 	{
 		pos1 := pos
@@ -12997,7 +13017,7 @@ func _DotNameAction(parser *_Parser, start int) (int, *Ident) {
 	// action
 	{
 		start0 := pos
-		// _ "." _ name:Id
+		// _ "." name:Id
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
@@ -13009,12 +13029,6 @@ func _DotNameAction(parser *_Parser, start int) (int, *Ident) {
 			goto fail
 		}
 		pos++
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
 		// name:Id
 		{
 			pos2 := pos
@@ -15010,31 +15024,26 @@ func _CasesAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ cases:CaseId+
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
 	// cases:CaseId+
 	{
-		pos1 := pos
+		pos0 := pos
 		// CaseId+
 		// CaseId
 		if !_accept(parser, _CaseIdAccepts, &pos, &perr) {
 			goto fail
 		}
 		for {
-			pos3 := pos
+			pos2 := pos
 			// CaseId
 			if !_accept(parser, _CaseIdAccepts, &pos, &perr) {
-				goto fail5
+				goto fail4
 			}
 			continue
-		fail5:
-			pos = pos3
+		fail4:
+			pos = pos2
 			break
 		}
-		labels[0] = parser.text[pos1:pos]
+		labels[0] = parser.text[pos0:pos]
 	}
 	perr = start
 	return _memoize(parser, _Cases, start, pos, perr)
@@ -15055,31 +15064,26 @@ func _CasesFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _Cases}
 	// action
-	// _ cases:CaseId+
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
 	// cases:CaseId+
 	{
-		pos1 := pos
+		pos0 := pos
 		// CaseId+
 		// CaseId
 		if !_fail(parser, _CaseIdFail, errPos, failure, &pos) {
 			goto fail
 		}
 		for {
-			pos3 := pos
+			pos2 := pos
 			// CaseId
 			if !_fail(parser, _CaseIdFail, errPos, failure, &pos) {
-				goto fail5
+				goto fail4
 			}
 			continue
-		fail5:
-			pos = pos3
+		fail4:
+			pos = pos2
 			break
 		}
-		labels[0] = parser.text[pos1:pos]
+		labels[0] = parser.text[pos0:pos]
 	}
 	failure.Kids = nil
 	parser.fail[key] = failure
@@ -15110,45 +15114,38 @@ func _CasesAction(parser *_Parser, start int) (int, *Ident) {
 	// action
 	{
 		start0 := pos
-		// _ cases:CaseId+
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
 		// cases:CaseId+
 		{
-			pos2 := pos
+			pos1 := pos
 			// CaseId+
 			{
-				var node5 Ident
+				var node4 Ident
 				// CaseId
 				if p, n := _CaseIdAction(parser, pos); n == nil {
 					goto fail
 				} else {
-					node5 = *n
+					node4 = *n
 					pos = p
 				}
-				label0 = append(label0, node5)
+				label0 = append(label0, node4)
 			}
 			for {
-				pos4 := pos
-				var node5 Ident
+				pos3 := pos
+				var node4 Ident
 				// CaseId
 				if p, n := _CaseIdAction(parser, pos); n == nil {
-					goto fail6
+					goto fail5
 				} else {
-					node5 = *n
+					node4 = *n
 					pos = p
 				}
-				label0 = append(label0, node5)
+				label0 = append(label0, node4)
 				continue
-			fail6:
-				pos = pos4
+			fail5:
+				pos = pos3
 				break
 			}
-			labels[0] = parser.text[pos2:pos]
+			labels[0] = parser.text[pos1:pos]
 		}
 		node = func(
 			start, end int, cases []Ident) Ident {
@@ -15170,31 +15167,26 @@ func _KwdsAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ keywords:Kwd+
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
 	// keywords:Kwd+
 	{
-		pos1 := pos
+		pos0 := pos
 		// Kwd+
 		// Kwd
 		if !_accept(parser, _KwdAccepts, &pos, &perr) {
 			goto fail
 		}
 		for {
-			pos3 := pos
+			pos2 := pos
 			// Kwd
 			if !_accept(parser, _KwdAccepts, &pos, &perr) {
-				goto fail5
+				goto fail4
 			}
 			continue
-		fail5:
-			pos = pos3
+		fail4:
+			pos = pos2
 			break
 		}
-		labels[0] = parser.text[pos1:pos]
+		labels[0] = parser.text[pos0:pos]
 	}
 	perr = start
 	return _memoize(parser, _Kwds, start, pos, perr)
@@ -15215,31 +15207,26 @@ func _KwdsFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _Kwds}
 	// action
-	// _ keywords:Kwd+
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
 	// keywords:Kwd+
 	{
-		pos1 := pos
+		pos0 := pos
 		// Kwd+
 		// Kwd
 		if !_fail(parser, _KwdFail, errPos, failure, &pos) {
 			goto fail
 		}
 		for {
-			pos3 := pos
+			pos2 := pos
 			// Kwd
 			if !_fail(parser, _KwdFail, errPos, failure, &pos) {
-				goto fail5
+				goto fail4
 			}
 			continue
-		fail5:
-			pos = pos3
+		fail4:
+			pos = pos2
 			break
 		}
-		labels[0] = parser.text[pos1:pos]
+		labels[0] = parser.text[pos0:pos]
 	}
 	failure.Kids = nil
 	parser.fail[key] = failure
@@ -15270,45 +15257,38 @@ func _KwdsAction(parser *_Parser, start int) (int, *Ident) {
 	// action
 	{
 		start0 := pos
-		// _ keywords:Kwd+
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
 		// keywords:Kwd+
 		{
-			pos2 := pos
+			pos1 := pos
 			// Kwd+
 			{
-				var node5 Ident
+				var node4 Ident
 				// Kwd
 				if p, n := _KwdAction(parser, pos); n == nil {
 					goto fail
 				} else {
-					node5 = *n
+					node4 = *n
 					pos = p
 				}
-				label0 = append(label0, node5)
+				label0 = append(label0, node4)
 			}
 			for {
-				pos4 := pos
-				var node5 Ident
+				pos3 := pos
+				var node4 Ident
 				// Kwd
 				if p, n := _KwdAction(parser, pos); n == nil {
-					goto fail6
+					goto fail5
 				} else {
-					node5 = *n
+					node4 = *n
 					pos = p
 				}
-				label0 = append(label0, node5)
+				label0 = append(label0, node4)
 				continue
-			fail6:
-				pos = pos4
+			fail5:
+				pos = pos3
 				break
 			}
-			labels[0] = parser.text[pos2:pos]
+			labels[0] = parser.text[pos1:pos]
 		}
 		node = func(
 			start, end int, keywords []Ident) Ident {
@@ -16243,11 +16223,7 @@ func _FieldValAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ name:FieldId val:Expr
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
+	// name:FieldId val:Expr
 	// name:FieldId
 	{
 		pos1 := pos
@@ -16284,11 +16260,7 @@ func _FieldValFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _FieldVal}
 	// action
-	// _ name:FieldId val:Expr
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
+	// name:FieldId val:Expr
 	// name:FieldId
 	{
 		pos1 := pos
@@ -16334,13 +16306,7 @@ func _FieldValAction(parser *_Parser, start int) (int, *FieldVal) {
 	// action
 	{
 		start0 := pos
-		// _ name:FieldId val:Expr
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
+		// name:FieldId val:Expr
 		// name:FieldId
 		{
 			pos2 := pos
@@ -16691,11 +16657,7 @@ func _CaseValAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ name:CaseId v:Expr?
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
+	// name:CaseId v:Expr?
 	// name:CaseId
 	{
 		pos1 := pos
@@ -16740,11 +16702,7 @@ func _CaseValFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _CaseVal}
 	// action
-	// _ name:CaseId v:Expr?
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
+	// name:CaseId v:Expr?
 	// name:CaseId
 	{
 		pos1 := pos
@@ -16798,13 +16756,7 @@ func _CaseValAction(parser *_Parser, start int) (int, *CaseVal) {
 	// action
 	{
 		start0 := pos
-		// _ name:CaseId v:Expr?
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
+		// name:CaseId v:Expr?
 		// name:CaseId
 		{
 			pos2 := pos
@@ -20653,1109 +20605,6 @@ fail:
 	return -1, nil
 }
 
-func _KwdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [1]string
-	use(labels)
-	if dp, de, ok := _memo(parser, _Kwd, start); ok {
-		return dp, de
-	}
-	pos, perr := start, -1
-	// action
-	// _ name:Name ":" !":"
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
-	// name:Name
-	{
-		pos1 := pos
-		// Name
-		if !_accept(parser, _NameAccepts, &pos, &perr) {
-			goto fail
-		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// ":"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
-		perr = _max(perr, pos)
-		goto fail
-	}
-	pos++
-	// !":"
-	{
-		pos3 := pos
-		perr5 := perr
-		// ":"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
-			perr = _max(perr, pos)
-			goto ok2
-		}
-		pos++
-		pos = pos3
-		perr = _max(perr5, pos)
-		goto fail
-	ok2:
-		pos = pos3
-		perr = perr5
-	}
-	perr = start
-	return _memoize(parser, _Kwd, start, pos, perr)
-fail:
-	return _memoize(parser, _Kwd, start, -1, perr)
-}
-
-func _KwdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [1]string
-	use(labels)
-	pos, failure := _failMemo(parser, _Kwd, start, errPos)
-	if failure != nil {
-		return pos, failure
-	}
-	failure = &peg.Fail{
-		Name: "Kwd",
-		Pos:  int(start),
-	}
-	key := _key{start: start, rule: _Kwd}
-	// action
-	// _ name:Name ":" !":"
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
-	// name:Name
-	{
-		pos1 := pos
-		// Name
-		if !_fail(parser, _NameFail, errPos, failure, &pos) {
-			goto fail
-		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// ":"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "\":\"",
-			})
-		}
-		goto fail
-	}
-	pos++
-	// !":"
-	{
-		pos3 := pos
-		nkids4 := len(failure.Kids)
-		// ":"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
-			if pos >= errPos {
-				failure.Kids = append(failure.Kids, &peg.Fail{
-					Pos:  int(pos),
-					Want: "\":\"",
-				})
-			}
-			goto ok2
-		}
-		pos++
-		pos = pos3
-		failure.Kids = failure.Kids[:nkids4]
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "!\":\"",
-			})
-		}
-		goto fail
-	ok2:
-		pos = pos3
-		failure.Kids = failure.Kids[:nkids4]
-	}
-	failure.Kids = nil
-	parser.fail[key] = failure
-	return pos, failure
-fail:
-	failure.Kids = nil
-	failure.Want = "keyword"
-	parser.fail[key] = failure
-	return -1, failure
-}
-
-func _KwdAction(parser *_Parser, start int) (int, *Ident) {
-	var labels [1]string
-	use(labels)
-	var label0 string
-	dp := parser.deltaPos[start][_Kwd]
-	if dp < 0 {
-		return -1, nil
-	}
-	key := _key{start: start, rule: _Kwd}
-	n := parser.act[key]
-	if n != nil {
-		n := n.(Ident)
-		return start + int(dp-1), &n
-	}
-	var node Ident
-	pos := start
-	// action
-	{
-		start0 := pos
-		// _ name:Name ":" !":"
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
-		// name:Name
-		{
-			pos2 := pos
-			// Name
-			if p, n := _NameAction(parser, pos); n == nil {
-				goto fail
-			} else {
-				label0 = *n
-				pos = p
-			}
-			labels[0] = parser.text[pos2:pos]
-		}
-		// ":"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
-			goto fail
-		}
-		pos++
-		// !":"
-		{
-			pos4 := pos
-			// ":"
-			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
-				goto ok3
-			}
-			pos++
-			pos = pos4
-			goto fail
-		ok3:
-			pos = pos4
-		}
-		node = func(
-			start, end int, name string) Ident {
-			return Ident{Name: name + ":", L: l(parser, start, end)}
-		}(
-			start0, pos, label0)
-	}
-	parser.act[key] = node
-	return pos, &node
-fail:
-	return -1, nil
-}
-
-func _CaseIdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [1]string
-	use(labels)
-	if dp, de, ok := _memo(parser, _CaseId, start); ok {
-		return dp, de
-	}
-	pos, perr := start, -1
-	// action
-	// _ name:Name "?"
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
-	// name:Name
-	{
-		pos1 := pos
-		// Name
-		if !_accept(parser, _NameAccepts, &pos, &perr) {
-			goto fail
-		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// "?"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
-		perr = _max(perr, pos)
-		goto fail
-	}
-	pos++
-	perr = start
-	return _memoize(parser, _CaseId, start, pos, perr)
-fail:
-	return _memoize(parser, _CaseId, start, -1, perr)
-}
-
-func _CaseIdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [1]string
-	use(labels)
-	pos, failure := _failMemo(parser, _CaseId, start, errPos)
-	if failure != nil {
-		return pos, failure
-	}
-	failure = &peg.Fail{
-		Name: "CaseId",
-		Pos:  int(start),
-	}
-	key := _key{start: start, rule: _CaseId}
-	// action
-	// _ name:Name "?"
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
-	// name:Name
-	{
-		pos1 := pos
-		// Name
-		if !_fail(parser, _NameFail, errPos, failure, &pos) {
-			goto fail
-		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// "?"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "\"?\"",
-			})
-		}
-		goto fail
-	}
-	pos++
-	failure.Kids = nil
-	parser.fail[key] = failure
-	return pos, failure
-fail:
-	failure.Kids = nil
-	failure.Want = "case id"
-	parser.fail[key] = failure
-	return -1, failure
-}
-
-func _CaseIdAction(parser *_Parser, start int) (int, *Ident) {
-	var labels [1]string
-	use(labels)
-	var label0 string
-	dp := parser.deltaPos[start][_CaseId]
-	if dp < 0 {
-		return -1, nil
-	}
-	key := _key{start: start, rule: _CaseId}
-	n := parser.act[key]
-	if n != nil {
-		n := n.(Ident)
-		return start + int(dp-1), &n
-	}
-	var node Ident
-	pos := start
-	// action
-	{
-		start0 := pos
-		// _ name:Name "?"
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
-		// name:Name
-		{
-			pos2 := pos
-			// Name
-			if p, n := _NameAction(parser, pos); n == nil {
-				goto fail
-			} else {
-				label0 = *n
-				pos = p
-			}
-			labels[0] = parser.text[pos2:pos]
-		}
-		// "?"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
-			goto fail
-		}
-		pos++
-		node = func(
-			start, end int, name string) Ident {
-			return Ident{Name: name + "?", L: l(parser, start, end)}
-		}(
-			start0, pos, label0)
-	}
-	parser.act[key] = node
-	return pos, &node
-fail:
-	return -1, nil
-}
-
-func _ModIdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [1]string
-	use(labels)
-	if dp, de, ok := _memo(parser, _ModId, start); ok {
-		return dp, de
-	}
-	pos, perr := start, -1
-	// action
-	// _ name:Name "#"
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
-	// name:Name
-	{
-		pos1 := pos
-		// Name
-		if !_accept(parser, _NameAccepts, &pos, &perr) {
-			goto fail
-		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// "#"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "#" {
-		perr = _max(perr, pos)
-		goto fail
-	}
-	pos++
-	perr = start
-	return _memoize(parser, _ModId, start, pos, perr)
-fail:
-	return _memoize(parser, _ModId, start, -1, perr)
-}
-
-func _ModIdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [1]string
-	use(labels)
-	pos, failure := _failMemo(parser, _ModId, start, errPos)
-	if failure != nil {
-		return pos, failure
-	}
-	failure = &peg.Fail{
-		Name: "ModId",
-		Pos:  int(start),
-	}
-	key := _key{start: start, rule: _ModId}
-	// action
-	// _ name:Name "#"
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
-	// name:Name
-	{
-		pos1 := pos
-		// Name
-		if !_fail(parser, _NameFail, errPos, failure, &pos) {
-			goto fail
-		}
-		labels[0] = parser.text[pos1:pos]
-	}
-	// "#"
-	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "#" {
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "\"#\"",
-			})
-		}
-		goto fail
-	}
-	pos++
-	failure.Kids = nil
-	parser.fail[key] = failure
-	return pos, failure
-fail:
-	failure.Kids = nil
-	failure.Want = "mod id"
-	parser.fail[key] = failure
-	return -1, failure
-}
-
-func _ModIdAction(parser *_Parser, start int) (int, *Ident) {
-	var labels [1]string
-	use(labels)
-	var label0 string
-	dp := parser.deltaPos[start][_ModId]
-	if dp < 0 {
-		return -1, nil
-	}
-	key := _key{start: start, rule: _ModId}
-	n := parser.act[key]
-	if n != nil {
-		n := n.(Ident)
-		return start + int(dp-1), &n
-	}
-	var node Ident
-	pos := start
-	// action
-	{
-		start0 := pos
-		// _ name:Name "#"
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
-		// name:Name
-		{
-			pos2 := pos
-			// Name
-			if p, n := _NameAction(parser, pos); n == nil {
-				goto fail
-			} else {
-				label0 = *n
-				pos = p
-			}
-			labels[0] = parser.text[pos2:pos]
-		}
-		// "#"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "#" {
-			goto fail
-		}
-		pos++
-		node = func(
-			start, end int, name string) Ident {
-			return Ident{Name: name, L: l(parser, start, end)}
-		}(
-			start0, pos, label0)
-	}
-	parser.act[key] = node
-	return pos, &node
-fail:
-	return -1, nil
-}
-
-func _IdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [1]string
-	use(labels)
-	if dp, de, ok := _memo(parser, _Id, start); ok {
-		return dp, de
-	}
-	pos, perr := start, -1
-	// action
-	// _ !Kwd !CaseId !ModId name:Name
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
-	// !Kwd
-	{
-		pos2 := pos
-		perr4 := perr
-		// Kwd
-		if !_accept(parser, _KwdAccepts, &pos, &perr) {
-			goto ok1
-		}
-		pos = pos2
-		perr = _max(perr4, pos)
-		goto fail
-	ok1:
-		pos = pos2
-		perr = perr4
-	}
-	// !CaseId
-	{
-		pos6 := pos
-		perr8 := perr
-		// CaseId
-		if !_accept(parser, _CaseIdAccepts, &pos, &perr) {
-			goto ok5
-		}
-		pos = pos6
-		perr = _max(perr8, pos)
-		goto fail
-	ok5:
-		pos = pos6
-		perr = perr8
-	}
-	// !ModId
-	{
-		pos10 := pos
-		perr12 := perr
-		// ModId
-		if !_accept(parser, _ModIdAccepts, &pos, &perr) {
-			goto ok9
-		}
-		pos = pos10
-		perr = _max(perr12, pos)
-		goto fail
-	ok9:
-		pos = pos10
-		perr = perr12
-	}
-	// name:Name
-	{
-		pos13 := pos
-		// Name
-		if !_accept(parser, _NameAccepts, &pos, &perr) {
-			goto fail
-		}
-		labels[0] = parser.text[pos13:pos]
-	}
-	perr = start
-	return _memoize(parser, _Id, start, pos, perr)
-fail:
-	return _memoize(parser, _Id, start, -1, perr)
-}
-
-func _IdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [1]string
-	use(labels)
-	pos, failure := _failMemo(parser, _Id, start, errPos)
-	if failure != nil {
-		return pos, failure
-	}
-	failure = &peg.Fail{
-		Name: "Id",
-		Pos:  int(start),
-	}
-	key := _key{start: start, rule: _Id}
-	// action
-	// _ !Kwd !CaseId !ModId name:Name
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
-	// !Kwd
-	{
-		pos2 := pos
-		nkids3 := len(failure.Kids)
-		// Kwd
-		if !_fail(parser, _KwdFail, errPos, failure, &pos) {
-			goto ok1
-		}
-		pos = pos2
-		failure.Kids = failure.Kids[:nkids3]
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "!Kwd",
-			})
-		}
-		goto fail
-	ok1:
-		pos = pos2
-		failure.Kids = failure.Kids[:nkids3]
-	}
-	// !CaseId
-	{
-		pos6 := pos
-		nkids7 := len(failure.Kids)
-		// CaseId
-		if !_fail(parser, _CaseIdFail, errPos, failure, &pos) {
-			goto ok5
-		}
-		pos = pos6
-		failure.Kids = failure.Kids[:nkids7]
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "!CaseId",
-			})
-		}
-		goto fail
-	ok5:
-		pos = pos6
-		failure.Kids = failure.Kids[:nkids7]
-	}
-	// !ModId
-	{
-		pos10 := pos
-		nkids11 := len(failure.Kids)
-		// ModId
-		if !_fail(parser, _ModIdFail, errPos, failure, &pos) {
-			goto ok9
-		}
-		pos = pos10
-		failure.Kids = failure.Kids[:nkids11]
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "!ModId",
-			})
-		}
-		goto fail
-	ok9:
-		pos = pos10
-		failure.Kids = failure.Kids[:nkids11]
-	}
-	// name:Name
-	{
-		pos13 := pos
-		// Name
-		if !_fail(parser, _NameFail, errPos, failure, &pos) {
-			goto fail
-		}
-		labels[0] = parser.text[pos13:pos]
-	}
-	failure.Kids = nil
-	parser.fail[key] = failure
-	return pos, failure
-fail:
-	failure.Kids = nil
-	failure.Want = "identifier"
-	parser.fail[key] = failure
-	return -1, failure
-}
-
-func _IdAction(parser *_Parser, start int) (int, *Ident) {
-	var labels [1]string
-	use(labels)
-	var label0 string
-	dp := parser.deltaPos[start][_Id]
-	if dp < 0 {
-		return -1, nil
-	}
-	key := _key{start: start, rule: _Id}
-	n := parser.act[key]
-	if n != nil {
-		n := n.(Ident)
-		return start + int(dp-1), &n
-	}
-	var node Ident
-	pos := start
-	// action
-	{
-		start0 := pos
-		// _ !Kwd !CaseId !ModId name:Name
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
-		} else {
-			pos = p
-		}
-		// !Kwd
-		{
-			pos3 := pos
-			// Kwd
-			if p, n := _KwdAction(parser, pos); n == nil {
-				goto ok2
-			} else {
-				pos = p
-			}
-			pos = pos3
-			goto fail
-		ok2:
-			pos = pos3
-		}
-		// !CaseId
-		{
-			pos7 := pos
-			// CaseId
-			if p, n := _CaseIdAction(parser, pos); n == nil {
-				goto ok6
-			} else {
-				pos = p
-			}
-			pos = pos7
-			goto fail
-		ok6:
-			pos = pos7
-		}
-		// !ModId
-		{
-			pos11 := pos
-			// ModId
-			if p, n := _ModIdAction(parser, pos); n == nil {
-				goto ok10
-			} else {
-				pos = p
-			}
-			pos = pos11
-			goto fail
-		ok10:
-			pos = pos11
-		}
-		// name:Name
-		{
-			pos14 := pos
-			// Name
-			if p, n := _NameAction(parser, pos); n == nil {
-				goto fail
-			} else {
-				label0 = *n
-				pos = p
-			}
-			labels[0] = parser.text[pos14:pos]
-		}
-		node = func(
-			start, end int, name string) Ident {
-			return Ident{Name: name, L: l(parser, start, end)}
-		}(
-			start0, pos, label0)
-	}
-	parser.act[key] = node
-	return pos, &node
-fail:
-	return -1, nil
-}
-
-func _NameAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	if dp, de, ok := _memo(parser, _Name, start); ok {
-		return dp, de
-	}
-	pos, perr := start, -1
-	// !Reserved !TypeVar ("_"/L) ("_"/L/D)*
-	// !Reserved
-	{
-		pos2 := pos
-		perr4 := perr
-		// Reserved
-		if !_accept(parser, _ReservedAccepts, &pos, &perr) {
-			goto ok1
-		}
-		pos = pos2
-		perr = _max(perr4, pos)
-		goto fail
-	ok1:
-		pos = pos2
-		perr = perr4
-	}
-	// !TypeVar
-	{
-		pos6 := pos
-		perr8 := perr
-		// TypeVar
-		if !_accept(parser, _TypeVarAccepts, &pos, &perr) {
-			goto ok5
-		}
-		pos = pos6
-		perr = _max(perr8, pos)
-		goto fail
-	ok5:
-		pos = pos6
-		perr = perr8
-	}
-	// ("_"/L)
-	// "_"/L
-	{
-		pos12 := pos
-		// "_"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
-			perr = _max(perr, pos)
-			goto fail13
-		}
-		pos++
-		goto ok9
-	fail13:
-		pos = pos12
-		// L
-		if !_accept(parser, _LAccepts, &pos, &perr) {
-			goto fail14
-		}
-		goto ok9
-	fail14:
-		pos = pos12
-		goto fail
-	ok9:
-	}
-	// ("_"/L/D)*
-	for {
-		pos16 := pos
-		// ("_"/L/D)
-		// "_"/L/D
-		{
-			pos22 := pos
-			// "_"
-			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
-				perr = _max(perr, pos)
-				goto fail23
-			}
-			pos++
-			goto ok19
-		fail23:
-			pos = pos22
-			// L
-			if !_accept(parser, _LAccepts, &pos, &perr) {
-				goto fail24
-			}
-			goto ok19
-		fail24:
-			pos = pos22
-			// D
-			if !_accept(parser, _DAccepts, &pos, &perr) {
-				goto fail25
-			}
-			goto ok19
-		fail25:
-			pos = pos22
-			goto fail18
-		ok19:
-		}
-		continue
-	fail18:
-		pos = pos16
-		break
-	}
-	return _memoize(parser, _Name, start, pos, perr)
-fail:
-	return _memoize(parser, _Name, start, -1, perr)
-}
-
-func _NameFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	pos, failure := _failMemo(parser, _Name, start, errPos)
-	if failure != nil {
-		return pos, failure
-	}
-	failure = &peg.Fail{
-		Name: "Name",
-		Pos:  int(start),
-	}
-	key := _key{start: start, rule: _Name}
-	// !Reserved !TypeVar ("_"/L) ("_"/L/D)*
-	// !Reserved
-	{
-		pos2 := pos
-		nkids3 := len(failure.Kids)
-		// Reserved
-		if !_fail(parser, _ReservedFail, errPos, failure, &pos) {
-			goto ok1
-		}
-		pos = pos2
-		failure.Kids = failure.Kids[:nkids3]
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "!Reserved",
-			})
-		}
-		goto fail
-	ok1:
-		pos = pos2
-		failure.Kids = failure.Kids[:nkids3]
-	}
-	// !TypeVar
-	{
-		pos6 := pos
-		nkids7 := len(failure.Kids)
-		// TypeVar
-		if !_fail(parser, _TypeVarFail, errPos, failure, &pos) {
-			goto ok5
-		}
-		pos = pos6
-		failure.Kids = failure.Kids[:nkids7]
-		if pos >= errPos {
-			failure.Kids = append(failure.Kids, &peg.Fail{
-				Pos:  int(pos),
-				Want: "!TypeVar",
-			})
-		}
-		goto fail
-	ok5:
-		pos = pos6
-		failure.Kids = failure.Kids[:nkids7]
-	}
-	// ("_"/L)
-	// "_"/L
-	{
-		pos12 := pos
-		// "_"
-		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
-			if pos >= errPos {
-				failure.Kids = append(failure.Kids, &peg.Fail{
-					Pos:  int(pos),
-					Want: "\"_\"",
-				})
-			}
-			goto fail13
-		}
-		pos++
-		goto ok9
-	fail13:
-		pos = pos12
-		// L
-		if !_fail(parser, _LFail, errPos, failure, &pos) {
-			goto fail14
-		}
-		goto ok9
-	fail14:
-		pos = pos12
-		goto fail
-	ok9:
-	}
-	// ("_"/L/D)*
-	for {
-		pos16 := pos
-		// ("_"/L/D)
-		// "_"/L/D
-		{
-			pos22 := pos
-			// "_"
-			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
-				if pos >= errPos {
-					failure.Kids = append(failure.Kids, &peg.Fail{
-						Pos:  int(pos),
-						Want: "\"_\"",
-					})
-				}
-				goto fail23
-			}
-			pos++
-			goto ok19
-		fail23:
-			pos = pos22
-			// L
-			if !_fail(parser, _LFail, errPos, failure, &pos) {
-				goto fail24
-			}
-			goto ok19
-		fail24:
-			pos = pos22
-			// D
-			if !_fail(parser, _DFail, errPos, failure, &pos) {
-				goto fail25
-			}
-			goto ok19
-		fail25:
-			pos = pos22
-			goto fail18
-		ok19:
-		}
-		continue
-	fail18:
-		pos = pos16
-		break
-	}
-	parser.fail[key] = failure
-	return pos, failure
-fail:
-	parser.fail[key] = failure
-	return -1, failure
-}
-
-func _NameAction(parser *_Parser, start int) (int, *string) {
-	dp := parser.deltaPos[start][_Name]
-	if dp < 0 {
-		return -1, nil
-	}
-	key := _key{start: start, rule: _Name}
-	n := parser.act[key]
-	if n != nil {
-		n := n.(string)
-		return start + int(dp-1), &n
-	}
-	var node string
-	pos := start
-	// !Reserved !TypeVar ("_"/L) ("_"/L/D)*
-	{
-		var node0 string
-		// !Reserved
-		{
-			pos2 := pos
-			// Reserved
-			if p, n := _ReservedAction(parser, pos); n == nil {
-				goto ok1
-			} else {
-				pos = p
-			}
-			pos = pos2
-			goto fail
-		ok1:
-			pos = pos2
-			node0 = ""
-		}
-		node, node0 = node+node0, ""
-		// !TypeVar
-		{
-			pos6 := pos
-			// TypeVar
-			if p, n := _TypeVarAction(parser, pos); n == nil {
-				goto ok5
-			} else {
-				pos = p
-			}
-			pos = pos6
-			goto fail
-		ok5:
-			pos = pos6
-			node0 = ""
-		}
-		node, node0 = node+node0, ""
-		// ("_"/L)
-		// "_"/L
-		{
-			pos12 := pos
-			var node11 string
-			// "_"
-			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
-				goto fail13
-			}
-			node0 = parser.text[pos : pos+1]
-			pos++
-			goto ok9
-		fail13:
-			node0 = node11
-			pos = pos12
-			// L
-			if p, n := _LAction(parser, pos); n == nil {
-				goto fail14
-			} else {
-				node0 = *n
-				pos = p
-			}
-			goto ok9
-		fail14:
-			node0 = node11
-			pos = pos12
-			goto fail
-		ok9:
-		}
-		node, node0 = node+node0, ""
-		// ("_"/L/D)*
-		for {
-			pos16 := pos
-			var node17 string
-			// ("_"/L/D)
-			// "_"/L/D
-			{
-				pos22 := pos
-				var node21 string
-				// "_"
-				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
-					goto fail23
-				}
-				node17 = parser.text[pos : pos+1]
-				pos++
-				goto ok19
-			fail23:
-				node17 = node21
-				pos = pos22
-				// L
-				if p, n := _LAction(parser, pos); n == nil {
-					goto fail24
-				} else {
-					node17 = *n
-					pos = p
-				}
-				goto ok19
-			fail24:
-				node17 = node21
-				pos = pos22
-				// D
-				if p, n := _DAction(parser, pos); n == nil {
-					goto fail25
-				} else {
-					node17 = *n
-					pos = p
-				}
-				goto ok19
-			fail25:
-				node17 = node21
-				pos = pos22
-				goto fail18
-			ok19:
-			}
-			node0 += node17
-			continue
-		fail18:
-			pos = pos16
-			break
-		}
-		node, node0 = node+node0, ""
-	}
-	parser.act[key] = node
-	return pos, &node
-fail:
-	return -1, nil
-}
-
 func _TypeVarAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	var labels [1]string
 	use(labels)
@@ -21984,8 +20833,1250 @@ fail:
 	return -1, nil
 }
 
-func _ReservedAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	if dp, de, ok := _memo(parser, _Reserved, start); ok {
+func _KwdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [1]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _Kwd, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// _ name:NAME ":" !":"
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// name:NAME
+	{
+		pos1 := pos
+		// NAME
+		if !_accept(parser, _NAMEAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// ":"
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos++
+	// !":"
+	{
+		pos3 := pos
+		perr5 := perr
+		// ":"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
+			perr = _max(perr, pos)
+			goto ok2
+		}
+		pos++
+		pos = pos3
+		perr = _max(perr5, pos)
+		goto fail
+	ok2:
+		pos = pos3
+		perr = perr5
+	}
+	perr = start
+	return _memoize(parser, _Kwd, start, pos, perr)
+fail:
+	return _memoize(parser, _Kwd, start, -1, perr)
+}
+
+func _KwdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [1]string
+	use(labels)
+	pos, failure := _failMemo(parser, _Kwd, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "Kwd",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _Kwd}
+	// action
+	// _ name:NAME ":" !":"
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// name:NAME
+	{
+		pos1 := pos
+		// NAME
+		if !_fail(parser, _NAMEFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// ":"
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\":\"",
+			})
+		}
+		goto fail
+	}
+	pos++
+	// !":"
+	{
+		pos3 := pos
+		nkids4 := len(failure.Kids)
+		// ":"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\":\"",
+				})
+			}
+			goto ok2
+		}
+		pos++
+		pos = pos3
+		failure.Kids = failure.Kids[:nkids4]
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "!\":\"",
+			})
+		}
+		goto fail
+	ok2:
+		pos = pos3
+		failure.Kids = failure.Kids[:nkids4]
+	}
+	failure.Kids = nil
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	failure.Kids = nil
+	failure.Want = "keyword"
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _KwdAction(parser *_Parser, start int) (int, *Ident) {
+	var labels [1]string
+	use(labels)
+	var label0 string
+	dp := parser.deltaPos[start][_Kwd]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _Kwd}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Ident)
+		return start + int(dp-1), &n
+	}
+	var node Ident
+	pos := start
+	// action
+	{
+		start0 := pos
+		// _ name:NAME ":" !":"
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// name:NAME
+		{
+			pos2 := pos
+			// NAME
+			if p, n := _NAMEAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label0 = *n
+				pos = p
+			}
+			labels[0] = parser.text[pos2:pos]
+		}
+		// ":"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
+			goto fail
+		}
+		pos++
+		// !":"
+		{
+			pos4 := pos
+			// ":"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ":" {
+				goto ok3
+			}
+			pos++
+			pos = pos4
+			goto fail
+		ok3:
+			pos = pos4
+		}
+		node = func(
+			start, end int, name string) Ident {
+			return Ident{Name: name + ":", L: l(parser, start, end)}
+		}(
+			start0, pos, label0)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _CaseIdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [1]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _CaseId, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// _ name:NAME "?"
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// name:NAME
+	{
+		pos1 := pos
+		// NAME
+		if !_accept(parser, _NAMEAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// "?"
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos++
+	perr = start
+	return _memoize(parser, _CaseId, start, pos, perr)
+fail:
+	return _memoize(parser, _CaseId, start, -1, perr)
+}
+
+func _CaseIdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [1]string
+	use(labels)
+	pos, failure := _failMemo(parser, _CaseId, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "CaseId",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _CaseId}
+	// action
+	// _ name:NAME "?"
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// name:NAME
+	{
+		pos1 := pos
+		// NAME
+		if !_fail(parser, _NAMEFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// "?"
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\"?\"",
+			})
+		}
+		goto fail
+	}
+	pos++
+	failure.Kids = nil
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	failure.Kids = nil
+	failure.Want = "case id"
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _CaseIdAction(parser *_Parser, start int) (int, *Ident) {
+	var labels [1]string
+	use(labels)
+	var label0 string
+	dp := parser.deltaPos[start][_CaseId]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _CaseId}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Ident)
+		return start + int(dp-1), &n
+	}
+	var node Ident
+	pos := start
+	// action
+	{
+		start0 := pos
+		// _ name:NAME "?"
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// name:NAME
+		{
+			pos2 := pos
+			// NAME
+			if p, n := _NAMEAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label0 = *n
+				pos = p
+			}
+			labels[0] = parser.text[pos2:pos]
+		}
+		// "?"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
+			goto fail
+		}
+		pos++
+		node = func(
+			start, end int, name string) Ident {
+			return Ident{Name: name + "?", L: l(parser, start, end)}
+		}(
+			start0, pos, label0)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _ModIdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [1]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _ModId, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// _ name:NAME "#"
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// name:NAME
+	{
+		pos1 := pos
+		// NAME
+		if !_accept(parser, _NAMEAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// "#"
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "#" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos++
+	perr = start
+	return _memoize(parser, _ModId, start, pos, perr)
+fail:
+	return _memoize(parser, _ModId, start, -1, perr)
+}
+
+func _ModIdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [1]string
+	use(labels)
+	pos, failure := _failMemo(parser, _ModId, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "ModId",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _ModId}
+	// action
+	// _ name:NAME "#"
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// name:NAME
+	{
+		pos1 := pos
+		// NAME
+		if !_fail(parser, _NAMEFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// "#"
+	if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "#" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\"#\"",
+			})
+		}
+		goto fail
+	}
+	pos++
+	failure.Kids = nil
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	failure.Kids = nil
+	failure.Want = "mod id"
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _ModIdAction(parser *_Parser, start int) (int, *Ident) {
+	var labels [1]string
+	use(labels)
+	var label0 string
+	dp := parser.deltaPos[start][_ModId]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _ModId}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Ident)
+		return start + int(dp-1), &n
+	}
+	var node Ident
+	pos := start
+	// action
+	{
+		start0 := pos
+		// _ name:NAME "#"
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// name:NAME
+		{
+			pos2 := pos
+			// NAME
+			if p, n := _NAMEAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label0 = *n
+				pos = p
+			}
+			labels[0] = parser.text[pos2:pos]
+		}
+		// "#"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "#" {
+			goto fail
+		}
+		pos++
+		node = func(
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
+		}(
+			start0, pos, label0)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _IdAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [1]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _Id, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// _ !Kwd !CaseId !ModId name:NAME
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// !Kwd
+	{
+		pos2 := pos
+		perr4 := perr
+		// Kwd
+		if !_accept(parser, _KwdAccepts, &pos, &perr) {
+			goto ok1
+		}
+		pos = pos2
+		perr = _max(perr4, pos)
+		goto fail
+	ok1:
+		pos = pos2
+		perr = perr4
+	}
+	// !CaseId
+	{
+		pos6 := pos
+		perr8 := perr
+		// CaseId
+		if !_accept(parser, _CaseIdAccepts, &pos, &perr) {
+			goto ok5
+		}
+		pos = pos6
+		perr = _max(perr8, pos)
+		goto fail
+	ok5:
+		pos = pos6
+		perr = perr8
+	}
+	// !ModId
+	{
+		pos10 := pos
+		perr12 := perr
+		// ModId
+		if !_accept(parser, _ModIdAccepts, &pos, &perr) {
+			goto ok9
+		}
+		pos = pos10
+		perr = _max(perr12, pos)
+		goto fail
+	ok9:
+		pos = pos10
+		perr = perr12
+	}
+	// name:NAME
+	{
+		pos13 := pos
+		// NAME
+		if !_accept(parser, _NAMEAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[0] = parser.text[pos13:pos]
+	}
+	perr = start
+	return _memoize(parser, _Id, start, pos, perr)
+fail:
+	return _memoize(parser, _Id, start, -1, perr)
+}
+
+func _IdFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [1]string
+	use(labels)
+	pos, failure := _failMemo(parser, _Id, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "Id",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _Id}
+	// action
+	// _ !Kwd !CaseId !ModId name:NAME
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// !Kwd
+	{
+		pos2 := pos
+		nkids3 := len(failure.Kids)
+		// Kwd
+		if !_fail(parser, _KwdFail, errPos, failure, &pos) {
+			goto ok1
+		}
+		pos = pos2
+		failure.Kids = failure.Kids[:nkids3]
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "!Kwd",
+			})
+		}
+		goto fail
+	ok1:
+		pos = pos2
+		failure.Kids = failure.Kids[:nkids3]
+	}
+	// !CaseId
+	{
+		pos6 := pos
+		nkids7 := len(failure.Kids)
+		// CaseId
+		if !_fail(parser, _CaseIdFail, errPos, failure, &pos) {
+			goto ok5
+		}
+		pos = pos6
+		failure.Kids = failure.Kids[:nkids7]
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "!CaseId",
+			})
+		}
+		goto fail
+	ok5:
+		pos = pos6
+		failure.Kids = failure.Kids[:nkids7]
+	}
+	// !ModId
+	{
+		pos10 := pos
+		nkids11 := len(failure.Kids)
+		// ModId
+		if !_fail(parser, _ModIdFail, errPos, failure, &pos) {
+			goto ok9
+		}
+		pos = pos10
+		failure.Kids = failure.Kids[:nkids11]
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "!ModId",
+			})
+		}
+		goto fail
+	ok9:
+		pos = pos10
+		failure.Kids = failure.Kids[:nkids11]
+	}
+	// name:NAME
+	{
+		pos13 := pos
+		// NAME
+		if !_fail(parser, _NAMEFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[0] = parser.text[pos13:pos]
+	}
+	failure.Kids = nil
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	failure.Kids = nil
+	failure.Want = "identifier"
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _IdAction(parser *_Parser, start int) (int, *Ident) {
+	var labels [1]string
+	use(labels)
+	var label0 string
+	dp := parser.deltaPos[start][_Id]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _Id}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Ident)
+		return start + int(dp-1), &n
+	}
+	var node Ident
+	pos := start
+	// action
+	{
+		start0 := pos
+		// _ !Kwd !CaseId !ModId name:NAME
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// !Kwd
+		{
+			pos3 := pos
+			// Kwd
+			if p, n := _KwdAction(parser, pos); n == nil {
+				goto ok2
+			} else {
+				pos = p
+			}
+			pos = pos3
+			goto fail
+		ok2:
+			pos = pos3
+		}
+		// !CaseId
+		{
+			pos7 := pos
+			// CaseId
+			if p, n := _CaseIdAction(parser, pos); n == nil {
+				goto ok6
+			} else {
+				pos = p
+			}
+			pos = pos7
+			goto fail
+		ok6:
+			pos = pos7
+		}
+		// !ModId
+		{
+			pos11 := pos
+			// ModId
+			if p, n := _ModIdAction(parser, pos); n == nil {
+				goto ok10
+			} else {
+				pos = p
+			}
+			pos = pos11
+			goto fail
+		ok10:
+			pos = pos11
+		}
+		// name:NAME
+		{
+			pos14 := pos
+			// NAME
+			if p, n := _NAMEAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label0 = *n
+				pos = p
+			}
+			labels[0] = parser.text[pos14:pos]
+		}
+		node = func(
+			start, end int, name string) Ident {
+			return Ident{Name: name, L: l(parser, start, end)}
+		}(
+			start0, pos, label0)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func __Accepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, __, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// (SPACE/COMMENT)*
+	for {
+		pos1 := pos
+		// (SPACE/COMMENT)
+		// SPACE/COMMENT
+		{
+			pos7 := pos
+			// SPACE
+			if !_accept(parser, _SPACEAccepts, &pos, &perr) {
+				goto fail8
+			}
+			goto ok4
+		fail8:
+			pos = pos7
+			// COMMENT
+			if !_accept(parser, _COMMENTAccepts, &pos, &perr) {
+				goto fail9
+			}
+			goto ok4
+		fail9:
+			pos = pos7
+			goto fail3
+		ok4:
+		}
+		continue
+	fail3:
+		pos = pos1
+		break
+	}
+	perr = start
+	return _memoize(parser, __, start, pos, perr)
+}
+
+func __Fail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, __, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "_",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: __}
+	// (SPACE/COMMENT)*
+	for {
+		pos1 := pos
+		// (SPACE/COMMENT)
+		// SPACE/COMMENT
+		{
+			pos7 := pos
+			// SPACE
+			if !_fail(parser, _SPACEFail, errPos, failure, &pos) {
+				goto fail8
+			}
+			goto ok4
+		fail8:
+			pos = pos7
+			// COMMENT
+			if !_fail(parser, _COMMENTFail, errPos, failure, &pos) {
+				goto fail9
+			}
+			goto ok4
+		fail9:
+			pos = pos7
+			goto fail3
+		ok4:
+		}
+		continue
+	fail3:
+		pos = pos1
+		break
+	}
+	failure.Kids = nil
+	parser.fail[key] = failure
+	return pos, failure
+}
+
+func __Action(parser *_Parser, start int) (int, *string) {
+	dp := parser.deltaPos[start][__]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: __}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(string)
+		return start + int(dp-1), &n
+	}
+	var node string
+	pos := start
+	// (SPACE/COMMENT)*
+	for {
+		pos1 := pos
+		var node2 string
+		// (SPACE/COMMENT)
+		// SPACE/COMMENT
+		{
+			pos7 := pos
+			var node6 string
+			// SPACE
+			if p, n := _SPACEAction(parser, pos); n == nil {
+				goto fail8
+			} else {
+				node2 = *n
+				pos = p
+			}
+			goto ok4
+		fail8:
+			node2 = node6
+			pos = pos7
+			// COMMENT
+			if p, n := _COMMENTAction(parser, pos); n == nil {
+				goto fail9
+			} else {
+				node2 = *n
+				pos = p
+			}
+			goto ok4
+		fail9:
+			node2 = node6
+			pos = pos7
+			goto fail3
+		ok4:
+		}
+		node += node2
+		continue
+	fail3:
+		pos = pos1
+		break
+	}
+	parser.act[key] = node
+	return pos, &node
+}
+
+func _NAMEAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, _NAME, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// !RESERVED !TypeVar ("_"/L) ("_"/L/D)*
+	// !RESERVED
+	{
+		pos2 := pos
+		perr4 := perr
+		// RESERVED
+		if !_accept(parser, _RESERVEDAccepts, &pos, &perr) {
+			goto ok1
+		}
+		pos = pos2
+		perr = _max(perr4, pos)
+		goto fail
+	ok1:
+		pos = pos2
+		perr = perr4
+	}
+	// !TypeVar
+	{
+		pos6 := pos
+		perr8 := perr
+		// TypeVar
+		if !_accept(parser, _TypeVarAccepts, &pos, &perr) {
+			goto ok5
+		}
+		pos = pos6
+		perr = _max(perr8, pos)
+		goto fail
+	ok5:
+		pos = pos6
+		perr = perr8
+	}
+	// ("_"/L)
+	// "_"/L
+	{
+		pos12 := pos
+		// "_"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
+			perr = _max(perr, pos)
+			goto fail13
+		}
+		pos++
+		goto ok9
+	fail13:
+		pos = pos12
+		// L
+		if !_accept(parser, _LAccepts, &pos, &perr) {
+			goto fail14
+		}
+		goto ok9
+	fail14:
+		pos = pos12
+		goto fail
+	ok9:
+	}
+	// ("_"/L/D)*
+	for {
+		pos16 := pos
+		// ("_"/L/D)
+		// "_"/L/D
+		{
+			pos22 := pos
+			// "_"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
+				perr = _max(perr, pos)
+				goto fail23
+			}
+			pos++
+			goto ok19
+		fail23:
+			pos = pos22
+			// L
+			if !_accept(parser, _LAccepts, &pos, &perr) {
+				goto fail24
+			}
+			goto ok19
+		fail24:
+			pos = pos22
+			// D
+			if !_accept(parser, _DAccepts, &pos, &perr) {
+				goto fail25
+			}
+			goto ok19
+		fail25:
+			pos = pos22
+			goto fail18
+		ok19:
+		}
+		continue
+	fail18:
+		pos = pos16
+		break
+	}
+	return _memoize(parser, _NAME, start, pos, perr)
+fail:
+	return _memoize(parser, _NAME, start, -1, perr)
+}
+
+func _NAMEFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, _NAME, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "NAME",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _NAME}
+	// !RESERVED !TypeVar ("_"/L) ("_"/L/D)*
+	// !RESERVED
+	{
+		pos2 := pos
+		nkids3 := len(failure.Kids)
+		// RESERVED
+		if !_fail(parser, _RESERVEDFail, errPos, failure, &pos) {
+			goto ok1
+		}
+		pos = pos2
+		failure.Kids = failure.Kids[:nkids3]
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "!RESERVED",
+			})
+		}
+		goto fail
+	ok1:
+		pos = pos2
+		failure.Kids = failure.Kids[:nkids3]
+	}
+	// !TypeVar
+	{
+		pos6 := pos
+		nkids7 := len(failure.Kids)
+		// TypeVar
+		if !_fail(parser, _TypeVarFail, errPos, failure, &pos) {
+			goto ok5
+		}
+		pos = pos6
+		failure.Kids = failure.Kids[:nkids7]
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "!TypeVar",
+			})
+		}
+		goto fail
+	ok5:
+		pos = pos6
+		failure.Kids = failure.Kids[:nkids7]
+	}
+	// ("_"/L)
+	// "_"/L
+	{
+		pos12 := pos
+		// "_"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"_\"",
+				})
+			}
+			goto fail13
+		}
+		pos++
+		goto ok9
+	fail13:
+		pos = pos12
+		// L
+		if !_fail(parser, _LFail, errPos, failure, &pos) {
+			goto fail14
+		}
+		goto ok9
+	fail14:
+		pos = pos12
+		goto fail
+	ok9:
+	}
+	// ("_"/L/D)*
+	for {
+		pos16 := pos
+		// ("_"/L/D)
+		// "_"/L/D
+		{
+			pos22 := pos
+			// "_"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "\"_\"",
+					})
+				}
+				goto fail23
+			}
+			pos++
+			goto ok19
+		fail23:
+			pos = pos22
+			// L
+			if !_fail(parser, _LFail, errPos, failure, &pos) {
+				goto fail24
+			}
+			goto ok19
+		fail24:
+			pos = pos22
+			// D
+			if !_fail(parser, _DFail, errPos, failure, &pos) {
+				goto fail25
+			}
+			goto ok19
+		fail25:
+			pos = pos22
+			goto fail18
+		ok19:
+		}
+		continue
+	fail18:
+		pos = pos16
+		break
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _NAMEAction(parser *_Parser, start int) (int, *string) {
+	dp := parser.deltaPos[start][_NAME]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _NAME}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(string)
+		return start + int(dp-1), &n
+	}
+	var node string
+	pos := start
+	// !RESERVED !TypeVar ("_"/L) ("_"/L/D)*
+	{
+		var node0 string
+		// !RESERVED
+		{
+			pos2 := pos
+			// RESERVED
+			if p, n := _RESERVEDAction(parser, pos); n == nil {
+				goto ok1
+			} else {
+				pos = p
+			}
+			pos = pos2
+			goto fail
+		ok1:
+			pos = pos2
+			node0 = ""
+		}
+		node, node0 = node+node0, ""
+		// !TypeVar
+		{
+			pos6 := pos
+			// TypeVar
+			if p, n := _TypeVarAction(parser, pos); n == nil {
+				goto ok5
+			} else {
+				pos = p
+			}
+			pos = pos6
+			goto fail
+		ok5:
+			pos = pos6
+			node0 = ""
+		}
+		node, node0 = node+node0, ""
+		// ("_"/L)
+		// "_"/L
+		{
+			pos12 := pos
+			var node11 string
+			// "_"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
+				goto fail13
+			}
+			node0 = parser.text[pos : pos+1]
+			pos++
+			goto ok9
+		fail13:
+			node0 = node11
+			pos = pos12
+			// L
+			if p, n := _LAction(parser, pos); n == nil {
+				goto fail14
+			} else {
+				node0 = *n
+				pos = p
+			}
+			goto ok9
+		fail14:
+			node0 = node11
+			pos = pos12
+			goto fail
+		ok9:
+		}
+		node, node0 = node+node0, ""
+		// ("_"/L/D)*
+		for {
+			pos16 := pos
+			var node17 string
+			// ("_"/L/D)
+			// "_"/L/D
+			{
+				pos22 := pos
+				var node21 string
+				// "_"
+				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
+					goto fail23
+				}
+				node17 = parser.text[pos : pos+1]
+				pos++
+				goto ok19
+			fail23:
+				node17 = node21
+				pos = pos22
+				// L
+				if p, n := _LAction(parser, pos); n == nil {
+					goto fail24
+				} else {
+					node17 = *n
+					pos = p
+				}
+				goto ok19
+			fail24:
+				node17 = node21
+				pos = pos22
+				// D
+				if p, n := _DAction(parser, pos); n == nil {
+					goto fail25
+				} else {
+					node17 = *n
+					pos = p
+				}
+				goto ok19
+			fail25:
+				node17 = node21
+				pos = pos22
+				goto fail18
+			ok19:
+			}
+			node0 += node17
+			continue
+		fail18:
+			pos = pos16
+			break
+		}
+		node, node0 = node+node0, ""
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _RESERVEDAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, _RESERVED, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
@@ -22137,21 +22228,21 @@ func _ReservedAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		pos = pos17
 		perr = perr19
 	}
-	return _memoize(parser, _Reserved, start, pos, perr)
+	return _memoize(parser, _RESERVED, start, pos, perr)
 fail:
-	return _memoize(parser, _Reserved, start, -1, perr)
+	return _memoize(parser, _RESERVED, start, -1, perr)
 }
 
-func _ReservedFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	pos, failure := _failMemo(parser, _Reserved, start, errPos)
+func _RESERVEDFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, _RESERVED, start, errPos)
 	if failure != nil {
 		return pos, failure
 	}
 	failure = &peg.Fail{
-		Name: "Reserved",
+		Name: "RESERVED",
 		Pos:  int(start),
 	}
-	key := _key{start: start, rule: _Reserved}
+	key := _key{start: start, rule: _RESERVED}
 	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test") !("_"/L/D)
 	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test")
 	// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test"
@@ -22373,12 +22464,12 @@ fail:
 	return -1, failure
 }
 
-func _ReservedAction(parser *_Parser, start int) (int, *string) {
-	dp := parser.deltaPos[start][_Reserved]
+func _RESERVEDAction(parser *_Parser, start int) (int, *string) {
+	dp := parser.deltaPos[start][_RESERVED]
 	if dp < 0 {
 		return -1, nil
 	}
-	key := _key{start: start, rule: _Reserved}
+	key := _key{start: start, rule: _RESERVED}
 	n := parser.act[key]
 	if n != nil {
 		n := n.(string)
@@ -22897,149 +22988,10 @@ fail:
 	return -1, nil
 }
 
-func __Accepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	if dp, de, ok := _memo(parser, __, start); ok {
-		return dp, de
-	}
-	pos, perr := start, -1
-	// (Space/Cmnt)*
-	for {
-		pos1 := pos
-		// (Space/Cmnt)
-		// Space/Cmnt
-		{
-			pos7 := pos
-			// Space
-			if !_accept(parser, _SpaceAccepts, &pos, &perr) {
-				goto fail8
-			}
-			goto ok4
-		fail8:
-			pos = pos7
-			// Cmnt
-			if !_accept(parser, _CmntAccepts, &pos, &perr) {
-				goto fail9
-			}
-			goto ok4
-		fail9:
-			pos = pos7
-			goto fail3
-		ok4:
-		}
-		continue
-	fail3:
-		pos = pos1
-		break
-	}
-	perr = start
-	return _memoize(parser, __, start, pos, perr)
-}
-
-func __Fail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	pos, failure := _failMemo(parser, __, start, errPos)
-	if failure != nil {
-		return pos, failure
-	}
-	failure = &peg.Fail{
-		Name: "_",
-		Pos:  int(start),
-	}
-	key := _key{start: start, rule: __}
-	// (Space/Cmnt)*
-	for {
-		pos1 := pos
-		// (Space/Cmnt)
-		// Space/Cmnt
-		{
-			pos7 := pos
-			// Space
-			if !_fail(parser, _SpaceFail, errPos, failure, &pos) {
-				goto fail8
-			}
-			goto ok4
-		fail8:
-			pos = pos7
-			// Cmnt
-			if !_fail(parser, _CmntFail, errPos, failure, &pos) {
-				goto fail9
-			}
-			goto ok4
-		fail9:
-			pos = pos7
-			goto fail3
-		ok4:
-		}
-		continue
-	fail3:
-		pos = pos1
-		break
-	}
-	failure.Kids = nil
-	parser.fail[key] = failure
-	return pos, failure
-}
-
-func __Action(parser *_Parser, start int) (int, *string) {
-	dp := parser.deltaPos[start][__]
-	if dp < 0 {
-		return -1, nil
-	}
-	key := _key{start: start, rule: __}
-	n := parser.act[key]
-	if n != nil {
-		n := n.(string)
-		return start + int(dp-1), &n
-	}
-	var node string
-	pos := start
-	// (Space/Cmnt)*
-	for {
-		pos1 := pos
-		var node2 string
-		// (Space/Cmnt)
-		// Space/Cmnt
-		{
-			pos7 := pos
-			var node6 string
-			// Space
-			if p, n := _SpaceAction(parser, pos); n == nil {
-				goto fail8
-			} else {
-				node2 = *n
-				pos = p
-			}
-			goto ok4
-		fail8:
-			node2 = node6
-			pos = pos7
-			// Cmnt
-			if p, n := _CmntAction(parser, pos); n == nil {
-				goto fail9
-			} else {
-				node2 = *n
-				pos = p
-			}
-			goto ok4
-		fail9:
-			node2 = node6
-			pos = pos7
-			goto fail3
-		ok4:
-		}
-		node += node2
-		continue
-	fail3:
-		pos = pos1
-		break
-	}
-	parser.act[key] = node
-	return pos, &node
-}
-
-func _SpaceAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+func _SPACEAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	var labels [1]string
 	use(labels)
-	if dp, de, ok := _memo(parser, _Space, start); ok {
+	if dp, de, ok := _memo(parser, _SPACE, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
@@ -23061,23 +23013,23 @@ func _SpaceAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		perr = _max(perr, pos)
 		goto fail
 	}
-	return _memoize(parser, _Space, start, pos, perr)
+	return _memoize(parser, _SPACE, start, pos, perr)
 fail:
-	return _memoize(parser, _Space, start, -1, perr)
+	return _memoize(parser, _SPACE, start, -1, perr)
 }
 
-func _SpaceFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+func _SPACEFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	var labels [1]string
 	use(labels)
-	pos, failure := _failMemo(parser, _Space, start, errPos)
+	pos, failure := _failMemo(parser, _SPACE, start, errPos)
 	if failure != nil {
 		return pos, failure
 	}
 	failure = &peg.Fail{
-		Name: "Space",
+		Name: "SPACE",
 		Pos:  int(start),
 	}
-	key := _key{start: start, rule: _Space}
+	key := _key{start: start, rule: _SPACE}
 	// r:. &{…}
 	// r:.
 	{
@@ -23113,15 +23065,15 @@ fail:
 	return -1, failure
 }
 
-func _SpaceAction(parser *_Parser, start int) (int, *string) {
+func _SPACEAction(parser *_Parser, start int) (int, *string) {
 	var labels [1]string
 	use(labels)
 	var label0 string
-	dp := parser.deltaPos[start][_Space]
+	dp := parser.deltaPos[start][_SPACE]
 	if dp < 0 {
 		return -1, nil
 	}
-	key := _key{start: start, rule: _Space}
+	key := _key{start: start, rule: _SPACE}
 	n := parser.act[key]
 	if n != nil {
 		n := n.(string)
@@ -23159,8 +23111,8 @@ fail:
 	return -1, nil
 }
 
-func _CmntAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	if dp, de, ok := _memo(parser, _Cmnt, start); ok {
+func _COMMENTAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, _COMMENT, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
@@ -23264,21 +23216,21 @@ func _CmntAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto fail
 	ok0:
 	}
-	return _memoize(parser, _Cmnt, start, pos, perr)
+	return _memoize(parser, _COMMENT, start, pos, perr)
 fail:
-	return _memoize(parser, _Cmnt, start, -1, perr)
+	return _memoize(parser, _COMMENT, start, -1, perr)
 }
 
-func _CmntFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	pos, failure := _failMemo(parser, _Cmnt, start, errPos)
+func _COMMENTFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, _COMMENT, start, errPos)
 	if failure != nil {
 		return pos, failure
 	}
 	failure = &peg.Fail{
-		Name: "Cmnt",
+		Name: "COMMENT",
 		Pos:  int(start),
 	}
-	key := _key{start: start, rule: _Cmnt}
+	key := _key{start: start, rule: _COMMENT}
 	// "//" (!"\n" .)*/"/*" (!"*/" .)* "*/"
 	{
 		pos3 := pos
@@ -23433,12 +23385,12 @@ fail:
 	return -1, failure
 }
 
-func _CmntAction(parser *_Parser, start int) (int, *string) {
-	dp := parser.deltaPos[start][_Cmnt]
+func _COMMENTAction(parser *_Parser, start int) (int, *string) {
+	dp := parser.deltaPos[start][_COMMENT]
 	if dp < 0 {
 		return -1, nil
 	}
-	key := _key{start: start, rule: _Cmnt}
+	key := _key{start: start, rule: _COMMENT}
 	n := parser.act[key]
 	if n != nil {
 		n := n.(string)
@@ -23574,58 +23526,48 @@ fail:
 	return -1, nil
 }
 
-func _EofAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	if dp, de, ok := _memo(parser, _Eof, start); ok {
+func _EOFAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, _EOF, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// _ !.
-	// _
-	if !_accept(parser, __Accepts, &pos, &perr) {
-		goto fail
-	}
 	// !.
 	{
-		pos2 := pos
-		perr4 := perr
+		pos1 := pos
+		perr3 := perr
 		// .
 		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
 			perr = _max(perr, pos)
-			goto ok1
+			goto ok0
 		} else {
 			pos += w
 		}
-		pos = pos2
-		perr = _max(perr4, pos)
+		pos = pos1
+		perr = _max(perr3, pos)
 		goto fail
-	ok1:
-		pos = pos2
-		perr = perr4
+	ok0:
+		pos = pos1
+		perr = perr3
 	}
-	return _memoize(parser, _Eof, start, pos, perr)
+	return _memoize(parser, _EOF, start, pos, perr)
 fail:
-	return _memoize(parser, _Eof, start, -1, perr)
+	return _memoize(parser, _EOF, start, -1, perr)
 }
 
-func _EofFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	pos, failure := _failMemo(parser, _Eof, start, errPos)
+func _EOFFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, _EOF, start, errPos)
 	if failure != nil {
 		return pos, failure
 	}
 	failure = &peg.Fail{
-		Name: "Eof",
+		Name: "EOF",
 		Pos:  int(start),
 	}
-	key := _key{start: start, rule: _Eof}
-	// _ !.
-	// _
-	if !_fail(parser, __Fail, errPos, failure, &pos) {
-		goto fail
-	}
+	key := _key{start: start, rule: _EOF}
 	// !.
 	{
-		pos2 := pos
-		nkids3 := len(failure.Kids)
+		pos1 := pos
+		nkids2 := len(failure.Kids)
 		// .
 		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
 			if pos >= errPos {
@@ -23634,12 +23576,12 @@ func _EofFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: ".",
 				})
 			}
-			goto ok1
+			goto ok0
 		} else {
 			pos += w
 		}
-		pos = pos2
-		failure.Kids = failure.Kids[:nkids3]
+		pos = pos1
+		failure.Kids = failure.Kids[:nkids2]
 		if pos >= errPos {
 			failure.Kids = append(failure.Kids, &peg.Fail{
 				Pos:  int(pos),
@@ -23647,9 +23589,9 @@ func _EofFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 			})
 		}
 		goto fail
-	ok1:
-		pos = pos2
-		failure.Kids = failure.Kids[:nkids3]
+	ok0:
+		pos = pos1
+		failure.Kids = failure.Kids[:nkids2]
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -23658,12 +23600,12 @@ fail:
 	return -1, failure
 }
 
-func _EofAction(parser *_Parser, start int) (int, *string) {
-	dp := parser.deltaPos[start][_Eof]
+func _EOFAction(parser *_Parser, start int) (int, *string) {
+	dp := parser.deltaPos[start][_EOF]
 	if dp < 0 {
 		return -1, nil
 	}
-	key := _key{start: start, rule: _Eof}
+	key := _key{start: start, rule: _EOF}
 	n := parser.act[key]
 	if n != nil {
 		n := n.(string)
@@ -23671,33 +23613,20 @@ func _EofAction(parser *_Parser, start int) (int, *string) {
 	}
 	var node string
 	pos := start
-	// _ !.
+	// !.
 	{
-		var node0 string
-		// _
-		if p, n := __Action(parser, pos); n == nil {
-			goto fail
+		pos1 := pos
+		// .
+		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
+			goto ok0
 		} else {
-			node0 = *n
-			pos = p
+			pos += w
 		}
-		node, node0 = node+node0, ""
-		// !.
-		{
-			pos2 := pos
-			// .
-			if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
-				goto ok1
-			} else {
-				pos += w
-			}
-			pos = pos2
-			goto fail
-		ok1:
-			pos = pos2
-			node0 = ""
-		}
-		node, node0 = node+node0, ""
+		pos = pos1
+		goto fail
+	ok0:
+		pos = pos1
+		node = ""
 	}
 	parser.act[key] = node
 	return pos, &node

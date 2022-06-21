@@ -4,11 +4,11 @@ package parser
 import "github.com/eaburns/peggy/peg"
 }
 
-ImportsOnly <- imports:Import* !Import .* Eof {
+ImportsOnly <- imports:Import* !Import .* _ EOF {
 	return []*Import(imports)
 }
 
-File <- imports:Import* defs:Def* Eof {
+File <- imports:Import* defs:Def* _ EOF {
 	return File{Imports: imports, Defs: defs}
 }
 
@@ -274,7 +274,7 @@ Sel <- mod:ModTag? name:DotName {
 	return primary(sel{mod:mod, name: name, l: l(parser, start, end)})
 }
 
-DotName <- _ "." _ name:Id {
+DotName <- _ "." name:Id {
 	name.Name = "." + name.Name
 	name.L = l(parser, start, end)
 	return Ident(name)
@@ -335,11 +335,11 @@ IdxOp "index operator" <- _ "[" _ "]" {
 	return Ident{Name: "[]", L: l(parser, start, end)}
 }
 
-Cases "cases" <- _ cases:CaseId+ {
+Cases "cases" <- cases:CaseId+ {
 	return Ident{Name: catNames(cases), L: l(parser, start, end)}
 }
 
-Kwds "keywords" <- _ keywords:Kwd+ {
+Kwds "keywords" <- keywords:Kwd+ {
 	return Ident{Name: catNames(keywords), L: l(parser, start, end)}
 }
 
@@ -363,7 +363,7 @@ FieldVals <- f0:FieldVal fs:(_ "," f1:FieldVal { return FieldVal(f1) })* (_ ",")
 	return []FieldVal(append([]FieldVal{f0}, fs...))
 }
 
-FieldVal <- _ name:FieldId val:Expr {
+FieldVal <- name:FieldId val:Expr {
 	return FieldVal{Name: name, Val: val, L: l(parser, start, end)}
 }
 
@@ -375,7 +375,7 @@ UnionLit <- _ "[" cas:CaseVal _ "]" {
 		return Expr(&UnionLit{CaseVal: cas, L: l(parser, start, end)})
 	}
 
-CaseVal <- _ name:CaseId v:Expr? {
+CaseVal <- name:CaseId v:Expr? {
 	var val Expr; if v != nil { val = *v }
 	return CaseVal{Name: name, Val: val, L: l(parser, start, end)}
 }
@@ -432,34 +432,33 @@ FloatLit <- _ text:(("+" / "-")? D+ "." D+ ([eE] [+\-]? D+)?) {
 	return Expr(&FloatLit{Text: text, L: l(parser, start, end)})
 }
 
-Kwd "keyword" <- _ name:Name ":" !":" {
-	return Ident{Name: name+":", L: l(parser, start, end)}
-}
-
-CaseId "case id" <- _ name:Name "?" {
-	return Ident{Name: name+"?", L: l(parser, start, end)}
-}
-
-ModId "mod id" <- _ name:Name "#" {
-	return Ident{Name: name, L: l(parser, start, end)}
-}
-
-Id "identifier" <- _ !Kwd !CaseId !ModId name:Name {
-	return Ident{Name: name, L: l(parser, start, end)}
-}
-
-Name <- !Reserved !TypeVar ("_" / L) ("_" / L / D)*
-
 TypeVar "type variable" <- _ name:([A-Z] D*) !L {
 	return TypeVar{Name: name, L: l(parser, start, end)}
 }
 
-Reserved <- ("import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "Type" / "func" / "Func" / "test") !("_" / L / D)
+Kwd "keyword" <- _ name:NAME ":" !":" {
+	return Ident{Name: name+":", L: l(parser, start, end)}
+}
+
+CaseId "case id" <- _ name:NAME "?" {
+	return Ident{Name: name+"?", L: l(parser, start, end)}
+}
+
+ModId "mod id" <- _ name:NAME "#" {
+	return Ident{Name: name, L: l(parser, start, end)}
+}
+
+Id "identifier" <- _ !Kwd !CaseId !ModId name:NAME {
+	return Ident{Name: name, L: l(parser, start, end)}
+}
+
+_ "" <- (SPACE / COMMENT)*
+NAME <- !RESERVED !TypeVar ("_" / L) ("_" / L / D)*
+RESERVED <- ("import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "Type" / "func" / "Func" / "test") !("_" / L / D)
 D <- [0-9]
 X <- [a-fA-F0-9]
 L <- r:. &{isLetter(r)}
 O <- [*/%+\-^=!<>&|~@$]
-_ "" <- (Space / Cmnt)*
-Space <- r:. &{isSpace(r)}
-Cmnt <- "//" (!"\n" .)* / "/*" (!"*/" .)* "*/"
-Eof <- _ !.
+SPACE <- r:. &{isSpace(r)}
+COMMENT <- "//" (!"\n" .)* / "/*" (!"*/" .)* "*/"
+EOF <- !.
