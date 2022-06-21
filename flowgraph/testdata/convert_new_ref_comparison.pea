@@ -1,0 +1,23 @@
+// pass
+// pass
+func main() {
+	x := 5,
+	y := &int :: x, // address of x
+	z := &int :: (int :: x), // address of a copy of x
+
+	// y holds the address of x.
+	(uintref :: (&int :: y)) !=  (uintref :: (&int :: x)) true? {
+		print("fail")
+	} false? {
+		print("pass")
+	},
+
+	print("\n"),
+
+	// z does not hold the address of x.
+	(uintref :: (&int :: z)) = (uintref :: (&int :: x)) true? {
+		print("fail")
+	} false? {
+		print("pass")
+	}
+}
