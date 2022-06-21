@@ -450,7 +450,7 @@ Id "identifier" <- _ !Kwd !CaseId !ModId name:Name {
 
 Name <- !Reserved !TypeVar ("_" / L) ("_" / L / D)*
 
-TypeVar "type variable" <- _ name:[A-Z] !L !D {
+TypeVar "type variable" <- _ name:([A-Z] D*) !L {
 	return TypeVar{Name: name, L: l(parser, start, end)}
 }
 

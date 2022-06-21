@@ -90,6 +90,30 @@ func TestExpr(t *testing.T) {
 				Exprs: []Expr{Ident{Name: "x"}},
 			},
 		},
+		{
+			`(t T){}`,
+			&BlockLit{
+				Parms: []FuncParm{
+					{
+						Name: Ident{Name: "t"},
+						Type: TypeVar{Name: "T"},
+					},
+				},
+				Exprs: nil,
+			},
+		},
+		{
+			`(t T123){}`,
+			&BlockLit{
+				Parms: []FuncParm{
+					{
+						Name: Ident{Name: "t"},
+						Type: TypeVar{Name: "T123"},
+					},
+				},
+				Exprs: nil,
+			},
+		},
 
 		{
 			`[none?]`,
