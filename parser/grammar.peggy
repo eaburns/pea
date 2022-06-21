@@ -432,21 +432,23 @@ FloatLit <- _ text:(("+" / "-")? D+ "." D+ ([eE] [+\-]? D+)?) {
 	return Expr(&FloatLit{Text: text, L: l(parser, start, end)})
 }
 
-Kwd "keyword" <- _ name:(("_" / L) ("_" / L / D)*) ":" !":" {
+Kwd "keyword" <- _ name:Name ":" !":" {
 	return Ident{Name: name+":", L: l(parser, start, end)}
 }
 
-CaseId "case id" <- _ name:(("_" / L) ("_" / L / D)*) "?" {
+CaseId "case id" <- _ name:Name "?" {
 	return Ident{Name: name+"?", L: l(parser, start, end)}
 }
 
-ModId "mod id" <- _ name:(("_" / L) ("_" / L / D)*) "#" {
+ModId "mod id" <- _ name:Name "#" {
 	return Ident{Name: name, L: l(parser, start, end)}
 }
 
-Id "identifier" <- _ !Reserved !TypeVar !Kwd !CaseId !ModId name:(("_" / L) ("_" / L / D)*) {
+Id "identifier" <- _ !Kwd !CaseId !ModId name:Name {
 	return Ident{Name: name, L: l(parser, start, end)}
 }
+
+Name <- !Reserved !TypeVar ("_" / L) ("_" / L / D)*
 
 TypeVar "type variable" <- _ name:[A-Z] !L !D {
 	return TypeVar{Name: name, L: l(parser, start, end)}
