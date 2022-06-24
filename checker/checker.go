@@ -70,7 +70,27 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 	var errs []Error
 	idNames := make(map[string]loc.Loc)
 	defs := make(map[parser.Def]Def)
-	typeNames := make(map[string]loc.Loc)
+	type typeKey struct {
+		arity int
+		name  string
+	}
+	seenTypes := map[typeKey]loc.Loc{
+		{0, "bool"}:    {},
+		{0, "int"}:     {},
+		{0, "int8"}:    {},
+		{0, "int16"}:   {},
+		{0, "int32"}:   {},
+		{0, "int64"}:   {},
+		{0, "uint"}:    {},
+		{0, "uint8"}:   {},
+		{0, "uint16"}:  {},
+		{0, "uint32"}:  {},
+		{0, "uint64"}:  {},
+		{0, "uintref"}: {},
+		{0, "float32"}: {},
+		{0, "float64"}: {},
+		{0, "string"}:  {},
+	}
 	mod := &Mod{Path: modPath}
 	var importedMods []*Mod
 	for _, parserFile := range files {
@@ -123,12 +143,18 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 			if !ok {
 				continue
 			}
+			arity := len(parserTypeDef.TypeParms)
 			name := parserTypeDef.Name.Name
-			if prev, ok := typeNames[name]; ok {
-				errs = append(errs, redef(parserTypeDef.L, name, prev))
+			key := typeKey{arity, name}
+			if prev, ok := seenTypes[key]; ok {
+				errorName := name
+				if arity > 0 {
+					errorName = fmt.Sprintf("(%d)%s", arity, name)
+				}
+				errs = append(errs, redef(parserTypeDef.L, errorName, prev))
 				continue
 			}
-			typeNames[name] = parserTypeDef.L
+			seenTypes[key] = parserTypeDef.L
 			parms, fs := makeTypeParms(checker.importer.Files(), parserTypeDef.TypeParms)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)

@@ -165,6 +165,61 @@ func TestRedef(t *testing.T) {
 			src:  "func f(_ int, _ float64)",
 			err:  "",
 		},
+		{
+			name: "0-ary type redef",
+			src: `
+				type t int
+				type t int
+			`,
+			err: "t redefined",
+		},
+		{name: "bool redef", src: "type bool float64", err: "redefined"},
+		{name: "int redef", src: "type int float64", err: "redefined"},
+		{name: "int8 redef", src: "type int8 float64", err: "redefined"},
+		{name: "int16 redef", src: "type int16 float64", err: "redefined"},
+		{name: "int32 redef", src: "type int32 float64", err: "redefined"},
+		{name: "int64 redef", src: "type int64 float64", err: "redefined"},
+		{name: "uint redef", src: "type uint float64", err: "redefined"},
+		{name: "uint8 redef", src: "type uint8 float64", err: "redefined"},
+		{name: "uint16 redef", src: "type uint16 float64", err: "redefined"},
+		{name: "uint32 redef", src: "type uint32 float64", err: "redefined"},
+		{name: "uint64 redef", src: "type uint64 float64", err: "redefined"},
+		{name: "uintref redef", src: "type uintref float64", err: "redefined"},
+		{name: "float32 redef", src: "type float32 float64", err: "redefined"},
+		{name: "float64 redef", src: "type float64 float32", err: "redefined"},
+		{name: "string redef", src: "type string float64", err: "redefined"},
+		{
+			name: "1-ary type redef",
+			src: `
+				type T t [T]
+				type T t &T
+			`,
+			err: "\\(1\\)t redefined",
+		},
+		{
+			name: "2-ary type redef",
+			src: `
+				type (X, Y) t [.x X, .y Y]
+				type (U, V) t [u? U, v? V]
+			`,
+			err: "\\(2\\)t redefined",
+		},
+		{
+			name: "types with different arity are not redefs",
+			src: `
+				type t int
+				type T t [T]
+				type (T, U) t [.x T, .y U]
+			`,
+			err: "",
+		},
+		{
+			name: "basic type name, but different arity is OK",
+			src: `
+				type T int [.x T]
+			`,
+			err: "",
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -1493,12 +1548,12 @@ func TestTypeResolution(t *testing.T) {
 			want: "int",
 		},
 		{
-			name: "override built-in type",
+			name: "cannot override built-in type",
 			src: `
 				type int string
 				var t int
 			`,
-			want: "int",
+			err: "redefined",
 		},
 		{
 			name: "lower-case imported type",

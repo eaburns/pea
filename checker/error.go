@@ -43,7 +43,9 @@ func ambigType(name string, locer loc.Locer, types []Type) Error {
 
 func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 	err := newError(locer, "%s redefined", name)
-	err.note("previous").setLoc(prev)
+	if (prev.Loc() != loc.Loc{}) {
+		err.note("previous").setLoc(prev)
+	}
 	return err
 }
 
