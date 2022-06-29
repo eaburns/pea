@@ -86,12 +86,7 @@ func run_re2_tests(path string) {
 	in_strings := false,
 	strs := string vector#vector :: new(),
 	forever: {
-		read_line(in) end? {
-			close(f),
-			return()
-		} error? (err) {
-			panic(message(err.error))
-		} ok? (line) {
+		read_line(in) ok? (line) {
 			if: line = "strings" then: {
 				if: in_strings then: {
 					panic("unexpected strings"),
@@ -123,6 +118,11 @@ func run_re2_tests(path string) {
 				regexp := unescape(regexp),
 				run_regexp(in, regexp, strs),
 			}
+		} end? {
+			close(f),
+			return()
+		} error? (err) {
+			panic(message(err.error))
 		}
 	},
 	panic("impossible")

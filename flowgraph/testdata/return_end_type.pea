@@ -1,0 +1,11 @@
+// true
+// false
+func main() {
+	print(foo([true?], {print("false"), return()})),
+	print("\n"),
+	print(foo([false?], {print("false"), return()})),
+}
+
+func foo(cond bool, on_false (){!})string{
+	return: cond true? {"true"} false? on_false
+}

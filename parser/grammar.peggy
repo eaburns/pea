@@ -69,16 +69,20 @@ RefType <- _ "&" typ:(NamedType / LiteralType) {
 }
 
 NamedType <-
-	(args:TypeArgs)? names:ModName+ {
+	(args:TypeArgs)? names:ModTypeName+ {
 		return Type(namedType(args, names, l(parser, start, end)))
 	} /
 	tvar:TypeVar {
 		return Type(tvar)
 	}
 
-ModName <- mod:ModTag? name:Id {
+ModTypeName <- mod:ModTag? name:TypeNameId  {
 	return &NamedType{Mod: mod, Name: name, L: l(parser, start, end)}
 }
+
+TypeNameId <-
+	Id /
+	_ "!" { return Ident{Name: "!", L: l(parser, start, end)} }
 
 TypeArgs <-
 	t:(tv:TypeVar { return Type(tv) } / LiteralType) { return []Type{t} } /

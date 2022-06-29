@@ -115,15 +115,15 @@ func upsert(m (K, V) tree_map, n (K, V) node, k K, v V) (K, V) upsert_result {
 		insert: n key: [.k k, .v v] at: i,
 		++n.n,
 	} else: {
-		upsert(m, n.kids[i], k, v) ok? {
-			return: [ok?]
-		} prev? (v){
-			return: [prev? v]
-		} split? (split){
+		upsert(m, n.kids[i], k, v) split? (split){
 			i := find_key_index(m, n, split.med.k),
 			insert: n key: split.med at: i,
 			insert: n kid: split.right at: i+1,
 			++n.n,
+		} ok? {
+			return: [ok?]
+		} prev? (v){
+			return: [prev? v]
 		},
 	},
 	if: n.n > m.max_keys then: {

@@ -1804,7 +1804,6 @@ func findCase(name string, u *UnionType) *CaseDef {
 	return nil
 }
 
-// TODO: panic/return special case for block literals goes away by adding !-type from return and panic, and moving the handling into unify.
 func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, []Error) {
 	lit := &BlockLit{
 		L:    parserLit.L,
@@ -1848,43 +1847,14 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 			errs = append(errs, newError(l, "%s unused", l.Name))
 		}
 	}
-	if fun, ok := pat.typ.(*FuncType); ok && pat.ret().isGroundType() && endsInReturnOrPanic(lit.Exprs) {
-		lit.Ret = copyTypeWithLoc(fun.Ret, lit.L)
-	}
-	if lit.Ret == nil {
-		if len(lit.Exprs) > 0 {
-			lit.Ret = lit.Exprs[len(lit.Exprs)-1].Type()
-		}
-		if lit.Ret == nil {
-			lit.Ret = &StructType{L: lit.L}
-		}
+	if len(lit.Exprs) == 0 {
+		lit.Ret = &StructType{L: lit.L}
+	} else {
+		lit.Ret = lit.Exprs[len(lit.Exprs)-1].Type()
 	}
 	lit.Func.Ret = lit.Ret
 	lit.T = lit.Func
 	return lit, errs
-}
-
-func endsInReturnOrPanic(es []Expr) bool {
-	if len(es) == 0 {
-		return false
-	}
-	e := es[len(es)-1]
-	for {
-		if c, ok := e.(*Convert); !ok {
-			break
-		} else {
-			e = c.Expr
-		}
-	}
-	c, ok := e.(*Call)
-	if !ok {
-		return false
-	}
-	b, ok := c.Func.(*Builtin)
-	if !ok {
-		return false
-	}
-	return b.Op == Return || b.Op == Panic
 }
 
 func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {

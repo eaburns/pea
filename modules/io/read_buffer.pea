@@ -176,11 +176,7 @@ test read_line {
 	// Line is too big.
 	buf := [uint8] :: new("hello\n".length - 3, uint8 :: 0),
 	b := read_buffer(string_reader :: [.str "hello\nworld\n"], buf),
-	read_line_slice(b) ok? (l){
-		panic(print#string("got ok? " ++ l ++ ", expected error? line too big"))
-	} end? {
-		panic("got end?, expected error? line too big")
-	} error? (err){
+	read_line_slice(b) error? (err){
 		msg := message(err.error),
 		if: msg != "line too big" then: {
 			panic(print#string("got error? " ++ msg ++ " expected error? line too big"))
@@ -188,6 +184,10 @@ test read_line {
 		if: err.read != [uint8 :: 'h', 'e', 'l'] then: {
 			panic(print#string("got error? " ++ err.read ++ " ++ expected error? ['h' ++ 'e' ++ 'l']")),
 		}
+	} ok? (l){
+		panic(print#string("got ok? " ++ l ++ ", expected error? line too big"))
+	} end? {
+		panic("got end?, expected error? line too big")
 	}
 }
 

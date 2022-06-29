@@ -616,6 +616,9 @@ func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeP
 	case isEmptyStruct(dst.typ):
 		return conversion(cvt, Drop, _empty), nil
 
+	case isEnd(src.typ):
+		return conversion(cvt, Noop, _empty), nil
+
 	case explicit && isRefLiteral(src.typ) && isUintRef(dst.typ):
 		return conversion(cvt, NumConvert, dst.typ), nil
 
@@ -692,7 +695,7 @@ func isImplicitFuncConvertible(src, dst Type) bool {
 			return false
 		}
 	}
-	return isEmptyStruct(dstFunc.Ret)
+	return isEmptyStruct(dstFunc.Ret) || isEnd(srcFunc.Ret)
 }
 
 func conversion(cvt *Convert, kind ConvertKind, typ Type) *Convert {
@@ -703,6 +706,10 @@ func conversion(cvt *Convert, kind ConvertKind, typ Type) *Convert {
 		// Pop-off the implicit Deref.
 		cvt, _ = cvt.Expr.(*Convert) // allow nil
 		return conversion(cvt, Noop, typ)
+	case cvt.Kind == funcConvert:
+		// Never drop an incoming funcConvert for a Noop,
+		// because doConvert expects the Noop's T to be a *FuncType.
+		return &Convert{Kind: kind, Expr: cvt, T: typ}
 	case kind == Noop:
 		// Drop this Noop and change the type of the incoming Convert.
 		cvt.T = typ

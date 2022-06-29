@@ -230,6 +230,8 @@ func (t *TypeVar) buildString(w *strings.Builder) *strings.Builder {
 
 func (k BasicTypeKind) String() string {
 	switch k {
+	case End:
+		return "!"
 	case Bool:
 		return "bool"
 	case Int:

@@ -185,7 +185,8 @@ type TypeVar struct {
 func (t *TypeVar) Loc() loc.Loc { return t.L }
 
 const (
-	Bool BasicTypeKind = iota + 1
+	End BasicTypeKind = iota + 1
+	Bool
 	Int
 	Int8
 	Int16

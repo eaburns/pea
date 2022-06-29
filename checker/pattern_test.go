@@ -675,10 +675,17 @@ func TestConvert(t *testing.T) {
 		// {src: "[x?]", dst: "[x?, y?, z?]", explicit: false, want: nil},
 
 		// Func conversion
-		{src: "(int){int}", dst: "(int){}", want: c("(int){int}", funcConvert, "(int){}")},
-		{src: "(int){(int){}}", dst: "(int){}", want: c("(int){(int){}}", funcConvert, "(int){}")},
 		{src: "(int){int}", dst: "(int){float32}", want: nil},
 		{src: "(int){int}", dst: "(float32){int}", want: nil},
+		// Convert to [.] return type.
+		{src: "(int){int}", dst: "(int){}", want: c("(int){int}", funcConvert, "(int){}")},
+		{src: "(int){(int){}}", dst: "(int){}", want: c("(int){(int){}}", funcConvert, "(int){}")},
+		{src: "(int32){int}", dst: "(int){}", want: nil},
+		// Convert from ! return type.
+		{src: "(int){!}", dst: "(int){}", want: c("(int){!}", funcConvert, "(int){}")},
+		{src: "(int){!}", dst: "(int){int}", want: c("(int){!}", funcConvert, "(int){int}")},
+		{src: "(int){!}", dst: "(int){[int]}", want: c("(int){!}", funcConvert, "(int){[int]}")},
+		{src: "(float32){!}", dst: "(int){int}", want: nil},
 
 		// Implicit dereference
 		{src: "&int", dst: "int", want: c("&int", Deref, "int")},

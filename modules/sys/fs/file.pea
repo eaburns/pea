@@ -155,11 +155,11 @@ test open_entry {
 	assert_ok: touch(path + "file"),
 
 	ent := open(path) error? (err){ panic(print#string("open failed: " ++ err)) },
-	ent file? (f){
+	ent dir? (d){
+		close(d)
+	} file? (f){
 		close(f),
 		panic("got file, expected dir")
-	} dir? (d){
-		close(d)
 	},
 
 	ent := open(path + "file") error? (err){ panic(print#string("open failed: " ++ err)) },

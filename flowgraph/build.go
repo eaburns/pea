@@ -326,6 +326,8 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 
 	case *checker.BasicType:
 		switch typ.Kind {
+		case checker.End:
+			return &StructType{}
 		case checker.Int:
 			return mb.intType()
 		case checker.Int8:

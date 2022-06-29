@@ -2888,7 +2888,7 @@ func TestOverloadResolution(t *testing.T) {
 		{
 			name: "built-in panic",
 			call: "panic(\"hello\")",
-			want: "built-in panic(string)",
+			want: "built-in panic(string)!",
 		},
 		{
 			name: "built-in print",
@@ -4467,7 +4467,7 @@ func TestBlockLiteralInference(t *testing.T) {
 		{src: `type T t &(){T}`, pat: `&int t`, expr: `(){5}`, want: `&int t`},
 
 		{src: `type T t (){T}`, pat: `_ t`, expr: `(){}`, want: `[.] t`},
-		{src: `type T t (){T}`, pat: `_ t`, expr: `(){panic("")}`, want: `[.] t`},
+		{src: `type T t (){T}`, pat: `_ t`, expr: `(){panic("")}`, want: `! t`},
 		{src: `type T t (){T}`, pat: `_ t`, expr: `(){5}`, want: `int t`},
 		{src: `type T t (){T}`, pat: `&_ t`, expr: `(){5}`, want: `&int t`},
 		{src: `type T t &(){T}`, pat: `_ t`, expr: `(){5}`, want: `int t`},
@@ -4475,7 +4475,7 @@ func TestBlockLiteralInference(t *testing.T) {
 
 		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(){}`, err: `cannot convert`},
 		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(_ int){}`, want: `(int, [.]) t`},
-		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(_ int){panic("")}`, want: `(int, [.]) t`},
+		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(_ int){panic("")}`, want: `(int, !) t`},
 		{src: `type (T, U) t (T){U}`, pat: `(_, _) t`, expr: `(_ int){5}`, want: `(int, int) t`},
 		{src: `type (T, U) t (T){U}`, pat: `&(_, _) t`, expr: `(_ int){5}`, want: `&(int, int) t`},
 		{src: `type (T, U) t &(T){U}`, pat: `(_, _) t`, expr: `(_ int){5}`, want: `(int, int) t`},
@@ -5088,6 +5088,62 @@ func TestLiteralType(t *testing.T) {
 				t.Errorf("got literal %s, want %s", got, lit)
 			}
 		})
+	}
+}
+
+func TestReturnCallHasTypeEnd(t *testing.T) {
+	const src = `
+		func foo() {
+			return()
+		}
+		func bar() int {
+			return: 5
+		}
+		func baz() {
+			never_returns({return()})
+		}
+
+		func never_returns(f (){!})! {
+			return: f()
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("failed to check: %s", errStr(errs))
+	}
+	if got := findFuncDef(t, "foo", mod).Exprs[0].Type().String(); got != "!" {
+		t.Errorf("return(), got type %s, wanted !", got)
+	}
+	if got := findFuncDef(t, "bar", mod).Exprs[0].Type().String(); got != "!" {
+		t.Errorf("return: 5, got type %s, wanted !", got)
+	}
+	if got := findFuncDef(t, "baz", mod).Exprs[0].Type().String(); got != "!" {
+		t.Errorf("never_returns({return()}), got type %s, wanted !", got)
+	}
+}
+
+func TestPanicCallHasTypeEnd(t *testing.T) {
+	const src = `
+		func foo() {
+			panic("bye")
+		}
+		func bar() {
+			never_returns()
+		}
+
+		func never_returns()! {
+			return: panic("bye")
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Fatalf("failed to check: %s", errStr(errs))
+	}
+	if got := findFuncDef(t, "foo", mod).Exprs[0].Type().String(); got != "!" {
+		t.Errorf("return(), got type %s, wanted !", got)
+	}
+	if got := findFuncDef(t, "bar", mod).Exprs[0].Type().String(); got != "!" {
+		t.Errorf("return: 5, got type %s, wanted !", got)
 	}
 }
 

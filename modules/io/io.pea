@@ -82,12 +82,12 @@ Func read_all(r R) [uint8] or_error : read(R, [uint8]) read_result {
 	total := 0,
 	buf := [uint8] :: new(128, uint8 :: 0),
 	while: {true} do: {
-		read(r, buf[total, buf.length]) error? (e){
+		read(r, buf[total, buf.length]) ok? (n){
+			total := total + n
+		} error? (e){
 			return: [error? e]
 		} end? {
 			return: [ok? buf[0, total]]
-		} ok? (n){
-			total := total + n
 		},
 		if: total = buf.length then: {
 			buf2 := [uint8] :: new(buf.length*2, uint8 :: 0),

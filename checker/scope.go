@@ -187,6 +187,8 @@ func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 		return nil
 	}
 	switch name {
+	case "!":
+		return &BasicType{Kind: End, L: l}
 	case "bool":
 		return &BasicType{Kind: Bool, L: l}
 	case "int":
@@ -345,6 +347,7 @@ var (
 	// it is always replaced with a brand new TypeParam.
 	_P      = &TypeParm{Name: "T"}
 	_T      = &TypeVar{Name: _P.Name, Def: _P}
+	_end    = basic(End)
 	_uint8  = basic(Uint8)
 	_int    = basic(Int)
 	_bool   = basic(Bool)
@@ -395,7 +398,7 @@ var (
 		{N: "[]", Op: Slice, TypeParm: _P, Parms: []Type{_T, _int, _int}, Ret: arrayLiteral(_T)},
 		{N: ".length", Op: Length, TypeParm: _P, Parms: []Type{_T}, Ret: _int},
 
-		{N: "panic", Op: Panic, Parms: []Type{_string}, Ret: _empty},
+		{N: "panic", Op: Panic, Parms: []Type{_string}, Ret: _end},
 		{N: "print", Op: Print, Parms: []Type{_string}, Ret: _empty},
 	}
 )
@@ -461,13 +464,13 @@ nextIface:
 		ids = append(ids, &Builtin{
 			Op:    Return,
 			Parms: []Type{f.Ret},
-			Ret:   &StructType{L: f.L},
+			Ret:   &BasicType{Kind: End, L: f.L},
 		})
 	}
 	if name == "return" && isEmptyStruct(f.Ret) {
 		ids = append(ids, &Builtin{
 			Op:  Return,
-			Ret: &StructType{L: f.L},
+			Ret: &BasicType{Kind: End, L: f.L},
 		})
 	}
 	return ids

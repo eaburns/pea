@@ -6,6 +6,11 @@ import (
 	"github.com/eaburns/pea/loc"
 )
 
+func isEnd(typ Type) bool {
+	basic, ok := typ.(*BasicType)
+	return ok && basic.Kind == End
+}
+
 func isEmptyStruct(typ Type) bool {
 	s, ok := typ.(*StructType)
 	return ok && len(s.Fields) == 0
