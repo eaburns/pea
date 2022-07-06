@@ -460,6 +460,16 @@ const (
 	// UnionConvert converts a union value
 	// into a value of a superset union type.
 	UnionConvert
+
+	// funcConvert converts a function value
+	// to a function with compatible parameter
+	// and return types.
+	//
+	// This is never returned from checker.
+	// Instead, it is implemented by
+	// creating a new block literal to wrap
+	// a call to the converted function.
+	funcConvert
 )
 
 type Convert struct {
@@ -559,10 +569,15 @@ type BlockCap struct {
 	T    Type
 	L    loc.Loc
 
-	// Parm, Local, and Cap are mutually exclusive.
+	// The following are mutually exclusive.
+	//
+	// TODO: all of these can be implemented as Expr.
 	Parm  *ParmDef
 	Local *LocalDef
 	Cap   *BlockCap
+	// If non-nil, Expr is evaluated when creating the block literal;
+	// its value is assigned to a variable, and that variable is captured.
+	Expr Expr
 }
 
 func (b *BlockCap) Type() Type   { return b.T }

@@ -1553,7 +1553,7 @@ func idToExpr(id id, l loc.Loc) Expr {
 // This reference feature is needed by iface call substitution,
 // where the return of an iface function may need to have
 // up to one additional reference added to it.
-func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) Expr {
+func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) *BlockLit {
 	var parms []Type
 	for i := 0; i < fun.arity(); i++ {
 		p := fun.parm(i).groundType()
@@ -1804,7 +1804,6 @@ func findCase(name string, u *UnionType) *CaseDef {
 	return nil
 }
 
-// TODO: move [.] special case into unify.
 // TODO: panic/return special case for block literals goes away by adding !-type from return and panic, and moving the handling into unify.
 func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, []Error) {
 	lit := &BlockLit{
@@ -1849,8 +1848,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 			errs = append(errs, newError(l, "%s unused", l.Name))
 		}
 	}
-	if fun, ok := pat.typ.(*FuncType); ok &&
-		(isEmptyStruct(fun.Ret) || (pat.ret().isGroundType() && endsInReturnOrPanic(lit.Exprs))) {
+	if fun, ok := pat.typ.(*FuncType); ok && pat.ret().isGroundType() && endsInReturnOrPanic(lit.Exprs) {
 		lit.Ret = copyTypeWithLoc(fun.Ret, lit.L)
 	}
 	if lit.Ret == nil {

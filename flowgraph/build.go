@@ -2009,10 +2009,23 @@ func (bb *blockBuilder) blockCaps(fb *funcBuilder, blockLit *checker.BlockLit) V
 			parentBlock := bb.parm(bb.fun.Parms[0])
 			field := bb.field(parentBlock, bb.fun.capField[cap.Cap])
 			v = bb.load(field)
+		case cap.Expr != nil:
+			if bb, v = bb.expr(cap.Expr); v == nil {
+				break
+			}
+			a := bb.alloc(v.Type())
+			if v.Type().isSmall() {
+				bb.store(a, v)
+			} else {
+				bb.copy(a, v)
+			}
+			v = a
 		default:
-			panic("bad capture")
+			panic(fmt.Sprintf("bad capture: %#v", cap))
 		}
-		bb.store(bb.field(caps, capsType.Fields[i]), v)
+		if v != nil {
+			bb.store(bb.field(caps, capsType.Fields[i]), v)
+		}
 	}
 	bb.L = oldLoc
 

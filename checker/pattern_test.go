@@ -674,6 +674,12 @@ func TestConvert(t *testing.T) {
 		// TODO: disallow implicit union conversion.
 		// {src: "[x?]", dst: "[x?, y?, z?]", explicit: false, want: nil},
 
+		// Func conversion
+		{src: "(int){int}", dst: "(int){}", want: c("(int){int}", funcConvert, "(int){}")},
+		{src: "(int){(int){}}", dst: "(int){}", want: c("(int){(int){}}", funcConvert, "(int){}")},
+		{src: "(int){int}", dst: "(int){float32}", want: nil},
+		{src: "(int){int}", dst: "(float32){int}", want: nil},
+
 		// Implicit dereference
 		{src: "&int", dst: "int", want: c("&int", Deref, "int")},
 		{src: "&struct_x_int_ref", dst: "[.x int]", want: c("&struct_x_int_ref", Deref, Deref, "[.x int]")},
@@ -1359,7 +1365,7 @@ func TestPatternUnify(t *testing.T) {
 		{typ: "(int){float32}", pat: "[.x int, .y int]", want: ""},
 		{typ: "(int){float32}", pat: "[x? int, y?]", want: ""},
 		{typ: "(int){float32}", pat: "(int){float32}", want: "(int){float32}"},
-		{typ: "(int){float32}", pat: "(int){}", want: ""},
+		{typ: "(int){float32}", pat: "(int){}", want: "(int){}"},
 		{typ: "(int){float32}", pat: "(){float32}", want: ""},
 		{typ: "(int){float32}", pat: "(int){float64}", want: ""},
 		{typ: "(int){float32}", pat: "(int32){float32}", want: ""},

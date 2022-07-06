@@ -509,6 +509,34 @@ func doConvertExpr(expr Expr, cvt *Convert) Expr {
 			}
 			return call
 		}
+	case cvt.Kind == funcConvert:
+		dstFunc := cvt.T.(*FuncType)
+		if blk, ok := cvt.Expr.(*BlockLit); ok {
+			// If it is a block literal; just set its return type.
+			//
+			// Note that this takes advantage of the fact
+			// that currently the only function conversions
+			// convert the return type, not the parameters.
+			// And further, the only return types converted to
+			// are compatible with simply setting the blk.Ret.
+			blk.Ret = dstFunc.Ret
+			blk.Func = dstFunc
+			blk.T = dstFunc
+			return blk
+		}
+		capDef := &BlockCap{
+			Name: "srcFunc",
+			T:    refLiteral(expr.Type()),
+			L:    expr.Loc(),
+			Expr: cvt.Expr,
+		}
+		fun := &ExprFunc{
+			Expr:     deref(&Cap{Def: capDef, T: capDef.T, L: cvt.Expr.Loc()}),
+			FuncType: expr.Type().(*FuncType),
+		}
+		blk := wrapCallInBlock(fun, dstFunc.Ret, cvt.Expr.Loc())
+		blk.Caps = []*BlockCap{capDef}
+		return blk
 	case cvt.Kind == Noop && !cvt.Explicit && eqType(cvt.Expr.Type(), cvt.Type()):
 		// Pop-off meaningless noop conversions.
 		return cvt.Expr
@@ -611,6 +639,9 @@ func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeP
 	case explicit && isUnionSubset(src.typ, dst.typ):
 		return conversion(cvt, UnionConvert, dst.typ), nil
 
+	case isImplicitFuncConvertible(src.typ, dst.typ):
+		return conversion(cvt, funcConvert, dst.typ), nil
+
 	case isRefLiteral(src.typ):
 		cvt = conversion(cvt, Deref, src.refElem().typ)
 		return convert(cvt, src.refElem(), dst, explicit, bind)
@@ -645,6 +676,23 @@ func isUnionSubset(src, dst Type) bool {
 		}
 	}
 	return true
+}
+
+func isImplicitFuncConvertible(src, dst Type) bool {
+	srcFunc, ok := src.(*FuncType)
+	if !ok {
+		return false
+	}
+	dstFunc, ok := dst.(*FuncType)
+	if !ok || len(dstFunc.Parms) != len(srcFunc.Parms) {
+		return false
+	}
+	for i := range srcFunc.Parms {
+		if !eqType(srcFunc.Parms[i], dstFunc.Parms[i]) {
+			return false
+		}
+	}
+	return isEmptyStruct(dstFunc.Ret)
 }
 
 func conversion(cvt *Convert, kind ConvertKind, typ Type) *Convert {

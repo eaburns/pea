@@ -369,7 +369,10 @@ func (b *BlockLit) subExpr(bindings bindings) Expr {
 			Local: bindings.Locals[cap.Local],
 			Cap:   bindings.Caps[cap.Cap],
 		}
-		if capCopy.Parm == nil && capCopy.Local == nil && capCopy.Cap == nil {
+		if cap.Expr != nil {
+			capCopy.Expr = cap.Expr.subExpr(bindings)
+		}
+		if capCopy.Parm == nil && capCopy.Local == nil && capCopy.Cap == nil && capCopy.Expr == nil {
 			panic("no binding")
 		}
 		bindings.Caps[cap] = capCopy
