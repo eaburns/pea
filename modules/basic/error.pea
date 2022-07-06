@@ -37,18 +37,6 @@ Func must(o T or_error) T {
 	return: o ok? (t){t} error? (e){panic(message(e))}
 }
 
-// If o is the ok? case, returns the ok? value,
-// otherwise returns the result of calling f
-// with the error? case value.
-Func error?(o T or_error, f (error){T}) T {
-	return: o error? f ok? (t){ t }
-}
-
-test error_question {
-	assert_true: ((int or_error :: ok(1)) error? (e) {5}) = 1,
-	assert_true: ((int or_error :: error("foo")) error? (e) {5}) = 5,
-}
-
 // Calls k with the ok? case value if the case of o is ok?.
 Func if:ok:(o T or_error, k (T){}) {
 	o ok? k error? (_){}
@@ -86,11 +74,6 @@ Func error(e error) error option {
 // containing a new error that has the given message.
 Func error(msg string) error option {
 	return: some(new(msg))
-}
-
-// Calls e with the some? case value if the case of o is some?.
-Func error?(o error option, e (error){}) {
-	if: o some: e
 }
 
 // Panics if the case of o is some?.
