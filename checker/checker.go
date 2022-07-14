@@ -442,6 +442,21 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 		}
 		name := parserType.Name.Name
 		switch types := findType(x, args, name, parserType.L); {
+		case len(types) == 0 && parserType.Mod == nil:
+			// If the type is not found,
+			// the type name does not have a module specified,
+			// there is a module with the same name as the type,
+			// and that module has a single type of the same name
+			// with the correct arity; use that type.
+			imp := findImport(x, name)
+			if imp != nil {
+				types = findType(imp, args, name, parserType.L)
+				if len(types) == 1 {
+					typ = types[0]
+					break
+				}
+			}
+			fallthrough
 		case len(types) == 0:
 			errs = append(errs, notFound(name, parserType.L))
 		case len(types) > 1:

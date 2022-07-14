@@ -84,7 +84,7 @@ func run_re2_tests(path string) {
 	in := io#read_buffer(f),
 
 	in_strings := false,
-	strs := string vector#vector :: new(),
+	strs := string vector :: new(),
 	forever: {
 		read_line(in) ok? (line) {
 			if: line = "strings" then: {
@@ -156,7 +156,7 @@ func unescape(str string) string {
 	return: print#string(p)
 }
 
-func run_regexp(in io#read_buffer, regexp string, strs string vector#vector) {
+func run_regexp(in io#read_buffer, regexp string, strs string vector) {
 	// Ignore unsupported regexps.
 	if:
 		// non-greedy.

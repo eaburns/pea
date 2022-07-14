@@ -12,7 +12,7 @@ type T _channel &[
 	.has_value_cond sys#thread#condition,
 	.has_space_cond sys#thread#condition,
 	.limit int, // 0=unlimited, <0=closed.
-	.data T ring_buffer#ring_buffer
+	.data T ring_buffer
 ]
 
 func .closed(ch T channel) bool { return: ch.limit < 0 }

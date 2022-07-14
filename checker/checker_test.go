@@ -1628,6 +1628,108 @@ func TestTypeResolution(t *testing.T) {
 			},
 			want: "baz#bar",
 		},
+		{
+			name: "module containing a type of the same name",
+			src: `
+				import "vector"
+				var t int vector
+			`,
+			otherMods: []testMod{{
+				path: "vector",
+				src: `
+					Type T vector [.size int, .data [T]]
+				`,
+			}},
+			want: "int vector#vector",
+		},
+		{
+			name: "module containing a type of the same name, but prefer type from current module",
+			src: `
+				import "vector"
+				type T vector [T]
+				var t int vector
+			`,
+			otherMods: []testMod{{
+				path: "vector",
+				src: `
+					Type T vector [.size int, .data [T]]
+				`,
+			}},
+			want: "int vector",
+		},
+		{
+			name: "module containing a type of the same name, but other module tagged",
+			src: `
+				import "vector"
+				import "other_module"
+				type T vector [T]
+				var t int other_module#vector
+			`,
+			otherMods: []testMod{
+				{
+					path: "vector",
+					src: `
+						Type T vector [.size int, .data [T]]
+					`,
+				},
+				{
+					path: "other_module",
+					src: `
+						Type T vector [T]
+					`,
+				},
+			},
+			want: "int other_module#vector",
+		},
+		{
+			name: "module containing a type of the same name, but other module tagged; not found",
+			src: `
+				import "vector"
+				import "other_module"
+				type T vector [T]
+				var t int other_module#vector
+			`,
+			otherMods: []testMod{
+				{
+					path: "vector",
+					src: `
+						Type T vector [.size int, .data [T]]
+					`,
+				},
+				{
+					path: "other_module",
+					src:  ``,
+				},
+			},
+			err: "not found",
+		},
+		{
+			name: "module containing a type of the same name, not imported",
+			src: `
+				var t int vector
+			`,
+			otherMods: []testMod{{
+				path: "vector",
+				src: `
+					Type T vector [.size int, .data [T]]
+				`,
+			}},
+			err: "not found",
+		},
+		{
+			name: "module has different type name",
+			src: `
+				import "vector"
+				var t int vector
+			`,
+			otherMods: []testMod{{
+				path: "vector",
+				src: `
+					Type T not_vector [.size int, .data [T]]
+				`,
+			}},
+			err: "not found",
+		},
 	}
 	for _, test := range tests {
 		test := test

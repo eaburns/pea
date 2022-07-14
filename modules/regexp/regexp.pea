@@ -40,12 +40,12 @@ Type regexp := _regexp
 
 type _regexp &[
 	.source string,
-	.prog instruction ring_buffer#ring_buffer,
-	.class char_class vector#vector,
+	.prog instruction ring_buffer,
+	.class char_class vector,
 	.ncap int,
 ]
 
-type char_class := char_range vector#vector
+type char_class := char_range vector
 
 type char_range [.start rune, .end rune]
 
@@ -432,9 +432,9 @@ type vm &[
 	.next_rune rune,
 	.next_width int,
 	.seen [int64], // at for which each pc was last added to a thread
-	.run thread ring_buffer#ring_buffer,
-	.next_run thread ring_buffer#ring_buffer,
-	.free_mem [int64] vector#vector,
+	.run thread ring_buffer,
+	.next_run thread ring_buffer,
+	.free_mem [int64] vector,
 	.match [int64],
 ]
 

@@ -11,7 +11,7 @@ Type group := _group
 type _group &[
 	.mutex sys#thread#mutex,
 	.cond sys#thread#condition,
-	.errors error ring_buffer#ring_buffer,
+	.errors error ring_buffer,
 	.count int,
 ]
 
@@ -86,7 +86,7 @@ test group_wait_errors {
 			error option :: error(print#string(i))
 		},
 	},
-	results := string vector#vector :: new(),
+	results := string vector :: new(),
 	while: {wait(gr)} some: (err) {
 		results push_back: message(err)
 	},
@@ -104,7 +104,7 @@ test group_wait_errors_and_non_errors {
 			}
 		},
 	},
-	results := string vector#vector :: new(),
+	results := string vector :: new(),
 	while: {wait(gr)} some: (err) {
 		results push_back: message(err)
 	},

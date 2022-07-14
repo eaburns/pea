@@ -178,7 +178,7 @@ test do_not_consume_caller_argument {
 }
 
 // TODO: move vector = and printing to the vector module.
-func =(a rune vector#vector, b rune vector#vector) bool {
+func =(a rune vector, b rune vector) bool {
 	if: a.length != b.length then: {
 		return: false
 	},
@@ -189,7 +189,7 @@ func =(a rune vector#vector, b rune vector#vector) bool {
 	},
 	return: true
 }
-func print(p print#printer, v X vector#vector) print#printer :
+func print(p print#printer, v X vector) print#printer :
 	++(print#printer, X)print#printer,
 {
 	p ++ "[",

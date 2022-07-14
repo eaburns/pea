@@ -14,7 +14,7 @@ Func print(p print#printer, re regexp) print#printer {
 	return: p
 }
 
-func print(p print#printer, instrs instruction ring_buffer#ring_buffer) print#printer {
+func print(p print#printer, instrs instruction ring_buffer) print#printer {
 	p ++ "[",
 	first := true,
 	for: instrs each: (instr) {

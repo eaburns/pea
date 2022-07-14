@@ -16,7 +16,7 @@ Func _lookup_host(host string) [addr] or_error {
 
 	// TODO: switch hash_map with hash_set once hash_set exists.
 	i := 0,
-	seen := (addr, bool) hash_map#hash_map :: new(),
+	seen := (addr, bool) hash_map :: new(),
 	for: addrs each: (addr){
 		if: (seen at: addr put: true) none: {
 			addrs[i] := addr,
