@@ -1,6 +1,5 @@
 // An error.
-Type error := _error
-type _error [.msg string]
+Type error ([.msg string])
 
 // Returns a new error with a given message.
 Func new(msg string) error {

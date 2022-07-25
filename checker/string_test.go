@@ -132,14 +132,14 @@ func TestString(t *testing.T) {
 		},
 		{
 			src: `
-				type X list
+				type X list [.data X, .next [some? &X list, none?]]
 				type t &int list
 			`,
 			want: "&int list",
 		},
 		{
 			src: `
-				type X list
+				type X list [.data X, .next [some? &X list, none?]]
 				type t (&int) list
 			`,
 			want: "(&int) list",

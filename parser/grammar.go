@@ -10,125 +10,126 @@ const (
 	_VarDef                     int = 4
 	_VarBody                    int = 5
 	_TypeDef                    int = 6
-	_TypeVars                   int = 7
-	_Type                       int = 8
-	_Types                      int = 9
-	_RefType                    int = 10
-	_NamedType                  int = 11
-	_ModTypeName                int = 12
-	_TypeNameId                 int = 13
-	_TypeArgs                   int = 14
-	_LiteralType                int = 15
-	_ArrayType                  int = 16
-	_StructType                 int = 17
-	_FieldDef                   int = 18
-	_FieldDefs                  int = 19
-	_UnionType                  int = 20
-	_CaseDef                    int = 21
-	_CaseDefs                   int = 22
-	_FuncType                   int = 23
-	_FuncDef                    int = 24
-	_FuncBody                   int = 25
-	_FuncParms                  int = 26
-	_FuncParm                   int = 27
-	_FuncDecl                   int = 28
-	_FuncDecls                  int = 29
-	_TestDef                    int = 30
-	_Expr                       int = 31
-	_Exprs                      int = 32
-	_Asgn                       int = 33
-	_AsgnArg                    int = 34
-	_AsgnOp                     int = 35
-	_KwCall                     int = 36
-	_KwArg                      int = 37
-	_KwCall1                    int = 38
-	_KwArg1                     int = 39
-	_Cvt                        int = 40
-	_CvtArg                     int = 41
-	_Switch                     int = 42
-	_SwitchArg                  int = 43
-	_Bin5                       int = 44
-	_Bin5Arg                    int = 45
-	_Bin5Op                     int = 46
-	_Bin4                       int = 47
-	_Bin4Arg                    int = 48
-	_Bin4Op                     int = 49
-	_Bin3                       int = 50
-	_Bin3Arg                    int = 51
-	_Bin3Op                     int = 52
-	_Bin2                       int = 53
-	_Bin2Arg                    int = 54
-	_Bin2Op                     int = 55
-	_Bin1                       int = 56
-	_Bin1Arg                    int = 57
-	_Bin1Op                     int = 58
-	_Un                         int = 59
-	_Op                         int = 60
-	_UnArg                      int = 61
-	_Pri                        int = 62
-	_Sel                        int = 63
-	_DotName                    int = 64
-	_Call                       int = 65
-	_Idx                        int = 66
-	_PriArg                     int = 67
-	_SubExpr                    int = 68
-	_ModSel                     int = 69
-	_ModTag                     int = 70
-	_FuncName                   int = 71
-	_IdxOp                      int = 72
-	_Cases                      int = 73
-	_Kwds                       int = 74
-	_ArrayLit                   int = 75
-	_StructLit                  int = 76
-	_FieldVals                  int = 77
-	_FieldVal                   int = 78
-	_FieldId                    int = 79
-	_UnionLit                   int = 80
-	_CaseVal                    int = 81
-	_BlkLit                     int = 82
-	_BlkParm                    int = 83
-	_BlkParms                   int = 84
-	_CharLit                    int = 85
-	_StrLit                     int = 86
-	_InterpStr                  int = 87
-	_Esc                        int = 88
-	_RawStr                     int = 89
-	_NumLit                     int = 90
-	_DecLit                     int = 91
-	_HexLit                     int = 92
-	_FloatLit                   int = 93
-	_TypeVar                    int = 94
-	_Kwd                        int = 95
-	_CaseId                     int = 96
-	_ModId                      int = 97
-	_Id                         int = 98
-	__                          int = 99
-	_NAME                       int = 100
-	_RESERVED                   int = 101
-	_D                          int = 102
-	_X                          int = 103
-	_L                          int = 104
-	_O                          int = 105
-	_SPACE                      int = 106
-	_COMMENT                    int = 107
-	_EOF                        int = 108
-	_Bin__AsgnOp__AsgnArg       int = 109
-	_NameArg__Kwd__KwArg        int = 110
-	_NameArg__Kwd__KwArg1       int = 111
-	_NameArg__CaseId__SwitchArg int = 112
-	_Bin__Bin5Op__Bin5Arg       int = 113
-	_Bin__Bin4Op__Bin4Arg       int = 114
-	_Bin__Bin3Op__Bin3Arg       int = 115
-	_Bin__Bin2Op__Bin2Arg       int = 116
-	_Bin__Bin1Op__Bin1Arg       int = 117
-	_BinTail__AsgnOp__AsgnArg   int = 118
-	_BinTail__Bin5Op__Bin5Arg   int = 119
-	_BinTail__Bin4Op__Bin4Arg   int = 120
-	_BinTail__Bin3Op__Bin3Arg   int = 121
-	_BinTail__Bin2Op__Bin2Arg   int = 122
-	_BinTail__Bin1Op__Bin1Arg   int = 123
+	_DefType                    int = 7
+	_TypeVars                   int = 8
+	_Type                       int = 9
+	_Types                      int = 10
+	_RefType                    int = 11
+	_NamedType                  int = 12
+	_ModTypeName                int = 13
+	_TypeNameId                 int = 14
+	_TypeArgs                   int = 15
+	_LiteralType                int = 16
+	_ArrayType                  int = 17
+	_StructType                 int = 18
+	_FieldDef                   int = 19
+	_FieldDefs                  int = 20
+	_UnionType                  int = 21
+	_CaseDef                    int = 22
+	_CaseDefs                   int = 23
+	_FuncType                   int = 24
+	_FuncDef                    int = 25
+	_FuncBody                   int = 26
+	_FuncParms                  int = 27
+	_FuncParm                   int = 28
+	_FuncDecl                   int = 29
+	_FuncDecls                  int = 30
+	_TestDef                    int = 31
+	_Expr                       int = 32
+	_Exprs                      int = 33
+	_Asgn                       int = 34
+	_AsgnArg                    int = 35
+	_AsgnOp                     int = 36
+	_KwCall                     int = 37
+	_KwArg                      int = 38
+	_KwCall1                    int = 39
+	_KwArg1                     int = 40
+	_Cvt                        int = 41
+	_CvtArg                     int = 42
+	_Switch                     int = 43
+	_SwitchArg                  int = 44
+	_Bin5                       int = 45
+	_Bin5Arg                    int = 46
+	_Bin5Op                     int = 47
+	_Bin4                       int = 48
+	_Bin4Arg                    int = 49
+	_Bin4Op                     int = 50
+	_Bin3                       int = 51
+	_Bin3Arg                    int = 52
+	_Bin3Op                     int = 53
+	_Bin2                       int = 54
+	_Bin2Arg                    int = 55
+	_Bin2Op                     int = 56
+	_Bin1                       int = 57
+	_Bin1Arg                    int = 58
+	_Bin1Op                     int = 59
+	_Un                         int = 60
+	_Op                         int = 61
+	_UnArg                      int = 62
+	_Pri                        int = 63
+	_Sel                        int = 64
+	_DotName                    int = 65
+	_Call                       int = 66
+	_Idx                        int = 67
+	_PriArg                     int = 68
+	_SubExpr                    int = 69
+	_ModSel                     int = 70
+	_ModTag                     int = 71
+	_FuncName                   int = 72
+	_IdxOp                      int = 73
+	_Cases                      int = 74
+	_Kwds                       int = 75
+	_ArrayLit                   int = 76
+	_StructLit                  int = 77
+	_FieldVals                  int = 78
+	_FieldVal                   int = 79
+	_FieldId                    int = 80
+	_UnionLit                   int = 81
+	_CaseVal                    int = 82
+	_BlkLit                     int = 83
+	_BlkParm                    int = 84
+	_BlkParms                   int = 85
+	_CharLit                    int = 86
+	_StrLit                     int = 87
+	_InterpStr                  int = 88
+	_Esc                        int = 89
+	_RawStr                     int = 90
+	_NumLit                     int = 91
+	_DecLit                     int = 92
+	_HexLit                     int = 93
+	_FloatLit                   int = 94
+	_TypeVar                    int = 95
+	_Kwd                        int = 96
+	_CaseId                     int = 97
+	_ModId                      int = 98
+	_Id                         int = 99
+	__                          int = 100
+	_NAME                       int = 101
+	_RESERVED                   int = 102
+	_D                          int = 103
+	_X                          int = 104
+	_L                          int = 105
+	_O                          int = 106
+	_SPACE                      int = 107
+	_COMMENT                    int = 108
+	_EOF                        int = 109
+	_Bin__AsgnOp__AsgnArg       int = 110
+	_NameArg__Kwd__KwArg        int = 111
+	_NameArg__Kwd__KwArg1       int = 112
+	_NameArg__CaseId__SwitchArg int = 113
+	_Bin__Bin5Op__Bin5Arg       int = 114
+	_Bin__Bin4Op__Bin4Arg       int = 115
+	_Bin__Bin3Op__Bin3Arg       int = 116
+	_Bin__Bin2Op__Bin2Arg       int = 117
+	_Bin__Bin1Op__Bin1Arg       int = 118
+	_BinTail__AsgnOp__AsgnArg   int = 119
+	_BinTail__Bin5Op__Bin5Arg   int = 120
+	_BinTail__Bin4Op__Bin4Arg   int = 121
+	_BinTail__Bin3Op__Bin3Arg   int = 122
+	_BinTail__Bin2Op__Bin2Arg   int = 123
+	_BinTail__Bin1Op__Bin1Arg   int = 124
 
-	_N int = 124
+	_N int = 125
 )
 
 type _Parser struct {
@@ -1772,14 +1773,14 @@ fail:
 }
 
 func _TypeDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	var labels [5]string
+	var labels [4]string
 	use(labels)
 	if dp, de, ok := _memo(parser, _TypeDef, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
 	// action
-	// _ reserved:("type"/"Type") ps:TypeVars? name:Id alias:(_ ":=")? t:Type?
+	// _ reserved:("type"/"Type") ps:TypeVars? name:Id def:DefType
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
@@ -1840,47 +1841,14 @@ func _TypeDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[2] = parser.text[pos13:pos]
 	}
-	// alias:(_ ":=")?
+	// def:DefType
 	{
 		pos14 := pos
-		// (_ ":=")?
-		{
-			pos16 := pos
-			// (_ ":=")
-			// _ ":="
-			// _
-			if !_accept(parser, __Accepts, &pos, &perr) {
-				goto fail17
-			}
-			// ":="
-			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
-				perr = _max(perr, pos)
-				goto fail17
-			}
-			pos += 2
-			goto ok19
-		fail17:
-			pos = pos16
-		ok19:
+		// DefType
+		if !_accept(parser, _DefTypeAccepts, &pos, &perr) {
+			goto fail
 		}
 		labels[3] = parser.text[pos14:pos]
-	}
-	// t:Type?
-	{
-		pos20 := pos
-		// Type?
-		{
-			pos22 := pos
-			// Type
-			if !_accept(parser, _TypeAccepts, &pos, &perr) {
-				goto fail23
-			}
-			goto ok24
-		fail23:
-			pos = pos22
-		ok24:
-		}
-		labels[4] = parser.text[pos20:pos]
 	}
 	return _memoize(parser, _TypeDef, start, pos, perr)
 fail:
@@ -1888,7 +1856,7 @@ fail:
 }
 
 func _TypeDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	var labels [5]string
+	var labels [4]string
 	use(labels)
 	pos, failure := _failMemo(parser, _TypeDef, start, errPos)
 	if failure != nil {
@@ -1900,7 +1868,7 @@ func _TypeDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _TypeDef}
 	// action
-	// _ reserved:("type"/"Type") ps:TypeVars? name:Id alias:(_ ":=")? t:Type?
+	// _ reserved:("type"/"Type") ps:TypeVars? name:Id def:DefType
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
@@ -1971,52 +1939,14 @@ func _TypeDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		}
 		labels[2] = parser.text[pos13:pos]
 	}
-	// alias:(_ ":=")?
+	// def:DefType
 	{
 		pos14 := pos
-		// (_ ":=")?
-		{
-			pos16 := pos
-			// (_ ":=")
-			// _ ":="
-			// _
-			if !_fail(parser, __Fail, errPos, failure, &pos) {
-				goto fail17
-			}
-			// ":="
-			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
-				if pos >= errPos {
-					failure.Kids = append(failure.Kids, &peg.Fail{
-						Pos:  int(pos),
-						Want: "\":=\"",
-					})
-				}
-				goto fail17
-			}
-			pos += 2
-			goto ok19
-		fail17:
-			pos = pos16
-		ok19:
+		// DefType
+		if !_fail(parser, _DefTypeFail, errPos, failure, &pos) {
+			goto fail
 		}
 		labels[3] = parser.text[pos14:pos]
-	}
-	// t:Type?
-	{
-		pos20 := pos
-		// Type?
-		{
-			pos22 := pos
-			// Type
-			if !_fail(parser, _TypeFail, errPos, failure, &pos) {
-				goto fail23
-			}
-			goto ok24
-		fail23:
-			pos = pos22
-		ok24:
-		}
-		labels[4] = parser.text[pos20:pos]
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -2026,13 +1956,12 @@ fail:
 }
 
 func _TypeDefAction(parser *_Parser, start int) (int, *Def) {
-	var labels [5]string
+	var labels [4]string
 	use(labels)
 	var label0 string
 	var label1 *[]TypeVar
 	var label2 Ident
-	var label3 string
-	var label4 *Type
+	var label3 *TypeDef
 	dp := parser.deltaPos[start][_TypeDef]
 	if dp < 0 {
 		return -1, nil
@@ -2048,7 +1977,7 @@ func _TypeDefAction(parser *_Parser, start int) (int, *Def) {
 	// action
 	{
 		start0 := pos
-		// _ reserved:("type"/"Type") ps:TypeVars? name:Id alias:(_ ":=")? t:Type?
+		// _ reserved:("type"/"Type") ps:TypeVars? name:Id def:DefType
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
@@ -2122,82 +2051,401 @@ func _TypeDefAction(parser *_Parser, start int) (int, *Def) {
 			}
 			labels[2] = parser.text[pos14:pos]
 		}
-		// alias:(_ ":=")?
+		// def:DefType
 		{
 			pos15 := pos
-			// (_ ":=")?
-			{
-				pos17 := pos
-				// (_ ":=")
-				// _ ":="
-				{
-					var node19 string
-					// _
-					if p, n := __Action(parser, pos); n == nil {
-						goto fail18
-					} else {
-						node19 = *n
-						pos = p
-					}
-					label3, node19 = label3+node19, ""
-					// ":="
-					if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
-						goto fail18
-					}
-					node19 = parser.text[pos : pos+2]
-					pos += 2
-					label3, node19 = label3+node19, ""
-				}
-				goto ok20
-			fail18:
-				label3 = ""
-				pos = pos17
-			ok20:
+			// DefType
+			if p, n := _DefTypeAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label3 = *n
+				pos = p
 			}
 			labels[3] = parser.text[pos15:pos]
 		}
-		// t:Type?
+		node = func(
+			start, end int, def *TypeDef, name Ident, ps *[]TypeVar, reserved string) Def {
+			def.Exp = reserved == "Type"
+			if ps != nil {
+				def.TypeParms = *ps
+			}
+			def.Name = name
+			def.L = l(parser, start, end)
+			return Def(def)
+		}(
+			start0, pos, label3, label2, label1, label0)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _DefTypeAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [3]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _DefType, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// t:Type _ {…}/_ ":=" t:Type _ {…}/_ "(" t:Type _ ")" {…}
+	{
+		pos3 := pos
+		// action
+		// t:Type _
+		// t:Type
 		{
-			pos21 := pos
-			// Type?
+			pos6 := pos
+			// Type
+			if !_accept(parser, _TypeAccepts, &pos, &perr) {
+				goto fail4
+			}
+			labels[0] = parser.text[pos6:pos]
+		}
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail4
+		}
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// _ ":=" t:Type _
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail7
+		}
+		// ":="
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
+			perr = _max(perr, pos)
+			goto fail7
+		}
+		pos += 2
+		// t:Type
+		{
+			pos9 := pos
+			// Type
+			if !_accept(parser, _TypeAccepts, &pos, &perr) {
+				goto fail7
+			}
+			labels[1] = parser.text[pos9:pos]
+		}
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail7
+		}
+		goto ok0
+	fail7:
+		pos = pos3
+		// action
+		// _ "(" t:Type _ ")"
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail10
+		}
+		// "("
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
+			perr = _max(perr, pos)
+			goto fail10
+		}
+		pos++
+		// t:Type
+		{
+			pos12 := pos
+			// Type
+			if !_accept(parser, _TypeAccepts, &pos, &perr) {
+				goto fail10
+			}
+			labels[2] = parser.text[pos12:pos]
+		}
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail10
+		}
+		// ")"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
+			perr = _max(perr, pos)
+			goto fail10
+		}
+		pos++
+		goto ok0
+	fail10:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	return _memoize(parser, _DefType, start, pos, perr)
+fail:
+	return _memoize(parser, _DefType, start, -1, perr)
+}
+
+func _DefTypeFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [3]string
+	use(labels)
+	pos, failure := _failMemo(parser, _DefType, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "DefType",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _DefType}
+	// t:Type _ {…}/_ ":=" t:Type _ {…}/_ "(" t:Type _ ")" {…}
+	{
+		pos3 := pos
+		// action
+		// t:Type _
+		// t:Type
+		{
+			pos6 := pos
+			// Type
+			if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+				goto fail4
+			}
+			labels[0] = parser.text[pos6:pos]
+		}
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail4
+		}
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// _ ":=" t:Type _
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail7
+		}
+		// ":="
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\":=\"",
+				})
+			}
+			goto fail7
+		}
+		pos += 2
+		// t:Type
+		{
+			pos9 := pos
+			// Type
+			if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+				goto fail7
+			}
+			labels[1] = parser.text[pos9:pos]
+		}
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail7
+		}
+		goto ok0
+	fail7:
+		pos = pos3
+		// action
+		// _ "(" t:Type _ ")"
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail10
+		}
+		// "("
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"(\"",
+				})
+			}
+			goto fail10
+		}
+		pos++
+		// t:Type
+		{
+			pos12 := pos
+			// Type
+			if !_fail(parser, _TypeFail, errPos, failure, &pos) {
+				goto fail10
+			}
+			labels[2] = parser.text[pos12:pos]
+		}
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail10
+		}
+		// ")"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\")\"",
+				})
+			}
+			goto fail10
+		}
+		pos++
+		goto ok0
+	fail10:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _DefTypeAction(parser *_Parser, start int) (int, **TypeDef) {
+	var labels [3]string
+	use(labels)
+	var label0 Type
+	var label1 Type
+	var label2 Type
+	dp := parser.deltaPos[start][_DefType]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _DefType}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(*TypeDef)
+		return start + int(dp-1), &n
+	}
+	var node *TypeDef
+	pos := start
+	// t:Type _ {…}/_ ":=" t:Type _ {…}/_ "(" t:Type _ ")" {…}
+	{
+		pos3 := pos
+		var node2 *TypeDef
+		// action
+		{
+			start5 := pos
+			// t:Type _
+			// t:Type
 			{
-				pos23 := pos
-				label4 = new(Type)
+				pos7 := pos
 				// Type
 				if p, n := _TypeAction(parser, pos); n == nil {
-					goto fail24
+					goto fail4
 				} else {
-					*label4 = *n
+					label0 = *n
 					pos = p
 				}
-				goto ok25
-			fail24:
-				label4 = nil
-				pos = pos23
-			ok25:
+				labels[0] = parser.text[pos7:pos]
 			}
-			labels[4] = parser.text[pos21:pos]
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail4
+			} else {
+				pos = p
+			}
+			node = func(
+				start, end int, t Type) *TypeDef {
+				return &TypeDef{Type: t}
+			}(
+				start5, pos, label0)
 		}
-		node = func(
-			start, end int, alias string, name Ident, ps *[]TypeVar, reserved string, t *Type) Def {
-			var parms []TypeVar
-			if ps != nil {
-				parms = *ps
+		goto ok0
+	fail4:
+		node = node2
+		pos = pos3
+		// action
+		{
+			start9 := pos
+			// _ ":=" t:Type _
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail8
+			} else {
+				pos = p
 			}
-			var typ Type
-			if t != nil {
-				typ = *t
+			// ":="
+			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
+				goto fail8
 			}
-			return Def(&TypeDef{
-				Exp:       reserved == "Type",
-				Alias:     alias != "",
-				TypeParms: parms,
-				Name:      name,
-				Type:      typ,
-				L:         l(parser, start, end),
-			})
-		}(
-			start0, pos, label3, label2, label1, label0, label4)
+			pos += 2
+			// t:Type
+			{
+				pos11 := pos
+				// Type
+				if p, n := _TypeAction(parser, pos); n == nil {
+					goto fail8
+				} else {
+					label1 = *n
+					pos = p
+				}
+				labels[1] = parser.text[pos11:pos]
+			}
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail8
+			} else {
+				pos = p
+			}
+			node = func(
+				start, end int, t Type) *TypeDef {
+				return &TypeDef{Alias: true, Type: t}
+			}(
+				start9, pos, label1)
+		}
+		goto ok0
+	fail8:
+		node = node2
+		pos = pos3
+		// action
+		{
+			start13 := pos
+			// _ "(" t:Type _ ")"
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail12
+			} else {
+				pos = p
+			}
+			// "("
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
+				goto fail12
+			}
+			pos++
+			// t:Type
+			{
+				pos15 := pos
+				// Type
+				if p, n := _TypeAction(parser, pos); n == nil {
+					goto fail12
+				} else {
+					label2 = *n
+					pos = p
+				}
+				labels[2] = parser.text[pos15:pos]
+			}
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail12
+			} else {
+				pos = p
+			}
+			// ")"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
+				goto fail12
+			}
+			pos++
+			node = func(
+				start, end int, t Type) *TypeDef {
+				return &TypeDef{Opaque: true, Type: t}
+			}(
+				start13, pos, label2)
+		}
+		goto ok0
+	fail12:
+		node = node2
+		pos = pos3
+		goto fail
+	ok0:
 	}
 	parser.act[key] = node
 	return pos, &node

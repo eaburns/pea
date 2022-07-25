@@ -160,13 +160,14 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 				errs = append(errs, fs...)
 			}
 			typeDef := &TypeDef{
-				File:  file,
-				Alias: parserTypeDef.Alias,
-				Mod:   modPath,
-				Name:  name,
-				Parms: parms,
-				Exp:   parserTypeDef.Exp,
-				L:     parserTypeDef.L,
+				File:   file,
+				Alias:  parserTypeDef.Alias,
+				Mod:    modPath,
+				Name:   name,
+				Parms:  parms,
+				Exp:    parserTypeDef.Exp,
+				Opaque: parserTypeDef.Opaque,
+				L:      parserTypeDef.L,
 			}
 			defs[parserDef] = typeDef
 			mod.Defs = append(mod.Defs, typeDef)

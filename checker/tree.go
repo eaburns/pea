@@ -88,15 +88,16 @@ func (v *VarDef) Type() Type   { return v.T }
 func (v *VarDef) Loc() loc.Loc { return v.L }
 
 type TypeDef struct {
-	File  *File
-	Alias bool
-	Mod   string
-	Name  string
-	Parms []TypeParm
-	Type  Type
-	Exp   bool
-	Insts []*TypeInst
-	L     loc.Loc
+	File   *File
+	Alias  bool
+	Mod    string
+	Name   string
+	Parms  []TypeParm
+	Type   Type
+	Exp    bool
+	Opaque bool
+	Insts  []*TypeInst
+	L      loc.Loc
 }
 
 type TypeParm struct {

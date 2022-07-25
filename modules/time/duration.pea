@@ -26,16 +26,14 @@ import "print"
 // A duration can represent any time duration
 // with nanosecond precision in the range
 // [-2562047788015215h30m8s, 2562047788015215h30m8s - 1ns]
-Type duration := _duration
-
-type _duration [
+Type duration ([
 	// The number of seconds.
 	.s int64,
 	// The positive nanoseconds [0...1e9-1] offset of s.
 	// The high-order bit denotes whether the duration is infinite.
 	// Note that .ns is always positive. So -1.5ns [.s -2, .ns 5e8].
 	.ns uint32,
-]
+])
 
 const ns_per_sec := uint32 :: 1.0e9
 const max_int64 := int64 :: 9223372036854775807

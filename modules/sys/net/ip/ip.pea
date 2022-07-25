@@ -6,8 +6,7 @@ import "print"
 // An IP address, either IPv4 or IPv6.
 // If the address is IPv4, .length will return 4.
 // If the address is IPv6, .length will return 16.
-Type addr := _addr
-type _addr [.bytes [uint8]]
+Type addr ([.bytes [uint8]])
 
 // Returns the length of the addr in bytes.
 Func .length(a addr) int {

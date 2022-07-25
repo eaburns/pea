@@ -19,8 +19,7 @@ test hash {
 	equals: wyhash#hash(state, "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"),
 }
 
-Type hasher := _hasher
-type _hasher &[.state uint64]
+Type hasher (&[.state uint64])
 
 Func new() hasher {
 	return: [.state state]

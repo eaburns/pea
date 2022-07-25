@@ -35,10 +35,11 @@ type VarDef struct {
 
 type TypeDef struct {
 	Exp       bool
+	Opaque    bool
 	Alias     bool
 	TypeParms []TypeVar
 	Name      Ident
-	Type      Type // nil if unspecified
+	Type      Type
 	L         loc.Loc
 }
 

@@ -60,7 +60,7 @@ func literalType(typ Type) Type {
 		if typ.Inst == nil || typ.Inst.Type == nil {
 			return nil
 		}
-		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+		if !isVisibleDefinedType(typ) {
 			return nil
 		}
 		return literalType(typ.Inst.Type)
@@ -84,7 +84,7 @@ func literalType(typ Type) Type {
 
 func isVisibleDefinedType(typ Type) bool {
 	defType, ok := typ.(*DefType)
-	return ok && (!defType.Def.File.Mod.Imported || defType.Def.Exp) || isBool(typ)
+	return ok && (!defType.Def.File.Mod.Imported || defType.Def.Exp && !defType.Def.Opaque) || isBool(typ)
 }
 
 func isLiteralType(typ Type) bool {
@@ -110,9 +110,7 @@ func funcType(typ Type) *FuncType {
 	case *FuncType:
 		return typ
 	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+		if typ.Inst != nil && typ.Inst.Type != nil && isVisibleDefinedType(typ) {
 			return funcType(typ.Inst.Type)
 		}
 	}
@@ -124,9 +122,7 @@ func isStructType(typ Type) bool {
 	case *StructType:
 		return true
 	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+		if typ.Inst != nil && typ.Inst.Type != nil && isVisibleDefinedType(typ) {
 			return isStructType(typ.Inst.Type)
 		}
 	}
@@ -138,9 +134,7 @@ func isStructRefType(typ Type) bool {
 	case *RefType:
 		return isStructType(typ.Type)
 	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+		if typ.Inst != nil && typ.Inst.Type != nil && isVisibleDefinedType(typ) {
 			return isStructRefType(typ.Inst.Type)
 		}
 	}
@@ -152,9 +146,7 @@ func isUnionType(typ Type) bool {
 	case *UnionType:
 		return true
 	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+		if typ.Inst != nil && typ.Inst.Type != nil && isVisibleDefinedType(typ) {
 			return isUnionType(typ.Inst.Type)
 		}
 	case *BasicType:
@@ -168,9 +160,7 @@ func isUnionRefType(typ Type) bool {
 	case *RefType:
 		return isUnionType(typ.Type)
 	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+		if typ.Inst != nil && typ.Inst.Type != nil && isVisibleDefinedType(typ) {
 			return isUnionRefType(typ.Inst.Type)
 		}
 	}
@@ -187,9 +177,7 @@ func isArrayType(typ Type) bool {
 	case *ArrayType:
 		return true
 	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+		if typ.Inst != nil && typ.Inst.Type != nil && isVisibleDefinedType(typ) {
 			return isArrayType(typ.Inst.Type)
 		}
 	}
@@ -199,9 +187,7 @@ func isArrayType(typ Type) bool {
 func isStringType(typ Type) bool {
 	switch typ := typ.(type) {
 	case *DefType:
-		if typ.Inst != nil &&
-			typ.Inst.Type != nil &&
-			(!typ.Def.File.Mod.Imported || typ.Def.Exp) {
+		if typ.Inst != nil && typ.Inst.Type != nil && isVisibleDefinedType(typ) {
 			return isStringType(typ.Inst.Type)
 		}
 	case *BasicType:
@@ -247,10 +233,7 @@ func basicType(typ Type) Type {
 		}
 		return &RefType{Type: lit, L: typ.L}
 	case *DefType:
-		if typ.Inst == nil || typ.Inst.Type == nil {
-			return nil
-		}
-		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+		if typ.Inst == nil || typ.Inst.Type == nil || !isVisibleDefinedType(typ) {
 			return nil
 		}
 		return basicType(typ.Inst.Type)
@@ -271,10 +254,7 @@ func basicKind(typ Type) BasicTypeKind {
 		}
 		return basicKind(typ.Type)
 	case *DefType:
-		if typ.Inst == nil || typ.Inst.Type == nil {
-			return noBasicTypeKind
-		}
-		if typ.Def.File.Mod.Imported && !typ.Def.Exp {
+		if typ.Inst == nil || typ.Inst.Type == nil || !isVisibleDefinedType(typ) {
 			return noBasicTypeKind
 		}
 		return basicKind(typ.Inst.Type)

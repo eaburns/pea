@@ -6,9 +6,7 @@ import "print"
 // A point can represent absolute points in time
 // with nanosecond precision within the range
 // [-292277022657-01-27T08:29:52+00:00, 292277026596-12-04T15:30:07.99999999+00:00]
-Type point := _point
-
-type _point [.d duration]
+Type point ([.d duration])
 
 // Epoch is the time point representing
 // January 1, year 1, 00:00:00.000000000 UTC.

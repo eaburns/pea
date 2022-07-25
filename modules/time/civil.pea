@@ -3,9 +3,7 @@ Import "basic"
 import "print"
 
 // A civil time represented as years, months, days, hours, minutes, seconds, and nanoseconds, following the Gregorian Calendar.
-Type civil := _civil
-
-type _civil [
+Type civil ([
 	.y int64,
 	.m int8,
 	.d int8,
@@ -13,7 +11,7 @@ type _civil [
 	.mm int8,
 	.ss int8,
 	.nn int32,
-]
+])
 
 // Returns the compontents of the civil time.
 Func .year(c civil) int64 { return: c.y }

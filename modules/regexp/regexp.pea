@@ -36,14 +36,12 @@ import "container/vector"
 import "unicode/utf8"
 
 // A compiled regular expression.
-Type regexp := _regexp
-
-type _regexp &[
+Type regexp (&[
 	.source string,
 	.prog instruction ring_buffer,
 	.class char_class vector,
 	.ncap int,
-]
+])
 
 type char_class := char_range vector
 

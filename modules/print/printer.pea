@@ -1,8 +1,7 @@
 Import "basic"
 
 // A string printer used for converting values into human-readable strings.
-Type printer := _printer
-type _printer &[.n int, .data [uint8]]
+Type printer (&[.n int, .data [uint8]])
 
 const min_printer_len := int :: 16
 

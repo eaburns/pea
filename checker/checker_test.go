@@ -2320,6 +2320,21 @@ func TestOverloadResolution(t *testing.T) {
 			err:  "foo: not found",
 		},
 		{
+			name: "built-in selector, other mod opaque fails",
+			src: `
+				import "other"
+				func make_foo() other#foo
+			`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo ([.x int, .y int])
+				`,
+			},
+			call: "make_foo().x",
+			err:  "is not a struct type",
+		},
+		{
 			name: "built-in selector, other mod opaque struct fails",
 			src: `
 				import "other"
@@ -2529,7 +2544,7 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in none?some?(&other#foo, (){}, (int){})",
 		},
 		{
-			name: "built-in switch, other mod opaque union fails",
+			name: "built-in switch, other mod unexported opaque union fails",
 			src: `
 				import "other"
 				func make_foo() other#foo
@@ -2539,6 +2554,21 @@ func TestOverloadResolution(t *testing.T) {
 				src: `
 					Type foo := _foo
 					type _foo [none?, some? int]
+				`,
+			},
+			call: "make_foo() none? {} some? (i int) {}",
+			err:  `not a union type`,
+		},
+		{
+			name: "built-in switch, other mod opaque union fails",
+			src: `
+				import "other"
+				func make_foo() other#foo
+			`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo ([none?, some? int])
 				`,
 			},
 			call: "make_foo() none? {} some? (i int) {}",
@@ -2835,7 +2865,7 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in +(other#foo, other#foo)other#foo",
 		},
 		{
-			name: "built-in op, other mod opaque int fails",
+			name: "built-in op, other mod unexported, opaque int fails",
 			src: `
 				import "other"
 				func make_foo() other#foo
@@ -2849,6 +2879,21 @@ func TestOverloadResolution(t *testing.T) {
 			},
 			call: "make_foo() + make_foo()",
 			err:  `built-in \+\(T, T\)T: does not support type other#_foo`,
+		},
+		{
+			name: "built-in op, other mod opaque int fails",
+			src: `
+				import "other"
+				func make_foo() other#foo
+			`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo (int32)
+				`,
+			},
+			call: "make_foo() + make_foo()",
+			err:  `built-in \+\(T, T\)T: does not support type other#foo`,
 		},
 		{
 			name: "built-in array index, no expected type",
@@ -2972,7 +3017,7 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in .length(other#foo)int",
 		},
 		{
-			name: "built-in .length, other mod opaque array fails",
+			name: "built-in .length, other mod unexported, opaque array fails",
 			src: `
 				import "other"
 				func make_foo() other#foo
@@ -2982,6 +3027,21 @@ func TestOverloadResolution(t *testing.T) {
 				src: `
 					Type foo := _foo
 					type _foo [int]
+				`,
+			},
+			call: "make_foo().length",
+			err:  "not an array or string",
+		},
+		{
+			name: "built-in .length, other mod opaque array fails",
+			src: `
+				import "other"
+				func make_foo() other#foo
+			`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo ([int])
 				`,
 			},
 			call: "make_foo().length",
@@ -4789,6 +4849,19 @@ func TestLiteralInference(t *testing.T) {
 				`,
 			},
 		},
+		{
+			expr:  "1.0",
+			infer: "other#foo",
+			// Fails to use type other#foo, as it's opaque.
+			want: "float64",
+			src:  `import "other"`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo (float64)
+				`,
+			},
+		},
 
 		{expr: "1", want: "int"},
 		{expr: "1", infer: "int32", want: "int32"},
@@ -4839,6 +4912,19 @@ func TestLiteralInference(t *testing.T) {
 				`,
 			},
 		},
+		{
+			expr:  "1",
+			infer: "other#foo",
+			// Fails to use type other#foo, as it's opaque.
+			want: "int",
+			src:  `import "other"`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo (int64)
+				`,
+			},
+		},
 
 		{expr: "'a'", want: "int32"},
 		{expr: "'a'", infer: "int32", want: "int32"},
@@ -4878,6 +4964,19 @@ func TestLiteralInference(t *testing.T) {
 				src: `
 					Type foo := _foo
 					type _foo string
+				`,
+			},
+		},
+		{
+			expr:  `"abc"`,
+			infer: "other#foo",
+			// Fails to use type other#foo, as it's opaque.
+			want: "string",
+			src:  `import "other"`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo (string)
 				`,
 			},
 		},
@@ -4945,6 +5044,19 @@ func TestLiteralInference(t *testing.T) {
 				src: `
 					Type foo := _foo
 					type _foo (int){string}
+				`,
+			},
+		},
+		{
+			expr:  `(i int){"foo"}`,
+			infer: "other#foo",
+			// Fails to use type other#foo, as it's opaque.
+			want: "(int){string}",
+			src:  `import "other"`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo ((int){string})
 				`,
 			},
 		},
@@ -5030,6 +5142,19 @@ func TestLiteralInference(t *testing.T) {
 				`,
 			},
 		},
+		{
+			expr:  `[none?]`,
+			infer: "other#foo",
+			// Fails to use type other#foo, as it's opaque.
+			want: "[none?]",
+			src:  `import "other"`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo ([none?, some? int])
+				`,
+			},
+		},
 
 		{expr: `[.x "hello"]`, want: "[.x string]"},
 		{expr: "[.x 5]", want: "[.x int]"},
@@ -5084,6 +5209,19 @@ func TestLiteralInference(t *testing.T) {
 				`,
 			},
 		},
+		{
+			expr:  `[.x 5, .y 6]`,
+			infer: "other#foo",
+			// Fails to use type other#foo, as it's opaque.
+			want: "[.x int, .y int]",
+			src:  `import "other"`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo ([.x int, .y int])
+				`,
+			},
+		},
 
 		{expr: "[5]", want: "[int]"},
 		{expr: `["hello"]`, want: "[string]"},
@@ -5125,6 +5263,19 @@ func TestLiteralInference(t *testing.T) {
 				`,
 			},
 		},
+		{
+			expr:  `[5, 6]`,
+			infer: "other#foo",
+			// Fails to use type other#foo, as it's opaque.
+			want: "[int]",
+			src:  `import "other"`,
+			otherMod: testMod{
+				path: "other",
+				src: `
+					Type foo ([int])
+				`,
+			},
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -5133,8 +5284,13 @@ func TestLiteralInference(t *testing.T) {
 			name = test.infer + " : " + name
 		}
 		t.Run(name, func(t *testing.T) {
-			src := fmt.Sprintf("%s\ntype infer %s\ntype want %s\n",
-				test.src, test.infer, test.want)
+			var src string
+			if test.infer != "" {
+				src = fmt.Sprintf("%s\ntype infer %s\ntype want %s\n",
+					test.src, test.infer, test.want)
+			} else {
+				src = fmt.Sprintf("%s\ntype want %s\n", test.src, test.want)
+			}
 			t.Log(src)
 			mod, errs := check("test", []string{src}, []testMod{test.otherMod})
 			if len(errs) > 0 {
@@ -5144,7 +5300,10 @@ func TestLiteralInference(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to parse [%s]: %s", test.expr, err)
 			}
-			infer := findTypeDef(t, "infer", mod).Type
+			var infer Type
+			if test.infer != "" {
+				infer = findTypeDef(t, "infer", mod).Type
+			}
 			// Ignore the error. Many of the test cases are type mismatches.
 			// That's fine. Here we are testing the resulting literal type,
 			// not correct reporting of type mismatch.
@@ -5270,7 +5429,7 @@ func TestEq(t *testing.T) {
 			},
 		},
 		{
-			Src:  "type named_type",
+			Src:  "type named_type string",
 			Typ:  "named_type",
 			Same: []string{"named_type"},
 			Diff: []string{
@@ -5305,7 +5464,7 @@ func TestEq(t *testing.T) {
 			},
 		},
 		{
-			Src:  "type X param_named_type",
+			Src:  "type X param_named_type [.abc X]",
 			Typ:  "int param_named_type",
 			Same: []string{"int param_named_type"},
 			Diff: []string{

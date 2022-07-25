@@ -39,18 +39,24 @@ VarBody <-
 		return VarDef{Type: typ1, Expr: expr}
 	}
 
-TypeDef <- _ reserved:("type" / "Type") ps:TypeVars? name:Id alias:(_ ":=")? t:Type? {
-	var parms []TypeVar; if ps != nil { parms = *ps }
-	var typ Type; if t != nil { typ = *t }
-	return Def(&TypeDef{
-		Exp: reserved == "Type",
-		Alias: alias != "",
-		TypeParms: parms,
-		Name: name,
-		Type: typ,
-		L: l(parser, start, end),
-	})
+TypeDef <- _ reserved:("type" / "Type") ps:TypeVars? name:Id def:DefType {
+	def.Exp = reserved == "Type"
+	if ps != nil { def.TypeParms = *ps }
+	def.Name = name
+	def.L = l(parser, start, end)
+	return Def(def)
 }
+
+DefType <-
+	t:Type _ {
+		return &TypeDef{Type: t}
+	} /
+	_ ":=" t:Type _ {
+		return &TypeDef{Alias: true, Type: t}
+	} /
+	_ "(" t:Type _ ")" {
+		return &TypeDef{Opaque: true, Type: t}
+	}
 
 TypeVars <-
 	tv:TypeVar { return []TypeVar{tv} } /

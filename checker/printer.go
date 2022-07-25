@@ -127,6 +127,7 @@ func (t *TypeDef) print(pc *config) {
 	pc.field("Mod", t.Mod)
 	pc.field("Name", t.Name)
 	pc.field("Exp", t.Exp)
+	pc.field("Opaque", t.Opaque)
 	pc.field("Parms", t.Parms)
 	pc.field("Type", t.Type)
 	pc.field("Insts", t.Insts)

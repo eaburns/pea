@@ -4,14 +4,12 @@ import "print"
 
 // A read_buffer is a readable memory buffer,
 // backed by another underlying reader.
-Type read_buffer := _read_buffer
-
-type _read_buffer &[
+Type read_buffer (&[
 	.p int,
 	.n int,
 	.data [uint8],
 	.read ([uint8]){read_result},
-]
+])
 
 const default_buf_size := int :: 8192
 

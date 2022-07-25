@@ -4,13 +4,12 @@ import "print"
 
 // A time zone.
 // Time zones map time points to and from civil times.
-Type zone := _zone
-
+Type zone (
 // TODO: read time zones from the zone info database.
 // (Using int instead of [.] to bypass compiler bug in LLVM backend,
 // emitting a type definition `%"time _zone" = type void`,
 // which LLVM rejects for the void type.)
-type _zone int
+	int)
 
 // The UTC time zone.
 Const UTC := zone :: 0
