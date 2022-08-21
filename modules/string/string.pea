@@ -3,6 +3,8 @@ Import "basic"
 import "print"
 import "unicode/utf8"
 
+const rk_base := uint32 :: 16777619
+
 // Returns the index of the first occurrence of n in h.
 Func index(h S, n S) int option :
 	.length(S)int,
@@ -10,19 +12,24 @@ Func index(h S, n S) int option :
 	[](S, int, int) S,
 	=(S, S)bool
 {
-	// Rabin-Karp based on http://www-igm.univ-mlv.fr/~lecroq/string/node5.html#SECTION0050.
+	// Rabin-Karp based on https://medium.com/swlh/rabin-karp-algorithm-using-polynomial-hashing-and-modular-arithmetic-437627b37db6,
+	// using rk_base as the base (prime number from Go implementation),
+	// and using max_uint32 as Q (just rely on overflow).
 	if: h.length < n.length then: {
 		return: none(),
 	},
-	d := uint :: 1,
-	for: 1 to: n.length-1 do: (_) {
-		d := d << 1,
+
+	// m = rk_base^(n.length-1)
+	m := uint32 :: 1,
+	for: 1 to: n.length-1 do: (_){
+		m *= rk_base,
 	},
-	hh := uint :: 0,
-	hn := uint :: 0,
+
+	hh := uint32 :: 0,
+	hn := uint32 :: 0,
 	for: 0 to: n.length-1 do: (i) {
-		hh := (hh<<1) + (uint :: h[i]),
-		hn := (hn<<1) + (uint :: n[i]),
+		hh := hh*rk_base + (uint32 :: h[i]),
+		hn := hn*rk_base + (uint32 :: n[i]),
 	},
 	i := 0,
 	forever: {
@@ -32,7 +39,9 @@ Func index(h S, n S) int option :
 		if: i+n.length >= h.length then: {
 			return: none()
 		},
-		hh := ((hh - (uint :: h[i])*d)<<1) + (uint :: h[i+n.length]),
+		hh -= m*(uint32 :: h[i]),
+		hh *= rk_base,
+		hh += (uint32 :: h[i+n.length]),
 		++i
 	},
 	panic("unreachable"),
