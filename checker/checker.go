@@ -596,6 +596,14 @@ func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
 		findTypeVars(parserFuncParm.Type, typeVars)
 	}
 	findTypeVars(parserFuncDef.Ret, typeVars)
+	for _, parserIface := range parserFuncDef.Iface {
+		for _, parserIfaceParm := range parserIface.Parms {
+			findTypeVars(parserIfaceParm, typeVars)
+		}
+		if parserIface.Ret != nil {
+			findTypeVars(parserIface.Ret, typeVars)
+		}
+	}
 	var typeParms []TypeParm
 	for name, l := range typeVars {
 		typeParms = append(typeParms, TypeParm{
@@ -1442,7 +1450,7 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, 
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
-			if fail := unifyFunc(x, parserID.L, id.(Func), pat.groundType()); fail != nil {
+			if _, fail := unifyFunc(x, parserID.L, id.(Func), pat); fail != nil {
 				notFoundNotes = append(notFoundNotes, fail.note)
 				continue
 			}

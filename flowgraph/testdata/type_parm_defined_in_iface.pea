@@ -1,0 +1,14 @@
+// World Hello
+func main() {
+	words := ["Hello", "World"],
+	swap(words, 0, 1),
+	print(words[0]),
+	print(" "),
+	print(words[1]),
+}
+
+func swap(span S, i int, j int) : [](S, int)&T {
+	tmp := span[i],
+	span[i] := span[j],
+	span[j] := tmp,
+}

@@ -503,7 +503,7 @@ func TestConvert(t *testing.T) {
 		{src: "&int", dst: "uintref", explicit: false, want: nil},
 
 		// All numeric types will explicitly convert to other numeric types (but not to uintref).
-		// This ∃st is not exhaustive, but covers several source types exhaustively
+		// This test is not exhaustive, but covers several source types exhaustively
 		{src: "int", dst: "int", explicit: true, want: c("int", Noop, "int")},
 		{src: "int", dst: "int_val", explicit: true, want: c("int", Noop, "int_val")},
 		{src: "int", dst: "int8", explicit: true, want: c("int", NumConvert, "int8")},
@@ -730,6 +730,7 @@ func TestConvert(t *testing.T) {
 		{src: "&byte_array", dst: "&string_val", explicit: true, want: c("&byte_array", Deref, StrConvert, Ref, "&string_val")},
 
 		// Intersection.
+		{src: "_", dst: "_", want: nil},
 		{src: "int", dst: "_", want: c("int", Noop, "int")},
 		{src: "int_val", dst: "_", want: c("int_val", Noop, "int_val")},
 		{src: "&int", dst: "_", want: c("&int", Noop, "&int")},

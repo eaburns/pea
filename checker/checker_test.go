@@ -1800,6 +1800,86 @@ func TestIfaceInst(t *testing.T) {
 			err: "failed to instantiate",
 		},
 		{
+			name: "two-way binding on parm",
+			src: `
+				func main() { foo(5) }
+				func bar(_ int, _ Y)
+				func foo(_ X) : bar(X, float64)
+			`,
+			want: "bar(int, float64)",
+		},
+		{
+			name: "two-way binding on parm 2",
+			src: `
+				func main() { foo(5) }
+				func bar(_ int, _ Y)
+				func foo(_ X) : bar(X, X)
+			`,
+			want: "bar(int, int)",
+		},
+		{
+			name: "two-way binding on ret",
+			src: `
+				func main() { foo(5) }
+				func bar(_ int) Y
+				func foo(_ X) : bar(X) float64
+			`,
+			want: "bar(int)float64",
+		},
+		{
+			name: "two-way OK param rebinding",
+			src: `
+				func main() { foo() }
+				func bar(_ int, _ int)
+				func foo() : bar(X, X)
+			`,
+			want: "bar(int, int)",
+		},
+		{
+			name: "two-way OK return rebinding",
+			src: `
+				func main() { foo() }
+				func bar(_ int) int
+				func foo() : bar(X)X
+			`,
+			want: "bar(int)int",
+		},
+		{
+			name: "two-way bad param rebinding",
+			src: `
+				func main() { foo() }
+				func bar(_ int, _ float64)
+				func foo() : bar(X, X)
+			`,
+			err: "X binds int and float64",
+		},
+		{
+			name: "two-way bad return rebinding",
+			src: `
+				func main() { foo() }
+				func bar(_ int) float64
+				func foo() : bar(X) X
+			`,
+			err: "X binds int and float64",
+		},
+		{
+			name: "sort with element typeparm introduced in iface",
+			src: `
+				func main() { sort([1, 2, 3]) }
+				func sort(x X) : [](X, int)&U, <(U, U)bool
+			`,
+			want: "built-in []([int], int)&int",
+		},
+		{
+			name: "unbound variable",
+			src: `
+				func main() { foo(5) }
+				func bar(_ Y)
+				func foo(_ int) : bar(Y)
+			`,
+			err: "cannot convert parameter 0 _ to _",
+		},
+		{
 			name: "T matches &T",
 			src: `
 				func main() { foo(5) }
