@@ -59,11 +59,12 @@ test sort_by {
 	assert: sorted_by_max([1, 2, 4, 3]) equals: [4, 3, 2, 1],
 }
 
-Func sort:(ts [T]) : <(T, T) bool {
-	sort: ts by: (a &T, b &T){ a < b }
-}
-
-Func sort:(ts T vector) : <(T, T) bool {
+Func sort:(ts C) :
+	.length(C)int,
+	[](C, int)&T,
+	[](C, int, int)C,
+	<(T, T) bool,
+{
 	sort: ts by: (a &T, b &T){ a < b }
 }
 
