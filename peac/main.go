@@ -25,9 +25,11 @@ var (
 	v            = flag.Bool("v", false, "print commands executed")
 	lprofiler    = flag.Bool("lprofiler", false, "whether to link with -lprofiler for CPU profiling")
 	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
+	dumpCheck    = flag.Bool("dump-check", false, "whether to dump the checked graph")
 	traceEsc     = flag.Bool("trace-esc", false, "whether to trace escape analysis")
 	traceInline  = flag.Bool("trace-inl", false, "whether to trace inlining")
 	printNAllocs = flag.Bool("print-nallocs", false, "whether to print the number of heap allocs")
+	optFG        = flag.Bool("opt-fg", true, "whether to optimize the flowgraph")
 )
 
 func main() {
@@ -102,6 +104,9 @@ func compile(m *mod.Mod) {
 		}
 		if *traceInline {
 			opts = append(opts, flowgraph.TraceInlining)
+		}
+		if !*optFG {
+			opts = append(opts, flowgraph.NoOptimize)
 		}
 		fg, locs = compileFG(m, opts...)
 		if *printNAllocs {
@@ -329,6 +334,9 @@ func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs 
 	checkMod, locs, errs := checker.Check(m.Path, p.Files, checkOpts...)
 	if len(errs) > 0 {
 		fail(errs...)
+	}
+	if *dumpCheck {
+		checkMod.Print(os.Stdout, checker.PrintLocs(locs))
 	}
 	return flowgraph.Build(checkMod, fgOpts...), locs
 }
