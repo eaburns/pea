@@ -783,6 +783,11 @@ func intersection(a, b typePattern, bind *map[*TypeParm]Type) (*typePattern, not
 			s.bind = sub
 			s.substituted = true
 		}
+		// There may already be a binding if the map was used
+		// on a previous call to intersection().
+		if prev, ok := (*bind)[parm]; ok && !eqType(prev, s.bind) {
+			return nil, newNote("%s binds %s and %s", parm.Name, prev, s.bind)
+		}
 		(*bind)[parm] = s.bind
 	}
 	isect := &typePattern{parms: parms, typ: subType(*bind, a.typ)}

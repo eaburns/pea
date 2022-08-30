@@ -1450,7 +1450,7 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, 
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
-			if _, fail := unifyFunc(x, parserID.L, id.(Func), pat); fail != nil {
+			if _, fail := unifyFunc(x, parserID.L, id.(Func), nil, pat); fail != nil {
 				notFoundNotes = append(notFoundNotes, fail.note)
 				continue
 			}

@@ -479,16 +479,20 @@ func TestSubFuncInst_DoubleRefReturn(t *testing.T) {
 func TestSubFuncInst_DoubleRefArg(t *testing.T) {
 	const src = `
 		func foo(s S) : bar(&S) {
-			// When substituting &string for S
-			// this becomes &&string, but that's OK.
+			// When substituting &[.x int] for S
+			// this becomes &&[.x int], but that's OK.
 			bar(&S :: s)
 		}
 
-		func bar(_ &string)
+		// &&[.x int] is not valid syntax,
+		// but we can use a named type,
+		// which implicitly converts to/from
+		// the struct literal type.
+		type x_int_ref &[.x int]
+		func bar(_ &x_int_ref)
 
 		func main() {
-			str_ref := &string :: "",
-			foo(str_ref)
+			foo(&[.x int] :: [.x 5])
 		}
 	`
 	if _, errs := check("test", []string{src}, nil); len(errs) > 0 {
@@ -1880,40 +1884,257 @@ func TestIfaceInst(t *testing.T) {
 			err: "cannot convert parameter 0 _ to _",
 		},
 		{
-			name: "T matches &T",
+			name: "iface parameter int accepts int",
 			src: `
-				func main() { foo(5) }
+				func main() { foo() }
+				func foo() : bar(int)
+				func bar(_ int)
+			`,
+			want: "bar(int)",
+		},
+		{
+			name: "iface parameter int accepts &int",
+			src: `
+				func main() { foo() }
+				func foo() : bar(int)
 				func bar(_ &int)
-				func foo(_ X) : bar(X)
 			`,
 			want: "bar(&int)",
 		},
 		{
-			name: "&T matches T",
+			name: "iface parameter &int rejects int",
+			src: `
+				func main() { foo() }
+				func foo() : bar(&int)
+				func bar(_ int)
+			`,
+			err: "expected a reference literal",
+		},
+		{
+			name: "iface parameter &int accepts &int",
+			src: `
+				func main() { foo() }
+				func foo() : bar(&int)
+				func bar(_ &int)
+			`,
+			want: "bar(&int)",
+		},
+		{
+			name: "iface parameter T=int accepts &int",
+			src: `
+				func main() { foo(5) }
+				func foo(_ X) : bar(X)
+				func bar(_ &int)
+			`,
+			want: "bar(&int)",
+		},
+		{
+			name: "iface parameter &T=&int rejects int",
 			src: `
 				func main() { foo(5) }
 				func bar(_ int)
 				func foo(_ X) : bar(&X)
 			`,
+			err: "expected a reference literal &int",
+		},
+		{
+			name: "iface parameter &T=&int accepts &int",
+			src: `
+				func main() { foo(5) }
+				func bar(_ &int)
+				func foo(_ X) : bar(&X)
+			`,
+			want: "bar(&int)",
+		},
+		{
+			name: "iface parameter T=&int accepts int",
+			src: `
+				func main() { foo(&int :: 5) }
+				func foo(_ X) : bar(X)
+				func bar(_ int)
+			`,
 			want: "bar(int)",
 		},
 		{
-			name: "T matches literal",
+			name: "iface parameter T=&int accepts &int",
+			src: `
+				func main() { foo(&int :: 5) }
+				func foo(_ X) : bar(X)
+				func bar(_ &int)
+			`,
+			want: "bar(&int)",
+		},
+		{
+			name: "iface parameter one T=&int accepts int, two &T rejects &int",
+			src: `
+				func main() { foo(&int :: 5) }
+				func foo(_ X) : bar(X, &X)
+				func bar(_ int, _ &int)
+			`,
+			err: "but expected a reference literal",
+		},
+		{
+			name: "iface new parameter T binds int",
+			src: `
+				func main() { foo() }
+				func foo() : bar(X)
+				func bar(_ int)
+			`,
+			want: "bar(int)",
+		},
+		{
+			name: "iface new parameter T binds &int",
+			src: `
+				func main() { foo() }
+				func foo() : bar(X)
+				func bar(_ &int)
+			`,
+			want: "bar(&int)",
+		},
+		{
+			name: "iface return int accepts int",
+			src: `
+				func main() { foo() }
+				func foo() : bar()int
+				func bar() int
+			`,
+			want: "bar()int",
+		},
+		{
+			name: "iface return int accepts &int",
+			src: `
+				func main() { foo() }
+				func foo() : bar()int
+				func bar() &int
+			`,
+			want: "bar()&int",
+		},
+		{
+			name: "iface return &int rejects int",
+			src: `
+				func main() { foo() }
+				func foo() : bar()&int
+				func bar() int
+			`,
+			err: "expected a reference literal",
+		},
+		{
+			name: "iface return &int accepts &int",
+			src: `
+				func main() { foo() }
+				func foo() : bar()&int
+				func bar() &int
+			`,
+			want: "bar()&int",
+		},
+		{
+			name: "iface return T=int accepts int",
+			src: `
+				func main() { foo(5) }
+				func foo(_ X) : bar()X
+				func bar() int
+			`,
+			want: "bar()int",
+		},
+		{
+			name: "iface return T=int accepts &int",
+			src: `
+				func main() { foo(5) }
+				func foo(_ X) : bar()X
+				func bar() &int
+			`,
+			want: "bar()&int",
+		},
+		{
+			name: "iface return &T=&int rejects int",
+			src: `
+				func main() { foo(5) }
+				func bar()int
+				func foo(_ X) : bar()&X
+			`,
+			err: "expected a reference literal",
+		},
+		{
+			name: "iface return &T=int accepts &int",
+			src: `
+				func main() { foo(5) }
+				func bar()&int
+				func foo(_ X) : bar()&X
+			`,
+			want: "bar()&int",
+		},
+		{
+			name: "iface return T=&int accepts int",
+			src: `
+				func main() { foo(&int :: 5) }
+				func bar()int
+				func foo(_ X) : bar()X
+			`,
+			want: "bar()int",
+		},
+		{
+			name: "iface return T=&int accepts &int",
+			src: `
+				func main() { foo(&int :: 5) }
+				func bar()&int
+				func foo(_ X) : bar()X
+			`,
+			want: "bar()&int",
+		},
+		{
+			// You cannot sort a string, since it is immutable.
+			// This should be rejected because the [] function
+			// does not return a &uint8, but a uint8.
+			name: "sorting a string",
+			src: `
+				func main() { sort("Hello, World") }
+				func sort(span S) :
+					[](S, int)&T,	// string does not satisfy this &T.
+					[](S, int, int) S,
+					.length(S)int,
+					<(T, T)bool,
+			`,
+			err: "expected a reference literal &_",
+		},
+		{
+			// You can sort an array, since it is mutable.
+			name: "sorting a array",
+			src: `
+				func main() { sort([1, 2, 3, 4, 5]) }
+				func sort(span S) :
+					[](S, int)&T,	// [int] does satisfy this &T.
+					[](S, int, int) S,
+					.length(S)int,
+					<(T, T)bool,
+			`,
+			want: "built-in []([int], int)&int",
+		},
+		{
+			name: "iface return &T does not accept T",
+			src: `
+				func main() { foo(5) }
+				func bar()int
+				func foo(_ X) : bar()&X
+			`,
+			err: "expected a reference literal &int",
+		},
+		{
+			name: "iface parameter T matches literal",
 			src: `
 				type t [.x int]
 				func main() { foo(t :: [.x 4]) }
 				func bar(_ [.x int])
-				func foo(_ X) : bar(&X)
+				func foo(_ X) : bar(X)
 			`,
 			want: "bar([.x int])",
 		},
 		{
-			name: "literal matches T",
+			name: "iface parameter literal matches T",
 			src: `
 				type t [.x int]
 				func main() { foo([.x 4]) }
 				func bar(_ t)
-				func foo(_ X) : bar(&X)
+				func foo(_ X) : bar(X)
 			`,
 			want: "bar(t)",
 		},

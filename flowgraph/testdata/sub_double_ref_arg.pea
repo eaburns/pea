@@ -1,7 +1,6 @@
-// hello
+// 5
 func main() {
-	str_ref := &string :: "hello",
-	foo(str_ref)
+	foo(&[.x int] :: [.x 5])
 }
 
 func foo(s S) : bar(&S) {
@@ -11,5 +10,10 @@ func foo(s S) : bar(&S) {
 	bar(&S :: s)
 }
 
-func bar(s &string) {print(s)}
+type x_int_ref &[.x int]
+func bar(x &x_int_ref) {
+	print_int(x.x)
+}
+
+func print_int(_ int)
 

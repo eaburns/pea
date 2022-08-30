@@ -84,7 +84,7 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 	var notes []note
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
-		bind, fun, note := findIfaceFunc(x, l, f, f.IfaceArgs[i].(*FuncDecl))
+		bind, fun, note := findIfaceFunc(x, l, f, i)
 		if note != nil {
 			notes = append(notes, note)
 			continue
@@ -116,7 +116,9 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 	return nil
 }
 
-func findIfaceFunc(x scope, l loc.Loc, funInst *FuncInst, decl *FuncDecl) (map[*TypeParm]Type, Func, note) {
+func findIfaceFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*TypeParm]Type, Func, note) {
+	decl := funInst.IfaceArgs[i].(*FuncDecl)
+	declSrc := &funInst.Def.Iface[i]
 	ids := findIDs(x, decl.Name)
 	var notFoundNotes []note
 	var funcs []Func
@@ -154,7 +156,7 @@ func findIfaceFunc(x scope, l loc.Loc, funInst *FuncInst, decl *FuncDecl) (map[*
 	var unifyFails []*unifyFuncFailure
 	binds := make([]map[*TypeParm]Type, len(funcs))
 	for _, f := range funcs {
-		bind, fail := unifyFunc(x, l, f, declPat)
+		bind, fail := unifyFunc(x, l, f, declSrc.Type().(*FuncType), declPat)
 		if fail != nil {
 			unifyFails = append(unifyFails, fail)
 			continue
@@ -249,7 +251,10 @@ type unifyFuncFailure struct {
 // If all of that holds, dst is a candidate function where a function of type src is expected.
 // The returned map is non-nil on success; it contains all TypeParam bindings
 // in both dst and src when converting types.
-func unifyFunc(x scope, l loc.Loc, dst Func, src typePattern) (map[*TypeParm]Type, *unifyFuncFailure) {
+//
+// If srcOrigin is non-nil, it is used to determine whether any arguments
+// or the return type must be reference literals.
+func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePattern) (map[*TypeParm]Type, *unifyFuncFailure) {
 	funcType, ok := valueType(literalType(src.typ)).(*FuncType)
 	if !ok {
 		return nil, &unifyFuncFailure{
@@ -260,63 +265,60 @@ func unifyFunc(x scope, l loc.Loc, dst Func, src typePattern) (map[*TypeParm]Typ
 	srcFunPat := src.withType(funcType)
 	if dst.arity() != len(funcType.Parms) {
 		return nil, &unifyFuncFailure{
-			note:  newNote("%s: parameter mismatch", dst).setLoc(dst),
+			note: newNote("%s: arity mismatch: got %d expected %d",
+				dst, dst.arity(), len(funcType.Parms)).setLoc(dst),
 			parms: -1,
 		}
 	}
-	allBind := make(map[*TypeParm]Type)
+	bind := make(map[*TypeParm]Type)
 	for i := 0; i < dst.arity(); i++ {
-		bind, n := convertType(srcFunPat.parm(i), dst.parm(i), false)
-		if n != nil {
-			n = newNote("%s: cannot convert parameter %d %s to %s",
+		cvt, notes := convert(nil, srcFunPat.parm(i), dst.parm(i), false, &bind)
+		if cvt == nil {
+			n := newNote("%s: cannot convert parameter %d %s to %s",
 				dst, i, srcFunPat.parm(i), dst.parm(i))
+			n.setNotes(notes)
+			n.setLoc(dst)
+			return nil, &unifyFuncFailure{note: n, parms: i}
+		}
+		if srcOrigin != nil && isRefLiteral(srcOrigin.Parms[i]) && cvt.Kind == Deref {
+			n := newNote("%s: parameter %d has type %s, but expected a reference literal %s",
+				dst, i, dst.parm(i), srcFunPat.parm(i))
+			n.setNotes(notes)
+			n.setLoc(dst)
 			return nil, &unifyFuncFailure{note: n, parms: i}
 		}
 		if n := dst.sub(bind); n != nil {
 			n1 := newNote("%s: parameter %d type substitution failed", dst, i)
 			n1.setNotes([]note{n})
-			return nil, &unifyFuncFailure{note: n1, parms: i}
-		}
-		if n := addBindings(allBind, bind); n != nil {
-			n1 := newNote("%s: parameter %d type substitution failed", dst, i)
-			n1.setNotes([]note{n})
+			n.setLoc(dst)
 			return nil, &unifyFuncFailure{note: n1, parms: i}
 		}
 	}
-	bind, n := convertType(dst.ret(), srcFunPat.ret(), false)
-	if n != nil {
-		n = newNote("%s: cannot convert returned %s to %s", dst, dst.ret(), srcFunPat.ret())
+	cvt, notes := convert(nil, dst.ret(), srcFunPat.ret(), false, &bind)
+	if cvt == nil {
+		n := newNote("%s: cannot convert returned %s to %s",
+			dst, dst.ret(), srcFunPat.ret())
+		n.setNotes(notes)
+		n.setLoc(dst)
+		return nil, &unifyFuncFailure{note: n, parms: dst.arity()}
+	}
+	if srcOrigin != nil && isRefLiteral(srcOrigin.Ret) && cvt.Kind == Ref {
+		n := newNote("%s: return has type %s, but expected a reference literal %s",
+			dst, dst.ret(), srcFunPat.ret())
+		n.setNotes(notes)
+		n.setLoc(dst)
 		return nil, &unifyFuncFailure{note: n, parms: dst.arity()}
 	}
 	if n := dst.sub(bind); n != nil {
 		n1 := newNote("%s: return type substitution failed", dst)
 		n1.setNotes([]note{n})
-		return nil, &unifyFuncFailure{note: n1, parms: dst.arity()}
-	}
-	if n := addBindings(allBind, bind); n != nil {
-		n1 := newNote("%s: return type substitution failed", dst)
-		n1.setNotes([]note{n})
+		n.setLoc(dst)
 		return nil, &unifyFuncFailure{note: n1, parms: dst.arity()}
 	}
 	if note := instIface(x, l, dst); note != nil {
 		return nil, &unifyFuncFailure{note: note, parms: dst.arity()}
 	}
-	return allBind, nil
-}
-
-func addBindings(dst, src map[*TypeParm]Type) note {
-	for k, v := range src {
-		prev, ok := dst[k]
-		if !ok {
-			dst[k] = v
-			continue
-		}
-		if eqType(prev, v) {
-			continue
-		}
-		return newNote("%s binds %s and %s", k.Name, prev, v)
-	}
-	return nil
+	return bind, nil
 }
 
 func canonicalFuncInst(f *FuncInst) *FuncInst {
