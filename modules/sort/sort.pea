@@ -39,7 +39,7 @@ func max_heap_down(ts C, less (&T, &T){bool}, i int) :
 
 test sort_by {
 	sorted_by_max := (a [int]) {
-		sort: a by: (a &int, b &int) {a > b},
+		sort: a by: (a, b &int) {a > b},
 		a
 	},
 	assert: sorted_by_max([]) equals: [],
@@ -65,16 +65,16 @@ Func sort:(ts C) :
 	[](C, int, int)C,
 	<(T, T) bool,
 {
-	sort: ts by: (a &T, b &T){ a < b }
+	sort: ts by: (a, b &T){ a < b }
 }
 
 type ref_cmp_type [.x int, .y int]
 
-func <(a &ref_cmp_type, b &ref_cmp_type)bool {
+func <(a, b &ref_cmp_type)bool {
 	return: a.x = b.x && { a.y < b.y } || { a.x < b.x }
 }
 
-func =(a &ref_cmp_type, b &ref_cmp_type)bool {
+func =(a, b &ref_cmp_type)bool {
 	return: a.x = b.x && a.y = b.y
 }
 
@@ -104,6 +104,6 @@ test sort {
 	assert: sorted([1, 2, 4, 3]) equals: [1, 2, 3, 4],
 
 	a := [ref_cmp_type] :: [[.x 1, .y 2], [.x 1, .y 1], [.x 0, .y 100]],
-	sort: a by: (a &ref_cmp_type, b &ref_cmp_type) {a < b},
+	sort: a by: (a, b &ref_cmp_type) {a < b},
 	assert: a equals: [[.x 0, .y 100], [.x 1, .y 1], [.x 1, .y 2]],
 }

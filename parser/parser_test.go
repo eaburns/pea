@@ -91,6 +91,36 @@ func TestExpr(t *testing.T) {
 			},
 		},
 		{
+			`(i, j int){x}`,
+			&BlockLit{
+				Parms: []FuncParm{
+					{
+						Name: Ident{Name: "i"},
+						Type: &NamedType{Name: Ident{Name: "int"}},
+					},
+					{
+						Name: Ident{Name: "j"},
+						Type: &NamedType{Name: Ident{Name: "int"}},
+					},
+				},
+				Exprs: []Expr{Ident{Name: "x"}},
+			},
+		},
+		{
+			`(i, j){x}`,
+			&BlockLit{
+				Parms: []FuncParm{
+					{
+						Name: Ident{Name: "i"},
+					},
+					{
+						Name: Ident{Name: "j"},
+					},
+				},
+				Exprs: []Expr{Ident{Name: "x"}},
+			},
+		},
+		{
 			`(t T){}`,
 			&BlockLit{
 				Parms: []FuncParm{
@@ -593,6 +623,155 @@ func TestExpr(t *testing.T) {
 				t.Fatalf("failed to parse: %s", err.Error())
 			}
 			got := p.Files[0].Defs[0].(*VarDef).Expr.(*BlockLit).Exprs[0]
+			opts := []cmp.Option{
+				cmp.FilterPath(isLoc, cmp.Ignore()),
+			}
+			diff := cmp.Diff(test.want, got, opts...)
+			if diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestDistributeFuncParmType(t *testing.T) {
+	tests := []struct {
+		src  string
+		want *FuncDef
+	}{
+		{
+			src: "func f()",
+			want: &FuncDef{
+				Name: Ident{Name: "f"},
+			},
+		},
+		{
+			src: "func f(i int)",
+			want: &FuncDef{
+				Name: Ident{Name: "f"},
+				Parms: []FuncParm{
+					{
+						Name: Ident{Name: "i"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+				},
+			},
+		},
+		{
+			src: "func f(i int, j int)",
+			want: &FuncDef{
+				Name: Ident{Name: "f"},
+				Parms: []FuncParm{
+					{
+						Name: Ident{Name: "i"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+					{
+						Name: Ident{Name: "j"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+				},
+			},
+		},
+		{
+			src: "func f(i, j int)",
+			want: &FuncDef{
+				Name: Ident{Name: "f"},
+				Parms: []FuncParm{
+					{
+						Name: Ident{Name: "i"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+					{
+						Name: Ident{Name: "j"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+				},
+			},
+		},
+		{
+			src: "func f(i, j, k, l int)",
+			want: &FuncDef{
+				Name: Ident{Name: "f"},
+				Parms: []FuncParm{
+					{
+						Name: Ident{Name: "i"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+					{
+						Name: Ident{Name: "j"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+					{
+						Name: Ident{Name: "k"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+					{
+						Name: Ident{Name: "l"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+				},
+			},
+		},
+		{
+			src: "func f(i, j int, k, l int)",
+			want: &FuncDef{
+				Name: Ident{Name: "f"},
+				Parms: []FuncParm{
+					{
+						Name: Ident{Name: "i"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+					{
+						Name: Ident{Name: "j"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+					{
+						Name: Ident{Name: "k"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+					{
+						Name: Ident{Name: "l"},
+						Type: &NamedType{
+							Name: Ident{Name: "int"},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.src, func(t *testing.T) {
+			p := New()
+			if err := p.Parse("", strings.NewReader(test.src)); err != nil {
+				t.Fatalf("got error: %s", err)
+			}
+			got := p.Files[0].Defs[0]
 			opts := []cmp.Option{
 				cmp.FilterPath(isLoc, cmp.Ignore()),
 			}

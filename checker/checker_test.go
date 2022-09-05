@@ -4902,7 +4902,6 @@ func TestBlockLiteralInference(t *testing.T) {
 		{pat: `(_){}`, expr: `(_ int){}`, want: `(int){}`},
 		{pat: `(_, _){}`, expr: `(_ int, _ string){}`, want: `(int, string){}`},
 		{pat: `(_, _){_}`, expr: `(_ int, _ string){5}`, want: `(int, string){int}`},
-		{pat: `(_, string){_}`, expr: `(_ int, a){5}`, want: `(int, string){int}`},
 		{pat: `(_, _){}`, expr: `(a, b){}`, err: `cannot infer`},
 
 		{src: `type t (){}`, pat: `t`, expr: `(){}`, want: `t`},

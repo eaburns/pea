@@ -160,11 +160,22 @@ FuncBody <- _ "{" exprs:Exprs? _ "}" {
 	return []Expr(*exprs)
 }
 
-FuncParms <- p0:FuncParm ps:(_ "," p1:FuncParm { return FuncParm(p1) })* (_ ",")? {
-	return []FuncParm(append([]FuncParm{p0}, ps...))
+FuncParms <-
+	p:(FuncParmNameType / FuncParmName) _ "," ps:FuncParms {
+		if p.Type == nil {
+			p.Type = ps[0].Type
+		}
+		return []FuncParm(append([]FuncParm{p}, ps...))
+	} /
+	p:FuncParmNameType (_ ",")? {
+		return []FuncParm{p}
+	}
+
+FuncParmName <- name:Id {
+	return FuncParm{Name: name, L: l(parser, start, end)}
 }
 
-FuncParm <- name:Id typ:Type {
+FuncParmNameType <- name:Id typ:Type {
 	return FuncParm{Name: name, Type: typ, L: l(parser, start, end)}
 }
 
@@ -390,20 +401,19 @@ CaseVal <- name:CaseId v:Expr? {
 	return CaseVal{Name: name, Val: val, L: l(parser, start, end)}
 }
 
-BlkLit <- (_ "(" ps:BlkParms? _ ")")? _ "{" es:Exprs? _ "}" {
+BlkLit <- (_ "(" ps:(FuncParms / FuncParmNames)? _ ")")? _ "{" es:Exprs? _ "}" {
 	var parms []FuncParm; if ps != nil { parms = *ps }
 	var exprs []Expr; if es != nil { exprs = *es }
 	return Expr(&BlockLit{Parms: parms, Exprs: exprs, L: l(parser, start, end)})
 }
 
-BlkParm <- id:Id t:Type? {
-	var typ Type; if t != nil { typ = *t }
-	return FuncParm{Name: id, Type: typ, L: l(parser, start, end)}
-}
-
-BlkParms <- p0:BlkParm ps:(_ "," p1:BlkParm { return FuncParm(p1) })* (_ ",")? {
-	return []FuncParm(append([]FuncParm{p0}, ps...))
-}
+FuncParmNames <-
+	p:FuncParmName _ "," ps:FuncParmNames {
+		return []FuncParm(append([]FuncParm{p}, ps...))
+	} /
+	p:FuncParmName {
+		return []FuncParm{p}
+	}
 
 CharLit "character" <- _ data:(['] !"\n" (Esc / "\\'" / [^']) [']) {
 	return Expr(&CharLit{Rune: interpRune(data), L: l(parser, start, end)})
