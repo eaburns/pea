@@ -5,7 +5,7 @@ ar=llvm-ar
 echo "Building gc"
 gc_path=vendor/gc-8.2.0
 (cd libpea/$gc_path && \
-	make -f Makefile.direct > /dev/null)
+	make CC=clang CPP=clang++ -f Makefile.direct > /dev/null)
 
 echo "Building libunwind"
 libunwind_path=vendor/libunwind-11.0.0.src
