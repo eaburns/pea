@@ -50,6 +50,8 @@ Func close:(ch T channel) {
 		panic("closing a closed channel")
 	},
 	ch.limit := -1, // closed
+	broadcast: ch.has_space_cond,
+	broadcast: ch.has_value_cond,
 	unlock: ch.mutex,
 }
 
@@ -57,12 +59,12 @@ Func close:(ch T channel) {
 // Sending to a closed channel causes a runtime panic.
 Func send:(ch T channel, t T) {
 	lock: ch.mutex,
+	while: {ch.limit > 0 && {ch.data.length >= ch.limit}} do: {
+		wait: ch.has_space_cond with: ch.mutex
+	},
 	if: ch.closed then: {
 		unlock: ch.mutex,
 		panic("sending to a closed channel")
-	},
-	while: {ch.limit > 0 && {ch.data.length >= ch.limit}} do: {
-		wait: ch.has_space_cond with: ch.mutex
 	},
 	ch.data push_back: t,
 	signal: ch.has_value_cond,
