@@ -3,6 +3,7 @@
 #include <libunwind.h>
 #include <pthread.h>
 #include <setjmp.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -233,9 +234,32 @@ static void print_test_output(int fd) {
 	}
 }
 
+static void test_timeout_handler(int signal) {
+	pea_panic_cstring("test timed out", __FILE__, __LINE__);
+}
+
 // pea_run_test runs a test and returns 0 on pass and 1 on failure.
 int32_t pea_run_test(void(*test)(), const char* name) {
-	printf("Test %s... ", name);
+	printf("Test %s", name);
+
+	long timeout_sec = -1;
+	const char* timeout_str = getenv("PEA_TEST_TIMEOUT_SECONDS");
+	if (timeout_str != NULL) {
+		char* end = NULL;
+		errno = 0;
+		timeout_sec = strtoll(timeout_str, &end, 10);
+		if (errno != 0) {
+			printf("bad test timeout: %s\n", timeout_str);
+			return 1;
+		}
+		if (timeout_sec > 3600) {
+			printf("ignoring too-long timeout: %ld > 3600 seconds\n", timeout_sec);
+			return 1;
+		}
+		printf(" (timeout: %ld seconds)", timeout_sec);
+	}
+
+	printf("… ");
 	// fflush stdout so the buffer is empty for the child process.
 	fflush(stdout);
 
@@ -263,6 +287,16 @@ int32_t pea_run_test(void(*test)(), const char* name) {
 		dup2(out, STDOUT_FILENO);
 		dup2(out, STDERR_FILENO);
 		test_panic_fd = panic_out;
+		if (timeout_sec > 0) {
+			struct sigaction sa;
+			sa.sa_handler = test_timeout_handler;
+			sigemptyset(&sa.sa_mask);
+			sa.sa_flags = SA_RESTART;
+			if (sigaction(SIGALRM, &sa, NULL) < 0) {
+				abort_errno("sigaction failed", errno);
+			}
+			alarm(timeout_sec);
+		}
 		test();
 		exit(0);
 	}
