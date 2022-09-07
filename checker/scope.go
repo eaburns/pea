@@ -44,6 +44,7 @@ func (*Import) up() scope             { return nil }
 func (f *File) up() scope             { return f.Mod }
 func (v *VarDef) up() scope           { return v.File }
 func (t *TypeDef) up() scope          { return t.File }
+func (d *IfaceDef) up() scope         { return d.File }
 func (f *FuncDef) up() scope          { return f.File }
 func (t *TestDef) up() scope          { return t.File }
 func (b *blockLitScope) up() scope    { return b.parent }
@@ -248,6 +249,13 @@ func (t *TypeDef) findType(args []Type, name string, l loc.Loc) []Type {
 	return nil
 }
 
+func (t *IfaceDef) findType(args []Type, name string, l loc.Loc) []Type {
+	if typ := findTypeVar(t.Parms, args, name, l); typ != nil {
+		return []Type{typ}
+	}
+	return nil
+}
+
 func (f *FuncDef) findType(args []Type, name string, l loc.Loc) []Type {
 	if typ := findTypeVar(f.TypeParms, args, name, l); typ != nil {
 		return []Type{typ}
@@ -262,6 +270,65 @@ func findTypeVar(parms []TypeParm, args []Type, name string, l loc.Loc) *TypeVar
 	for i := range parms {
 		if parms[i].Name == name {
 			return &TypeVar{Name: name, Def: &parms[i], L: l}
+		}
+	}
+	return nil
+}
+
+func findIfaceDef(x0 scope, arity int, name string, l loc.Loc) []*IfaceDef {
+	x := x0
+	var ifaces []*IfaceDef
+	for x != nil {
+		if fi, ok := x.(interface {
+			findIfaceDef(int, string, loc.Loc) *IfaceDef
+		}); ok {
+			iface := fi.findIfaceDef(arity, name, l)
+			if iface != nil {
+				ifaces = append(ifaces, iface)
+			}
+		}
+		x = x.up()
+	}
+	if len(ifaces) > 0 {
+		return ifaces
+	}
+
+	// IfaceDefs in the current module shadow Capital Imported IfaceDefs.
+	// If there was no IfaceDef in this module, check Capital Imported ones.
+	f := file(x0)
+	if f == nil {
+		return nil
+	}
+	for _, imp := range f.Imports {
+		if imp.Exp {
+			iface := imp.findIfaceDef(arity, name, l)
+			if iface != nil {
+				ifaces = append(ifaces, iface)
+			}
+		}
+	}
+	return ifaces
+}
+
+func (m *Mod) findIfaceDef(arity int, name string, l loc.Loc) *IfaceDef {
+	if iface := findIfaceDefInDefs(m.Defs, arity, name, false, l); iface != nil {
+		return iface
+	}
+	return nil
+}
+
+func (i *Import) findIfaceDef(arity int, name string, l loc.Loc) *IfaceDef {
+	if iface := findIfaceDefInDefs(i.Defs, arity, name, true, l); iface != nil {
+		return iface
+	}
+	return nil
+}
+
+func findIfaceDefInDefs(defs []Def, arity int, name string, exportedOnly bool, l loc.Loc) *IfaceDef {
+	for _, def := range defs {
+		d, ok := def.(*IfaceDef)
+		if ok && d.Name == name && len(d.Parms) == arity && (!exportedOnly || d.Exp) {
+			return d
 		}
 	}
 	return nil

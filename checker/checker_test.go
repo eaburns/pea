@@ -2,7 +2,9 @@ package checker
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 	"text/template"
@@ -147,13 +149,13 @@ func TestRedef(t *testing.T) {
 	}{
 		{
 			name: "var redef",
-			src: "var a := int :: 1		var a := int :: 1",
-			err: "redefined",
+			src:  "var a := int :: 1		var a := int :: 1",
+			err:  "redefined",
 		},
 		{
 			name: "var _ not redef",
-			src: "var _ := int :: 1		var _ := int :: 1",
-			err: "",
+			src:  "var _ := int :: 1		var _ := int :: 1",
+			err:  "",
 		},
 		{
 			name: "func parm redef",
@@ -1759,7 +1761,745 @@ func TestTypeResolution(t *testing.T) {
 	}
 }
 
-func TestIfaceInst(t *testing.T) {
+func TestIfaceDef(t *testing.T) {
+	tests := []struct {
+		name      string
+		src       string
+		wantFuncs []string
+		err       string
+		otherMods []testMod
+	}{
+		{
+			name: "empty",
+			src: `
+				iface empty {}
+			`,
+			wantFuncs: nil,
+		},
+		{
+			name: "one func",
+			src: `
+				iface one { one() }
+			`,
+			wantFuncs: []string{"one()"},
+		},
+		{
+			name: "two func",
+			src: `
+				iface one { one(), two() }
+			`,
+			wantFuncs: []string{"one()", "two()"},
+		},
+		{
+			name: "funcs with parms",
+			src: `
+				iface one { one(int, string), two(float32) }
+			`,
+			wantFuncs: []string{"one(int, string)", "two(float32)"},
+		},
+		{
+			name: "funcs with ret",
+			src: `
+				iface one { one()int, two()string }
+			`,
+			wantFuncs: []string{"one()int", "two()string"},
+		},
+		{
+			name: "funcs with parms and ret",
+			src: `
+				iface one { one(bool)int, two(int32, uint8)string }
+			`,
+			wantFuncs: []string{"one(bool)int", "two(int32, uint8)string"},
+		},
+		{
+			name: "keyword func",
+			src: `
+				iface one { for:each:([int], (int){}) }
+			`,
+			wantFuncs: []string{"for:each:([int], (int){})"},
+		},
+		{
+			name: "case func",
+			src: `
+				iface one { err?((){!}) }
+			`,
+			wantFuncs: []string{"err?((){!})"},
+		},
+		{
+			name: "selector func",
+			src: `
+				iface one { .length([int])int }
+			`,
+			wantFuncs: []string{".length([int])int"},
+		},
+		{
+			name: "operator func",
+			src: `
+				iface one { *(int, int)int }
+			`,
+			wantFuncs: []string{"*(int, int)int"},
+		},
+		{
+			name: "iface name",
+			src: `
+				iface two { one, two() }
+				iface one { one() }
+			`,
+			wantFuncs: []string{"one()", "two()"},
+		},
+		{
+			name: "iface name opaque",
+			src: `
+				iface two { one, two() }
+				iface one ({ one() })
+			`,
+			wantFuncs: []string{"one()", "two()"},
+		},
+		{
+			name: "iface name iface name",
+			src: `
+				iface three { two, three() }
+				iface two { one, two() }
+				iface one { one() }
+			`,
+			wantFuncs: []string{"one()", "two()", "three()"},
+		},
+		{
+			name: "same function multiple times",
+			src: `
+				iface one {
+					one(int),
+					one(int),
+				}
+			`,
+			wantFuncs: []string{
+				"one(int)",
+			},
+		},
+		{
+			name: "same name different arity",
+			src: `
+				iface one {
+					one(int),
+					one(),
+				}
+			`,
+			wantFuncs: []string{
+				"one(int)",
+				"one()",
+			},
+		},
+		{
+			name: "same name different arg",
+			src: `
+				iface one {
+					one(int),
+					one(bool),
+				}
+			`,
+			wantFuncs: []string{
+				"one(int)",
+				"one(bool)",
+			},
+		},
+		{
+			name: "same name different return",
+			src: `
+				iface one {
+					one()int,
+					one()bool,
+				}
+			`,
+			wantFuncs: []string{
+				"one()int",
+				"one()bool",
+			},
+		},
+		{
+			name: "same from this and other iface",
+			src: `
+				iface one {
+					one()int,
+					other_iface,
+				}
+				iface other_iface {
+					one()int,
+				}
+			`,
+			wantFuncs: []string{
+				"one()int",
+			},
+		},
+		{
+			name: "same from other ifaces",
+			src: `
+				iface one {
+					a,
+					b,
+				}
+				iface a {
+					one()int,
+				}
+				iface b {
+					one()int,
+				}
+			`,
+			wantFuncs: []string{
+				"one()int",
+			},
+		},
+		{
+			name: "iface alias",
+			src: `
+				iface one_prime := one
+				iface one { one() }
+			`,
+			wantFuncs: []string{"one()"},
+		},
+		{
+			name: "iface alias opaque",
+			src: `
+				iface one_prime := one
+				iface one ({ one() })
+			`,
+			wantFuncs: []string{"one()"},
+		},
+		{
+			name: "iface alias alias",
+			src: `
+				iface one := two
+				iface two := three
+				iface three {
+					foo()
+				}
+			`,
+			wantFuncs: []string{"foo()"},
+		},
+		{
+			name: "iface type parameter",
+			src: `
+				iface H hasher { hash(H)uint64 }
+			`,
+			wantFuncs: []string{"hash(H)uint64"},
+		},
+		{
+			name: "iface instantiate other iface type parameter",
+			src: `
+				iface int_hasher { int hasher }
+				iface H hasher { hash(H)uint64 }
+			`,
+			wantFuncs: []string{"hash(int)uint64"},
+		},
+		{
+			name: "iface instantiate alias iface type parameter",
+			src: `
+				iface int_hasher := int hasher
+				iface H hasher { hash(H)uint64 }
+			`,
+			wantFuncs: []string{"hash(int)uint64"},
+		},
+		{
+			name: "iface instantiate alias iface type parameter 2",
+			src: `
+				iface S int_set := (S, int, bool) map
+				iface (M, K, V) map { find(M, K)V }
+			`,
+			wantFuncs: []string{"find(S, int)bool"},
+		},
+		{
+			name: "iface name cycle",
+			src: `
+				iface one { two }
+				iface two { three }
+				iface three { one }
+			`,
+			err: "interface cycle",
+		},
+		{
+			name: "iface alias cycle",
+			src: `
+				iface one := two
+				iface two := three
+				iface three := one
+			`,
+			err: "interface cycle",
+		},
+		{
+			name: "iface alias and name cycle",
+			src: `
+				iface one { two }
+				iface two := three
+				iface three := one
+			`,
+			err: "interface cycle",
+		},
+		{
+			name: "other module iface",
+			src: `
+				import "two"
+				iface one {
+					one(),
+					two#two
+				}
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						Iface two { two() }
+					`,
+				},
+			},
+			wantFuncs: []string{
+				"one()",
+				"two()",
+			},
+		},
+		{
+			name: "module not found",
+			src: `
+				iface one {
+					one(),
+					unknown#two
+				}
+			`,
+			err: "not found",
+		},
+		{
+			name: "other module iface not found",
+			src: `
+				import "two"
+				iface one {
+					one(),
+					two#two
+				}
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+					`,
+				},
+			},
+			err: "not found",
+		},
+		{
+			name: "other module iface not found: unexported",
+			src: `
+				import "two"
+				iface one {
+					one(),
+					two#two
+				}
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						iface two { two() }
+					`,
+				},
+			},
+			err: "not found",
+		},
+		{
+			name: "other module iface opaque",
+			src: `
+				import "two"
+				iface one {
+					one(),
+					two#two
+				}
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						Iface two ({ two() })
+					`,
+				},
+			},
+			err: "is opaque",
+		},
+		{
+			name: "other module other module iface",
+			src: `
+				import "two"
+				iface one {
+					one(),
+					two#two
+				}
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						import "three"
+						Iface two {
+							two(),
+							three#three
+						}
+					`,
+				},
+				{
+					path: "three",
+					src: `
+						Iface three { three() }
+					`,
+				},
+			},
+			wantFuncs: []string{
+				"one()",
+				"two()",
+				"three()",
+			},
+		},
+		{
+			name: "alias other module iface",
+			src: `
+				import "two"
+				iface one := two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						Iface two { two() }
+					`,
+				},
+			},
+			wantFuncs: []string{
+				"two()",
+			},
+		},
+		{
+			name: "alias module not found",
+			src: `
+				iface one := unknown#two
+			`,
+			err: "not found",
+		},
+		{
+			name: "alias other module iface not found",
+			src: `
+				import "two"
+				iface one := two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+					`,
+				},
+			},
+			err: "not found",
+		},
+		{
+			name: "alias other module iface not found: unexported",
+			src: `
+				import "two"
+				iface one := two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						iface two { two() }
+					`,
+				},
+			},
+			err: "not found",
+		},
+		{
+			name: "alias other module iface opaque",
+			src: `
+				import "two"
+				iface one := two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						Iface two ({ two() })
+					`,
+				},
+			},
+			err: "is opaque",
+		},
+		{
+			name: "alias other module other module iface",
+			src: `
+				import "two"
+				iface one := two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						import "three"
+						Iface two {
+							two(),
+							three#three
+						}
+					`,
+				},
+				{
+					path: "three",
+					src: `
+						Iface three { three() }
+					`,
+				},
+			},
+			wantFuncs: []string{
+				"two()",
+				"three()",
+			},
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			if strings.HasPrefix(test.name, "SKIP") {
+				t.Skip()
+			}
+			mod, errs := check("test", []string{test.src}, test.otherMods)
+			switch {
+			case test.err == "" && len(errs) == 0:
+				var got []string
+				for _, f := range mod.Defs[0].(*IfaceDef).Funcs {
+					got = append(got, f.String())
+				}
+				sort.Strings(got)
+				sort.Strings(test.wantFuncs)
+				if !reflect.DeepEqual(got, test.wantFuncs) {
+					t.Errorf("got iface %s, want %s", got, test.wantFuncs)
+				}
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
+func TestIfaceConstraintFuncs(t *testing.T) {
+	tests := []struct {
+		name string
+		// src must contain a function f;
+		// its iface constraint is compared to wantFuncs.
+		src       string
+		wantFuncs []string
+		err       string
+		otherMods []testMod
+	}{
+		{
+			name: "one func",
+			src: `
+				func f() : one(int)bool
+			`,
+			wantFuncs: []string{
+				"one(int)bool",
+			},
+		},
+		{
+			name: "one iface",
+			src: `
+				func f() : one
+				iface one { one(int)bool }
+			`,
+			wantFuncs: []string{
+				"one(int)bool",
+			},
+		},
+		{
+			name: "one iface alias",
+			src: `
+				func f() : one_prime
+				iface one_prime := one
+				iface one { one() }
+			`,
+			wantFuncs: []string{
+				"one()",
+			},
+		},
+		{
+			name: "duplicate func",
+			src: `
+				func f() : one(), one()
+			`,
+			wantFuncs: []string{
+				"one()",
+			},
+		},
+		{
+			name: "duplicate func via iface",
+			src: `
+				func f() : one(), one
+				iface one { one() }
+			`,
+			wantFuncs: []string{
+				"one()",
+			},
+		},
+		{
+			name: "inst iface",
+			src: `
+				func f() : [uint8] hasher
+				iface H hasher { hash(H)uint64 }
+			`,
+			wantFuncs: []string{
+				"hash([uint8])uint64",
+			},
+		},
+		{
+			name: "inst iface alias",
+			src: `
+				func f() : ([int], string) int_map
+				iface (M, K, V) map { find(M, K) V }
+				iface (M, V) int_map := (M, int, V) map
+			`,
+			wantFuncs: []string{
+				"find([int], int)string",
+			},
+		},
+		{
+			name: "other module iface",
+			src: `
+				import "two"
+				func f() : one(), two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						Iface two { two() }
+					`,
+				},
+			},
+			wantFuncs: []string{
+				"one()",
+				"two()",
+			},
+		},
+		{
+			name: "module not found",
+			src: `
+				func f() : one(), unknown#two
+			`,
+			err: "not found",
+		},
+		{
+			name: "other module iface not found",
+			src: `
+				import "two"
+				func f() : one(), two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						iface not_two { two() }
+					`,
+				},
+			},
+			err: "not found",
+		},
+		{
+			name: "other module iface not found: unexported",
+			src: `
+				import "two"
+				func f() : one(), two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						iface two { two() }
+					`,
+				},
+			},
+			err: "not found",
+		},
+		{
+			name: "other module iface opaque",
+			src: `
+				import "two"
+				func f() : one(), two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						Iface two ({ two() })
+					`,
+				},
+			},
+			err: "is opaque",
+		},
+		{
+			name: "other module other module iface",
+			src: `
+				import "two"
+				func f(): one(), two#two
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						import "three"
+						Iface two {
+							two(),
+							three#three
+						}
+					`,
+				},
+				{
+					path: "three",
+					src: `
+						Iface three { three() }
+					`,
+				},
+			},
+			wantFuncs: []string{
+				"one()",
+				"two()",
+				"three()",
+			},
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			if strings.HasPrefix(test.name, "SKIP") {
+				t.Skip()
+			}
+			mod, errs := check("test", []string{test.src}, test.otherMods)
+			switch {
+			case test.err == "" && len(errs) == 0:
+				var got []string
+				for _, f := range findFuncDef(t, "f", mod).Iface {
+					got = append(got, f.String())
+				}
+				sort.Strings(got)
+				sort.Strings(test.wantFuncs)
+				if !reflect.DeepEqual(got, test.wantFuncs) {
+					t.Errorf("got iface %s, want %s", got, test.wantFuncs)
+				}
+			case test.err == "" && len(errs) > 0:
+				t.Errorf("unexpected error: %s", errs[0])
+			case test.err != "" && len(errs) == 0:
+				t.Errorf("expected error matching %s, got nil", test.err)
+			case !regexp.MustCompile(test.err).MatchString(errStr(errs)):
+				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
+			}
+		})
+	}
+}
+
+func TestIfaceConstraintInst(t *testing.T) {
 	tests := []struct {
 		name      string
 		src       string
@@ -2359,13 +3099,13 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "pick function with correct arity: 0",
-			src: "func x()	func x(_ int)",
+			src:  "func x()	func x(_ int)",
 			call: "x()",
 			want: "x()",
 		},
 		{
 			name: "pick function with correct arity: 1",
-			src: "func x()	func x(_ int)",
+			src:  "func x()	func x(_ int)",
 			call: "x(1)",
 			want: "x(int)",
 		},
@@ -2377,7 +3117,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "call a 1-ary function variable",
-			src: "var x (int){}	func x()",
+			src:  "var x (int){}	func x()",
 			call: "x()",
 			want: "x()",
 		},
@@ -2392,49 +3132,49 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "choose matching func variable over mismatching func",
-			src: "var x (int){}	func x()",
+			src:  "var x (int){}	func x()",
 			call: "x(1)",
 			want: "x",
 		},
 		{
 			name: "ambiguous call: same exact signatures",
-			src: "func x()	func x()",
+			src:  "func x()	func x()",
 			call: "x()",
 			err:  "ambiguous",
 		},
 		{
 			name: "ambiguous call: variable and function",
-			src: "var x(){}	func x()",
+			src:  "var x(){}	func x()",
 			call: "x()",
 			err:  "ambiguous",
 		},
 		{
 			name: "arg 1 matches; pick based on arg 2",
-			src: "func x(u int, s string)		func x(i int, j int)",
+			src:  "func x(u int, s string)		func x(i int, j int)",
 			call: "x(1, 2)",
 			want: "x(int, int)",
 		},
 		{
 			name: "arg 1 matches; pick based on arg 2—again",
-			src: "func x(u int, s string)		func x(i int, j int)",
+			src:  "func x(u int, s string)		func x(i int, j int)",
 			call: "x(1, \"hello\")",
 			want: "x(int, string)",
 		},
 		{
-			src: "func x(u int8, s string)		func x(i int8, j int)",
+			src:  "func x(u int8, s string)		func x(i int8, j int)",
 			name: "arg 1 common type matches, pick based on arg 2",
 			call: "x(1, 2)",
 			want: "x(int8, int)",
 		},
 		{
 			name: "arg 1 common type matches, pick based on arg 2—again",
-			src: "func x(u int8, s string)		func x(i int8, j int)",
+			src:  "func x(u int8, s string)		func x(i int8, j int)",
 			call: "x(1, \"hello\")",
 			want: "x(int8, string)",
 		},
 		{
 			name: "arg 1 converts, pick based on arg 2?",
-			src: "func x(u int, s string)		func x(i &int, j int)",
+			src:  "func x(u int, s string)		func x(i &int, j int)",
 			call: "x(&int :: 1, 2)",
 			want: "x(&int, int)",
 		},
@@ -2450,14 +3190,14 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "pick based on matching return type",
-			src: "func x()int		func x()string",
+			src:  "func x()int		func x()string",
 			ret:  "int",
 			call: "x()",
 			want: "x()int",
 		},
 		{
 			name: "pick based on matching return type—again",
-			src: "func x()int		func x()string",
+			src:  "func x()int		func x()string",
 			ret:  "string",
 			call: "x()",
 			want: "x()string",

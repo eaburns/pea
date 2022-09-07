@@ -783,6 +783,281 @@ func TestDistributeFuncParmType(t *testing.T) {
 	}
 }
 
+func TestIfaceDef(t *testing.T) {
+	tests := []struct {
+		src  string
+		want *IfaceDef
+	}{
+		{
+			src: "iface empty {}",
+			want: &IfaceDef{
+				Name:  Ident{Name: "empty"},
+				Iface: nil,
+			},
+		},
+		{
+			src: "iface fooer { foo() }",
+			want: &IfaceDef{
+				Name:  Ident{Name: "fooer"},
+				Iface: []interface{}{&FuncDecl{Name: Ident{Name: "foo"}}},
+			},
+		},
+		{
+			src: "Iface fooer { foo() }",
+			want: &IfaceDef{
+				Exp:   true,
+				Name:  Ident{Name: "fooer"},
+				Iface: []interface{}{&FuncDecl{Name: Ident{Name: "foo"}}},
+			},
+		},
+		{
+			src: "iface fooer ({ foo() })",
+			want: &IfaceDef{
+				Opaque: true,
+				Name:   Ident{Name: "fooer"},
+				Iface:  []interface{}{&FuncDecl{Name: Ident{Name: "foo"}}},
+			},
+		},
+		{
+			src: "Iface fooer ({ foo() })",
+			want: &IfaceDef{
+				Exp:    true,
+				Opaque: true,
+				Name:   Ident{Name: "fooer"},
+				Iface:  []interface{}{&FuncDecl{Name: Ident{Name: "foo"}}},
+			},
+		},
+		{
+			src: "iface fooer { foo(int, string)float64 }",
+			want: &IfaceDef{
+				Name: Ident{Name: "fooer"},
+				Iface: []interface{}{
+					&FuncDecl{
+						Name: Ident{Name: "foo"},
+						Parms: []Type{
+							&NamedType{Name: Ident{Name: "int"}},
+							&NamedType{Name: Ident{Name: "string"}},
+						},
+						Ret: &NamedType{Name: Ident{Name: "float64"}},
+					},
+				},
+			},
+		},
+		{
+			src: "iface fooer { foo(), bar() }",
+			want: &IfaceDef{
+				Name: Ident{Name: "fooer"},
+				Iface: []interface{}{
+					&FuncDecl{
+						Name: Ident{Name: "foo"},
+					},
+					&FuncDecl{
+						Name: Ident{Name: "bar"},
+					},
+				},
+			},
+		},
+		{
+			src: "iface fooer { foo(int, string)float64, bar()[int8] }",
+			want: &IfaceDef{
+				Name: Ident{Name: "fooer"},
+				Iface: []interface{}{
+					&FuncDecl{
+						Name: Ident{Name: "foo"},
+						Parms: []Type{
+							&NamedType{Name: Ident{Name: "int"}},
+							&NamedType{Name: Ident{Name: "string"}},
+						},
+						Ret: &NamedType{Name: Ident{Name: "float64"}},
+					},
+					&FuncDecl{
+						Name: Ident{Name: "bar"},
+						Ret: &ArrayType{
+							ElemType: &NamedType{Name: Ident{Name: "int8"}},
+						},
+					},
+				},
+			},
+		},
+		{
+			src: "iface T set { contains(T)bool }",
+			want: &IfaceDef{
+				TypeParms: []TypeVar{{Name: "T"}},
+				Name:      Ident{Name: "set"},
+				Iface: []interface{}{
+					&FuncDecl{
+						Name:  Ident{Name: "contains"},
+						Parms: []Type{TypeVar{Name: "T"}},
+						Ret:   &NamedType{Name: Ident{Name: "bool"}},
+					},
+				},
+			},
+		},
+		{
+			src: "iface (K, V) map { get(K)V }",
+			want: &IfaceDef{
+				TypeParms: []TypeVar{
+					{Name: "K"},
+					{Name: "V"},
+				},
+				Name: Ident{Name: "map"},
+				Iface: []interface{}{
+					&FuncDecl{
+						Name:  Ident{Name: "get"},
+						Parms: []Type{TypeVar{Name: "K"}},
+						Ret:   TypeVar{Name: "V"},
+					},
+				},
+			},
+		},
+		{
+			src: "iface a { b }",
+			want: &IfaceDef{
+				Name:      Ident{Name: "a"},
+				Iface: []interface{}{
+					&NamedType{
+						Name:  Ident{Name: "b"},
+					},
+				},
+			},
+		},
+		{
+			src: "iface a { b, c, d }",
+			want: &IfaceDef{
+				Name:      Ident{Name: "a"},
+				Iface: []interface{}{
+					&NamedType{
+						Name:  Ident{Name: "b"},
+					},
+					&NamedType{
+						Name:  Ident{Name: "c"},
+					},
+					&NamedType{
+						Name:  Ident{Name: "d"},
+					},
+				},
+			},
+		},
+		{
+			src: "iface a { int b }",
+			want: &IfaceDef{
+				Name:      Ident{Name: "a"},
+				Iface: []interface{}{
+					&NamedType{
+						Args: []Type{
+							&NamedType{Name: Ident{Name: "int"}},
+						},
+						Name:  Ident{Name: "b"},
+					},
+				},
+			},
+		},
+		{
+			src: "iface a { mod#b }",
+			want: &IfaceDef{
+				Name:      Ident{Name: "a"},
+				Iface: []interface{}{
+					&NamedType{
+						Mod: &Ident{Name: "mod"},
+						Name:  Ident{Name: "b"},
+					},
+				},
+			},
+		},
+		{
+			src: "iface a { int mod#b }",
+			want: &IfaceDef{
+				Name:      Ident{Name: "a"},
+				Iface: []interface{}{
+					&NamedType{
+						Args: []Type{
+							&NamedType{Name: Ident{Name: "int"}},
+						},
+						Mod: &Ident{Name: "mod"},
+						Name:  Ident{Name: "b"},
+					},
+				},
+			},
+		},
+		{
+			src: "iface a := b",
+			want: &IfaceDef{
+				Name:      Ident{Name: "a"},
+				Alias: &NamedType{
+					Name: Ident{Name: "b"},
+				},
+			},
+		},
+		{
+			src: "iface a := int b",
+			want: &IfaceDef{
+				Name:      Ident{Name: "a"},
+				Alias: &NamedType{
+					Args: []Type{
+						&NamedType{Name: Ident{Name: "int"}},
+					},
+					Name: Ident{Name: "b"},
+				},
+			},
+		},
+		{
+			src: "iface a := mod#b",
+			want: &IfaceDef{
+				Name:      Ident{Name: "a"},
+				Alias: &NamedType{
+					Mod: &Ident{Name: "mod"},
+					Name: Ident{Name: "b"},
+				},
+			},
+		},
+		{
+			src: "iface a := int mod#b",
+			want: &IfaceDef{
+				Name:      Ident{Name: "a"},
+				Alias: &NamedType{
+					Args: []Type{
+						&NamedType{Name: Ident{Name: "int"}},
+					},
+					Mod: &Ident{Name: "mod"},
+					Name: Ident{Name: "b"},
+				},
+			},
+		},
+		{
+			src: "iface T set := (T, bool) map",
+			want: &IfaceDef{
+				TypeParms: []TypeVar{{Name: "T"}},
+				Name:      Ident{Name: "set"},
+				Alias: &NamedType{
+					Args: []Type{
+						TypeVar{Name: "T"},
+						&NamedType{Name: Ident{Name: "bool"}},
+					},
+					Name: Ident{Name: "map"},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.src, func(t *testing.T) {
+			p := New()
+			if err := p.Parse("", strings.NewReader(test.src)); err != nil {
+				t.Fatalf("got error: %s", err)
+			}
+			got := p.Files[0].Defs[0]
+			opts := []cmp.Option{
+				cmp.FilterPath(isLoc, cmp.Ignore()),
+			}
+			diff := cmp.Diff(test.want, got, opts...)
+			if diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+
+}
+
 func TestNoDoubleRef(t *testing.T) {
 	const src = `
 		type t &&int
@@ -790,6 +1065,20 @@ func TestNoDoubleRef(t *testing.T) {
 	if err := New().Parse("", strings.NewReader(src)); err == nil {
 		t.Log(src)
 		t.Fatalf("got successful parse, want error")
+	}
+}
+
+func TestTypeThenIface(t *testing.T) {
+	const src = `
+		type T option [none?, some? T]
+
+		iface (M, K, V) map {
+			add(M, K, V)bool
+		}
+	`
+	if err := New().Parse("", strings.NewReader(src)); err != nil {
+		t.Log(src)
+		t.Fatalf("got %s parse, want nil", err)
 	}
 }
 

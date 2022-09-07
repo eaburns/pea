@@ -90,12 +90,30 @@ type FuncType struct {
 	L     loc.Loc
 }
 
+type IfaceDef struct {
+	Exp       bool
+	Opaque    bool
+	TypeParms []TypeVar
+	Name      Ident
+	// Iface and Alias are mutually exclusive.
+	// Iface is the defintition of a non-alias interface.
+	// Each element is either a *FuncDecl
+	// or a *NamedType naming an interface.
+	Iface []interface{}
+	// Alias is the name of an interface that this one aliases.
+	Alias *NamedType
+	L     loc.Loc
+}
+
 type FuncDef struct {
 	Exp   bool
 	Name  Ident
 	Parms []FuncParm
 	Ret   Type // nil if no return
-	Iface []FuncDecl
+	// Iface is the defintition of any interface constraints.
+	// Each element is either a *FuncDecl
+	// or a *NamedType naming an interface.
+	Iface []interface{}
 	Exprs []Expr // nil if unspecified, non-nil, len()==0 if empty
 	L     loc.Loc
 }

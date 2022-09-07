@@ -42,6 +42,7 @@ func (f *File) NewLines() []int { return f.Nls }
 func (f *File) Len() int        { return f.Length }
 
 type Def interface {
+	Loc() loc.Loc
 }
 
 type Import struct {
@@ -99,6 +100,8 @@ type TypeDef struct {
 	Insts  []*TypeInst
 	L      loc.Loc
 }
+
+func (d *TypeDef) Loc() loc.Loc { return d.L }
 
 type TypeParm struct {
 	Name string
@@ -215,6 +218,31 @@ type BasicType struct {
 
 func (b *BasicType) Loc() loc.Loc { return b.L }
 
+type IfaceDef struct {
+	File  *File
+	Mod   string
+	Name  string
+	Parms []TypeParm
+	// Iface and Alias are mutually exclusive.
+	// Iface elements are of type *FuncDecl or *IfaceInst.
+	Iface  []interface{}
+	Alias  *IfaceInst
+	Exp    bool
+	Opaque bool
+
+	Funcs []FuncDecl
+	Insts []*IfaceInst
+	L     loc.Loc
+}
+
+func (d *IfaceDef) Loc() loc.Loc { return d.L }
+
+type IfaceInst struct {
+	Def   *IfaceDef
+	Args  []Type
+	Funcs []FuncDecl
+}
+
 type TestDef struct {
 	File   *File
 	Mod    string
@@ -223,6 +251,8 @@ type TestDef struct {
 	Exprs  []Expr
 	L      loc.Loc
 }
+
+func (d *TestDef) Loc() loc.Loc { return d.L }
 
 type FuncDef struct {
 	File      *File

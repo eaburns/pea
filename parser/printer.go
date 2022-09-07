@@ -95,6 +95,21 @@ func (t *TypeDef) print(pc *config) {
 	pc.p("\n}")
 }
 
+func (t *IfaceDef) print(pc *config) {
+	pc.p("IfaceDef{")
+	pc.loc(t.L)
+	pc.field("Exp", t.Exp)
+	pc.field("Alias", t.Alias)
+	pc.field("TypeParms", t.TypeParms)
+	pc.field("Name", t.Name)
+	if t.Alias == nil {
+		pc.field("Iface", t.Iface)
+	} else {
+		pc.field("Alias", t.Alias)
+	}
+	pc.p("\n}")
+}
+
 func (r *RefType) print(pc *config) {
 	pc.p("RefType{")
 	pc.loc(r.L)

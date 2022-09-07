@@ -28,108 +28,113 @@ const (
 	_CaseDef                    int = 22
 	_CaseDefs                   int = 23
 	_FuncType                   int = 24
-	_FuncDef                    int = 25
-	_FuncBody                   int = 26
-	_FuncParms                  int = 27
-	_FuncParmName               int = 28
-	_FuncParmNameType           int = 29
-	_FuncDecl                   int = 30
-	_FuncDecls                  int = 31
-	_TestDef                    int = 32
-	_Expr                       int = 33
-	_Exprs                      int = 34
-	_Asgn                       int = 35
-	_AsgnArg                    int = 36
-	_AsgnOp                     int = 37
-	_KwCall                     int = 38
-	_KwArg                      int = 39
-	_KwCall1                    int = 40
-	_KwArg1                     int = 41
-	_Cvt                        int = 42
-	_CvtArg                     int = 43
-	_Switch                     int = 44
-	_SwitchArg                  int = 45
-	_Bin5                       int = 46
-	_Bin5Arg                    int = 47
-	_Bin5Op                     int = 48
-	_Bin4                       int = 49
-	_Bin4Arg                    int = 50
-	_Bin4Op                     int = 51
-	_Bin3                       int = 52
-	_Bin3Arg                    int = 53
-	_Bin3Op                     int = 54
-	_Bin2                       int = 55
-	_Bin2Arg                    int = 56
-	_Bin2Op                     int = 57
-	_Bin1                       int = 58
-	_Bin1Arg                    int = 59
-	_Bin1Op                     int = 60
-	_Un                         int = 61
-	_Op                         int = 62
-	_UnArg                      int = 63
-	_Pri                        int = 64
-	_Sel                        int = 65
-	_DotName                    int = 66
-	_Call                       int = 67
-	_Idx                        int = 68
-	_PriArg                     int = 69
-	_SubExpr                    int = 70
-	_ModSel                     int = 71
-	_ModTag                     int = 72
-	_FuncName                   int = 73
-	_IdxOp                      int = 74
-	_Cases                      int = 75
-	_Kwds                       int = 76
-	_ArrayLit                   int = 77
-	_StructLit                  int = 78
-	_FieldVals                  int = 79
-	_FieldVal                   int = 80
-	_FieldId                    int = 81
-	_UnionLit                   int = 82
-	_CaseVal                    int = 83
-	_BlkLit                     int = 84
-	_FuncParmNames              int = 85
-	_CharLit                    int = 86
-	_StrLit                     int = 87
-	_InterpStr                  int = 88
-	_Esc                        int = 89
-	_RawStr                     int = 90
-	_NumLit                     int = 91
-	_DecLit                     int = 92
-	_HexLit                     int = 93
-	_FloatLit                   int = 94
-	_TypeVar                    int = 95
-	_Kwd                        int = 96
-	_CaseId                     int = 97
-	_ModId                      int = 98
-	_Id                         int = 99
-	__                          int = 100
-	_NAME                       int = 101
-	_RESERVED                   int = 102
-	_D                          int = 103
-	_X                          int = 104
-	_L                          int = 105
-	_O                          int = 106
-	_SPACE                      int = 107
-	_COMMENT                    int = 108
-	_EOF                        int = 109
-	_Bin__AsgnOp__AsgnArg       int = 110
-	_NameArg__Kwd__KwArg        int = 111
-	_NameArg__Kwd__KwArg1       int = 112
-	_NameArg__CaseId__SwitchArg int = 113
-	_Bin__Bin5Op__Bin5Arg       int = 114
-	_Bin__Bin4Op__Bin4Arg       int = 115
-	_Bin__Bin3Op__Bin3Arg       int = 116
-	_Bin__Bin2Op__Bin2Arg       int = 117
-	_Bin__Bin1Op__Bin1Arg       int = 118
-	_BinTail__AsgnOp__AsgnArg   int = 119
-	_BinTail__Bin5Op__Bin5Arg   int = 120
-	_BinTail__Bin4Op__Bin4Arg   int = 121
-	_BinTail__Bin3Op__Bin3Arg   int = 122
-	_BinTail__Bin2Op__Bin2Arg   int = 123
-	_BinTail__Bin1Op__Bin1Arg   int = 124
+	_IfaceDef                   int = 25
+	_DefIface                   int = 26
+	_Iface                      int = 27
+	_IfaceElem                  int = 28
+	_IfaceName                  int = 29
+	_FuncDef                    int = 30
+	_FuncBody                   int = 31
+	_FuncParms                  int = 32
+	_FuncParmName               int = 33
+	_FuncParmNameType           int = 34
+	_FuncDecl                   int = 35
+	_FuncDecls                  int = 36
+	_TestDef                    int = 37
+	_Expr                       int = 38
+	_Exprs                      int = 39
+	_Asgn                       int = 40
+	_AsgnArg                    int = 41
+	_AsgnOp                     int = 42
+	_KwCall                     int = 43
+	_KwArg                      int = 44
+	_KwCall1                    int = 45
+	_KwArg1                     int = 46
+	_Cvt                        int = 47
+	_CvtArg                     int = 48
+	_Switch                     int = 49
+	_SwitchArg                  int = 50
+	_Bin5                       int = 51
+	_Bin5Arg                    int = 52
+	_Bin5Op                     int = 53
+	_Bin4                       int = 54
+	_Bin4Arg                    int = 55
+	_Bin4Op                     int = 56
+	_Bin3                       int = 57
+	_Bin3Arg                    int = 58
+	_Bin3Op                     int = 59
+	_Bin2                       int = 60
+	_Bin2Arg                    int = 61
+	_Bin2Op                     int = 62
+	_Bin1                       int = 63
+	_Bin1Arg                    int = 64
+	_Bin1Op                     int = 65
+	_Un                         int = 66
+	_Op                         int = 67
+	_UnArg                      int = 68
+	_Pri                        int = 69
+	_Sel                        int = 70
+	_DotName                    int = 71
+	_Call                       int = 72
+	_Idx                        int = 73
+	_PriArg                     int = 74
+	_SubExpr                    int = 75
+	_ModSel                     int = 76
+	_ModTag                     int = 77
+	_FuncName                   int = 78
+	_IdxOp                      int = 79
+	_Cases                      int = 80
+	_Kwds                       int = 81
+	_ArrayLit                   int = 82
+	_StructLit                  int = 83
+	_FieldVals                  int = 84
+	_FieldVal                   int = 85
+	_FieldId                    int = 86
+	_UnionLit                   int = 87
+	_CaseVal                    int = 88
+	_BlkLit                     int = 89
+	_FuncParmNames              int = 90
+	_CharLit                    int = 91
+	_StrLit                     int = 92
+	_InterpStr                  int = 93
+	_Esc                        int = 94
+	_RawStr                     int = 95
+	_NumLit                     int = 96
+	_DecLit                     int = 97
+	_HexLit                     int = 98
+	_FloatLit                   int = 99
+	_TypeVar                    int = 100
+	_Kwd                        int = 101
+	_CaseId                     int = 102
+	_ModId                      int = 103
+	_Id                         int = 104
+	__                          int = 105
+	_NAME                       int = 106
+	_RESERVED                   int = 107
+	_D                          int = 108
+	_X                          int = 109
+	_L                          int = 110
+	_O                          int = 111
+	_SPACE                      int = 112
+	_COMMENT                    int = 113
+	_EOF                        int = 114
+	_Bin__AsgnOp__AsgnArg       int = 115
+	_NameArg__Kwd__KwArg        int = 116
+	_NameArg__Kwd__KwArg1       int = 117
+	_NameArg__CaseId__SwitchArg int = 118
+	_Bin__Bin5Op__Bin5Arg       int = 119
+	_Bin__Bin4Op__Bin4Arg       int = 120
+	_Bin__Bin3Op__Bin3Arg       int = 121
+	_Bin__Bin2Op__Bin2Arg       int = 122
+	_Bin__Bin1Op__Bin1Arg       int = 123
+	_BinTail__AsgnOp__AsgnArg   int = 124
+	_BinTail__Bin5Op__Bin5Arg   int = 125
+	_BinTail__Bin4Op__Bin4Arg   int = 126
+	_BinTail__Bin3Op__Bin3Arg   int = 127
+	_BinTail__Bin2Op__Bin2Arg   int = 128
+	_BinTail__Bin1Op__Bin1Arg   int = 129
 
-	_N int = 125
+	_N int = 130
 )
 
 type _Parser struct {
@@ -1015,7 +1020,7 @@ func _DefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// VarDef/TypeDef/FuncDef/TestDef
+	// VarDef/TypeDef/IfaceDef/FuncDef/TestDef
 	{
 		pos3 := pos
 		// VarDef
@@ -1032,19 +1037,26 @@ func _DefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto ok0
 	fail5:
 		pos = pos3
-		// FuncDef
-		if !_accept(parser, _FuncDefAccepts, &pos, &perr) {
+		// IfaceDef
+		if !_accept(parser, _IfaceDefAccepts, &pos, &perr) {
 			goto fail6
 		}
 		goto ok0
 	fail6:
 		pos = pos3
-		// TestDef
-		if !_accept(parser, _TestDefAccepts, &pos, &perr) {
+		// FuncDef
+		if !_accept(parser, _FuncDefAccepts, &pos, &perr) {
 			goto fail7
 		}
 		goto ok0
 	fail7:
+		pos = pos3
+		// TestDef
+		if !_accept(parser, _TestDefAccepts, &pos, &perr) {
+			goto fail8
+		}
+		goto ok0
+	fail8:
 		pos = pos3
 		goto fail
 	ok0:
@@ -1064,7 +1076,7 @@ func _DefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _Def}
-	// VarDef/TypeDef/FuncDef/TestDef
+	// VarDef/TypeDef/IfaceDef/FuncDef/TestDef
 	{
 		pos3 := pos
 		// VarDef
@@ -1081,19 +1093,26 @@ func _DefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto ok0
 	fail5:
 		pos = pos3
-		// FuncDef
-		if !_fail(parser, _FuncDefFail, errPos, failure, &pos) {
+		// IfaceDef
+		if !_fail(parser, _IfaceDefFail, errPos, failure, &pos) {
 			goto fail6
 		}
 		goto ok0
 	fail6:
 		pos = pos3
-		// TestDef
-		if !_fail(parser, _TestDefFail, errPos, failure, &pos) {
+		// FuncDef
+		if !_fail(parser, _FuncDefFail, errPos, failure, &pos) {
 			goto fail7
 		}
 		goto ok0
 	fail7:
+		pos = pos3
+		// TestDef
+		if !_fail(parser, _TestDefFail, errPos, failure, &pos) {
+			goto fail8
+		}
+		goto ok0
+	fail8:
 		pos = pos3
 		goto fail
 	ok0:
@@ -1118,7 +1137,7 @@ func _DefAction(parser *_Parser, start int) (int, *Def) {
 	}
 	var node Def
 	pos := start
-	// VarDef/TypeDef/FuncDef/TestDef
+	// VarDef/TypeDef/IfaceDef/FuncDef/TestDef
 	{
 		pos3 := pos
 		var node2 Def
@@ -1144,8 +1163,8 @@ func _DefAction(parser *_Parser, start int) (int, *Def) {
 	fail5:
 		node = node2
 		pos = pos3
-		// FuncDef
-		if p, n := _FuncDefAction(parser, pos); n == nil {
+		// IfaceDef
+		if p, n := _IfaceDefAction(parser, pos); n == nil {
 			goto fail6
 		} else {
 			node = *n
@@ -1155,8 +1174,8 @@ func _DefAction(parser *_Parser, start int) (int, *Def) {
 	fail6:
 		node = node2
 		pos = pos3
-		// TestDef
-		if p, n := _TestDefAction(parser, pos); n == nil {
+		// FuncDef
+		if p, n := _FuncDefAction(parser, pos); n == nil {
 			goto fail7
 		} else {
 			node = *n
@@ -1164,6 +1183,17 @@ func _DefAction(parser *_Parser, start int) (int, *Def) {
 		}
 		goto ok0
 	fail7:
+		node = node2
+		pos = pos3
+		// TestDef
+		if p, n := _TestDefAction(parser, pos); n == nil {
+			goto fail8
+		} else {
+			node = *n
+			pos = p
+		}
+		goto ok0
+	fail8:
 		node = node2
 		pos = pos3
 		goto fail
@@ -6589,6 +6619,1520 @@ fail:
 	return -1, nil
 }
 
+func _IfaceDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [4]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _IfaceDef, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// _ reserved:("iface"/"Iface") ps:TypeVars? name:Id _ def:DefIface
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// reserved:("iface"/"Iface")
+	{
+		pos1 := pos
+		// ("iface"/"Iface")
+		// "iface"/"Iface"
+		{
+			pos5 := pos
+			// "iface"
+			if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "iface" {
+				perr = _max(perr, pos)
+				goto fail6
+			}
+			pos += 5
+			goto ok2
+		fail6:
+			pos = pos5
+			// "Iface"
+			if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Iface" {
+				perr = _max(perr, pos)
+				goto fail7
+			}
+			pos += 5
+			goto ok2
+		fail7:
+			pos = pos5
+			goto fail
+		ok2:
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// ps:TypeVars?
+	{
+		pos8 := pos
+		// TypeVars?
+		{
+			pos10 := pos
+			// TypeVars
+			if !_accept(parser, _TypeVarsAccepts, &pos, &perr) {
+				goto fail11
+			}
+			goto ok12
+		fail11:
+			pos = pos10
+		ok12:
+		}
+		labels[1] = parser.text[pos8:pos]
+	}
+	// name:Id
+	{
+		pos13 := pos
+		// Id
+		if !_accept(parser, _IdAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[2] = parser.text[pos13:pos]
+	}
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// def:DefIface
+	{
+		pos14 := pos
+		// DefIface
+		if !_accept(parser, _DefIfaceAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[3] = parser.text[pos14:pos]
+	}
+	return _memoize(parser, _IfaceDef, start, pos, perr)
+fail:
+	return _memoize(parser, _IfaceDef, start, -1, perr)
+}
+
+func _IfaceDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [4]string
+	use(labels)
+	pos, failure := _failMemo(parser, _IfaceDef, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "IfaceDef",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _IfaceDef}
+	// action
+	// _ reserved:("iface"/"Iface") ps:TypeVars? name:Id _ def:DefIface
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// reserved:("iface"/"Iface")
+	{
+		pos1 := pos
+		// ("iface"/"Iface")
+		// "iface"/"Iface"
+		{
+			pos5 := pos
+			// "iface"
+			if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "iface" {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "\"iface\"",
+					})
+				}
+				goto fail6
+			}
+			pos += 5
+			goto ok2
+		fail6:
+			pos = pos5
+			// "Iface"
+			if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Iface" {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "\"Iface\"",
+					})
+				}
+				goto fail7
+			}
+			pos += 5
+			goto ok2
+		fail7:
+			pos = pos5
+			goto fail
+		ok2:
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// ps:TypeVars?
+	{
+		pos8 := pos
+		// TypeVars?
+		{
+			pos10 := pos
+			// TypeVars
+			if !_fail(parser, _TypeVarsFail, errPos, failure, &pos) {
+				goto fail11
+			}
+			goto ok12
+		fail11:
+			pos = pos10
+		ok12:
+		}
+		labels[1] = parser.text[pos8:pos]
+	}
+	// name:Id
+	{
+		pos13 := pos
+		// Id
+		if !_fail(parser, _IdFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[2] = parser.text[pos13:pos]
+	}
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// def:DefIface
+	{
+		pos14 := pos
+		// DefIface
+		if !_fail(parser, _DefIfaceFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[3] = parser.text[pos14:pos]
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _IfaceDefAction(parser *_Parser, start int) (int, *Def) {
+	var labels [4]string
+	use(labels)
+	var label0 string
+	var label1 *[]TypeVar
+	var label2 Ident
+	var label3 IfaceDef
+	dp := parser.deltaPos[start][_IfaceDef]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _IfaceDef}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Def)
+		return start + int(dp-1), &n
+	}
+	var node Def
+	pos := start
+	// action
+	{
+		start0 := pos
+		// _ reserved:("iface"/"Iface") ps:TypeVars? name:Id _ def:DefIface
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// reserved:("iface"/"Iface")
+		{
+			pos2 := pos
+			// ("iface"/"Iface")
+			// "iface"/"Iface"
+			{
+				pos6 := pos
+				var node5 string
+				// "iface"
+				if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "iface" {
+					goto fail7
+				}
+				label0 = parser.text[pos : pos+5]
+				pos += 5
+				goto ok3
+			fail7:
+				label0 = node5
+				pos = pos6
+				// "Iface"
+				if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Iface" {
+					goto fail8
+				}
+				label0 = parser.text[pos : pos+5]
+				pos += 5
+				goto ok3
+			fail8:
+				label0 = node5
+				pos = pos6
+				goto fail
+			ok3:
+			}
+			labels[0] = parser.text[pos2:pos]
+		}
+		// ps:TypeVars?
+		{
+			pos9 := pos
+			// TypeVars?
+			{
+				pos11 := pos
+				label1 = new([]TypeVar)
+				// TypeVars
+				if p, n := _TypeVarsAction(parser, pos); n == nil {
+					goto fail12
+				} else {
+					*label1 = *n
+					pos = p
+				}
+				goto ok13
+			fail12:
+				label1 = nil
+				pos = pos11
+			ok13:
+			}
+			labels[1] = parser.text[pos9:pos]
+		}
+		// name:Id
+		{
+			pos14 := pos
+			// Id
+			if p, n := _IdAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label2 = *n
+				pos = p
+			}
+			labels[2] = parser.text[pos14:pos]
+		}
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// def:DefIface
+		{
+			pos15 := pos
+			// DefIface
+			if p, n := _DefIfaceAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label3 = *n
+				pos = p
+			}
+			labels[3] = parser.text[pos15:pos]
+		}
+		node = func(
+			start, end int, def IfaceDef, name Ident, ps *[]TypeVar, reserved string) Def {
+			def.Exp = reserved == "Iface"
+			if ps != nil {
+				def.TypeParms = *ps
+			}
+			def.Name = name
+			def.L = l(parser, start, end)
+			return Def(&def)
+		}(
+			start0, pos, label3, label2, label1, label0)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _DefIfaceAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [3]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _DefIface, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// _ "{" _ "}" {…}/_ "{" iface:Iface _ "}" {…}/_ ":=" iface:IfaceName _ {…}/_ "(" iface:DefIface _ ")" {…}
+	{
+		pos3 := pos
+		// action
+		// _ "{" _ "}"
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail4
+		}
+		// "{"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "{" {
+			perr = _max(perr, pos)
+			goto fail4
+		}
+		pos++
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail4
+		}
+		// "}"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "}" {
+			perr = _max(perr, pos)
+			goto fail4
+		}
+		pos++
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// _ "{" iface:Iface _ "}"
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail6
+		}
+		// "{"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "{" {
+			perr = _max(perr, pos)
+			goto fail6
+		}
+		pos++
+		// iface:Iface
+		{
+			pos8 := pos
+			// Iface
+			if !_accept(parser, _IfaceAccepts, &pos, &perr) {
+				goto fail6
+			}
+			labels[0] = parser.text[pos8:pos]
+		}
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail6
+		}
+		// "}"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "}" {
+			perr = _max(perr, pos)
+			goto fail6
+		}
+		pos++
+		goto ok0
+	fail6:
+		pos = pos3
+		// action
+		// _ ":=" iface:IfaceName _
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail9
+		}
+		// ":="
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
+			perr = _max(perr, pos)
+			goto fail9
+		}
+		pos += 2
+		// iface:IfaceName
+		{
+			pos11 := pos
+			// IfaceName
+			if !_accept(parser, _IfaceNameAccepts, &pos, &perr) {
+				goto fail9
+			}
+			labels[1] = parser.text[pos11:pos]
+		}
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail9
+		}
+		goto ok0
+	fail9:
+		pos = pos3
+		// action
+		// _ "(" iface:DefIface _ ")"
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail12
+		}
+		// "("
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
+			perr = _max(perr, pos)
+			goto fail12
+		}
+		pos++
+		// iface:DefIface
+		{
+			pos14 := pos
+			// DefIface
+			if !_accept(parser, _DefIfaceAccepts, &pos, &perr) {
+				goto fail12
+			}
+			labels[2] = parser.text[pos14:pos]
+		}
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail12
+		}
+		// ")"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
+			perr = _max(perr, pos)
+			goto fail12
+		}
+		pos++
+		goto ok0
+	fail12:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	return _memoize(parser, _DefIface, start, pos, perr)
+fail:
+	return _memoize(parser, _DefIface, start, -1, perr)
+}
+
+func _DefIfaceFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [3]string
+	use(labels)
+	pos, failure := _failMemo(parser, _DefIface, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "DefIface",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _DefIface}
+	// _ "{" _ "}" {…}/_ "{" iface:Iface _ "}" {…}/_ ":=" iface:IfaceName _ {…}/_ "(" iface:DefIface _ ")" {…}
+	{
+		pos3 := pos
+		// action
+		// _ "{" _ "}"
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail4
+		}
+		// "{"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "{" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"{\"",
+				})
+			}
+			goto fail4
+		}
+		pos++
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail4
+		}
+		// "}"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "}" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"}\"",
+				})
+			}
+			goto fail4
+		}
+		pos++
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// _ "{" iface:Iface _ "}"
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail6
+		}
+		// "{"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "{" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"{\"",
+				})
+			}
+			goto fail6
+		}
+		pos++
+		// iface:Iface
+		{
+			pos8 := pos
+			// Iface
+			if !_fail(parser, _IfaceFail, errPos, failure, &pos) {
+				goto fail6
+			}
+			labels[0] = parser.text[pos8:pos]
+		}
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail6
+		}
+		// "}"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "}" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"}\"",
+				})
+			}
+			goto fail6
+		}
+		pos++
+		goto ok0
+	fail6:
+		pos = pos3
+		// action
+		// _ ":=" iface:IfaceName _
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail9
+		}
+		// ":="
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\":=\"",
+				})
+			}
+			goto fail9
+		}
+		pos += 2
+		// iface:IfaceName
+		{
+			pos11 := pos
+			// IfaceName
+			if !_fail(parser, _IfaceNameFail, errPos, failure, &pos) {
+				goto fail9
+			}
+			labels[1] = parser.text[pos11:pos]
+		}
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail9
+		}
+		goto ok0
+	fail9:
+		pos = pos3
+		// action
+		// _ "(" iface:DefIface _ ")"
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail12
+		}
+		// "("
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"(\"",
+				})
+			}
+			goto fail12
+		}
+		pos++
+		// iface:DefIface
+		{
+			pos14 := pos
+			// DefIface
+			if !_fail(parser, _DefIfaceFail, errPos, failure, &pos) {
+				goto fail12
+			}
+			labels[2] = parser.text[pos14:pos]
+		}
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail12
+		}
+		// ")"
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\")\"",
+				})
+			}
+			goto fail12
+		}
+		pos++
+		goto ok0
+	fail12:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _DefIfaceAction(parser *_Parser, start int) (int, *IfaceDef) {
+	var labels [3]string
+	use(labels)
+	var label0 []interface{}
+	var label1 *NamedType
+	var label2 IfaceDef
+	dp := parser.deltaPos[start][_DefIface]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _DefIface}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(IfaceDef)
+		return start + int(dp-1), &n
+	}
+	var node IfaceDef
+	pos := start
+	// _ "{" _ "}" {…}/_ "{" iface:Iface _ "}" {…}/_ ":=" iface:IfaceName _ {…}/_ "(" iface:DefIface _ ")" {…}
+	{
+		pos3 := pos
+		var node2 IfaceDef
+		// action
+		{
+			start5 := pos
+			// _ "{" _ "}"
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail4
+			} else {
+				pos = p
+			}
+			// "{"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "{" {
+				goto fail4
+			}
+			pos++
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail4
+			} else {
+				pos = p
+			}
+			// "}"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "}" {
+				goto fail4
+			}
+			pos++
+			node = func(
+				start, end int) IfaceDef {
+				return IfaceDef{}
+			}(
+				start5, pos)
+		}
+		goto ok0
+	fail4:
+		node = node2
+		pos = pos3
+		// action
+		{
+			start8 := pos
+			// _ "{" iface:Iface _ "}"
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail7
+			} else {
+				pos = p
+			}
+			// "{"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "{" {
+				goto fail7
+			}
+			pos++
+			// iface:Iface
+			{
+				pos10 := pos
+				// Iface
+				if p, n := _IfaceAction(parser, pos); n == nil {
+					goto fail7
+				} else {
+					label0 = *n
+					pos = p
+				}
+				labels[0] = parser.text[pos10:pos]
+			}
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail7
+			} else {
+				pos = p
+			}
+			// "}"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "}" {
+				goto fail7
+			}
+			pos++
+			node = func(
+				start, end int, iface []interface{}) IfaceDef {
+				return IfaceDef{Iface: iface}
+			}(
+				start8, pos, label0)
+		}
+		goto ok0
+	fail7:
+		node = node2
+		pos = pos3
+		// action
+		{
+			start12 := pos
+			// _ ":=" iface:IfaceName _
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail11
+			} else {
+				pos = p
+			}
+			// ":="
+			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != ":=" {
+				goto fail11
+			}
+			pos += 2
+			// iface:IfaceName
+			{
+				pos14 := pos
+				// IfaceName
+				if p, n := _IfaceNameAction(parser, pos); n == nil {
+					goto fail11
+				} else {
+					label1 = *n
+					pos = p
+				}
+				labels[1] = parser.text[pos14:pos]
+			}
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail11
+			} else {
+				pos = p
+			}
+			node = func(
+				start, end int, iface *NamedType) IfaceDef {
+				return IfaceDef{Alias: iface}
+			}(
+				start12, pos, label1)
+		}
+		goto ok0
+	fail11:
+		node = node2
+		pos = pos3
+		// action
+		{
+			start16 := pos
+			// _ "(" iface:DefIface _ ")"
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail15
+			} else {
+				pos = p
+			}
+			// "("
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "(" {
+				goto fail15
+			}
+			pos++
+			// iface:DefIface
+			{
+				pos18 := pos
+				// DefIface
+				if p, n := _DefIfaceAction(parser, pos); n == nil {
+					goto fail15
+				} else {
+					label2 = *n
+					pos = p
+				}
+				labels[2] = parser.text[pos18:pos]
+			}
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail15
+			} else {
+				pos = p
+			}
+			// ")"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != ")" {
+				goto fail15
+			}
+			pos++
+			node = func(
+				start, end int, iface IfaceDef) IfaceDef {
+				iface.Opaque = true
+				return IfaceDef(iface)
+			}(
+				start16, pos, label2)
+		}
+		goto ok0
+	fail15:
+		node = node2
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _IfaceAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [3]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _Iface, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// e0:IfaceElem es:(_ "," e1:IfaceElem {…})* (_ ",")?
+	// e0:IfaceElem
+	{
+		pos1 := pos
+		// IfaceElem
+		if !_accept(parser, _IfaceElemAccepts, &pos, &perr) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// es:(_ "," e1:IfaceElem {…})*
+	{
+		pos2 := pos
+		// (_ "," e1:IfaceElem {…})*
+		for {
+			pos4 := pos
+			// (_ "," e1:IfaceElem {…})
+			// action
+			// _ "," e1:IfaceElem
+			// _
+			if !_accept(parser, __Accepts, &pos, &perr) {
+				goto fail6
+			}
+			// ","
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "," {
+				perr = _max(perr, pos)
+				goto fail6
+			}
+			pos++
+			// e1:IfaceElem
+			{
+				pos8 := pos
+				// IfaceElem
+				if !_accept(parser, _IfaceElemAccepts, &pos, &perr) {
+					goto fail6
+				}
+				labels[1] = parser.text[pos8:pos]
+			}
+			continue
+		fail6:
+			pos = pos4
+			break
+		}
+		labels[2] = parser.text[pos2:pos]
+	}
+	// (_ ",")?
+	{
+		pos10 := pos
+		// (_ ",")
+		// _ ","
+		// _
+		if !_accept(parser, __Accepts, &pos, &perr) {
+			goto fail11
+		}
+		// ","
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "," {
+			perr = _max(perr, pos)
+			goto fail11
+		}
+		pos++
+		goto ok13
+	fail11:
+		pos = pos10
+	ok13:
+	}
+	return _memoize(parser, _Iface, start, pos, perr)
+fail:
+	return _memoize(parser, _Iface, start, -1, perr)
+}
+
+func _IfaceFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [3]string
+	use(labels)
+	pos, failure := _failMemo(parser, _Iface, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "Iface",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _Iface}
+	// action
+	// e0:IfaceElem es:(_ "," e1:IfaceElem {…})* (_ ",")?
+	// e0:IfaceElem
+	{
+		pos1 := pos
+		// IfaceElem
+		if !_fail(parser, _IfaceElemFail, errPos, failure, &pos) {
+			goto fail
+		}
+		labels[0] = parser.text[pos1:pos]
+	}
+	// es:(_ "," e1:IfaceElem {…})*
+	{
+		pos2 := pos
+		// (_ "," e1:IfaceElem {…})*
+		for {
+			pos4 := pos
+			// (_ "," e1:IfaceElem {…})
+			// action
+			// _ "," e1:IfaceElem
+			// _
+			if !_fail(parser, __Fail, errPos, failure, &pos) {
+				goto fail6
+			}
+			// ","
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "," {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "\",\"",
+					})
+				}
+				goto fail6
+			}
+			pos++
+			// e1:IfaceElem
+			{
+				pos8 := pos
+				// IfaceElem
+				if !_fail(parser, _IfaceElemFail, errPos, failure, &pos) {
+					goto fail6
+				}
+				labels[1] = parser.text[pos8:pos]
+			}
+			continue
+		fail6:
+			pos = pos4
+			break
+		}
+		labels[2] = parser.text[pos2:pos]
+	}
+	// (_ ",")?
+	{
+		pos10 := pos
+		// (_ ",")
+		// _ ","
+		// _
+		if !_fail(parser, __Fail, errPos, failure, &pos) {
+			goto fail11
+		}
+		// ","
+		if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "," {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\",\"",
+				})
+			}
+			goto fail11
+		}
+		pos++
+		goto ok13
+	fail11:
+		pos = pos10
+	ok13:
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _IfaceAction(parser *_Parser, start int) (int, *[]interface{}) {
+	var labels [3]string
+	use(labels)
+	var label0 interface{}
+	var label1 interface{}
+	var label2 []interface{}
+	dp := parser.deltaPos[start][_Iface]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _Iface}
+	n := parser.act[key]
+	if n != nil {
+		n := n.([]interface{})
+		return start + int(dp-1), &n
+	}
+	var node []interface{}
+	pos := start
+	// action
+	{
+		start0 := pos
+		// e0:IfaceElem es:(_ "," e1:IfaceElem {…})* (_ ",")?
+		// e0:IfaceElem
+		{
+			pos2 := pos
+			// IfaceElem
+			if p, n := _IfaceElemAction(parser, pos); n == nil {
+				goto fail
+			} else {
+				label0 = *n
+				pos = p
+			}
+			labels[0] = parser.text[pos2:pos]
+		}
+		// es:(_ "," e1:IfaceElem {…})*
+		{
+			pos3 := pos
+			// (_ "," e1:IfaceElem {…})*
+			for {
+				pos5 := pos
+				var node6 interface{}
+				// (_ "," e1:IfaceElem {…})
+				// action
+				{
+					start8 := pos
+					// _ "," e1:IfaceElem
+					// _
+					if p, n := __Action(parser, pos); n == nil {
+						goto fail7
+					} else {
+						pos = p
+					}
+					// ","
+					if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "," {
+						goto fail7
+					}
+					pos++
+					// e1:IfaceElem
+					{
+						pos10 := pos
+						// IfaceElem
+						if p, n := _IfaceElemAction(parser, pos); n == nil {
+							goto fail7
+						} else {
+							label1 = *n
+							pos = p
+						}
+						labels[1] = parser.text[pos10:pos]
+					}
+					node6 = func(
+						start, end int, e0 interface{}, e1 interface{}) interface{} {
+						return interface{}(e1)
+					}(
+						start8, pos, label0, label1)
+				}
+				label2 = append(label2, node6)
+				continue
+			fail7:
+				pos = pos5
+				break
+			}
+			labels[2] = parser.text[pos3:pos]
+		}
+		// (_ ",")?
+		{
+			pos12 := pos
+			// (_ ",")
+			// _ ","
+			// _
+			if p, n := __Action(parser, pos); n == nil {
+				goto fail13
+			} else {
+				pos = p
+			}
+			// ","
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "," {
+				goto fail13
+			}
+			pos++
+			goto ok15
+		fail13:
+			pos = pos12
+		ok15:
+		}
+		node = func(
+			start, end int, e0 interface{}, e1 interface{}, es []interface{}) []interface{} {
+			return []interface{}(append([]interface{}{e0}, es...))
+		}(
+			start0, pos, label0, label1, label2)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _IfaceElemAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [2]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _IfaceElem, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// decl:FuncDecl {…}/name:IfaceName {…}
+	{
+		pos3 := pos
+		// action
+		// decl:FuncDecl
+		{
+			pos5 := pos
+			// FuncDecl
+			if !_accept(parser, _FuncDeclAccepts, &pos, &perr) {
+				goto fail4
+			}
+			labels[0] = parser.text[pos5:pos]
+		}
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// name:IfaceName
+		{
+			pos7 := pos
+			// IfaceName
+			if !_accept(parser, _IfaceNameAccepts, &pos, &perr) {
+				goto fail6
+			}
+			labels[1] = parser.text[pos7:pos]
+		}
+		goto ok0
+	fail6:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	return _memoize(parser, _IfaceElem, start, pos, perr)
+fail:
+	return _memoize(parser, _IfaceElem, start, -1, perr)
+}
+
+func _IfaceElemFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [2]string
+	use(labels)
+	pos, failure := _failMemo(parser, _IfaceElem, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "IfaceElem",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _IfaceElem}
+	// decl:FuncDecl {…}/name:IfaceName {…}
+	{
+		pos3 := pos
+		// action
+		// decl:FuncDecl
+		{
+			pos5 := pos
+			// FuncDecl
+			if !_fail(parser, _FuncDeclFail, errPos, failure, &pos) {
+				goto fail4
+			}
+			labels[0] = parser.text[pos5:pos]
+		}
+		goto ok0
+	fail4:
+		pos = pos3
+		// action
+		// name:IfaceName
+		{
+			pos7 := pos
+			// IfaceName
+			if !_fail(parser, _IfaceNameFail, errPos, failure, &pos) {
+				goto fail6
+			}
+			labels[1] = parser.text[pos7:pos]
+		}
+		goto ok0
+	fail6:
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _IfaceElemAction(parser *_Parser, start int) (int, *interface{}) {
+	var labels [2]string
+	use(labels)
+	var label0 FuncDecl
+	var label1 *NamedType
+	dp := parser.deltaPos[start][_IfaceElem]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _IfaceElem}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(interface{})
+		return start + int(dp-1), &n
+	}
+	var node interface{}
+	pos := start
+	// decl:FuncDecl {…}/name:IfaceName {…}
+	{
+		pos3 := pos
+		var node2 interface{}
+		// action
+		{
+			start5 := pos
+			// decl:FuncDecl
+			{
+				pos6 := pos
+				// FuncDecl
+				if p, n := _FuncDeclAction(parser, pos); n == nil {
+					goto fail4
+				} else {
+					label0 = *n
+					pos = p
+				}
+				labels[0] = parser.text[pos6:pos]
+			}
+			node = func(
+				start, end int, decl FuncDecl) interface{} {
+				return interface{}(&decl)
+			}(
+				start5, pos, label0)
+		}
+		goto ok0
+	fail4:
+		node = node2
+		pos = pos3
+		// action
+		{
+			start8 := pos
+			// name:IfaceName
+			{
+				pos9 := pos
+				// IfaceName
+				if p, n := _IfaceNameAction(parser, pos); n == nil {
+					goto fail7
+				} else {
+					label1 = *n
+					pos = p
+				}
+				labels[1] = parser.text[pos9:pos]
+			}
+			node = func(
+				start, end int, name *NamedType) interface{} {
+				return interface{}(name)
+			}(
+				start8, pos, label1)
+		}
+		goto ok0
+	fail7:
+		node = node2
+		pos = pos3
+		goto fail
+	ok0:
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _IfaceNameAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	var labels [2]string
+	use(labels)
+	if dp, de, ok := _memo(parser, _IfaceName, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// (args:TypeArgs)? names:ModTypeName+
+	// (args:TypeArgs)?
+	{
+		pos2 := pos
+		// (args:TypeArgs)
+		// args:TypeArgs
+		{
+			pos4 := pos
+			// TypeArgs
+			if !_accept(parser, _TypeArgsAccepts, &pos, &perr) {
+				goto fail3
+			}
+			labels[0] = parser.text[pos4:pos]
+		}
+		goto ok5
+	fail3:
+		pos = pos2
+	ok5:
+	}
+	// names:ModTypeName+
+	{
+		pos6 := pos
+		// ModTypeName+
+		// ModTypeName
+		if !_accept(parser, _ModTypeNameAccepts, &pos, &perr) {
+			goto fail
+		}
+		for {
+			pos8 := pos
+			// ModTypeName
+			if !_accept(parser, _ModTypeNameAccepts, &pos, &perr) {
+				goto fail10
+			}
+			continue
+		fail10:
+			pos = pos8
+			break
+		}
+		labels[1] = parser.text[pos6:pos]
+	}
+	return _memoize(parser, _IfaceName, start, pos, perr)
+fail:
+	return _memoize(parser, _IfaceName, start, -1, perr)
+}
+
+func _IfaceNameFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	var labels [2]string
+	use(labels)
+	pos, failure := _failMemo(parser, _IfaceName, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "IfaceName",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _IfaceName}
+	// action
+	// (args:TypeArgs)? names:ModTypeName+
+	// (args:TypeArgs)?
+	{
+		pos2 := pos
+		// (args:TypeArgs)
+		// args:TypeArgs
+		{
+			pos4 := pos
+			// TypeArgs
+			if !_fail(parser, _TypeArgsFail, errPos, failure, &pos) {
+				goto fail3
+			}
+			labels[0] = parser.text[pos4:pos]
+		}
+		goto ok5
+	fail3:
+		pos = pos2
+	ok5:
+	}
+	// names:ModTypeName+
+	{
+		pos6 := pos
+		// ModTypeName+
+		// ModTypeName
+		if !_fail(parser, _ModTypeNameFail, errPos, failure, &pos) {
+			goto fail
+		}
+		for {
+			pos8 := pos
+			// ModTypeName
+			if !_fail(parser, _ModTypeNameFail, errPos, failure, &pos) {
+				goto fail10
+			}
+			continue
+		fail10:
+			pos = pos8
+			break
+		}
+		labels[1] = parser.text[pos6:pos]
+	}
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _IfaceNameAction(parser *_Parser, start int) (int, **NamedType) {
+	var labels [2]string
+	use(labels)
+	var label0 []Type
+	var label1 []*NamedType
+	dp := parser.deltaPos[start][_IfaceName]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _IfaceName}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(*NamedType)
+		return start + int(dp-1), &n
+	}
+	var node *NamedType
+	pos := start
+	// action
+	{
+		start0 := pos
+		// (args:TypeArgs)? names:ModTypeName+
+		// (args:TypeArgs)?
+		{
+			pos3 := pos
+			// (args:TypeArgs)
+			// args:TypeArgs
+			{
+				pos5 := pos
+				// TypeArgs
+				if p, n := _TypeArgsAction(parser, pos); n == nil {
+					goto fail4
+				} else {
+					label0 = *n
+					pos = p
+				}
+				labels[0] = parser.text[pos5:pos]
+			}
+			goto ok6
+		fail4:
+			pos = pos3
+		ok6:
+		}
+		// names:ModTypeName+
+		{
+			pos7 := pos
+			// ModTypeName+
+			{
+				var node10 *NamedType
+				// ModTypeName
+				if p, n := _ModTypeNameAction(parser, pos); n == nil {
+					goto fail
+				} else {
+					node10 = *n
+					pos = p
+				}
+				label1 = append(label1, node10)
+			}
+			for {
+				pos9 := pos
+				var node10 *NamedType
+				// ModTypeName
+				if p, n := _ModTypeNameAction(parser, pos); n == nil {
+					goto fail11
+				} else {
+					node10 = *n
+					pos = p
+				}
+				label1 = append(label1, node10)
+				continue
+			fail11:
+				pos = pos9
+				break
+			}
+			labels[1] = parser.text[pos7:pos]
+		}
+		node = func(
+			start, end int, args []Type, names []*NamedType) *NamedType {
+			return namedType(args, names, l(parser, start, end)).(*NamedType)
+		}(
+			start0, pos, label0, label1)
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
 func _FuncDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	var labels [6]string
 	use(labels)
@@ -6597,7 +8141,7 @@ func _FuncDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ reserved:("func"/"Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:FuncDecls)? es:FuncBody?
+	// _ reserved:("func"/"Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:Iface)? es:FuncBody?
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
@@ -6695,11 +8239,11 @@ func _FuncDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		}
 		labels[3] = parser.text[pos14:pos]
 	}
-	// (_ ":" iface:FuncDecls)?
+	// (_ ":" iface:Iface)?
 	{
 		pos20 := pos
-		// (_ ":" iface:FuncDecls)
-		// _ ":" iface:FuncDecls
+		// (_ ":" iface:Iface)
+		// _ ":" iface:Iface
 		// _
 		if !_accept(parser, __Accepts, &pos, &perr) {
 			goto fail21
@@ -6710,11 +8254,11 @@ func _FuncDefAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 			goto fail21
 		}
 		pos++
-		// iface:FuncDecls
+		// iface:Iface
 		{
 			pos23 := pos
-			// FuncDecls
-			if !_accept(parser, _FuncDeclsAccepts, &pos, &perr) {
+			// Iface
+			if !_accept(parser, _IfaceAccepts, &pos, &perr) {
 				goto fail21
 			}
 			labels[4] = parser.text[pos23:pos]
@@ -6759,7 +8303,7 @@ func _FuncDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _FuncDef}
 	// action
-	// _ reserved:("func"/"Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:FuncDecls)? es:FuncBody?
+	// _ reserved:("func"/"Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:Iface)? es:FuncBody?
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
@@ -6877,11 +8421,11 @@ func _FuncDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		}
 		labels[3] = parser.text[pos14:pos]
 	}
-	// (_ ":" iface:FuncDecls)?
+	// (_ ":" iface:Iface)?
 	{
 		pos20 := pos
-		// (_ ":" iface:FuncDecls)
-		// _ ":" iface:FuncDecls
+		// (_ ":" iface:Iface)
+		// _ ":" iface:Iface
 		// _
 		if !_fail(parser, __Fail, errPos, failure, &pos) {
 			goto fail21
@@ -6897,11 +8441,11 @@ func _FuncDefFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 			goto fail21
 		}
 		pos++
-		// iface:FuncDecls
+		// iface:Iface
 		{
 			pos23 := pos
-			// FuncDecls
-			if !_fail(parser, _FuncDeclsFail, errPos, failure, &pos) {
+			// Iface
+			if !_fail(parser, _IfaceFail, errPos, failure, &pos) {
 				goto fail21
 			}
 			labels[4] = parser.text[pos23:pos]
@@ -6942,7 +8486,7 @@ func _FuncDefAction(parser *_Parser, start int) (int, *Def) {
 	var label1 Ident
 	var label2 *[]FuncParm
 	var label3 *Type
-	var label4 []FuncDecl
+	var label4 []interface{}
 	var label5 *[]Expr
 	dp := parser.deltaPos[start][_FuncDef]
 	if dp < 0 {
@@ -6959,7 +8503,7 @@ func _FuncDefAction(parser *_Parser, start int) (int, *Def) {
 	// action
 	{
 		start0 := pos
-		// _ reserved:("func"/"Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:FuncDecls)? es:FuncBody?
+		// _ reserved:("func"/"Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:Iface)? es:FuncBody?
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
@@ -7077,11 +8621,11 @@ func _FuncDefAction(parser *_Parser, start int) (int, *Def) {
 			}
 			labels[3] = parser.text[pos15:pos]
 		}
-		// (_ ":" iface:FuncDecls)?
+		// (_ ":" iface:Iface)?
 		{
 			pos21 := pos
-			// (_ ":" iface:FuncDecls)
-			// _ ":" iface:FuncDecls
+			// (_ ":" iface:Iface)
+			// _ ":" iface:Iface
 			// _
 			if p, n := __Action(parser, pos); n == nil {
 				goto fail22
@@ -7093,11 +8637,11 @@ func _FuncDefAction(parser *_Parser, start int) (int, *Def) {
 				goto fail22
 			}
 			pos++
-			// iface:FuncDecls
+			// iface:Iface
 			{
 				pos24 := pos
-				// FuncDecls
-				if p, n := _FuncDeclsAction(parser, pos); n == nil {
+				// Iface
+				if p, n := _IfaceAction(parser, pos); n == nil {
 					goto fail22
 				} else {
 					label4 = *n
@@ -7133,7 +8677,7 @@ func _FuncDefAction(parser *_Parser, start int) (int, *Def) {
 			labels[5] = parser.text[pos26:pos]
 		}
 		node = func(
-			start, end int, es *[]Expr, iface []FuncDecl, name Ident, ps *[]FuncParm, r *Type, reserved string) Def {
+			start, end int, es *[]Expr, iface []interface{}, name Ident, ps *[]FuncParm, r *Type, reserved string) Def {
 			var parms []FuncParm
 			if ps != nil {
 				parms = *ps
@@ -22513,9 +24057,9 @@ func _RESERVEDAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test") !("_"/L/D)
-	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test")
-	// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test"
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"iface"/"Iface"/"func"/"Func"/"test") !("_"/L/D)
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"iface"/"Iface"/"func"/"Func"/"test")
+	// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"iface"/"Iface"/"func"/"Func"/"test"
 	{
 		pos4 := pos
 		// "import"
@@ -22590,26 +24134,26 @@ func _RESERVEDAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto ok1
 	fail12:
 		pos = pos4
-		// "func"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
+		// "iface"
+		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "iface" {
 			perr = _max(perr, pos)
 			goto fail13
 		}
-		pos += 4
+		pos += 5
 		goto ok1
 	fail13:
 		pos = pos4
-		// "Func"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
+		// "Iface"
+		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Iface" {
 			perr = _max(perr, pos)
 			goto fail14
 		}
-		pos += 4
+		pos += 5
 		goto ok1
 	fail14:
 		pos = pos4
-		// "test"
-		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
+		// "func"
+		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
 			perr = _max(perr, pos)
 			goto fail15
 		}
@@ -22617,49 +24161,67 @@ func _RESERVEDAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto ok1
 	fail15:
 		pos = pos4
+		// "Func"
+		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
+			perr = _max(perr, pos)
+			goto fail16
+		}
+		pos += 4
+		goto ok1
+	fail16:
+		pos = pos4
+		// "test"
+		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
+			perr = _max(perr, pos)
+			goto fail17
+		}
+		pos += 4
+		goto ok1
+	fail17:
+		pos = pos4
 		goto fail
 	ok1:
 	}
 	// !("_"/L/D)
 	{
-		pos17 := pos
-		perr19 := perr
+		pos19 := pos
+		perr21 := perr
 		// ("_"/L/D)
 		// "_"/L/D
 		{
-			pos23 := pos
+			pos25 := pos
 			// "_"
 			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
 				perr = _max(perr, pos)
-				goto fail24
-			}
-			pos++
-			goto ok20
-		fail24:
-			pos = pos23
-			// L
-			if !_accept(parser, _LAccepts, &pos, &perr) {
-				goto fail25
-			}
-			goto ok20
-		fail25:
-			pos = pos23
-			// D
-			if !_accept(parser, _DAccepts, &pos, &perr) {
 				goto fail26
 			}
-			goto ok20
+			pos++
+			goto ok22
 		fail26:
-			pos = pos23
-			goto ok16
-		ok20:
+			pos = pos25
+			// L
+			if !_accept(parser, _LAccepts, &pos, &perr) {
+				goto fail27
+			}
+			goto ok22
+		fail27:
+			pos = pos25
+			// D
+			if !_accept(parser, _DAccepts, &pos, &perr) {
+				goto fail28
+			}
+			goto ok22
+		fail28:
+			pos = pos25
+			goto ok18
+		ok22:
 		}
-		pos = pos17
-		perr = _max(perr19, pos)
+		pos = pos19
+		perr = _max(perr21, pos)
 		goto fail
-	ok16:
-		pos = pos17
-		perr = perr19
+	ok18:
+		pos = pos19
+		perr = perr21
 	}
 	return _memoize(parser, _RESERVED, start, pos, perr)
 fail:
@@ -22676,9 +24238,9 @@ func _RESERVEDFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _RESERVED}
-	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test") !("_"/L/D)
-	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test")
-	// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test"
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"iface"/"Iface"/"func"/"Func"/"test") !("_"/L/D)
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"iface"/"Iface"/"func"/"Func"/"test")
+	// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"iface"/"Iface"/"func"/"Func"/"test"
 	{
 		pos4 := pos
 		// "import"
@@ -22793,6 +24355,34 @@ func _RESERVEDFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto ok1
 	fail12:
 		pos = pos4
+		// "iface"
+		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "iface" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"iface\"",
+				})
+			}
+			goto fail13
+		}
+		pos += 5
+		goto ok1
+	fail13:
+		pos = pos4
+		// "Iface"
+		if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Iface" {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: "\"Iface\"",
+				})
+			}
+			goto fail14
+		}
+		pos += 5
+		goto ok1
+	fail14:
+		pos = pos4
 		// "func"
 		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
 			if pos >= errPos {
@@ -22801,11 +24391,11 @@ func _RESERVEDFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"func\"",
 				})
 			}
-			goto fail13
+			goto fail15
 		}
 		pos += 4
 		goto ok1
-	fail13:
+	fail15:
 		pos = pos4
 		// "Func"
 		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
@@ -22815,11 +24405,11 @@ func _RESERVEDFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"Func\"",
 				})
 			}
-			goto fail14
+			goto fail16
 		}
 		pos += 4
 		goto ok1
-	fail14:
+	fail16:
 		pos = pos4
 		// "test"
 		if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
@@ -22829,23 +24419,23 @@ func _RESERVEDFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 					Want: "\"test\"",
 				})
 			}
-			goto fail15
+			goto fail17
 		}
 		pos += 4
 		goto ok1
-	fail15:
+	fail17:
 		pos = pos4
 		goto fail
 	ok1:
 	}
 	// !("_"/L/D)
 	{
-		pos17 := pos
-		nkids18 := len(failure.Kids)
+		pos19 := pos
+		nkids20 := len(failure.Kids)
 		// ("_"/L/D)
 		// "_"/L/D
 		{
-			pos23 := pos
+			pos25 := pos
 			// "_"
 			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
 				if pos >= errPos {
@@ -22854,31 +24444,31 @@ func _RESERVEDFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 						Want: "\"_\"",
 					})
 				}
-				goto fail24
-			}
-			pos++
-			goto ok20
-		fail24:
-			pos = pos23
-			// L
-			if !_fail(parser, _LFail, errPos, failure, &pos) {
-				goto fail25
-			}
-			goto ok20
-		fail25:
-			pos = pos23
-			// D
-			if !_fail(parser, _DFail, errPos, failure, &pos) {
 				goto fail26
 			}
-			goto ok20
+			pos++
+			goto ok22
 		fail26:
-			pos = pos23
-			goto ok16
-		ok20:
+			pos = pos25
+			// L
+			if !_fail(parser, _LFail, errPos, failure, &pos) {
+				goto fail27
+			}
+			goto ok22
+		fail27:
+			pos = pos25
+			// D
+			if !_fail(parser, _DFail, errPos, failure, &pos) {
+				goto fail28
+			}
+			goto ok22
+		fail28:
+			pos = pos25
+			goto ok18
+		ok22:
 		}
-		pos = pos17
-		failure.Kids = failure.Kids[:nkids18]
+		pos = pos19
+		failure.Kids = failure.Kids[:nkids20]
 		if pos >= errPos {
 			failure.Kids = append(failure.Kids, &peg.Fail{
 				Pos:  int(pos),
@@ -22886,9 +24476,9 @@ func _RESERVEDFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 			})
 		}
 		goto fail
-	ok16:
-		pos = pos17
-		failure.Kids = failure.Kids[:nkids18]
+	ok18:
+		pos = pos19
+		failure.Kids = failure.Kids[:nkids20]
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -22910,11 +24500,11 @@ func _RESERVEDAction(parser *_Parser, start int) (int, *string) {
 	}
 	var node string
 	pos := start
-	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test") !("_"/L/D)
+	// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"iface"/"Iface"/"func"/"Func"/"test") !("_"/L/D)
 	{
 		var node0 string
-		// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test")
-		// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"func"/"Func"/"test"
+		// ("import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"iface"/"Iface"/"func"/"Func"/"test")
+		// "import"/"Import"/"const"/"Const"/"var"/"Var"/"type"/"Type"/"iface"/"Iface"/"func"/"Func"/"test"
 		{
 			pos4 := pos
 			var node3 string
@@ -22998,28 +24588,28 @@ func _RESERVEDAction(parser *_Parser, start int) (int, *string) {
 		fail12:
 			node0 = node3
 			pos = pos4
-			// "func"
-			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
+			// "iface"
+			if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "iface" {
 				goto fail13
 			}
-			node0 = parser.text[pos : pos+4]
-			pos += 4
+			node0 = parser.text[pos : pos+5]
+			pos += 5
 			goto ok1
 		fail13:
 			node0 = node3
 			pos = pos4
-			// "Func"
-			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
+			// "Iface"
+			if len(parser.text[pos:]) < 5 || parser.text[pos:pos+5] != "Iface" {
 				goto fail14
 			}
-			node0 = parser.text[pos : pos+4]
-			pos += 4
+			node0 = parser.text[pos : pos+5]
+			pos += 5
 			goto ok1
 		fail14:
 			node0 = node3
 			pos = pos4
-			// "test"
-			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
+			// "func"
+			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "func" {
 				goto fail15
 			}
 			node0 = parser.text[pos : pos+4]
@@ -23028,50 +24618,70 @@ func _RESERVEDAction(parser *_Parser, start int) (int, *string) {
 		fail15:
 			node0 = node3
 			pos = pos4
+			// "Func"
+			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "Func" {
+				goto fail16
+			}
+			node0 = parser.text[pos : pos+4]
+			pos += 4
+			goto ok1
+		fail16:
+			node0 = node3
+			pos = pos4
+			// "test"
+			if len(parser.text[pos:]) < 4 || parser.text[pos:pos+4] != "test" {
+				goto fail17
+			}
+			node0 = parser.text[pos : pos+4]
+			pos += 4
+			goto ok1
+		fail17:
+			node0 = node3
+			pos = pos4
 			goto fail
 		ok1:
 		}
 		node, node0 = node+node0, ""
 		// !("_"/L/D)
 		{
-			pos17 := pos
+			pos19 := pos
 			// ("_"/L/D)
 			// "_"/L/D
 			{
-				pos23 := pos
+				pos25 := pos
 				// "_"
 				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "_" {
-					goto fail24
+					goto fail26
 				}
 				pos++
-				goto ok20
-			fail24:
-				pos = pos23
+				goto ok22
+			fail26:
+				pos = pos25
 				// L
 				if p, n := _LAction(parser, pos); n == nil {
-					goto fail25
+					goto fail27
 				} else {
 					pos = p
 				}
-				goto ok20
-			fail25:
-				pos = pos23
+				goto ok22
+			fail27:
+				pos = pos25
 				// D
 				if p, n := _DAction(parser, pos); n == nil {
-					goto fail26
+					goto fail28
 				} else {
 					pos = p
 				}
-				goto ok20
-			fail26:
-				pos = pos23
-				goto ok16
-			ok20:
+				goto ok22
+			fail28:
+				pos = pos25
+				goto ok18
+			ok22:
 			}
-			pos = pos17
+			pos = pos19
 			goto fail
-		ok16:
-			pos = pos17
+		ok18:
+			pos = pos19
 			node0 = ""
 		}
 		node, node0 = node+node0, ""

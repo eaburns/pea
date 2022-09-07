@@ -41,6 +41,14 @@ func ambigType(name string, locer loc.Locer, types []Type) Error {
 	return err
 }
 
+func ambigIface(name string, locer loc.Locer, ifaces []*IfaceDef) Error {
+	err := newError(locer, "interface %s is ambiguous", name)
+	for _, iface := range ifaces {
+		err.note(iface.Name).setLoc(iface)
+	}
+	return err
+}
+
 func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 	err := newError(locer, "%s redefined", name)
 	if (prev.Loc() != loc.Loc{}) {

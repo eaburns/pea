@@ -21,7 +21,7 @@ Import <- _ reserved:("import" / "Import") id:Id? path:StrLit {
 	}
 }
 
-Def <- VarDef / TypeDef / FuncDef / TestDef
+Def <- VarDef / TypeDef / IfaceDef / FuncDef / TestDef
 
 VarDef <- _ reserved:("var" / "Var" / "const" / "Const") name:Id v:VarBody {
 	v.Exp = reserved == "Var" || reserved == "Const"
@@ -140,7 +140,42 @@ FuncType <- _ "(" ps:Types? _ ")" _ "{" r:Type? _ "}" {
 	return Type(&FuncType{Parms: parms, Ret: ret, L: l(parser, start, end)})
 }
 
-FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:FuncDecls)? es:FuncBody? {
+IfaceDef <- _ reserved:("iface" / "Iface") ps:TypeVars? name:Id _ def:DefIface {
+	def.Exp = reserved == "Iface"
+	if ps != nil { def.TypeParms = *ps }
+	def.Name = name
+	def.L = l(parser, start, end)
+	return Def(&def)
+}
+
+DefIface <-
+	_ "{" _"}" {
+		return IfaceDef{}
+	} /
+	_ "{" iface:Iface _"}" {
+		return IfaceDef{Iface: iface}
+	} /
+	_ ":=" iface:IfaceName _ {
+		return IfaceDef{Alias: iface}
+	} /
+	_ "(" iface:DefIface _ ")" {
+		iface.Opaque = true
+		return IfaceDef(iface)
+	}
+
+Iface <- e0:IfaceElem es:(_ "," e1:IfaceElem { return interface{}(e1) })* (_ ",")? {
+	return []interface{}(append([]interface{}{e0}, es...))
+}
+
+IfaceElem <-
+	decl:FuncDecl { return interface{}(&decl) } /
+	name:IfaceName { return interface{}(name) }
+
+IfaceName <- (args:TypeArgs)? names:ModTypeName+ {
+	return namedType(args, names, l(parser, start, end)).(*NamedType)
+}
+
+FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:Iface)? es:FuncBody? {
 	var parms []FuncParm; if ps != nil { parms = *ps }
 	var ret Type; if r != nil { ret = *r }
 	var exprs []Expr; if es != nil { exprs = *es }
@@ -474,7 +509,7 @@ Id "identifier" <- _ !Kwd !CaseId !ModId name:NAME {
 
 _ "" <- (SPACE / COMMENT)*
 NAME <- !RESERVED !TypeVar ("_" / L) ("_" / L / D)*
-RESERVED <- ("import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "Type" / "func" / "Func" / "test") !("_" / L / D)
+RESERVED <- ("import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "Type" / "iface" / "Iface" / "func" / "Func" / "test") !("_" / L / D)
 D <- [0-9]
 X <- [a-fA-F0-9]
 L <- r:. &{isLetter(r)}

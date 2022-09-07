@@ -134,99 +134,79 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 			Imports:  imports,
 		}
 		mod.Files = append(mod.Files, file)
-		// Make TypeDefs, but not their Types yet.
+		// Make TypeDefs and IfaceDefs, but not their Types yet.
 		// The Types cannot be made until all TypeDefs are made,
 		// because making Types requires looking up the def
 		// for each type name.
 		for _, parserDef := range parserFile.Defs {
-			parserTypeDef, ok := parserDef.(*parser.TypeDef)
-			if !ok {
+			var def Def
+			var arity int
+			var name string
+			switch parserDef := parserDef.(type) {
+			default:
 				continue
+			case *parser.TypeDef:
+				arity = len(parserDef.TypeParms)
+				name = parserDef.Name.Name
+				parms, es := makeTypeParms(checker.importer.Files(), parserDef.TypeParms)
+				errs = append(errs, es...)
+				def = &TypeDef{
+					File:   file,
+					Alias:  parserDef.Alias,
+					Mod:    modPath,
+					Name:   name,
+					Parms:  parms,
+					Exp:    parserDef.Exp,
+					Opaque: parserDef.Opaque,
+					L:      parserDef.L,
+				}
+			case *parser.IfaceDef:
+				arity = len(parserDef.TypeParms)
+				name = parserDef.Name.Name
+				parms, es := makeTypeParms(checker.importer.Files(), parserDef.TypeParms)
+				errs = append(errs, es...)
+				def = &IfaceDef{
+					File:   file,
+					Mod:    modPath,
+					Name:   name,
+					Parms:  parms,
+					Exp:    parserDef.Exp,
+					Opaque: parserDef.Opaque,
+					L:      parserDef.L,
+				}
 			}
-			arity := len(parserTypeDef.TypeParms)
-			name := parserTypeDef.Name.Name
+			defs[parserDef] = def
 			key := typeKey{arity, name}
 			if prev, ok := seenTypes[key]; ok {
 				errorName := name
 				if arity > 0 {
 					errorName = fmt.Sprintf("(%d)%s", arity, name)
 				}
-				errs = append(errs, redef(parserTypeDef.L, errorName, prev))
+				errs = append(errs, redef(def.Loc(), errorName, prev))
 				continue
 			}
-			seenTypes[key] = parserTypeDef.L
-			parms, fs := makeTypeParms(checker.importer.Files(), parserTypeDef.TypeParms)
-			if len(fs) > 0 {
-				errs = append(errs, fs...)
-			}
-			typeDef := &TypeDef{
-				File:   file,
-				Alias:  parserTypeDef.Alias,
-				Mod:    modPath,
-				Name:   name,
-				Parms:  parms,
-				Exp:    parserTypeDef.Exp,
-				Opaque: parserTypeDef.Opaque,
-				L:      parserTypeDef.L,
-			}
-			defs[parserDef] = typeDef
-			mod.Defs = append(mod.Defs, typeDef)
+			seenTypes[key] = def.Loc()
+			mod.Defs = append(mod.Defs, def)
 		}
 	}
-	// Make TypeDef.Types, but don't instantiate them.
-	// They cannot be instantiated until all are made,
-	// because instantiation requires the instantiated def
-	// to have it's type already built.
-	for _, parserFile := range files {
-		for _, parserDef := range parserFile.Defs {
-			parserTypeDef, ok := parserDef.(*parser.TypeDef)
-			if !ok {
-				continue
-			}
-			if defs[parserTypeDef] == nil {
-				// There was an error with this def;
-				// it was probably redefined.
-				// Just move along.
-				continue
-			}
-			typeDef := defs[parserTypeDef].(*TypeDef)
-			t, fs := _makeType(typeDef, parserTypeDef.Type, false, false)
-			if len(fs) > 0 {
-				errs = append(errs, fs...)
-			}
-			typeDef.Type = t
-		}
-	}
-	// Type instantiation assumes no alias cycles,
-	// so we check them here.
-	// Alias cycles are an error, but this loop will
-	// report and then break any cycles it finds
-	// in order to allow checking to continue
-	// reporting more errors.
-	for _, def := range mod.Defs {
-		if typeDef, ok := def.(*TypeDef); ok && typeDef.Alias {
-			if err := checkAliasCycle(typeDef); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
+
+	errs = append(errs, checkTypeDefs(files, defs)...)
+
 	// At this point, all TypeDefs and their types are made.
 	// From here on, we can fully make and instantiate types.
+
+	// New that we can instantiate types we can finish checking IfaceDefs.
+	errs = append(errs, checkIfaceDefs(files, defs)...)
+
 	testNames := make(map[string]loc.Loc)
 	for i, parserFile := range files {
 		file := mod.Files[i]
 		for _, parserDef := range parserFile.Defs {
 			switch parserDef := parserDef.(type) {
 			case *parser.TypeDef:
-				// Now all the types are built, so we can inst them.
-				if defs[parserDef] == nil {
-					// There was an error with this def;
-					// it was probably redefined.
-					// Just move along.
-					break
-				}
-				typeDef := defs[parserDef].(*TypeDef)
-				typeDef.Type = instType(typeDef.Type)
+				// already done
+			case *parser.IfaceDef:
+				// already done
 			case *parser.VarDef:
 				origErrorCount := len(errs)
 				name := parserDef.Name.Name
@@ -279,8 +259,28 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 				if funDef.Ret == nil {
 					funDef.Ret = &StructType{L: parserDef.L}
 				}
-				if funDef.Iface, es = makeFuncDecls(funDef, parserDef.Iface); len(es) > 0 {
-					errs = append(errs, es...)
+
+				for _, elem := range parserDef.Iface {
+					switch elem := elem.(type) {
+					case *parser.FuncDecl:
+						decl, es := makeFuncDecl(funDef, elem)
+						errs = append(errs, es...)
+						funDef.Iface = appendFuncDecl(funDef.Iface, decl)
+					case *parser.NamedType:
+						args, es := makeTypes(funDef, elem.Args)
+						errs = append(errs, es...)
+						inst, err := newIfaceInst(funDef, elem, args)
+						if err != nil {
+							errs = append(errs, err)
+							break
+						}
+						inst = canonicalIfaceInst(inst.Def, inst.Args)
+						for i := range inst.Funcs {
+							funDef.Iface = appendFuncDecl(funDef.Iface, &inst.Funcs[i])
+						}
+					default:
+						panic(fmt.Sprintf("bad iface element type: %T", elem))
+					}
 				}
 				defs[parserDef] = funDef
 				if len(errs) == origErrorCount {
@@ -315,7 +315,9 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 			var es []Error
 			switch def := defs[parserDef].(type) {
 			case *TypeDef:
-				break // nothing to do really.
+				// already done
+			case *IfaceDef:
+				// already done
 			case *VarDef:
 				es = checkVarDef(def, parserDef.(*parser.VarDef))
 			case *FuncDef:
@@ -405,6 +407,47 @@ func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm
 		})
 	}
 	return typeParms, errs
+}
+
+func checkTypeDefs(files []*parser.File, defs map[parser.Def]Def) []Error {
+	// Checking TypeDefs happens in three stages:
+	// 1) Set the TypeDef.Type field to an uninstantiate type.
+	// 	We cannot instantiate types until we are sure there are no alias cycles.
+	// 2) Check for alias cycles, reporting any as errors and breaking them abrtrarily
+	// 	so that checking can continue.
+	// 3) TypeDef.Type, which can be done now that we know there are no cycles.
+	var errs []Error
+	for _, parserFile := range files {
+		for _, parserDef := range parserFile.Defs {
+			parserTypeDef, ok := parserDef.(*parser.TypeDef)
+			if !ok {
+				continue
+			}
+			typeDef := defs[parserTypeDef].(*TypeDef)
+			t, es := _makeType(typeDef, parserTypeDef.Type, false, false)
+			errs = append(errs, es...)
+			typeDef.Type = t
+		}
+	}
+	// Type instantiation assumes no alias cycles,
+	// so we check them here.
+	// Alias cycles are an error, but this loop will
+	// report and then break any cycles it finds
+	// in order to allow checking to continue
+	// reporting more errors.
+	for _, def := range defs {
+		if typeDef, ok := def.(*TypeDef); ok && typeDef.Alias {
+			if err := checkTypeAliasCycle(typeDef); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+	for _, def := range defs {
+		if typeDef, ok := def.(*TypeDef); ok {
+			typeDef.Type = instType(typeDef.Type)
+		}
+	}
+	return errs
 }
 
 func makeType(x scope, parserType parser.Type) (typ Type, errs []Error) {
@@ -553,7 +596,7 @@ func _makeTypes(x scope, parserTypes []parser.Type, inst bool, allowUnboundForTe
 	return types, errs
 }
 
-func checkAliasCycle(root *TypeDef) Error {
+func checkTypeAliasCycle(root *TypeDef) Error {
 	var path []*TypeDef
 	seen := make(map[*TypeDef]bool)
 	var check func(*TypeDef) bool
@@ -583,7 +626,7 @@ func checkAliasCycle(root *TypeDef) Error {
 		}
 		// Break the alias so that checking can continue reporting more errors.
 		root.Alias = false
-		err := newError(root.L, "alias cycle")
+		err := newError(root.L, "type alias cycle")
 		err.setNotes(notes)
 		return err
 	}
@@ -596,12 +639,21 @@ func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
 		findTypeVars(parserFuncParm.Type, typeVars)
 	}
 	findTypeVars(parserFuncDef.Ret, typeVars)
-	for _, parserIface := range parserFuncDef.Iface {
-		for _, parserIfaceParm := range parserIface.Parms {
-			findTypeVars(parserIfaceParm, typeVars)
-		}
-		if parserIface.Ret != nil {
-			findTypeVars(parserIface.Ret, typeVars)
+	for _, elem := range parserFuncDef.Iface {
+		switch elem := elem.(type) {
+		case *parser.FuncDecl:
+			for _, parserIfaceParm := range elem.Parms {
+				findTypeVars(parserIfaceParm, typeVars)
+			}
+			if elem.Ret != nil {
+				findTypeVars(elem.Ret, typeVars)
+			}
+		case *parser.NamedType:
+			for _, parserTypeArg := range elem.Args {
+				findTypeVars(parserTypeArg, typeVars)
+			}
+		default:
+			panic(fmt.Sprintf("bad iface elem type: %T", elem))
 		}
 	}
 	var typeParms []TypeParm
@@ -679,29 +731,217 @@ func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]ParmDef, []Error) 
 	return parms, errs
 }
 
-func makeFuncDecls(x scope, parserDecls []parser.FuncDecl) ([]FuncDecl, []Error) {
+// checkIfaceDefs assumes that it is called from late enough during checking
+// that it is possible to fully instantiate types.
+func checkIfaceDefs(files []*parser.File, defs map[parser.Def]Def) []Error {
+	// Checking IfaceDefs happens in two steps:
+	// 1) Populate the "head", which is the IfaceDef.Iface and IfaceDef.Alias fields.
+	// 	In so doing, any *IfaceInsts are temporary instances,
+	// 	they contain only the .Def and .Args fields, but not .Funcs,
+	// 	and they are never a "canonical" instance from .Def.Insts,
+	// 	as we cannot yet compute Funcs.
+	// 2) Recursively check the "body" of each IfaceDef, which is the .Funcs.
+	// 	In doing this, any temporary *IfaceInsts are replaced by their canonical.
+	// 	Any cycles are detected, reported as errors, and are arbitrarily broken
+	// 	so that checking can continue to report other errors.
 	var errs []Error
-	var decls []FuncDecl
-	for _, parserDecl := range parserDecls {
-		parms, fs := makeTypes(x, parserDecl.Parms)
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
+	for _, parserFile := range files {
+		for _, parserDef := range parserFile.Defs {
+			parserDef, ok := parserDef.(*parser.IfaceDef)
+			if !ok {
+				continue
+			}
+			def := defs[parserDef].(*IfaceDef)
+			errs = append(errs, checkIfaceDefHead(def, parserDef)...)
 		}
-		ret, fs := makeType(x, parserDecl.Ret)
-		if len(fs) > 0 {
-			errs = append(errs, fs...)
-		}
-		if ret == nil {
-			ret = &StructType{L: parserDecl.L}
-		}
-		decls = append(decls, FuncDecl{
-			Name:  parserDecl.Name.Name,
-			Parms: parms,
-			Ret:   ret,
-			L:     parserDecl.L,
-		})
 	}
-	return decls, errs
+	for _, def := range defs {
+		if ifaceDef, ok := def.(*IfaceDef); ok {
+			errs = append(errs, checkIfaceDefBody(ifaceDef, nil)...)
+		}
+	}
+	return errs
+}
+
+func checkIfaceDefHead(def *IfaceDef, parserDef *parser.IfaceDef) []Error {
+	if parserDef.Alias != nil {
+		args, errs := makeTypes(def, parserDef.Alias.Args)
+		var err Error
+		if def.Alias, err = newIfaceInst(def, parserDef.Alias, args); err != nil {
+			errs = append(errs, err)
+		}
+		return errs
+	}
+
+	var errs []Error
+	for _, elem := range parserDef.Iface {
+		switch elem := elem.(type) {
+		case *parser.FuncDecl:
+			decl, es := makeFuncDecl(def, elem)
+			errs = append(errs, es...)
+			def.Iface = append(def.Iface, decl)
+		case *parser.NamedType:
+			args, es := makeTypes(def, elem.Args)
+			errs = append(errs, es...)
+			if inst, err := newIfaceInst(def, elem, args); err != nil {
+				errs = append(errs, err)
+			} else {
+				def.Iface = append(def.Iface, inst)
+			}
+		default:
+			panic(fmt.Sprintf("bad iface element type: %T", elem))
+		}
+	}
+	return errs
+}
+
+func makeFuncDecl(x scope, parserDecl *parser.FuncDecl) (*FuncDecl, []Error) {
+	parms, errs := makeTypes(x, parserDecl.Parms)
+	ret, es := makeType(x, parserDecl.Ret)
+	errs = append(errs, es...)
+	if ret == nil {
+		ret = &StructType{L: parserDecl.L}
+	}
+	decl := &FuncDecl{
+		Name:  parserDecl.Name.Name,
+		Parms: parms,
+		Ret:   ret,
+		L:     parserDecl.L,
+	}
+	return decl, errs
+}
+
+func checkIfaceDefBody(def *IfaceDef, path []*IfaceDef) (errs []Error) {
+	if def.Funcs != nil {
+		return nil // Already checked.
+	}
+	defer func() {
+		if def.Funcs == nil {
+			// Mark it as checked, so we don't keep doing it.
+			def.Funcs = []FuncDecl{}
+		}
+	}()
+	for _, p := range path {
+		if p != def {
+			continue
+		}
+		err := newError(p, "interface cycle")
+		var notes []note
+		for _, d := range path[1:] {
+			notes = append(notes, newNote(d.Name).setLoc(d))
+		}
+		notes = append(notes, newNote(path[0].Name).setLoc(path[0]))
+		err.setNotes(notes)
+		return []Error{err}
+	}
+
+	if def.Alias != nil {
+		errs = append(errs, checkIfaceDefBody(def.Alias.Def, append(path, def))...)
+		// If there were errors, it may be because an interface cycle;
+		// we cannot get the canonicalIfaceInst if there was a cycle,
+		// so just return.
+		if len(errs) != 0 {
+			return errs
+		}
+		def.Alias = canonicalIfaceInst(def.Alias.Def, def.Alias.Args)
+		def.Funcs = def.Alias.Funcs
+		return errs
+	}
+
+	for i, elem := range def.Iface {
+		switch elem := elem.(type) {
+		case *IfaceInst:
+			errs = append(errs, checkIfaceDefBody(elem.Def, append(path, def))...)
+			inst := canonicalIfaceInst(elem.Def, elem.Args)
+			def.Iface[i] = inst
+			for i := range inst.Funcs {
+				def.Funcs = appendFuncDecl(def.Funcs, &inst.Funcs[i])
+			}
+		case *FuncDecl:
+			def.Funcs = appendFuncDecl(def.Funcs, elem)
+		default:
+			panic(fmt.Sprintf("bad iface elem type: %T", elem))
+		}
+	}
+	return errs
+}
+
+func appendFuncDecl(funcs []FuncDecl, decl *FuncDecl) []FuncDecl {
+	for i := range funcs {
+		if eqFuncDecl(&funcs[i], decl) {
+			return funcs
+		}
+	}
+	return append(funcs, *decl)
+}
+
+func eqFuncDecl(a, b *FuncDecl) bool {
+	if a.Name != b.Name || len(a.Parms) != len(b.Parms) {
+		return false
+	}
+	for i := range a.Parms {
+		if !eqType(a.Parms[i], b.Parms[i]) {
+			return false
+		}
+	}
+	return eqType(a.Ret, b.Ret)
+}
+
+func newIfaceInst(x scope, parserType *parser.NamedType, args []Type) (*IfaceInst, Error) {
+	if parserType.Mod != nil {
+		imp := findImport(x, parserType.Mod.Name)
+		if imp == nil {
+			return nil, notFound(parserType.Mod.Name, parserType.L)
+		}
+		x = imp
+	}
+	name := parserType.Name.Name
+	l := parserType.L
+	switch defs := findIfaceDef(x, len(parserType.Args), name, l); {
+	case len(defs) == 0:
+		return nil, notFound(name, l)
+	case len(defs) > 1:
+		return nil, ambigIface(name, l, defs)
+	case defs[0].File.Mod.Imported && defs[0].Opaque:
+		modName := parserType.Mod.Name
+		return nil, newError(l, "interface %s#%s is opaque", modName, name)
+	default:
+		return &IfaceInst{Def: defs[0], Args: args}, nil
+	}
+}
+
+func canonicalIfaceInst(def *IfaceDef, args []Type) *IfaceInst {
+nextInst:
+	for _, inst := range def.Insts {
+		for i, arg := range inst.Args {
+			if !eqType(arg, args[i]) {
+				continue nextInst
+			}
+		}
+		return inst
+	}
+	bind := make(map[*TypeParm]Type)
+	for i := range def.Parms {
+		bind[&def.Parms[i]] = args[i]
+	}
+
+	if def.Alias != nil {
+		return canonicalIfaceInst(def.Alias.Def, subTypes(bind, def.Alias.Args))
+	}
+
+	var funcs []FuncDecl
+	for i := range def.Funcs {
+		funcs = append(funcs, *subFuncDecl(bind, &def.Funcs[i]))
+	}
+	inst := &IfaceInst{Def: def, Args: args, Funcs: funcs}
+	for _, arg := range args {
+		if hasTypeVariable(arg) {
+			// If the args have a type variable, don't bother saving this inst.
+			return inst
+		}
+	}
+	def.Insts = append(def.Insts, inst)
+	return inst
 }
 
 func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
@@ -1567,7 +1807,9 @@ func idToExpr(id id, l loc.Loc) Expr {
 }
 
 // Convert a Func f into a block literal of the form
-// 	(p…){ res := f(p…), res }
+//
+//	(p…){ res := f(p…), res }
+//
 // where p… are parameters with the same type as f.
 //
 // The call is assigned to a varible,

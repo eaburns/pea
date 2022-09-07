@@ -241,6 +241,32 @@ func (b BasicType) print(pc *config) {
 	pc.loc(b.L)
 }
 
+func (t *IfaceDef) print(pc *config) {
+	pc.p("IfaceDef{")
+	pc.loc(t.L)
+	pc.field("Mod", t.Mod)
+	pc.field("Name", t.Name)
+	pc.field("Exp", t.Exp)
+	pc.field("Opaque", t.Opaque)
+	pc.field("Parms", t.Parms)
+	if t.Iface != nil {
+		pc.field("Iface", t.Iface)
+	} else {
+		pc.field("Alias", t.Alias)
+	}
+	pc.field("Funcs", t.Funcs)
+	pc.field("Insts", t.Insts)
+	pc.p("\n}")
+}
+
+func (t *IfaceInst) print(pc *config) {
+	pc.p("IfaceInst{	<%p>", t)
+	pc.field("Def", fmt.Sprintf("<%p>", t.Def))
+	pc.field("Args", t.Args)
+	pc.field("Funcs", t.Funcs)
+	pc.p("\n}")
+}
+
 func (f *FuncDef) print(pc *config) {
 	pc.p("FuncDef{")
 	pc.loc(f.L)
