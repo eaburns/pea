@@ -2507,7 +2507,7 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 	}
 }
 
-func TestIfaceConstraintInst(t *testing.T) {
+func TestCallIfaceConstraintInst(t *testing.T) {
 	tests := []struct {
 		name      string
 		src       string
@@ -2518,124 +2518,166 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "simple match",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ int)
-				func foo(_ X) : bar(X)
+				func target_function(_ X) : bar(X)
 			`,
 			want: "bar(int)",
 		},
 		{
 			name: "no match",
 			src: `
-				func main() { foo(5) }
-				func foo(_ X) : bar(X)
+				func main() { target_function(5) }
+				func target_function(_ X) : bar(X)
 			`,
 			err: "failed to instantiate",
 		},
 		{
+			name: "match return",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X) : return()!
+			`,
+			// return[0] is the name of the inserted parameter
+			// to hold the return constraint function expression.
+			want: "return[0]",
+		},
+		{
+			name: "match var",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X) : x()string
+				var x := (){string} :: (){"hello"}
+			`,
+			// x[0] is the name of the inserted parameter
+			// to hold the x constraint function expression.
+			want: "x[0]",
+		},
+		{
+			name: "match local",
+			src: `
+				func main() { x := (){"hello"}, target_function(5), use(x) }
+				func target_function(_ X) : x()string
+				func use(_ T)
+			`,
+			// x[0] is the name of the inserted parameter
+			// to hold the x constraint function expression.
+			want: "x[0]",
+		},
+		{
+			name: "match parm",
+			src: `
+				func main(x (){string}) { target_function(5) }
+				func target_function(_ X) : x()string
+			`,
+			// x[0] is the name of the inserted parameter
+			// to hold the x constraint function expression.
+			want: "x[0]",
+		},
+		{
 			name: "match with recursive inst",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func baz(_ int)
 				func bar(_ X) : baz(X)
-				func foo(_ X) : bar(X)
+				func target_function(_ X) : bar(X)
 			`,
 			want: "bar(int)",
 		},
 		{
 			name: "no match because recursive inst",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ X) : baz(X)
-				func foo(_ X) : bar(X)
+				func target_function(_ X) : bar(X)
 			`,
 			err: "failed to instantiate",
 		},
 		{
 			name: "two-way binding on parm",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ int, _ Y)
-				func foo(_ X) : bar(X, float64)
+				func target_function(_ X) : bar(X, float64)
 			`,
 			want: "bar(int, float64)",
 		},
 		{
 			name: "two-way binding on parm 2",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ int, _ Y)
-				func foo(_ X) : bar(X, X)
+				func target_function(_ X) : bar(X, X)
 			`,
 			want: "bar(int, int)",
 		},
 		{
 			name: "two-way binding on ret",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ int) Y
-				func foo(_ X) : bar(X) float64
+				func target_function(_ X) : bar(X) float64
 			`,
 			want: "bar(int)float64",
 		},
 		{
 			name: "two-way OK param rebinding",
 			src: `
-				func main() { foo() }
+				func main() { target_function() }
 				func bar(_ int, _ int)
-				func foo() : bar(X, X)
+				func target_function() : bar(X, X)
 			`,
 			want: "bar(int, int)",
 		},
 		{
 			name: "two-way OK return rebinding",
 			src: `
-				func main() { foo() }
+				func main() { target_function() }
 				func bar(_ int) int
-				func foo() : bar(X)X
+				func target_function() : bar(X)X
 			`,
 			want: "bar(int)int",
 		},
 		{
 			name: "two-way bad param rebinding",
 			src: `
-				func main() { foo() }
+				func main() { target_function() }
 				func bar(_ int, _ float64)
-				func foo() : bar(X, X)
+				func target_function() : bar(X, X)
 			`,
 			err: "X binds int and float64",
 		},
 		{
 			name: "two-way bad return rebinding",
 			src: `
-				func main() { foo() }
+				func main() { target_function() }
 				func bar(_ int) float64
-				func foo() : bar(X) X
+				func target_function() : bar(X) X
 			`,
 			err: "X binds int and float64",
 		},
 		{
 			name: "sort with element typeparm introduced in iface",
 			src: `
-				func main() { sort([1, 2, 3]) }
-				func sort(x X) : [](X, int)&U, <(U, U)bool
+				func main() { target_function([1, 2, 3]) }
+				func target_function(x X) : [](X, int)&U, <(U, U)bool
 			`,
 			want: "built-in []([int], int)&int",
 		},
 		{
 			name: "unbound variable",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ Y)
-				func foo(_ int) : bar(Y)
+				func target_function(_ int) : bar(Y)
 			`,
 			err: "cannot convert parameter 0 _ to _",
 		},
 		{
 			name: "iface parameter int accepts int",
 			src: `
-				func main() { foo() }
-				func foo() : bar(int)
+				func main() { target_function() }
+				func target_function() : bar(int)
 				func bar(_ int)
 			`,
 			want: "bar(int)",
@@ -2643,8 +2685,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface parameter int accepts &int",
 			src: `
-				func main() { foo() }
-				func foo() : bar(int)
+				func main() { target_function() }
+				func target_function() : bar(int)
 				func bar(_ &int)
 			`,
 			want: "bar(&int)",
@@ -2652,8 +2694,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface parameter &int rejects int",
 			src: `
-				func main() { foo() }
-				func foo() : bar(&int)
+				func main() { target_function() }
+				func target_function() : bar(&int)
 				func bar(_ int)
 			`,
 			err: "expected a reference literal",
@@ -2661,8 +2703,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface parameter &int accepts &int",
 			src: `
-				func main() { foo() }
-				func foo() : bar(&int)
+				func main() { target_function() }
+				func target_function() : bar(&int)
 				func bar(_ &int)
 			`,
 			want: "bar(&int)",
@@ -2670,8 +2712,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface parameter T=int accepts &int",
 			src: `
-				func main() { foo(5) }
-				func foo(_ X) : bar(X)
+				func main() { target_function(5) }
+				func target_function(_ X) : bar(X)
 				func bar(_ &int)
 			`,
 			want: "bar(&int)",
@@ -2679,26 +2721,26 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface parameter &T=&int rejects int",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ int)
-				func foo(_ X) : bar(&X)
+				func target_function(_ X) : bar(&X)
 			`,
 			err: "expected a reference literal &int",
 		},
 		{
 			name: "iface parameter &T=&int accepts &int",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ &int)
-				func foo(_ X) : bar(&X)
+				func target_function(_ X) : bar(&X)
 			`,
 			want: "bar(&int)",
 		},
 		{
 			name: "iface parameter T=&int accepts int",
 			src: `
-				func main() { foo(&int :: 5) }
-				func foo(_ X) : bar(X)
+				func main() { target_function(&int :: 5) }
+				func target_function(_ X) : bar(X)
 				func bar(_ int)
 			`,
 			want: "bar(int)",
@@ -2706,8 +2748,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface parameter T=&int accepts &int",
 			src: `
-				func main() { foo(&int :: 5) }
-				func foo(_ X) : bar(X)
+				func main() { target_function(&int :: 5) }
+				func target_function(_ X) : bar(X)
 				func bar(_ &int)
 			`,
 			want: "bar(&int)",
@@ -2715,8 +2757,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface parameter one T=&int accepts int, two &T rejects &int",
 			src: `
-				func main() { foo(&int :: 5) }
-				func foo(_ X) : bar(X, &X)
+				func main() { target_function(&int :: 5) }
+				func target_function(_ X) : bar(X, &X)
 				func bar(_ int, _ &int)
 			`,
 			err: "but expected a reference literal",
@@ -2724,8 +2766,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface new parameter T binds int",
 			src: `
-				func main() { foo() }
-				func foo() : bar(X)
+				func main() { target_function() }
+				func target_function() : bar(X)
 				func bar(_ int)
 			`,
 			want: "bar(int)",
@@ -2733,8 +2775,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface new parameter T binds &int",
 			src: `
-				func main() { foo() }
-				func foo() : bar(X)
+				func main() { target_function() }
+				func target_function() : bar(X)
 				func bar(_ &int)
 			`,
 			want: "bar(&int)",
@@ -2742,8 +2784,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface return int accepts int",
 			src: `
-				func main() { foo() }
-				func foo() : bar()int
+				func main() { target_function() }
+				func target_function() : bar()int
 				func bar() int
 			`,
 			want: "bar()int",
@@ -2751,8 +2793,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface return int accepts &int",
 			src: `
-				func main() { foo() }
-				func foo() : bar()int
+				func main() { target_function() }
+				func target_function() : bar()int
 				func bar() &int
 			`,
 			want: "bar()&int",
@@ -2760,8 +2802,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface return &int rejects int",
 			src: `
-				func main() { foo() }
-				func foo() : bar()&int
+				func main() { target_function() }
+				func target_function() : bar()&int
 				func bar() int
 			`,
 			err: "expected a reference literal",
@@ -2769,8 +2811,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface return &int accepts &int",
 			src: `
-				func main() { foo() }
-				func foo() : bar()&int
+				func main() { target_function() }
+				func target_function() : bar()&int
 				func bar() &int
 			`,
 			want: "bar()&int",
@@ -2778,8 +2820,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface return T=int accepts int",
 			src: `
-				func main() { foo(5) }
-				func foo(_ X) : bar()X
+				func main() { target_function(5) }
+				func target_function(_ X) : bar()X
 				func bar() int
 			`,
 			want: "bar()int",
@@ -2787,8 +2829,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface return T=int accepts &int",
 			src: `
-				func main() { foo(5) }
-				func foo(_ X) : bar()X
+				func main() { target_function(5) }
+				func target_function(_ X) : bar()X
 				func bar() &int
 			`,
 			want: "bar()&int",
@@ -2796,36 +2838,36 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface return &T=&int rejects int",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar()int
-				func foo(_ X) : bar()&X
+				func target_function(_ X) : bar()&X
 			`,
 			err: "expected a reference literal",
 		},
 		{
 			name: "iface return &T=int accepts &int",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar()&int
-				func foo(_ X) : bar()&X
+				func target_function(_ X) : bar()&X
 			`,
 			want: "bar()&int",
 		},
 		{
 			name: "iface return T=&int accepts int",
 			src: `
-				func main() { foo(&int :: 5) }
+				func main() { target_function(&int :: 5) }
 				func bar()int
-				func foo(_ X) : bar()X
+				func target_function(_ X) : bar()X
 			`,
 			want: "bar()int",
 		},
 		{
 			name: "iface return T=&int accepts &int",
 			src: `
-				func main() { foo(&int :: 5) }
+				func main() { target_function(&int :: 5) }
 				func bar()&int
-				func foo(_ X) : bar()X
+				func target_function(_ X) : bar()X
 			`,
 			want: "bar()&int",
 		},
@@ -2846,10 +2888,10 @@ func TestIfaceConstraintInst(t *testing.T) {
 		},
 		{
 			// You can sort an array, since it is mutable.
-			name: "sorting a array",
+			name: "sorting an array",
 			src: `
-				func main() { sort([1, 2, 3, 4, 5]) }
-				func sort(span S) :
+				func main() { target_function([1, 2, 3, 4, 5]) }
+				func target_function(span S) :
 					[](S, int)&T,	// [int] does satisfy this &T.
 					[](S, int, int) S,
 					.length(S)int,
@@ -2860,9 +2902,9 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "iface return &T does not accept T",
 			src: `
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar()int
-				func foo(_ X) : bar()&X
+				func target_function(_ X) : bar()&X
 			`,
 			err: "expected a reference literal &int",
 		},
@@ -2870,9 +2912,9 @@ func TestIfaceConstraintInst(t *testing.T) {
 			name: "iface parameter T matches literal",
 			src: `
 				type t [.x int]
-				func main() { foo(t :: [.x 4]) }
+				func main() { target_function(t :: [.x 4]) }
 				func bar(_ [.x int])
-				func foo(_ X) : bar(X)
+				func target_function(_ X) : bar(X)
 			`,
 			want: "bar([.x int])",
 		},
@@ -2880,9 +2922,9 @@ func TestIfaceConstraintInst(t *testing.T) {
 			name: "iface parameter literal matches T",
 			src: `
 				type t [.x int]
-				func main() { foo([.x 4]) }
+				func main() { target_function([.x 4]) }
 				func bar(_ t)
-				func foo(_ X) : bar(X)
+				func target_function(_ X) : bar(X)
 			`,
 			want: "bar(t)",
 		},
@@ -2890,9 +2932,9 @@ func TestIfaceConstraintInst(t *testing.T) {
 			name: "T as type argument",
 			src: `
 				type T nest [.x T]
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ int nest)
-				func foo(_ X) : bar(X nest)
+				func target_function(_ X) : bar(X nest)
 			`,
 			want: "bar(int nest)",
 		},
@@ -2900,9 +2942,9 @@ func TestIfaceConstraintInst(t *testing.T) {
 			name: "T as type argument, does not match &T argument",
 			src: `
 				type T nest [.x T]
-				func main() { foo(5) }
+				func main() { target_function(5) }
 				func bar(_ (&int) nest)
-				func foo(_ X) : bar(X nest)
+				func target_function(_ X) : bar(X nest)
 			`,
 			err: "failed to instantiate",
 		},
@@ -2910,10 +2952,10 @@ func TestIfaceConstraintInst(t *testing.T) {
 			name: "argument-dependent lookup",
 			src: `
 				import "foo"
-				// foo is not capital Imported,
+				// target_function is not capital Imported,
 				// but we get foo#+ still with ADL.
-				func f(a T) : +(T, T, T)T
-				func main() { f(foo#t()) }
+				func target_function(a T) : +(T, T, T)T
+				func main() { target_function(foo#t()) }
 			`,
 			otherMods: []testMod{
 				{
@@ -2930,30 +2972,30 @@ func TestIfaceConstraintInst(t *testing.T) {
 		{
 			name: "argument-dependent lookup, recursive iface inst",
 			src: `
-				import "foo"
-				import "bar"
-				func f(a T, b U) : foo(T, U)
-				func main() { f(foo#t(), bar#u()) }
+				import "x"
+				import "y"
+				func target_function(a T, b U) : x(T, U)
+				func main() { target_function(x#t(), y#u()) }
 			`,
 			otherMods: []testMod{
 				{
-					path: "foo",
+					path: "x",
 					src: `
 						Type t int
 						Func t() t { return: t :: 0 }
-						Func foo(_ T, _ U) : bar(U) {}
+						Func x(_ T, _ U) : y(U) {}
 					`,
 				},
 				{
-					path: "bar",
+					path: "y",
 					src: `
 						Type u int
 						Func u() u { return: u :: 0 }
-						Func bar(_ u) {}
+						Func y(_ u) {}
 					`,
 				},
 			},
-			want: "foo#foo(foo#t, bar#u)",
+			want: "x#x(x#t, y#u)",
 		},
 		{
 			name: "argument-dependent lookup fails no non-argument type mod",
@@ -2994,10 +3036,8 @@ func TestIfaceConstraintInst(t *testing.T) {
 			mod, errs := check("test", []string{test.src}, test.otherMods)
 			switch {
 			case test.err == "" && len(errs) == 0:
-				main := findFuncDef(t, "main", mod)
-				call := findCall(main.Exprs[0])
-				fun := call.Func.(*FuncInst)
-				got := fun.IfaceArgs[0].String()
+				target_function := findFuncDef(t, "target_function", mod)
+				got := target_function.Insts[0].IfaceArgs[0].String()
 				if got != test.want {
 					t.Errorf("got %s, want %s", got, test.want)
 				}
@@ -3009,6 +3049,35 @@ func TestIfaceConstraintInst(t *testing.T) {
 				t.Errorf("expected error matching %s, got\n%s", test.err, errStr(errs))
 			}
 		})
+	}
+}
+
+// Test that a function with iface constraints can be used as an expression.
+func TestIDIfaceConstraintInst(t *testing.T) {
+	const src = `
+		func foo1() int {
+			bar(return5)
+		}
+		func foo2() int {
+			bar(return5)
+		}
+		func bar(f (){!})! {
+			f(),
+		}
+		func return5()! : return:(int)! {
+			return: 5
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Errorf("failed to check: %s", errs[0])
+	}
+	// There should only be one inst of return5
+	// even though it is used twice with different
+	// iface arg expressions.
+	ret5 := findFuncDef(t, "return5", mod)
+	if len(ret5.Insts) != 1 {
+		t.Errorf("%d instances, but expected 1", len(ret5.Insts))
 	}
 }
 

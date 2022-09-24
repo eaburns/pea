@@ -1099,8 +1099,9 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 	}
 	if len(def.TypeParms) == 0 && len(def.Iface) == 0 {
 		// This is a not-parameterized function.
-		// Make sure we build an instance of it even if never called.
-		canonicalFuncInst(newFuncInst(def, nil, def.Loc()))
+		// Make sure we add it to the Insts memo table,
+		// so its Exprs get built.
+		memoizeFuncInst(newFuncInst(def, nil, def.Loc()))
 	}
 	return errs
 }
@@ -1621,10 +1622,10 @@ func useFunc(x scope, l loc.Loc, fun Func) Func {
 	switch fun := fun.(type) {
 	case *FuncInst:
 		useFuncInst(x, l, fun.Def, nil, nil)
-		return canonicalFuncInst(fun)
+		return captureExprIfaceArgs(fun)
 	case *idFunc:
 		return &ExprFunc{
-			Expr:     idToExpr(useID(x, l, false, fun.id), fun.l),
+			Expr:     useID(x, l, false, fun.id),
 			FuncType: fun.funcType,
 		}
 	default:
@@ -1679,7 +1680,7 @@ func checkExprCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []E
 		}
 	}
 	var ret Type
-	if fun != nil {
+	if fun != nil && fun.FuncType != nil && fun.FuncType.Ret != nil {
 		ret = &RefType{Type: fun.FuncType.Ret, L: fun.FuncType.Ret.Loc()}
 	}
 	expr = &Call{Func: fun, Args: args, T: ret, L: parserCall.L}
@@ -1708,16 +1709,26 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, 
 	var n int
 	var notFoundNotes []note
 	for _, id := range ids {
+		fun, ok := id.(Func)
+		if !ok {
+			ids[n] = id
+			n++
+			continue
+		}
 		if !isGround(id) {
 			if !pat.isGroundType() {
 				n := newNote("cannot ground %s", id).setLoc(id)
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
-			if _, fail := unifyFunc(x, parserID.L, id.(Func), nil, pat); fail != nil {
+			if _, fail := unifyFunc(x, parserID.L, fun, nil, pat); fail != nil {
 				notFoundNotes = append(notFoundNotes, fail.note)
 				continue
 			}
+		}
+		if note := instFuncConstraints(x, parserID.L, fun); note != nil {
+			notFoundNotes = append(notFoundNotes, note)
+			continue
 		}
 		ids[n] = id
 		n++
@@ -1736,9 +1747,10 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, 
 	if len(ids) > 1 && pat.isGroundType() {
 		var n int
 		for _, id := range ids {
-			expr := idToExpr(id, parserID.L)
-			if _, _, err := convertExpr(expr, pat, false); err != nil {
-				n := newNote("cannot convert %s (%s) to %s", expr, expr.Type(), pat.groundType()).setLoc(expr)
+			if _, n0 := convertType(pattern(id.Type()), pat, false); n0 != nil {
+				n := newNote("cannot convert %s (%s) to %s", id, id.Type(), pat)
+				n.setLoc(id.Type().Loc())
+				n.setNotes([]note{n0})
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
@@ -1765,9 +1777,7 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, 
 		err.setNotes(ambigNotes)
 		return nil, []Error{err}
 	default:
-		id := useID(x, parserID.L, assignLHS, ids[0])
-		expr := idToExpr(id, parserID.L)
-		return expr, nil
+		return useID(x, parserID.L, assignLHS, ids[0]), nil
 	}
 }
 
@@ -1785,13 +1795,14 @@ func isGround(id id) bool {
 	}
 }
 
-func useID(x scope, l loc.Loc, assignLHS bool, id id) id {
+// useID marks the ID as used, converts it to a Cap if it is actually captured
+// and not accessed directly, and returns it as an Expr.
+// If the ID as a FuncInst, it is canonicalized
+// and a BlockLit is returned wrapping its call.
+func useID(x scope, l loc.Loc, assignLHS bool, id id) Expr {
 	switch id := id.(type) {
 	case *VarDef:
 		useVar(x, l, id)
-		return id
-	case *ParmDef:
-		return capture(x, id)
 	case *LocalDef:
 		// Assigning to a local doesn't use it.
 		// However, if the local's type is a reference,
@@ -1802,19 +1813,9 @@ func useID(x scope, l loc.Loc, assignLHS bool, id id) id {
 		if !assignLHS || isRefLiteral(id.Type()) {
 			id.used = true
 		}
-		return capture(x, id)
-	case *BlockCap:
-		return capture(x, id)
-	case *FuncInst:
-		useFuncInst(x, l, id.Def, nil, nil)
-		return canonicalFuncInst(id)
-	default:
-		return id
 	}
-}
 
-func idToExpr(id id, l loc.Loc) Expr {
-	switch id := id.(type) {
+	switch id := capture(x, id).(type) {
 	case *VarDef:
 		return deref(&Var{Def: id, T: refLiteral(id.T), L: l})
 	case *ParmDef:
@@ -1823,6 +1824,14 @@ func idToExpr(id id, l loc.Loc) Expr {
 		return deref(&Local{Def: id, T: refLiteral(id.T), L: l})
 	case *BlockCap:
 		return deref(&Cap{Def: id, T: refLiteral(id.T), L: l})
+	case *FuncInst:
+		useFuncInst(x, l, id.Def, nil, nil)
+		switch f := captureExprIfaceArgs(id).(type) {
+		case *ExprFunc:
+			return f.Expr
+		default:
+			return wrapCallInBlock(id, id.ret().groundType(), l)
+		}
 	case Func:
 		return wrapCallInBlock(id, id.ret().groundType(), l)
 	default:
@@ -1844,6 +1853,11 @@ func idToExpr(id id, l loc.Loc) Expr {
 // where the return of an iface function may need to have
 // up to one additional reference added to it.
 func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) *BlockLit {
+	block, _ := _wrapCallInBlock(fun, wantRet, l)
+	return block
+}
+
+func _wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) (*BlockLit, *Call) {
 	var parms []Type
 	for i := 0; i < fun.arity(); i++ {
 		p := fun.parm(i).groundType()
@@ -1858,18 +1872,18 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) *BlockLit {
 	}
 	localDef := &LocalDef{
 		Name: "ret",
-		T:    call.Type(),
+		T:    retType,
 		L:    l,
 	}
 	assign := &Call{
 		Func: &Builtin{
 			Op:    Assign,
-			Parms: []Type{refLiteral(localDef.T), call.Type()},
-			Ret:   call.Type(),
+			Parms: []Type{refLiteral(localDef.T), retType},
+			Ret:   retType,
 		},
 		Args: []Expr{
 			&Local{Def: localDef, T: refLiteral(localDef.T), L: l},
-			call,
+			deref(call),
 		},
 		T: &StructType{L: l},
 		L: l,
@@ -1879,12 +1893,14 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) *BlockLit {
 	if err != nil {
 		panic(fmt.Sprintf("impossible: %s", err))
 	}
+	typ := &FuncType{Parms: parms, Ret: wantRet, L: l}
 	blk := &BlockLit{
 		Parms:  make([]ParmDef, len(parms)),
 		Locals: []*LocalDef{localDef},
 		Ret:    wantRet,
 		Exprs:  []Expr{assign, result},
-		T:      &FuncType{Parms: parms, Ret: wantRet, L: l},
+		Func:   typ,
+		T:      typ,
 		L:      l,
 	}
 	for i := range parms {
@@ -1897,7 +1913,7 @@ func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) *BlockLit {
 			L:   l,
 		})
 	}
-	return blk
+	return blk, call
 }
 
 func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {

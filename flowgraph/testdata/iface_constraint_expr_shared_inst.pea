@@ -1,0 +1,26 @@
+// Tests that a function with an expression iface argument
+// can be used multiple times with different expressions for that argument.
+
+// 56
+func main() {
+	foo(),
+	bar(),
+}
+
+func foo() {
+	x := (){5},
+	print_x(),
+}
+
+func bar() {
+	x := (){6},
+	{
+		print_x(),
+	}()
+}
+
+func print_x() : x()int {
+	print_int(x())
+}
+
+func print_int(_ int)

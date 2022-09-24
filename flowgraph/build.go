@@ -778,7 +778,10 @@ func (fb *funcBuilder) buildBlocks(exprs []checker.Expr) *blockBuilder {
 			break
 		}
 		if i == len(exprs)-1 && fb.blockType != nil {
-			if !bb.fun.Type.Ret.isEmpty() {
+			// v may be nil if the result expression type is !.
+			// In this case, the return will never execute,
+			// since the function called will have returned instead.
+			if !bb.fun.Type.Ret.isEmpty() && v != nil {
 				parm := bb.parm(bb.fun.Parms[len(bb.fun.Parms)-1])
 				if bb.fun.Type.Ret.isSmall() {
 					bb.store(parm, v)
@@ -830,6 +833,9 @@ func (bb *blockBuilder) expr(expr checker.Expr) (*blockBuilder, Value) {
 	case *checker.Parm:
 		a, ok := bb.fun.parmAlloc[bb.fun.parmDef[expr.Def]]
 		if !ok {
+			if !bb.buildType(expr.Def.Type()).isEmpty() {
+				panic("no parm")
+			}
 			return bb, nil
 		}
 		return bb, a
@@ -914,7 +920,6 @@ func (bb *blockBuilder) buildStaticCall(call *checker.Call) (*blockBuilder, Valu
 			panic(fmt.Sprintf("arg without a loc: %s", expr))
 		}
 	}
-
 	funcBuilder := bb.fun.mod.buildFuncInst(fun)
 	funcVal := bb.Func(funcBuilder)
 	var ret Value

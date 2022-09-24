@@ -376,7 +376,7 @@ func (c *Call) print(pc *config) {
 	pc.p("Call{")
 	pc.loc(c.L)
 	if inst, ok := c.Func.(*FuncInst); ok {
-		pc.field("Func", fmt.Sprintf("FuncInst(<%p>)", inst))
+		pc.field("Func", fmt.Sprintf("FuncInst(%s <%p>)", inst.Name(), inst))
 	} else {
 		pc.field("Func", c.Func)
 	}
@@ -522,6 +522,7 @@ func (b *BlockCap) print(pc *config) {
 	pc.field("Parm", b.Parm)
 	pc.field("Local", b.Local)
 	pc.field("Cap", b.Cap)
+	pc.field("Expr", b.Expr)
 	pc.field("Type", b.T)
 	pc.p("\n}")
 }

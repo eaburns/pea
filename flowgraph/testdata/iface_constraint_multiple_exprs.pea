@@ -1,0 +1,33 @@
+// 567
+func main() {
+	foo(),
+	bar({4}),
+	baz(),
+}
+
+func foo() {
+	x := {2},
+	y := {3},
+	print_x_plus_y(),
+}
+
+func bar(y (){int}) {
+	x := {2},
+	print_x_plus_y(),
+}
+
+func baz() {
+	y := {5},
+	{
+		{
+			x := {2},
+			print_x_plus_y(),
+		}()
+	}()
+}
+
+func print_x_plus_y() : x()int, y()int {
+	print_int(x() + y())
+}
+
+func print_int(_ int)

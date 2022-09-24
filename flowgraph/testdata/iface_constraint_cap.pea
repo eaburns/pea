@@ -1,0 +1,19 @@
+// 5
+func main() {
+	print_int(foo())
+}
+
+func foo() int {
+	x := (){5},
+	{
+		{
+			return: call_x()
+		}()
+	}()
+}
+
+func call_x()int : x()int {
+	return: x()
+}
+
+func print_int(_ int)

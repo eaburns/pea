@@ -1,0 +1,19 @@
+// 5
+func main() {
+	print_int(foo())
+}
+
+func foo() int {
+	bar(return5)
+}
+
+func bar(f (){!})! {
+	f(),
+}
+
+// Makes the caller return 5.
+func return5()! : return:(int)! {
+	return: 5
+}
+
+func print_int(_ int)

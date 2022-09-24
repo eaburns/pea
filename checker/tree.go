@@ -609,6 +609,8 @@ type BlockCap struct {
 	Cap   *BlockCap
 	// If non-nil, Expr is evaluated when creating the block literal;
 	// its value is assigned to a variable, and that variable is captured.
+	// Note that since the variable is captured and not the Expr value itself,
+	// the type of this BlockCap is a reference to Expr.Type().
 	Expr Expr
 }
 

@@ -1,6 +1,8 @@
 package checker
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type bindings struct {
 	Parms  map[*ParmDef]*ParmDef
@@ -21,10 +23,6 @@ func subFuncInst(inst *FuncInst) {
 	for i := range inst.TypeArgs {
 		bindings.Types[&inst.Def.TypeParms[i]] = inst.TypeArgs[i]
 	}
-	for i := range inst.IfaceArgs {
-		bindings.Funcs[&inst.Def.Iface[i]] = inst.IfaceArgs[i]
-	}
-
 	inst.Parms = make([]*ParmDef, 0, len(inst.Def.Parms))
 	for i := range inst.Def.Parms {
 		parm := &inst.Def.Parms[i]
@@ -35,6 +33,19 @@ func subFuncInst(inst *FuncInst) {
 		}
 		bindings.Parms[parm] = instParm
 		inst.Parms = append(inst.Parms, instParm)
+	}
+	for i := range inst.IfaceArgs {
+		arg := inst.IfaceArgs[i]
+		decl := &inst.Def.Iface[i]
+		bindings.Funcs[decl] = arg
+		// If the IfaceArg is an parameter access,
+		// then we need to add the parameter's def
+		// to the Parms slice now.
+		if exprFunc, ok := arg.(*ExprFunc); ok {
+			if cvt, ok := exprFunc.Expr.(*Convert); ok {
+				inst.Parms = append(inst.Parms, cvt.Expr.(*Parm).Def)
+			}
+		}
 	}
 	inst.Locals = make([]*LocalDef, 0, len(inst.Def.Locals))
 	for _, local := range inst.Def.Locals {
@@ -57,7 +68,12 @@ func subFunc(bindings bindings, fun Func) Func {
 	case *FuncDecl:
 		b, ok := bindings.Funcs[fun]
 		if !ok {
-			panic("no binding")
+			return &FuncDecl{
+				Name:  fun.Name,
+				Parms: subTypes(bindings.Types, fun.Parms),
+				Ret:   subType(bindings.Types, fun.Ret),
+				L:     fun.L,
+			}
 		}
 		return b
 	case *FuncInst:
@@ -73,7 +89,10 @@ func subFunc(bindings bindings, fun Func) Func {
 			Def:       fun.Def,
 			T:         subType(bindings.Types, fun.T).(*FuncType),
 		}
-		return canonicalFuncInst(copy)
+		// Here we memoize the function instance,
+		// to get the memoized version
+		// or add this version to the Insts table.
+		return memoizeFuncInst(copy)
 	case *Select:
 		structCopy := subType(bindings.Types, fun.Struct).(*StructType)
 		var fieldCopy *FieldDef
@@ -198,6 +217,16 @@ func (c *Call) subExpr(bindings bindings) Expr {
 			panic(fmt.Sprintf("bad arg convert in Call.subExpr: %s", err))
 		}
 	}
+
+	if exprFunc, ok := fun.(*ExprFunc); ok {
+		return &Call{
+			Func: exprFunc,
+			Args: args,
+			T:    refLiteral(subType(bindings.Types, c.T)),
+			L:    c.L,
+		}
+	}
+
 	// The return type of fun may have too few refs
 	// for normal implicit conversion to retType.
 	// Consider:
@@ -295,7 +324,11 @@ func (l *Local) subExpr(bindings bindings) Expr {
 func (p *Parm) subExpr(bindings bindings) Expr {
 	def, ok := bindings.Parms[p.Def]
 	if !ok {
-		panic("no binding")
+		return &Parm{
+			Def: p.Def,
+			T:   subType(bindings.Types, p.T),
+			L:   p.L,
+		}
 	}
 	return &Parm{
 		Def: def,

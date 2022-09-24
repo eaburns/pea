@@ -119,27 +119,31 @@ func instFuncConstraints(x scope, l loc.Loc, fun Func) note {
 // findConstraintFunc returns a function that satisfies funInst.Def.Iface[i] if any,
 // along with any type parameter bindings needed to instantiate that function.
 func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*TypeParm]Type, Func, note) {
-	decl := funInst.IfaceArgs[i].(*FuncDecl)
-	declSrc := &funInst.Def.Iface[i]
-	ids := findIDs(x, decl.Name)
-	var notFoundNotes []note
+	constraint := funInst.IfaceArgs[i].(*FuncDecl)
 	var funcs []Func
-	for _, id := range ids {
-		switch id.(type) {
-		case *Builtin:
-		case *FuncInst:
-		case *FuncDecl:
-		case *Switch:
-		case *Select:
-		default:
-			// TODO: relax the constraint that a funcdecl be a static function.
-			notFoundNotes = append(notFoundNotes, newNote("%s: not a static function", id).setLoc(id))
-			continue
+	var notFoundNotes []note
+	for _, id := range findIDs(x, constraint.Name) {
+		switch id := id.(type) {
+		case Func:
+			funcs = append(funcs, id)
+		case *VarDef:
+			if t := funcType(id.T); t != nil {
+				funcs = append(funcs, &idFunc{id: id, funcType: t, l: l})
+			}
+		case *ParmDef:
+			if t := funcType(id.T); t != nil {
+				funcs = append(funcs, &idFunc{id: id, funcType: t, l: l})
+			}
+		case *LocalDef:
+			if t := funcType(id.T); t != nil {
+				funcs = append(funcs, &idFunc{id: id, funcType: t, l: l})
+			}
 		}
-		funcs = append(funcs, id.(Func))
+		note := newNote("%s (%s) is not a function", id, id.Type()).setLoc(id)
+		notFoundNotes = append(notFoundNotes, note)
+		continue
 	}
-
-	fs, ns := ifaceADLookup(x, decl)
+	fs, ns := ifaceADLookup(x, constraint)
 	funcs = append(funcs, fs...)
 	notFoundNotes = append(notFoundNotes, ns...)
 	if len(funcs) > 0 {
@@ -152,14 +156,20 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 			typeParms[i] = &funInst.Def.TypeParms[i]
 		}
 	}
-	declPat := typePattern{parms: typeParms, typ: decl.Type()}
+	declPat := typePattern{parms: typeParms, typ: constraint.Type()}
 
 	var n int
 	var unifyFails []*unifyFuncFailure
 	binds := make([]map[*TypeParm]Type, len(funcs))
 	for _, f := range funcs {
-		bind, fail := unifyFunc(x, l, f, declSrc.Type().(*FuncType), declPat)
+		funType := funInst.Def.Iface[i].Type().(*FuncType)
+		bind, fail := unifyFunc(x, l, f, funType, declPat)
 		if fail != nil {
+			unifyFails = append(unifyFails, fail)
+			continue
+		}
+		if note := instFuncConstraints(x, l, f); note != nil {
+			fail := &unifyFuncFailure{note: note, parms: f.arity()}
 			unifyFails = append(unifyFails, fail)
 			continue
 		}
@@ -183,7 +193,7 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 			}
 			notFoundNotes = append(notFoundNotes, fail.note)
 		}
-		note := newNote("%s: not found", decl).setLoc(decl.L)
+		note := newNote("%s: not found", constraint).setLoc(constraint.L)
 		note.setNotes(notFoundNotes)
 		return nil, nil, note
 	case len(funcs) > 1:
@@ -191,14 +201,15 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 		for _, f := range funcs {
 			notes = append(notes, newNote(f.String()).setLoc(f))
 		}
-		note := newNote("%s: ambiguous", decl).setLoc(decl.L)
+		note := newNote("%s: ambiguous", constraint).setLoc(constraint.L)
 		note.setNotes(notes)
 		return nil, nil, note
 	default:
-		fun := funcs[0]
-		if f, ok := fun.(*FuncInst); ok {
-			useFuncInst(x, l, funInst.Def, decl, f.Def)
-			fun = canonicalFuncInst(f)
+		fun := useFunc(x, l, funcs[0])
+		if builtin, ok := fun.(*Builtin); ok && builtin.Op == Return {
+			// We need to wrap the return in a block, since it's not a static function.
+			block := wrapCallInBlock(fun, _end, l)
+			fun = &ExprFunc{Expr: block, FuncType: block.Func}
 		}
 		return binds[0], fun, nil
 	}
@@ -317,13 +328,42 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 		n.setLoc(dst)
 		return nil, &unifyFuncFailure{note: n1, parms: dst.arity()}
 	}
-	if note := instFuncConstraints(x, l, dst); note != nil {
-		return nil, &unifyFuncFailure{note: note, parms: dst.arity()}
-	}
 	return bind, nil
 }
 
-func canonicalFuncInst(f *FuncInst) *FuncInst {
+// captureExprIfaceArgs returns the memoized FuncInst
+// or an ExprFunc wrapping a call to the FuncInst
+// with non-static IfaceArgs converted to parameters of the FuncInst,
+// passed as block captures.
+func captureExprIfaceArgs(f *FuncInst) Func {
+	caps := captureIfaceArgs(f)
+	f = memoizeFuncInst(f)
+	if len(caps) == 0 {
+		return f
+	}
+
+	// Some IfaceArgs were captured. Wrap the call in a block literal,
+	// add captures to the block literal for the IfaceArg expressions,
+	// and patch the call inside the block literal to pass the captures
+	// as tailing arguments to the function.
+	block, call := _wrapCallInBlock(f, f.T.Ret, f.T.L)
+	block.Caps = caps
+	for i := 0; i < len(caps); i++ {
+		call.Args[len(call.Args)-len(caps)+i] = deref(&Cap{
+			Def: caps[i],
+			T:   refLiteral(caps[i].T),
+			L:   caps[i].L,
+		})
+	}
+	block.Parms = block.Parms[:len(block.Parms)-len(caps)]
+	block.Func.Parms = block.Func.Parms[:len(block.Func.Parms)-len(caps)]
+	return &ExprFunc{
+		Expr:     block,
+		FuncType: block.Func,
+	}
+}
+
+func memoizeFuncInst(f *FuncInst) *FuncInst {
 	// Only bother canonicalizing function instances that have non-variable types,
 	// since only instances with non-variable types will be needed to emit code.
 	for _, arg := range f.TypeArgs {
@@ -339,6 +379,44 @@ func canonicalFuncInst(f *FuncInst) *FuncInst {
 	f.Def.File.Mod.toSub = append(f.Def.File.Mod.toSub, f)
 	f.Def.Insts = append(f.Def.Insts, f)
 	return f
+}
+
+// captureIfaceArgs adds a parameter to the function
+// for every IfaceArg that is not a static function,
+// replaces the IfaceArg's expression with a load of that parameter,
+// and returns a slice of *BlockCaps capturing the replaced expressions.
+func captureIfaceArgs(f *FuncInst) []*BlockCap {
+	var caps []*BlockCap
+	// FuncInst may already have the f.T.Parms expr IfaceArg parms.
+	// This happens when canonicaling a FuncInst during substitution.
+	// We don't want to double-up on the args here, so chomp off the old ones.
+	f.T.Parms = f.T.Parms[:len(f.Def.Parms)]
+	for i := range f.IfaceArgs {
+		exprFunc, ok := f.IfaceArgs[i].(*ExprFunc)
+		if !ok {
+			continue
+		}
+		decl := &f.Def.Iface[i]
+		// This ParmDef is later added to f.Parms by subFuncInst.
+		p := &ParmDef{
+			Name: fmt.Sprintf("%s[%d]", decl.Name, i),
+			T:    exprFunc.Type(),
+			L:    exprFunc.Loc(),
+		}
+		f.T.Parms = append(f.T.Parms, p.T)
+		caps = append(caps, &BlockCap{
+			Name: p.Name,
+			T:    refLiteral(exprFunc.Expr.Type()),
+			L:    p.L,
+			Expr: exprFunc.Expr,
+		})
+		exprFunc.Expr = deref(&Parm{
+			Def: p,
+			T:   refLiteral(p.T),
+			L:   p.L,
+		})
+	}
+	return caps
 }
 
 func (f *FuncInst) eq(other Func) bool {
@@ -619,16 +697,15 @@ func (e *ExprFunc) ret() typePattern            { return pattern(e.FuncType.Ret)
 func (e *ExprFunc) parm(i int) typePattern      { return pattern(e.FuncType.Parms[i]) }
 func (e *ExprFunc) sub(map[*TypeParm]Type) note { return nil }
 
-// eq returns whether other is an *ExprFunc.
-// As far as Func.eq is concerned, all *ExprFuncs are the same,
-// because their underlying representation must be the same:
-// a tuple <&capture_block, &static_function>.
-func (e *ExprFunc) eq(other Func) bool { _, ok := other.(*ExprFunc); return ok }
+func (e *ExprFunc) eq(other Func) bool {
+	o, ok := other.(*ExprFunc)
+	return ok && eqType(e.FuncType, o.FuncType)
+}
 
 // idFunc is like an ExprFunc, but it holds only ids not yet converted to expressions.
-// It is used when checking ID calls in order to maintain the un-converted id
-// in order to be able to mark its use with useID() if selected as the correct overload.
-// An idFunc will only exist inside checkIDCall, and is never returned from checkIDCall.
+// It is used when checking ID calls and ID interface constraints, maintaining the un-converted id
+// to be able to mark its use with useID() if selected as the correct overload.
+// It is never returned from the type checker.
 type idFunc struct {
 	id       id
 	funcType *FuncType
