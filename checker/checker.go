@@ -1081,7 +1081,7 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 	}
 	if !isEmptyStruct(def.Ret) &&
 		def.Exprs != nil &&
-		(len(def.Exprs) == 0 || !isBuiltin(def.Exprs[len(def.Exprs)-1], Return)) {
+		(len(def.Exprs) == 0 || !neverReturns(def.Exprs[len(def.Exprs)-1])) {
 		errs = append(errs, newError(def, "function must end in a return"))
 	}
 	for _, l := range def.Locals {
@@ -1097,7 +1097,7 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 	return errs
 }
 
-func isBuiltin(expr Expr, op Op) bool {
+func neverReturns(expr Expr) bool {
 	for {
 		convert, ok := expr.(*Convert)
 		if !ok || convert.Kind != Deref {
@@ -1115,8 +1115,7 @@ func isBuiltin(expr Expr, op Op) bool {
 		// just assume it would have been a return.
 		return true
 	}
-	b, ok := call.Func.(*Builtin)
-	return ok && b.Op == op
+	return isEnd(call.Func.ret().typ)
 }
 
 func checkTestDef(def *TestDef, parserDef *parser.TestDef) []Error {
@@ -1181,7 +1180,7 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat typePatt
 		var es []Error
 		if i == len(parserExprs)-1 && pat.isGroundType() && !isEmptyStruct(pat.groundType()) {
 			expr, es = checkExpr(x, parserExpr, pat)
-			if expr != nil && !isBuiltin(expr, Panic) && !isBuiltin(expr, Return) {
+			if expr != nil && !neverReturns(expr) {
 				var err Error
 				if expr, _, err = convertExpr(expr, pat, false); err != nil {
 					es = append(es, err)

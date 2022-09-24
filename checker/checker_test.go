@@ -864,6 +864,14 @@ func TestCheckFuncReturnCall(t *testing.T) {
 			src:  "func foo() int { return: \"hello\" }",
 			err:  `cannot convert "hello" \(string\) to int`,
 		},
+		{
+			name: "panic never returns",
+			src:  "func foo() int { panic(\"foo\") }",
+		},
+		{
+			name: "! never returns",
+			src:  "func foo() int { noreturn() } func noreturn()!",
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -5636,6 +5644,7 @@ func TestBlockLiteralInference(t *testing.T) {
 		{pat: `(int){int}`, expr: `(_ int, _ string){}`, err: `cannot convert`},
 		{pat: `(int){int}`, expr: `(_ int){5}`, want: `(int){int}`},
 		{pat: `(int){int}`, expr: `(_ int){panic("")}`, want: `(int){int}`},
+		{pat: `(int){int}`, src: `func noreturn()!`, expr: `(_ int){noreturn()}`, want: `(int){int}`},
 
 		{pat: `(){_}`, expr: `(){}`, want: `(){}`},
 		{pat: `(){_}`, expr: `(){5}`, want: `(){int}`},
