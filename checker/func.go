@@ -84,7 +84,7 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 	var notes []note
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
-		bind, fun, note := findIfaceFunc(x, l, f, i)
+		bind, fun, note := findConstraintFunc(x, l, f, i)
 		if note != nil {
 			notes = append(notes, note)
 			continue
@@ -116,7 +116,9 @@ func instIface(x scope, l loc.Loc, fun Func) note {
 	return nil
 }
 
-func findIfaceFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*TypeParm]Type, Func, note) {
+// findConstraintFunc returns a function that satisfies funInst.Def.Iface[i] if any,
+// along with any type parameter bindings needed to instantiate that function.
+func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*TypeParm]Type, Func, note) {
 	decl := funInst.IfaceArgs[i].(*FuncDecl)
 	declSrc := &funInst.Def.Iface[i]
 	ids := findIDs(x, decl.Name)
