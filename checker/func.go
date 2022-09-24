@@ -72,7 +72,7 @@ func (f *FuncInst) sub(sub map[*TypeParm]Type) note {
 	return nil
 }
 
-func instIface(x scope, l loc.Loc, fun Func) note {
+func instFuncConstraints(x scope, l loc.Loc, fun Func) note {
 	f, ok := fun.(*FuncInst)
 	if !ok {
 		return nil
@@ -317,7 +317,7 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 		n.setLoc(dst)
 		return nil, &unifyFuncFailure{note: n1, parms: dst.arity()}
 	}
-	if note := instIface(x, l, dst); note != nil {
+	if note := instFuncConstraints(x, l, dst); note != nil {
 		return nil, &unifyFuncFailure{note: note, parms: dst.arity()}
 	}
 	return bind, nil

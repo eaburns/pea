@@ -1583,7 +1583,7 @@ func filterIfaceConstraints(x scope, l loc.Loc, funcs []Func) ([]Func, []note) {
 	var n int
 	var notes []note
 	for _, f := range funcs {
-		if note := instIface(x, l, f); note != nil {
+		if note := instFuncConstraints(x, l, f); note != nil {
 			notes = append(notes, note)
 			continue
 		}
