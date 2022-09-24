@@ -4820,7 +4820,7 @@ func TestNestedImportName(t *testing.T) {
 		t.Fatalf("got unexpected error: %s", errs[0])
 	}
 	main := findFuncDef(t, "main", mod)
-	funcDef := main.Exprs[0].(*Convert).Expr.(*Call).Func.(*FuncInst).Def
+	funcDef := main.Exprs[0].(*Call).Func.(*FuncInst).Def
 	const want = "github.com/eaburns/pea/modules/sys/net/tcp"
 	if funcDef.Mod != want {
 		t.Errorf("got %s, want %s", funcDef.Mod, want)
@@ -5002,14 +5002,22 @@ func TestBlockResultIdentType(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			src := fmt.Sprintf("%s\nfunc main() {x := %s, (){x}()}", test.src, test.x_is)
+			src := fmt.Sprintf(`
+				%s
+				func main() {
+					x := %s,
+					y := (){x}(),
+					use(y),
+				}
+				func use(_ T)
+			`, test.src, test.x_is)
 			t.Log(src)
 			mod, errs := check("test", []string{src}, []testMod{})
 			if len(errs) > 0 {
 				t.Fatal("failed to parse and check:", errStr(errs))
 			}
 			fun := findFuncDef(t, "main", mod)
-			got := fun.Exprs[1].Type()
+			got := fun.Locals[1].Type()
 			if got.String() != test.want {
 				t.Errorf("got %s, want %s", got, test.want)
 			}
@@ -5061,14 +5069,22 @@ func TestIdentType(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			src := fmt.Sprintf("%s\nfunc main() {x := %s, x}", test.src, test.x_is)
+			src := fmt.Sprintf(`
+				%s
+				func main() {
+					x := %s,
+					y := x,
+					use(y),
+				}
+				func use(_ T)
+			`, test.src, test.x_is)
 			t.Log(src)
 			mod, errs := check("test", []string{src}, []testMod{})
 			if len(errs) > 0 {
 				t.Fatal("failed to parse and check:", errStr(errs))
 			}
 			fun := findFuncDef(t, "main", mod)
-			got := fun.Exprs[1].Type()
+			got := fun.Locals[1].Type()
 			if got.String() != test.want {
 				t.Errorf("got %s, want %s", got, test.want)
 			}
@@ -6404,30 +6420,34 @@ func TestLiteralType(t *testing.T) {
 func TestReturnCallHasTypeEnd(t *testing.T) {
 	const src = `
 		func foo() {
-			return()
+			x := return(),
+			use(x)
 		}
 		func bar() int {
-			return: 5
+			x := return: 5,
+			use(x)
 		}
 		func baz() {
-			never_returns({return()})
+			x := never_returns({return()}),
+			use(x)
 		}
 
 		func never_returns(f (){!})! {
 			return: f()
 		}
+		func use(_ T)!
 	`
 	mod, errs := check("test", []string{src}, nil)
 	if len(errs) > 0 {
 		t.Fatalf("failed to check: %s", errStr(errs))
 	}
-	if got := findFuncDef(t, "foo", mod).Exprs[0].Type().String(); got != "!" {
+	if got := findFuncDef(t, "foo", mod).Locals[0].Type().String(); got != "!" {
 		t.Errorf("return(), got type %s, wanted !", got)
 	}
-	if got := findFuncDef(t, "bar", mod).Exprs[0].Type().String(); got != "!" {
+	if got := findFuncDef(t, "bar", mod).Locals[0].Type().String(); got != "!" {
 		t.Errorf("return: 5, got type %s, wanted !", got)
 	}
-	if got := findFuncDef(t, "baz", mod).Exprs[0].Type().String(); got != "!" {
+	if got := findFuncDef(t, "baz", mod).Locals[0].Type().String(); got != "!" {
 		t.Errorf("never_returns({return()}), got type %s, wanted !", got)
 	}
 }
@@ -6435,24 +6455,27 @@ func TestReturnCallHasTypeEnd(t *testing.T) {
 func TestPanicCallHasTypeEnd(t *testing.T) {
 	const src = `
 		func foo() {
-			panic("bye")
+			x := panic("bye"),
+			use(x)
 		}
 		func bar() {
-			never_returns()
+			x := never_returns(),
+			use(x)
 		}
 
 		func never_returns()! {
 			return: panic("bye")
 		}
+		func use(_ T)!
 	`
 	mod, errs := check("test", []string{src}, nil)
 	if len(errs) > 0 {
 		t.Fatalf("failed to check: %s", errStr(errs))
 	}
-	if got := findFuncDef(t, "foo", mod).Exprs[0].Type().String(); got != "!" {
+	if got := findFuncDef(t, "foo", mod).Locals[0].Type().String(); got != "!" {
 		t.Errorf("return(), got type %s, wanted !", got)
 	}
-	if got := findFuncDef(t, "bar", mod).Exprs[0].Type().String(); got != "!" {
+	if got := findFuncDef(t, "bar", mod).Locals[0].Type().String(); got != "!" {
 		t.Errorf("return: 5, got type %s, wanted !", got)
 	}
 }

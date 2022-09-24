@@ -1079,6 +1079,14 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 	if len(parserDef.Exprs) == 0 && parserDef.Exprs != nil {
 		def.Exprs = []Expr{}
 	}
+	if n := len(def.Exprs); n > 0 {
+		// checkExprs removes outer conversions for all but the last expression.
+		// The reason it keeps them on the last is because it is called for block literals,
+		// where the last expression's value is used as the result value.
+		// For a FuncDef, the last expression value is not used,
+		// so we just remove it here.
+		def.Exprs[n-1] = removeOuterConverts(def.Exprs[n-1])
+	}
 	if !isEmptyStruct(def.Ret) &&
 		def.Exprs != nil &&
 		(len(def.Exprs) == 0 || !neverReturns(def.Exprs[len(def.Exprs)-1])) {
@@ -1189,6 +1197,12 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat typePatt
 		} else {
 			expr, es = checkExpr(x, parserExpr, any())
 		}
+		if i < len(parserExprs)-1 {
+			// Remove noisy top-level conversions for all but the last expression.
+			// The last expression must keep the conversion,
+			// because it may be the result expression of a block.
+			expr = removeOuterConverts(expr)
+		}
 		if len(es) > 0 {
 			errs = append(errs, es...)
 		}
@@ -1197,6 +1211,17 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat typePatt
 		}
 	}
 	return exprs, errs
+}
+
+func removeOuterConverts(expr Expr) Expr {
+	for {
+		cvt, ok := expr.(*Convert)
+		if !ok {
+			break
+		}
+		expr = cvt.Expr
+	}
+	return expr
 }
 
 func isAssign(parserExpr parser.Expr) (call *parser.Call, ok bool) {
