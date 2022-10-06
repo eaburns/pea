@@ -24,6 +24,7 @@ func (r *Call) String() string       { return r.buildString(new(strings.Builder)
 func (r *If) String() string         { return r.buildString(new(strings.Builder)).String() }
 func (r *Jump) String() string       { return r.buildString(new(strings.Builder)).String() }
 func (r *Return) String() string     { return r.buildString(new(strings.Builder)).String() }
+func (r *Unreach) String() string     { return r.buildString(new(strings.Builder)).String() }
 func (v *Frame) String() string      { return v.buildString(new(strings.Builder)).String() }
 func (v *Alloc) String() string      { return v.buildString(new(strings.Builder)).String() }
 func (v *Load) String() string       { return v.buildString(new(strings.Builder)).String() }
@@ -208,7 +209,10 @@ func (t *FuncType) buildStringRecur(seen map[Type]bool, s *strings.Builder) *str
 		p.buildStringRecur(seen, s)
 	}
 	s.WriteRune(')')
-	if !t.Ret.isEmpty() {
+	switch {
+	case t.Terminal:
+		s.WriteString("!")
+	case !t.Ret.isEmpty():
 		t.Ret.buildStringRecur(seen, s)
 	}
 	return s
@@ -323,6 +327,11 @@ func (r *Return) buildString(s *strings.Builder) *strings.Builder {
 		return s
 	}
 	s.WriteString("return")
+	return s
+}
+
+func (r *Unreach) buildString(s *strings.Builder) *strings.Builder {
+	s.WriteString("unreachable")
 	return s
 }
 
@@ -522,8 +531,5 @@ func (c col) addCol(f string, vs ...interface{}) col {
 		c.s.WriteString(strings.Repeat(" ", pad))
 	}
 	s := fmt.Sprintf(f, vs...)
-	if len(s) > colWidth {
-		s = s[:colWidth-1] + "…"
-	}
 	return newCol(c.s, s)
 }

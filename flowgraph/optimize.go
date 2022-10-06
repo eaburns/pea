@@ -1300,6 +1300,7 @@ func (o Call) shallowCopy() Instruction {
 func (o If) shallowCopy() Instruction     { return &o }
 func (o Jump) shallowCopy() Instruction   { return &o }
 func (o Return) shallowCopy() Instruction { return &o }
+func (o Unreach) shallowCopy() Instruction { return &o }
 func (o Frame) shallowCopy() Instruction  { return &o }
 func (o Alloc) shallowCopy() Instruction {
 	shallowCopyUsedBy(&o.value)
@@ -1378,6 +1379,8 @@ func (o *Jump) subBlocks(sub map[*BasicBlock]*BasicBlock) {
 
 func (o *Return) subBlocks(sub map[*BasicBlock]*BasicBlock) {}
 
+func (o *Unreach) subBlocks(sub map[*BasicBlock]*BasicBlock) {}
+
 func subBlock(old *BasicBlock, sub map[*BasicBlock]*BasicBlock) *BasicBlock {
 	if new, ok := sub[old]; ok {
 		return new
@@ -1412,6 +1415,8 @@ func (o *Jump) subValues(sub map[Value]Value) {}
 func (o *Return) subValues(sub map[Value]Value) {
 	subValue(sub, o, &o.Frame)
 }
+
+func (o *Unreach) subValues(sub map[Value]Value) {}
 
 func (o *Frame) subValues(sub map[Value]Value) {}
 

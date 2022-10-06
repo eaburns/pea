@@ -182,6 +182,11 @@ func (mb *modBuilder) stringType() *AddrType {
 	}
 }
 
+func isEnd(typ checker.Type) bool {
+	basic, ok := typ.(*checker.BasicType)
+	return ok && basic.Kind == checker.End
+}
+
 func (mb *modBuilder) buildType(typ checker.Type) Type {
 	switch typ := typ.(type) {
 	case *checker.DefType:
@@ -315,6 +320,7 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			funcType.Parms[i+1] = mb.buildType(p)
 		}
 		funcType.Ret = mb.buildType(typ.Ret)
+		funcType.Terminal = isEnd(typ.Ret)
 		return &StructType{
 			Name: "block",
 			Args: []Type{funcType},
@@ -1535,6 +1541,12 @@ func (bb *blockBuilder) convert(cvt *checker.Convert) (*blockBuilder, Value) {
 		return bb, nil
 	case checker.Deref:
 		bb, v := bb.expr(cvt.Expr)
+		if v != nil && v.Type().(*AddrType).Elem.isEmpty() {
+			// If we dereferenced an pointer to an empty type;
+			// return nil, which is the dereferenced-to empty value.
+			// The containing expression should check and drop it.
+			v = nil
+		}
 		if v != nil && v.Type().(*AddrType).Elem.isSmall() {
 			v = bb.load(v)
 		}
@@ -2121,8 +2133,15 @@ func (bb *blockBuilder) call(fun Value, args []Value) *Call {
 	if bb.L == (loc.Loc{}) {
 		panic("call without a loc")
 	}
+	funcType, ok := fun.Type().(*FuncType)
+	if !ok {
+		panic(fmt.Sprintf("calling non-function type %s", fun.Type()))
+	}
 	r := &Call{Func: fun, Args: args, L: bb.L}
 	bb.addInstr(r)
+	if funcType.Terminal {
+		bb.addInstr(&Unreach{L: bb.L})
+	}
 	return r
 }
 

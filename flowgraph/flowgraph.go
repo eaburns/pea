@@ -171,6 +171,7 @@ func (t *UnionType) eq(other Type) bool {
 type FuncType struct {
 	Parms []Type
 	Ret   Type
+	Terminal bool
 }
 
 func (*FuncType) isEmpty() bool { return false }
@@ -386,6 +387,15 @@ func (r *Return) Uses() []Value {
 
 func (r *Return) Loc() loc.Loc       { return r.L }
 func (r *Return) Out() []*BasicBlock { return nil }
+
+type Unreach struct {
+	instruction
+	L     loc.Loc
+}
+
+func (r *Unreach) Uses() []Value { return nil }
+func (r *Unreach) Loc() loc.Loc       { return r.L }
+func (r *Unreach) Out() []*BasicBlock { return nil }
 
 type Value interface {
 	Instruction

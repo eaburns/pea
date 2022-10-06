@@ -482,6 +482,8 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			break
 		}
 		g.line("ret void")
+	case *flowgraph.Unreach:
+		g.line("unreachable")
 	case *flowgraph.Frame:
 		t, c := g.tmp(), g.tmp()
 		g.write(
