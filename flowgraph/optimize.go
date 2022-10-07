@@ -854,13 +854,6 @@ func isBlockLiteralArg(tr tracer, call *Call, v Value) bool {
 		tr.tr("			no, struct (%s) is not a block struct", structType)
 		return false
 	}
-	for {
-		init := singleInit(v)
-		if init == nil {
-			break
-		}
-		v = init
-	}
 	// The base is only accessed only by
 	// 	* the current call,
 	// 	* the source of a Copy, and/or
