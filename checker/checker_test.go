@@ -4851,6 +4851,38 @@ func TestIDResolution(t *testing.T) {
 			`,
 			err: "f: not found",
 		},
+		{
+			name: "adl",
+			src: `
+				import "foo"
+				func main() {
+					_ := (foo#t){} :: do_foo,
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
+				src:  `
+					Type t int
+					Func do_foo(_ t)
+				`,
+			},
+		},
+		{
+			name: "adl",
+			src: `
+				import "foo"
+				func main() {
+					_ := (){foo#t} :: do_foo,
+				}
+			`,
+			otherMod: testMod{
+				path: "foo",
+				src:  `
+					Type t int
+					Func do_foo()t
+				`,
+			},
+		},
 	}
 	for _, test := range tests {
 		test := test

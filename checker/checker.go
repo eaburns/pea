@@ -1702,6 +1702,23 @@ func checkModSel(x scope, parserSel *parser.ModSel, pat typePattern) (Expr, []Er
 
 func checkID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern) (Expr, []Error) {
 	ids := findIDs(x, parserID.Name)
+	// If the pattern wants a FuncType, expand the set of IDs to consider
+	// to include those from the pattern's param and return type modules too.
+	if funType, ok := pat.typ.(*FuncType); ok {
+		seen := make(map[string]bool)
+		for i := 0; i < len(funType.Parms); i++ {
+			parm := funType.Parms[i]
+			defType, ok := parm.(*DefType)
+			if !ok || seen[defType.Def.Mod] {
+				continue
+			}
+			seen[defType.Def.Mod] = true
+			ids = append(ids, adModuleIDs(x, defType.Def.Mod, parserID.Name)...)
+		}
+		if defType, ok := funType.Ret.(*DefType); ok && !seen[defType.Def.Mod] {
+			ids = append(ids, adModuleIDs(x, defType.Def.Mod, parserID.Name)...)
+		}
+	}
 	return resolveID(x, parserID, assignLHS, pat, ids)
 }
 
