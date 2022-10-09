@@ -1940,6 +1940,9 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	if len(es) > 0 {
 		errs = append(errs, es...)
 	}
+	if typ == nil {
+		return expr, errs
+	}
 	expr, _, err := convertExpr(expr, pattern(typ), true)
 	if err != nil {
 		errs = append(errs, err)
