@@ -909,7 +909,7 @@ func quote(s string) string {
 	out.WriteRune('"')
 	for i := 0; i < len(s); i++ {
 		c := s[i]
-		if ' ' <= c && c <= '~' { // ASCII letter/number/punct
+		if ' ' <= c && c <= '~' && c != '"' { // ASCII letter/number/punct
 			out.WriteRune(rune(c))
 		} else {
 			fmt.Fprintf(&out, "\\%02X", c)
