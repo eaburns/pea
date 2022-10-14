@@ -1,0 +1,59 @@
+/*
+Here's an example of how to implement if-else-if-…
+or switch-like functionailty in Pea.
+
+It uses operators and relies on right-to-left associativity.
+
+The flowgraph package is able to optimize away all the blocks,
+inlining them all and creating just as series of jumps.
+*/
+
+// 123else
+func main() {
+	+ { true } -> { print("1") }
+	+ { false } -> { print("2") }
+	+ { false } -> { print("3") }
+	-> { print("else") },
+
+	+ { false } -> { print("1") }
+	+ { true } -> { print("2") }
+	+ { false } -> { print("3") }
+	-> { print("else") },
+
+	+ { false } -> { print("1") }
+	+ { false } -> { print("2") }
+	+ { true } -> { print("3") }
+	-> { print("else") },
+
+	+ { false } -> { print("1") }
+	+ { false } -> { print("2") }
+	+ { false } -> { print("3") }
+	-> { print("else") },
+}
+
+const true := bool :: [true?]
+const false := bool :: [false?]
+
+type switch [more?, done?]
+type case [found?, not_found?, done?]
+
+Func +(c (){bool}) case {
+	return: c() true? { case :: [found?] } false? { [not_found?] }
+}
+
+Func +(s switch, c (){bool}) case {
+	return: s more? { +c } done? { [done?] }
+}
+
+Func ->(c case, d (){}) switch {
+	return: c found? {
+		d(),
+		switch :: [done?]
+	} not_found? {
+		switch :: [more?]
+	} done? {
+		switch :: [done?]
+	}
+}
+
+Func ->(s switch, d (){}) { s more? d }
