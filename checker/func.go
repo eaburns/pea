@@ -501,8 +501,14 @@ func (s *Switch) ret() typePattern {
 }
 
 func (s *Switch) sub(bind map[*TypeParm]Type) note {
-	if typ, ok := bind[s.TypeParms[0]]; ok {
-		// We are substituting the 0th argument, which must be a union.
+	// The caller of sub() may be lazy and leave keep a binding for TypeParm[0]
+	// in the bind map across multiple calls of sub().
+	// But we only want to substitute the 0th type parameter the first time.
+	// We detect the 1st time by looking a s.Cases;
+	// it is populated lazily on the 1st substitution,
+	// so if it is non-empty, then we have already substituted.
+	if typ, ok := bind[s.TypeParms[0]]; ok && len(s.Cases) == 0 {
+		// We are substituting the 0th argument, which needs to be a union.
 
 		switch v := valueType(typ); {
 		case isUnionType(v):

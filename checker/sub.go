@@ -127,10 +127,12 @@ func subFunc(bindings bindings, fun Func) Func {
 			}
 		}
 		return &Switch{
-			Union: unionCopy,
-			Cases: casesCopy,
+			N:     fun.N,
+			Names: fun.Names,
 			Parms: subTypes(bindings.Types, fun.Parms),
 			Ret:   subType(bindings.Types, fun.Ret),
+			Union: unionCopy,
+			Cases: casesCopy,
 		}
 	case *Builtin:
 		return &Builtin{

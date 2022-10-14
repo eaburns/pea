@@ -2533,6 +2533,41 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			err: "failed to instantiate",
 		},
 		{
+			name: "match built-in operator",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X) : *(X, X)X
+			`,
+			want: "built-in *(int, int)int",
+		},
+		{
+			name: "match built-in selector",
+			src: `
+				type point [.x int, .y int]
+				func main() { target_function(point :: [.x 4, .y 8]) }
+				func target_function(_ X) : .x(X)int, .y(X)int
+			`,
+			want: "built-in .x(&point)&int",
+		},
+		{
+			name: "match built-in switch with no values",
+			src: `
+				type a_or_b [a?, b?]
+				func main() { target_function(a_or_b :: [a?]) }
+				func target_function(_ X) : a?b?(X, (){}, (){})
+			`,
+			want: "built-in a?b?(&a_or_b, (){}, (){})",
+		},
+		{
+			name: "match built-in switch with values",
+			src: `
+				type a_or_b [a? int, b? string]
+				func main() { target_function(a_or_b :: [a? 2]) }
+				func target_function(_ X) : a?b?(X, (int){}, (T){})
+			`,
+			want: "built-in a?b?(&a_or_b, (int){}, (string){})",
+		},
+		{
 			name: "match return",
 			src: `
 				func main() { target_function(5) }
