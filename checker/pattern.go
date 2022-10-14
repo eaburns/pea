@@ -806,6 +806,9 @@ func findBoundVars(sets *disjointSets, pat typePattern) {
 		findBoundVars(sets, pat.arrayElem())
 	case *StructType:
 		for i := range typ.Fields {
+			if pat.typ.(*StructType).Fields[i].Type == nil {
+				continue
+			}
 			findBoundVars(sets, pat.field(i))
 		}
 	case *UnionType:
@@ -869,6 +872,10 @@ func unionSets(sets *disjointSets, a, b typePattern) bool {
 			return false
 		}
 		for i := range aType.Fields {
+			if a.typ.(*StructType).Fields[i].Type == nil ||
+				b.typ.(*StructType).Fields[i].Type == nil {
+				continue
+			}
 			if aType.Fields[i].Name != bType.Fields[i].Name ||
 				!unionSets(sets, a.field(i), b.field(i)) {
 				return false
@@ -961,6 +968,10 @@ func bindSets(sets *disjointSets, a, b typePattern) note {
 
 	case *StructType:
 		for i := range bType.Fields {
+			if a.typ.(*StructType).Fields[i].Type == nil ||
+				b.typ.(*StructType).Fields[i].Type == nil {
+				continue
+			}
 			if note := bindSets(sets, a.field(i), b.field(i)); note != nil {
 				return note
 			}
