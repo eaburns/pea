@@ -192,6 +192,8 @@ func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 		return &BasicType{Kind: End, L: l}
 	case "bool":
 		return &BasicType{Kind: Bool, L: l}
+	case "ordering":
+		return &BasicType{Kind: Ordering, L: l}
 	case "int":
 		return &BasicType{Kind: Int, L: l}
 	case "int8":
@@ -412,14 +414,15 @@ func (m *Mod) findIDs(name string) []id {
 var (
 	// _P is a placeholder; before returning a Builtin from the scope,
 	// it is always replaced with a brand new TypeParam.
-	_P      = &TypeParm{Name: "T"}
-	_T      = &TypeVar{Name: _P.Name, Def: _P}
-	_end    = basic(End)
-	_uint8  = basic(Uint8)
-	_int    = basic(Int)
-	_bool   = basic(Bool)
-	_string = basic(String)
-	_empty  = &StructType{}
+	_P        = &TypeParm{Name: "T"}
+	_T        = &TypeVar{Name: _P.Name, Def: _P}
+	_end      = basic(End)
+	_uint8    = basic(Uint8)
+	_int      = basic(Int)
+	_bool     = basic(Bool)
+	_ordering = basic(Ordering)
+	_string   = basic(String)
+	_empty    = &StructType{}
 
 	builtins = []Builtin{
 		{N: ":=", Op: Assign, TypeParm: _P, Parms: []Type{refLiteral(_T), _T}, Ret: _empty},
@@ -444,6 +447,7 @@ var (
 		// Comparison ops are asserted to only sub Parms[0] with a number type in Builtin.sub.
 		{N: "=", Op: Eq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
 		{N: "!=", Op: Neq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
+		{N: "<=>", Op: Cmp, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _ordering},
 		{N: "<", Op: Less, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
 		{N: "<=", Op: LessEq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
 		{N: ">", Op: Greater, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},

@@ -1556,11 +1556,22 @@ func TestTypeResolution(t *testing.T) {
 		err       string
 		otherMods []testMod
 	}{
-		{
-			name: "built-in type",
-			src:  "var t int",
-			want: "int",
-		},
+		{name: "built-in int type", src: "var t bool", want: "bool"},
+		{name: "built-in int type", src: "var t ordering", want: "ordering"},
+		{name: "built-in int type", src: "var t int", want: "int"},
+		{name: "built-in int type", src: "var t int8", want: "int8"},
+		{name: "built-in int type", src: "var t int16", want: "int16"},
+		{name: "built-in int type", src: "var t int32", want: "int32"},
+		{name: "built-in int type", src: "var t int64", want: "int64"},
+		{name: "built-in int type", src: "var t uint", want: "uint"},
+		{name: "built-in int type", src: "var t uint8", want: "uint8"},
+		{name: "built-in int type", src: "var t uint16", want: "uint16"},
+		{name: "built-in int type", src: "var t uint32", want: "uint32"},
+		{name: "built-in int type", src: "var t uint64", want: "uint64"},
+		{name: "built-in int type", src: "var t uintref", want: "uintref"},
+		{name: "built-in int type", src: "var t float32", want: "float32"},
+		{name: "built-in int type", src: "var t float64", want: "float64"},
+		{name: "built-in int type", src: "var t string", want: "string"},
 		{
 			name: "cannot override built-in type",
 			src: `
@@ -3504,10 +3515,52 @@ func TestOverloadResolution(t *testing.T) {
 			err:  `is not a struct type`,
 		},
 		{
-			name: "built-in switch on bool",
+			name: "built-in switch on bool true?false?",
 			src:  "const true := bool :: [true?]",
-			call: "true true? (){} false? (){}",
+			call: "true true? {} false? {}",
 			want: "built-in true?false?(&bool, (){}, (){})",
+		},
+		{
+			name: "built-in switch on bool false?true?",
+			src:  "const true := bool :: [true?]",
+			call: "true false? {} true? {}",
+			want: "built-in false?true?(&bool, (){}, (){})",
+		},
+		{
+			name: "built-in switch on bool true?",
+			src:  "const true := bool :: [true?]",
+			call: "true true? {}",
+			want: "built-in true?(&bool, (){})",
+		},
+		{
+			name: "built-in switch on bool false?",
+			src:  "const true := bool :: [true?]",
+			call: "true false? {}",
+			want: "built-in false?(&bool, (){})",
+		},
+		{
+			name: "built-in switch on ordering less?equal?greater?",
+			src:  "const less := ordering :: [less?]",
+			call: "less less? {} equal? {} greater? {}",
+			want: "built-in less?equal?greater?(&ordering, (){}, (){}, (){})",
+		},
+		{
+			name: "built-in switch on ordering less?greater?equal?",
+			src:  "const less := ordering :: [less?]",
+			call: "less less? {} greater? {} equal? {}",
+			want: "built-in less?greater?equal?(&ordering, (){}, (){}, (){})",
+		},
+		{
+			name: "built-in switch on ordering less?equal?",
+			src:  "const less := ordering :: [less?]",
+			call: "less less? {} equal? {}",
+			want: "built-in less?equal?(&ordering, (){}, (){})",
+		},
+		{
+			name: "built-in switch on ordering greater?",
+			src:  "const less := ordering :: [less?]",
+			call: "less greater? {}",
+			want: "built-in greater?(&ordering, (){})",
 		},
 		{
 			name: "built-in switch literal type, not-typed case",
@@ -3975,6 +4028,11 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in neq",
 			call: "2.0 != 2",
 			want: "built-in !=(float64, float64)bool",
+		},
+		{
+			name: "built-in less <=>",
+			call: "2.0 <=> 2",
+			want: "built-in <=>(float64, float64)ordering",
 		},
 		{
 			name: "built-in less",
@@ -4896,7 +4954,7 @@ func TestIDResolution(t *testing.T) {
 			`,
 			otherMod: testMod{
 				path: "foo",
-				src:  `
+				src: `
 					Type t int
 					Func do_foo(_ t)
 				`,
@@ -4912,7 +4970,7 @@ func TestIDResolution(t *testing.T) {
 			`,
 			otherMod: testMod{
 				path: "foo",
-				src:  `
+				src: `
 					Type t int
 					Func do_foo()t
 				`,

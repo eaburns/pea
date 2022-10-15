@@ -75,21 +75,22 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 		name  string
 	}
 	seenTypes := map[typeKey]loc.Loc{
-		{0, "bool"}:    {},
-		{0, "int"}:     {},
-		{0, "int8"}:    {},
-		{0, "int16"}:   {},
-		{0, "int32"}:   {},
-		{0, "int64"}:   {},
-		{0, "uint"}:    {},
-		{0, "uint8"}:   {},
-		{0, "uint16"}:  {},
-		{0, "uint32"}:  {},
-		{0, "uint64"}:  {},
-		{0, "uintref"}: {},
-		{0, "float32"}: {},
-		{0, "float64"}: {},
-		{0, "string"}:  {},
+		{0, "bool"}:     {},
+		{0, "ordering"}: {},
+		{0, "int"}:      {},
+		{0, "int8"}:     {},
+		{0, "int16"}:    {},
+		{0, "int32"}:    {},
+		{0, "int64"}:    {},
+		{0, "uint"}:     {},
+		{0, "uint8"}:    {},
+		{0, "uint16"}:   {},
+		{0, "uint32"}:   {},
+		{0, "uint64"}:   {},
+		{0, "uintref"}:  {},
+		{0, "float32"}:  {},
+		{0, "float64"}:  {},
+		{0, "string"}:   {},
 	}
 	mod := &Mod{Path: modPath}
 	var importedMods []*Mod

@@ -51,10 +51,14 @@ func (pat typePattern) withType(typ Type) typePattern {
 // If pat's type is the built-in Bool, the returned pattern is for boolUnion.
 // instType panics if pat is not a defined type type pattern or bool.
 func (pat typePattern) instType() typePattern {
-	if isBool(pat.typ) {
+	switch {
+	case isBool(pat.typ):
 		return pat.withType(boolUnion)
+	case isOrdering(pat.typ):
+		return pat.withType(orderingUnion)
+	default:
+		return pat.withType(pat.typ.(*DefType).Inst.Type)
 	}
-	return pat.withType(pat.typ.(*DefType).Inst.Type)
 }
 
 // typeArg returns the type argument type of a defined type type pattern;

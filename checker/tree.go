@@ -191,6 +191,7 @@ func (t *TypeVar) Loc() loc.Loc { return t.L }
 const (
 	End BasicTypeKind = iota + 1
 	Bool
+	Ordering
 	Int
 	Int8
 	Int16
@@ -415,6 +416,7 @@ const (
 	Modulus
 	Eq
 	Neq
+	Cmp
 	Less
 	LessEq
 	Greater

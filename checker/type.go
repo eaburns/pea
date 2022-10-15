@@ -35,12 +35,21 @@ func arrayLiteral(typ Type) Type {
 	return &ArrayType{ElemType: typ, L: typ.Loc()}
 }
 
-var boolUnion = &UnionType{
-	Cases: []CaseDef{
-		{Name: "false?"},
-		{Name: "true?"},
-	},
-}
+var (
+	boolUnion = &UnionType{
+		Cases: []CaseDef{
+			{Name: "false?"},
+			{Name: "true?"},
+		},
+	}
+	orderingUnion = &UnionType{
+		Cases: []CaseDef{
+			{Name: "less?"},
+			{Name: "equal?"},
+			{Name: "greater?"},
+		},
+	}
+)
 
 // literalType returns the literal type or nil if the type cannot be converted to a literal.
 func literalType(typ Type) Type {
@@ -73,18 +82,29 @@ func literalType(typ Type) Type {
 	case *FuncType:
 		return typ
 	case *BasicType:
-		if typ.Kind != Bool {
+		switch typ.Kind {
+		case Bool:
+			return copyTypeWithLoc(boolUnion, typ.Loc())
+		case Ordering:
+			return copyTypeWithLoc(orderingUnion, typ.Loc())
+		default:
 			return nil
 		}
-		return copyTypeWithLoc(boolUnion, typ.Loc())
 	default:
 		return nil
 	}
 }
 
 func isVisibleDefinedType(typ Type) bool {
+	if isBool(typ) || isOrdering(typ) {
+		return true
+	}
 	defType, ok := typ.(*DefType)
-	return ok && (!defType.Def.File.Mod.Imported || defType.Def.Exp && !defType.Def.Opaque) || isBool(typ)
+	if !ok {
+		return false
+	}
+	def := defType.Def
+	return !def.File.Mod.Imported || def.Exp && !def.Opaque
 }
 
 func isLiteralType(typ Type) bool {
@@ -150,7 +170,7 @@ func isUnionType(typ Type) bool {
 			return isUnionType(typ.Inst.Type)
 		}
 	case *BasicType:
-		return typ.Kind == Bool
+		return typ.Kind == Bool || typ.Kind == Ordering
 	}
 	return false
 }
@@ -204,6 +224,11 @@ func isUintRef(typ Type) bool {
 func isBool(typ Type) bool {
 	basic, ok := typ.(*BasicType)
 	return ok && basic.Kind == Bool
+}
+
+func isOrdering(typ Type) bool {
+	basic, ok := typ.(*BasicType)
+	return ok && basic.Kind == Ordering
 }
 
 func isBasicNum(typ Type) bool {

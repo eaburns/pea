@@ -149,11 +149,29 @@ func (interp *Interp) step() {
 				yes = x.Val().(SignedInt).Int64() < int64(instr.X)
 			} else {
 				y := frame.vals[instr.XValue]
-				yes = x.Val().(SignedInt).Int64() < y.Val().(SignedInt).Int64()
+				switch x.Val().(type) {
+				case SignedInt:
+					yes = x.Val().(SignedInt).Int64() < y.Val().(SignedInt).Int64()
+				case UnsignedInt:
+					yes = x.Val().(UnsignedInt).Uint64() < y.Val().(UnsignedInt).Uint64()
+				case Float32:
+					yes = x.Val().(Float32) < y.Val().(Float32)
+				case Float64:
+					yes = x.Val().(Float64) < y.Val().(Float64)
+				}
 			}
 		case flowgraph.LessEq:
 			y := frame.vals[instr.XValue]
-			yes = x.Val().(SignedInt).Int64() <= y.Val().(SignedInt).Int64()
+			switch x.Val().(type) {
+			case SignedInt:
+				yes = x.Val().(SignedInt).Int64() <= y.Val().(SignedInt).Int64()
+			case UnsignedInt:
+				yes = x.Val().(UnsignedInt).Uint64() <= y.Val().(UnsignedInt).Uint64()
+			case Float32:
+				yes = x.Val().(Float32) <= y.Val().(Float32)
+			case Float64:
+				yes = x.Val().(Float64) <= y.Val().(Float64)
+			}
 		default:
 			panic(fmt.Sprintf("got If.Op=%s, expected = or <", instr.Op))
 		}

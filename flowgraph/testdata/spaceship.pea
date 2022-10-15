@@ -1,0 +1,45 @@
+// less
+// less
+// less
+// less
+// less
+// equal
+// equal
+// equal
+// equal
+// equal
+// greater
+// greater
+// greater
+// greater
+// greater
+//
+func main() {
+	print(-1 <=> 2),
+	print(1 <=> 2),
+	print(-2 <=> -1),
+	print((uint8 :: 0) <=> 1),
+	print(2.0 <=> 3.14),
+
+	print(-1 <=> -1),
+	print(1 <=> 1),
+	print((uint8 :: 2) <=> 2),
+	print(3.14 <=> 3.14),
+	print((uintref :: 0) <=> 0),
+
+	print(-1 <=> -2),
+	print(2 <=> 1),
+	print(1 <=> -2),
+	print((uint8 :: 2) <=> 1),
+	print(3.14 <=> 0.0),
+}
+
+func print(o ordering) {
+	o less? {
+		print("less\n")
+	} equal? {
+		print("equal\n")
+	} greater? {
+		print("greater\n")
+	}
+}

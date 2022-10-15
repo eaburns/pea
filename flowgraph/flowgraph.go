@@ -336,7 +336,7 @@ type Terminal interface {
 
 type If struct {
 	instruction
-	// Value must be an integer type or an address type.
+	// Value must be a numeric type or an address type.
 	// If Value is an address type Op must be Eq and X must be 0.
 	Value Value
 	// Op must be Eq, Less, or LessEq

@@ -455,11 +455,29 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 		case flowgraph.Less:
 			if r.XValue == nil {
 				g.line(cond, " = icmp slt ", typeVal{r.Value}, ", ", r.X)
-			} else {
-				g.line(cond, " = icmp slt ", typeVal{r.Value}, ", ", r.XValue)
+				break
+			}
+			switch typ := r.XValue.Type().(type) {
+			case *flowgraph.FloatType:
+				g.line(cond, " = fcmp ult ", typeVal{r.Value}, ", ", r.XValue)
+			case *flowgraph.IntType:
+				if typ.Unsigned {
+					g.line(cond, " = icmp ult ", typeVal{r.Value}, ", ", r.XValue)
+				} else {
+					g.line(cond, " = icmp slt ", typeVal{r.Value}, ", ", r.XValue)
+				}
 			}
 		case flowgraph.LessEq:
-			g.line(cond, " = icmp sle ", typeVal{r.Value}, ", ", r.XValue)
+			switch typ := r.XValue.Type().(type) {
+			case *flowgraph.FloatType:
+				g.line(cond, " = fcmp ule ", typeVal{r.Value}, ", ", r.XValue)
+			case *flowgraph.IntType:
+				if typ.Unsigned {
+					g.line(cond, " = icmp ule ", typeVal{r.Value}, ", ", r.XValue)
+				} else {
+					g.line(cond, " = icmp sle ", typeVal{r.Value}, ", ", r.XValue)
+				}
+			}
 		default:
 			panic(fmt.Sprintf("bad If.Op: %s", r.Op))
 		}

@@ -366,6 +366,8 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			return &FloatType{Size: 64}
 		case checker.Bool:
 			return mb.intType()
+		case checker.Ordering:
+			return mb.intType()
 		case checker.String:
 			return &StructType{
 				Name: "string",
@@ -894,6 +896,8 @@ func (bb *blockBuilder) Call(call *checker.Call) (*blockBuilder, Value) {
 			checker.LessEq, checker.Greater, checker.GreaterEq,
 			checker.Panic, checker.Print:
 			return bb.buildOp(call)
+		case checker.Cmp:
+			return bb.buildCmp(call)
 		case checker.Assign:
 			return bb.buildAssign(call)
 		case checker.NewArray:
@@ -1322,6 +1326,33 @@ func (bb *blockBuilder) buildOp(call *checker.Call) (*blockBuilder, Value) {
 		ret = bb.null(&AddrType{Elem: typ})
 	}
 	return bb, ret
+}
+
+func (bb *blockBuilder) buildCmp(call *checker.Call) (*blockBuilder, Value) {
+	fun := call.Func.(*checker.Builtin)
+	var args []Value
+	for _, expr := range call.Args {
+		var v Value
+		if bb, v = bb.expr(expr); v != nil {
+			args = append(args, v)
+		}
+	}
+	orderingType := bb.buildType(fun.Ret)
+	result := bb.alloc(orderingType)
+	leBlock := bb.fun.newBlock(call.Loc())
+	ltBlock := bb.fun.newBlock(call.Loc())
+	eqBlock := bb.fun.newBlock(call.Loc())
+	gtBlock := bb.fun.newBlock(call.Loc())
+	doneBlock := bb.fun.newBlock(call.Loc())
+	bb.ifLessEq(args[0], args[1], leBlock, gtBlock)
+	leBlock.ifLessValue(args[0], args[1], ltBlock, eqBlock)
+	ltBlock.store(result, ltBlock.intLit("0", orderingType))
+	ltBlock.jump(doneBlock)
+	eqBlock.store(result, eqBlock.intLit("1", orderingType))
+	eqBlock.jump(doneBlock)
+	gtBlock.store(result, gtBlock.intLit("2", orderingType))
+	gtBlock.jump(doneBlock)
+	return doneBlock, result
 }
 
 func (bb *blockBuilder) buildAssign(call *checker.Call) (*blockBuilder, Value) {

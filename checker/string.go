@@ -234,6 +234,8 @@ func (k BasicTypeKind) String() string {
 		return "!"
 	case Bool:
 		return "bool"
+	case Ordering:
+		return "ordering"
 	case Int:
 		return "int"
 	case Int8:
@@ -393,6 +395,8 @@ func (o Op) String() string {
 		return "Eq"
 	case Neq:
 		return "Neq"
+	case Cmp:
+		return "Cmp"
 	case Less:
 		return "Less"
 	case LessEq:
@@ -510,6 +514,8 @@ func (b *Builtin) name(paren bool) string {
 		s.WriteRune('=')
 	case Neq:
 		s.WriteString("!=")
+	case Cmp:
+		s.WriteString("<=>")
 	case Less:
 		s.WriteRune('<')
 	case LessEq:
