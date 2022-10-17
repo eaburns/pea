@@ -1,7 +1,9 @@
 package flowgraph
 
 import (
+	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -51,7 +53,7 @@ func TestBuildType(t *testing.T) {
 			want: "test.t",
 		},
 		{
-			src: "type t &u		type u [.next t]",
+			src:  "type t &u		type u [.next t]",
 			typ:  "t",
 			want: "*test.u",
 		},
@@ -65,7 +67,7 @@ func TestBuildType(t *testing.T) {
 			want: "****struct{}",
 		},
 		{
-			src: "type t &u		type u [.u &u, .t t]",
+			src:  "type t &u		type u [.u &u, .t t]",
 			typ:  "t",
 			want: "*test.u",
 		},
@@ -132,4 +134,141 @@ func check(t *testing.T, src string) *checker.Mod {
 		t.Fatalf("failed to checke: %s", errs[0])
 	}
 	return mod
+}
+
+// TestSimplifyCmpSwitchToComparison tests that complete switch calls
+// on the built-in <=> operator can be simplified to conditional expressions
+// in the case that their arguments are boolean literal blocks.
+//
+// This test is somewhat of a change-detector test, unfortunately.
+// But also, it's job is to catch regressing changes where this crutial
+// simplification is not correctly performed.
+func TestSimplifyCmpSwitchToComparison(t *testing.T) {
+	tests := []struct {
+		otherDefs string
+		src       string
+		op        string
+	}{
+		// Various combos of const true, const false, [true?], and [false?] all work.
+		{src: "1 <=> 2 less? { bool :: [true?] } _? { [false?] }", op: "<"},
+		{src: "1 <=> 2 less? { true } _? { [false?] }", op: "<"},
+		{src: "1 <=> 2 less? { bool :: [true?] } _? { false }", op: "<"},
+		{src: "1 <=> 2 less? { true } _? { false }", op: "<"},
+
+		// Non-const true and false variables do not simplify to conditionals.
+		{
+			otherDefs: "var varTrue := bool :: [true?]",
+			src:       "1 <=> 2 less? { varTrue } _? { false }",
+			op:        "",
+		},
+		{
+			otherDefs: "var varFalse := bool :: [false?]",
+			src:       "1 <=> 2 less? { true } _? { varFalse }",
+			op:        "",
+		},
+
+		{src: "1 <=> 2 less? { true } _? { false }", op: "<"},
+		{src: "1 <=> 2 _? { false } less? { true }", op: "<"},
+		{src: "1 <=> 2 less? { true } equal? { false } greater? { false }", op: "<"},
+		{src: "1 <=> 2 greater? { false } less? { true } equal? { false }", op: "<"},
+		{src: "1 <=> 2 greater? { false } less? { true } _? { false }", op: "<"},
+		{src: "1 <=> 2 greater? { false } _? { true } equal? { false }", op: "<"},
+
+		{src: "1 <=> 2 greater? { false } _? { true }", op: "<="},
+		{src: "1 <=> 2 _? { true } greater? { false }", op: "<="},
+		{src: "1 <=> 2 less? { true } equal? { true } greater? { false }", op: "<="},
+		{src: "1 <=> 2 greater? { false } less? { true } equal? { true }", op: "<="},
+		{src: "1 <=> 2 less? { true } equal? { true } _? { false }", op: "<="},
+
+		{src: "1 <=> 2 equal? { true } _? { false }", op: "=="},
+		{src: "1 <=> 2 equal? { true } less? { false } greater? { false }", op: "=="},
+		{src: "1 <=> 2 greater? { false } equal? { true } less? { false }", op: "=="},
+		{src: "1 <=> 2 less? { false } greater? { false } equal? { true }", op: "=="},
+		{src: "1 <=> 2 less? { false } _? { false } equal? { true }", op: "=="},
+		{src: "1 <=> 2 less? { false } greater? { false } _? { true }", op: "=="},
+
+		{src: "1 <=> 2 equal? { false } _? { true }", op: "!="},
+		{src: "1 <=> 2 _? { true } equal? { false }", op: "!="},
+		{src: "1 <=> 2 equal? { false } greater? { true } less? { true }", op: "!="},
+		{src: "1 <=> 2 equal? { false } greater? { true } _? { true }", op: "!="},
+		{src: "1 <=> 2greater? { true } _? { true } equal? { false } ", op: "!="},
+		{src: "1 <=> 2 _? { false } greater? { true } less? { true }", op: "!="},
+
+		{src: "1 <=> 2 greater? { true } _? { false }", op: ">"},
+		{src: "1 <=> 2 _? { false } greater? { true }", op: ">"},
+		{src: "1 <=> 2 greater? { true } equal? { false } less? { false }", op: ">"},
+		{src: "1 <=> 2 less? { false } greater? { true } equal? { false }", op: ">"},
+		{src: "1 <=> 2 less? { false } greater? { true } _? { false }", op: ">"},
+		{src: "1 <=> 2 less? { false } _? { true } equal? { false }", op: ">"},
+
+		{src: "1 <=> 2 less? { false } _? { true }", op: ">="},
+		{src: "1 <=> 2 _? { true } less? { false }", op: ">="},
+		{src: "1 <=> 2 greater? { true } equal? { true } less? { false }", op: ">="},
+		{src: "1 <=> 2 less? { false } greater? { true } equal? { true }", op: ">="},
+		{src: "1 <=> 2 greater? { true } equal? { true } _? { false }", op: ">="},
+	}
+
+	const template = `func "main#main()"() {
+0:	in=[], out=[1]
+    jump 1
+1:	in=[0], out=[]
+    x0 := 1
+    x1 := 2
+    x2 := x0 %s x1
+    x3 := alloc(int64)
+    store(*x3, x2)
+    return
+}`
+	comments := regexp.MustCompile("[ 	]*//.*")
+	for _, test := range tests {
+		t.Run(test.src, func(t *testing.T) {
+			src := fmt.Sprintf(`
+				const true := bool :: [true?]
+				const false := bool :: [false?]
+				%s
+				func main() { %s }
+			`, test.otherDefs, test.src)
+			fg, err := build(src)
+			if err != nil {
+				t.Log(src)
+				t.Fatalf("failed to compile %s\n", err)
+			}
+			// Strip type name comments.
+			fg = comments.ReplaceAllLiteralString(fg, "")
+			var op string
+			for _, o := range [...]string{"<", "<=", "==", "!=", ">", ">="} {
+				if fg == fmt.Sprintf(template, o) {
+					op = o
+					break
+				}
+			}
+			if op != test.op {
+				t.Log(test.src)
+				t.Log(fg)
+				t.Errorf("got %s, wanted %s\n", op, test.op)
+			}
+		})
+	}
+}
+
+func build(src string) (string, error) {
+	p := parser.New()
+	if err := p.Parse("", strings.NewReader(src)); err != nil {
+		return "", err
+	}
+	c, _, errs := checker.Check("main", p.Files)
+	if len(errs) > 0 {
+		return "", errs[0]
+	}
+	var main *FuncDef
+	for _, fun := range Build(c, NoOptimize).Funcs {
+		if fun.Name == "main" {
+			main = fun
+			break
+		}
+	}
+	if main == nil {
+		return "", errors.New("no main")
+	}
+	return main.String(), nil
 }

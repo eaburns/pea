@@ -1009,6 +1009,9 @@ type switchCase struct {
 }
 
 func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*blockBuilder, Value) {
+	if bb, v, ok := bb.simplifyCmpSwitch(sw, call); ok {
+		return bb, v
+	}
 	if isPointer(sw.Union) {
 		return bb.buildPointerSwitch(sw, call)
 	}
@@ -1284,6 +1287,221 @@ func (bb *blockBuilder) buildBranchCall(fun loc.Locer, arg, res Value, bDone *bl
 	}
 	bb.call(funVal, funArgs)
 	bb.jump(bDone)
+}
+
+// Converts switch calls with arg[0] as built-in <=> call into simple comparison ops.
+func (bb *blockBuilder) simplifyCmpSwitch(sw *checker.Switch, call *checker.Call) (*blockBuilder, Value, bool) {
+	if len(call.Args) == 0 {
+		return nil, nil, false
+	}
+	cmpCall := cmpCall(call.Args[0])
+	if cmpCall == nil {
+		return nil, nil, false
+	}
+
+	// Try to convert the <=> to a simple comparison, <, <=, =, !=, >, or >=.
+	var op OpKind
+	switch less, equal, greater := boolConstArgs(sw, call); {
+	case less == "true?" && equal == "false?" && greater == "false?":
+		op = Less
+	case less == "true?" && equal == "true?" && greater == "false?":
+		op = LessEq
+	case less == "false?" && equal == "true?" && greater == "false?":
+		op = Eq
+	case less == "true?" && equal == "false?" && greater == "true?":
+		op = Neq
+	case less == "false?" && equal == "false?" && greater == "true?":
+		op = Greater
+	case less == "false?" && equal == "true?" && greater == "true?":
+		op = GreaterEq
+	}
+	if op != 0 {
+		cmpFun := cmpCall.Func.(*checker.Builtin)
+		boolType := bb.buildType(cmpFun.Ret)
+		bb, arg0 := bb.expr(cmpCall.Args[0])
+		bb, arg1 := bb.expr(cmpCall.Args[1])
+		op := bb.op(op, boolType, arg0, arg1)
+		ret := bb.alloc(boolType)
+		bb.store(ret, op)
+		return bb, ret, true
+	}
+
+	// TODO: we can further optimize switch on a built-in <=> call.
+	// Today, the behavior of this fallthrough is that <=> will be
+	// a double branch resulting in 0, 1, or 2 for less, equal, and greater;
+	// then another 3-way switch to call the argument blocks.
+	// We can merge these two into a single 3-way switching structure.
+
+	return nil, nil, false
+}
+
+func cmpCall(expr checker.Expr) *checker.Call {
+	if !isOrderingRef(expr.Type()) {
+		return nil
+	}
+	for {
+		cvt, ok := expr.(*checker.Convert)
+		if !ok {
+			break
+		}
+		expr = cvt.Expr
+	}
+	call, ok := expr.(*checker.Call)
+	if !ok {
+		return nil
+	}
+	fun, ok := call.Func.(*checker.Builtin)
+	if !ok || fun.Op != checker.Cmp {
+		return nil
+	}
+	return call
+}
+
+func isOrderingRef(typ checker.Type) bool {
+	ref, ok := typ.(*checker.RefType)
+	if !ok {
+		return false
+	}
+	basic, ok := ref.Type.(*checker.BasicType)
+	return ok && basic.Kind == checker.Ordering
+}
+
+func isBool(typ checker.Type) bool {
+	basic, ok := typ.(*checker.BasicType)
+	return ok && basic.Kind == checker.Bool
+}
+
+// boolConstArgs returns "true?", "false?", or ""
+// for each of the less, equal, and greater cases of the switch.
+// If the switch is incomplete "" is returned for all three.
+// If the switch is complete for each of return value
+// if it can be proven to be a block literal that only returns
+// a bool constant, then its value is either "true?" or "false?"
+// corresponding to the boolean value,
+// otherwise if it cannot be statically proven, then "".
+func boolConstArgs(sw *checker.Switch, call *checker.Call) (less, equal, greater string) {
+	switch len(sw.Cases) {
+	case 1:
+		break
+	case 2:
+		if sw.Cases[0] != nil && sw.Cases[1] != nil {
+			break
+		}
+		var other string
+		for i := range sw.Cases {
+			if sw.Cases[i] == nil {
+				other = boolConstBlock(call.Args[i+1])
+			}
+		}
+		for i := range sw.Cases {
+			if sw.Cases[i] == nil {
+				continue
+			}
+			x := boolConstBlock(call.Args[i+1])
+			switch sw.Cases[i].Name {
+			case "less?":
+				less = x
+				equal = other
+				greater = other
+			case "equal?":
+				less = other
+				equal = x
+				greater = other
+			case "greater?":
+				less = other
+				greater = x
+				equal = other
+			default:
+				panic("impossible")
+			}
+		}
+	case 3:
+		unseen := [...]*string{&less, &equal, &greater}
+		for i := range sw.Cases {
+			if sw.Cases[i] == nil {
+				continue
+			}
+			b := boolConstBlock(call.Args[i+1])
+			switch sw.Cases[i].Name {
+			case "less?":
+				less = b
+				unseen[0] = nil
+			case "equal?":
+				equal = b
+				unseen[1] = nil
+			case "greater?":
+				greater = b
+				unseen[2] = nil
+			default:
+				panic("impossible")
+			}
+		}
+		for i := range sw.Cases {
+			if sw.Cases[i] != nil {
+				continue
+			}
+			b := boolConstBlock(call.Args[i+1])
+			for _, u := range unseen {
+				if u != nil {
+					*u = b
+				}
+			}
+		}
+	default:
+		panic("impossible")
+	}
+	return less, equal, greater
+}
+
+// boolConstBlock returns "true?", "false?", or ""
+// depending on whether expr is a block literal that can be statically proven
+// to only return the true ("true?"), false ("false?"),
+// or if it is no such block literal or cannot be proven either way ("").
+func boolConstBlock(expr checker.Expr) string {
+	blockLit, ok := expr.(*checker.BlockLit)
+	if !ok || len(blockLit.Exprs) != 1 {
+		return ""
+	}
+	expr = blockLit.Exprs[0]
+	if !isBool(expr.Type()) {
+		return ""
+	}
+	for {
+		cvt, ok := expr.(*checker.Convert)
+		if !ok {
+			break
+		}
+		expr = cvt.Expr
+	}
+
+	// The block is returning a union literal.
+	if unionLit, ok := expr.(*checker.UnionLit); ok {
+		return unionLit.Case.Name
+	}
+
+	// Check whether the block is returning
+	// a constant access to a bool literal.
+	vr, ok := expr.(*checker.Var)
+	if !ok || !vr.Def.Const {
+		return ""
+	}
+	call, ok := vr.Def.Expr.(*checker.Call)
+	if !ok {
+		return ""
+	}
+	if fun, ok := call.Func.(*checker.Builtin); !ok || fun.Op != checker.Assign {
+		return ""
+	}
+	rhs := call.Args[1]
+	for {
+		cvt, ok := rhs.(*checker.Convert)
+		if !ok || cvt.Kind != checker.Noop {
+			break
+		}
+		rhs = cvt.Expr
+	}
+	unionLit, _ := rhs.(*checker.UnionLit)
+	return unionLit.Case.Name
 }
 
 func (bb *blockBuilder) buildOp(call *checker.Call) (*blockBuilder, Value) {
