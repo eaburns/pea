@@ -417,10 +417,6 @@ const (
 	Eq
 	Neq
 	Cmp
-	Less
-	LessEq
-	Greater
-	GreaterEq
 	Index
 	Slice
 	Length

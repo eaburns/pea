@@ -17,6 +17,10 @@ func for:to:do:(start int, end int, f (int){}) {
 	}
 }
 
+Func <=(a, b T) bool : <=>(T, T)ordering {
+	return: a <=> b greater? { bool :: [false?] } _? { [true?] }
+}
+
 type u [none?, int? int, string? string]
 
 func print(x u) {

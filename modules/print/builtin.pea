@@ -21,6 +21,23 @@ test print_bool {
 	assert_true: string(false) = "false",
 }
 
+// Implemnets print#printable for an ordering.
+Func print(p printer, o ordering) printer {
+	return: o less? {
+		p ++ "less"
+	} equal? {
+		p ++ "equal"
+	} greater? {
+		p ++ "greater"
+	}
+}
+
+test print_ordering {
+	assert_true: string(less) = "less",
+	assert_true: string(equal) = "equal",
+	assert_true: string(greater) = "greater",
+}
+
 // Adds the string representation of the array
 // to the printer and returns the printer.
 Func print(p printer, a [T]) printer : ++(printer, T)printer {

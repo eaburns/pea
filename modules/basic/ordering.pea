@@ -1,0 +1,125 @@
+Const less := ordering :: [less?]
+Const equal := ordering :: [equal?]
+Const greater := ordering :: [greater?]
+
+// Returns whether two orderings are equal.
+Func =(a, b ordering) bool {
+	return: a less? {
+		b less? { true } _? { false }
+	} equal? {
+		b equal? { true } _? { false }
+	} greater? {
+		b greater? { true } _? { false }
+	}
+}
+
+// Returns whether two orderings are not equal.
+Func !=(a, b [less?, equal?, greater?]) bool { return: !(a = b) }
+
+test ordering_equality {
+	assert_true: less = less,
+	assert_true: equal = equal,
+	assert_true: greater = greater,
+	assert_false: less = equal,
+	assert_false: less = greater,
+	assert_false: equal = less,
+	assert_false: equal = greater,
+	assert_false: greater = less,
+	assert_false: greater = equal,
+
+	assert_true: less != equal,
+	assert_true: less != greater,
+	assert_true: equal != less,
+	assert_true: equal != greater,
+	assert_true: greater != less,
+	assert_true: greater != equal,
+	assert_false: less != less,
+	assert_false: equal != equal,
+	assert_false: greater != greater,
+}
+
+// Returns the comparison of two orderings.
+// Orderings have the following ordering: less? < equal? < greater?.
+Func <=>(a, b ordering) ordering {
+	return: a less? {
+		b less? { equal } _? { less }
+	} equal? {
+		b less? { greater } equal? { equal } greater? { less }
+	} greater? {
+		b greater? { equal } _? { greater }
+	}
+}
+
+test ordering_spaceship {
+	assert_true: (less <=> less) = equal,
+	assert_true: (less <=> equal) = less,
+	assert_true: (less <=> greater) = less,
+	assert_true: (equal <=> less) = greater,
+	assert_true: (equal <=> equal) = equal,
+	assert_true: (equal <=> greater) = less,
+	assert_true: (greater <=> less) = greater,
+	assert_true: (greater <=> equal) = greater,
+	assert_true: (greater <=> greater) = equal,
+}
+
+// Returns whether a is less than b for any type T implementing <=>.
+Func <(a, b T) bool : <=>(T, T)[less?, equal?, greater?] {
+	return: a <=> b less? { true } _? { false }
+}
+
+// Returns whether a is less than or equal to b for any type T implementing <=>.
+Func <=(a, b T) bool : <=>(T, T)[less?, equal?, greater?] {
+	return: a <=> b greater? { false } _? { true }
+}
+
+// Returns whether a is greater than b for any type T implementing <=>.
+Func >(a, b T) bool : <=>(T, T)[less?, equal?, greater?] {
+	return: a <=> b greater? { true } _? { false }
+}
+
+// Returns whether a is greater than or equal to b for any type T implementing <=>.
+Func >=(a, b T) bool : <=>(T, T)[less?, equal?, greater?] {
+	return: a <=> b less? { false } _? { true }
+}
+
+test ordering_comparison_operators {
+	assert_false: less < less,
+	assert_true: less < equal,
+	assert_true: less < greater,
+	assert_false: equal < less,
+	assert_false: equal < equal,
+	assert_true: equal < greater,
+	assert_false: greater < less,
+	assert_false: greater < equal,
+	assert_false: greater < greater,
+
+	assert_true: less <= less,
+	assert_true: less <= equal,
+	assert_true: less <= greater,
+	assert_false: equal <= less,
+	assert_true: equal <= equal,
+	assert_true: equal <= greater,
+	assert_false: greater <= less,
+	assert_false: greater <= equal,
+	assert_true: greater <= greater,
+
+	assert_false: less > less,
+	assert_false: less > equal,
+	assert_false: less > greater,
+	assert_true: equal > less,
+	assert_false: equal > equal,
+	assert_false: equal > greater,
+	assert_true: greater > less,
+	assert_true: greater > equal,
+	assert_false: greater > greater,
+
+	assert_true: less >= less,
+	assert_false: less >= equal,
+	assert_false: less >= greater,
+	assert_true: equal >= less,
+	assert_true: equal >= equal,
+	assert_false: equal >= greater,
+	assert_true: greater >= less,
+	assert_true: greater >= equal,
+	assert_true: greater >= greater,
+}

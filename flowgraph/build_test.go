@@ -136,6 +136,8 @@ func check(t *testing.T, src string) *checker.Mod {
 	return mod
 }
 
+var comments = regexp.MustCompile("[ 	]*//.*")
+
 // TestSimplifyCmpSwitchToComparison tests that complete switch calls
 // on the built-in <=> operator can be simplified to conditional expressions
 // in the case that their arguments are boolean literal blocks.
@@ -219,7 +221,6 @@ func TestSimplifyCmpSwitchToComparison(t *testing.T) {
     store(*x3, x2)
     return
 }`
-	comments := regexp.MustCompile("[ 	]*//.*")
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {
 			src := fmt.Sprintf(`
@@ -228,7 +229,7 @@ func TestSimplifyCmpSwitchToComparison(t *testing.T) {
 				%s
 				func main() { %s }
 			`, test.otherDefs, test.src)
-			fg, err := build(src)
+			fg, err := build(src, NoOptimize)
 			if err != nil {
 				t.Log(src)
 				t.Fatalf("failed to compile %s\n", err)
@@ -251,7 +252,73 @@ func TestSimplifyCmpSwitchToComparison(t *testing.T) {
 	}
 }
 
-func build(src string) (string, error) {
+// TestSimplificationOfComparisonFunctions tests that
+// comparisons, <, <=, >, and >= can be implemented
+// as generic functions using <=>, but still be simplified
+// to single, non-branching instructions for built-in <=>
+//
+// It is a change-detector test, but for an important optimization
+// that needs to be changed only with care.
+func TestSimplificationOfComparisonFunctions(t *testing.T) {
+	const src = `
+		func main() {
+			use(1 < 2),
+			use(2 <= 3),
+			use(3 > 4),
+			use(4 >= 5),
+		}
+		Func <(a, b T) bool : <=>(T, T)ordering {
+			return: a <=> b less? { bool :: [true?] } _? { [false?] }
+		}
+		Func <=(a, b T) bool : <=>(T, T)ordering {
+			return: a <=> b greater? { bool :: [false?] } _? { [true?] }
+		}
+		Func >(a, b T) bool : <=>(T, T)ordering {
+			return: a <=> b greater? { bool :: [true?] } _? { [false?] }
+		}
+		Func >=(a, b T) bool : <=>(T, T)ordering {
+			return: a <=> b less? { bool :: [false?] } _? { [true?] }
+		}
+		func use(_ bool)
+	`
+
+	const expected = `func "main#main()"() {
+0:	in=[], out=[]
+    x0 := 1
+    x1 := 2
+    x2 := x0 < x1
+    x3 := &"main#use(bool)"
+    x3(x2)
+    x4 := 2
+    x5 := 3
+    x6 := x4 <= x5
+    x7 := &"main#use(bool)"
+    x7(x6)
+    x8 := 3
+    x9 := 4
+    x10 := x8 > x9
+    x11 := &"main#use(bool)"
+    x11(x10)
+    x12 := 4
+    x13 := 5
+    x14 := x12 >= x13
+    x15 := &"main#use(bool)"
+    x15(x14)
+    return
+}`
+	fg, err := build(src)
+	if err != nil {
+		t.Log(src)
+		t.Fatalf("failed to compile %s\n", err)
+	}
+	// Strip type name comments.
+	fg = comments.ReplaceAllLiteralString(fg, "")
+	if fg != expected {
+		t.Errorf("got\n%s\nwanted\n%s", fg, expected)
+	}
+}
+
+func build(src string, opts ...Option) (string, error) {
 	p := parser.New()
 	if err := p.Parse("", strings.NewReader(src)); err != nil {
 		return "", err
@@ -261,7 +328,7 @@ func build(src string) (string, error) {
 		return "", errs[0]
 	}
 	var main *FuncDef
-	for _, fun := range Build(c, NoOptimize).Funcs {
+	for _, fun := range Build(c, opts...).Funcs {
 		if fun.Name == "main" {
 			main = fun
 			break

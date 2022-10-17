@@ -397,14 +397,6 @@ func (o Op) String() string {
 		return "Neq"
 	case Cmp:
 		return "Cmp"
-	case Less:
-		return "Less"
-	case LessEq:
-		return "LessEq"
-	case Greater:
-		return "Greater"
-	case GreaterEq:
-		return "GreaterEq"
 	case Index:
 		return "Index"
 	case Slice:
@@ -516,14 +508,6 @@ func (b *Builtin) name(paren bool) string {
 		s.WriteString("!=")
 	case Cmp:
 		s.WriteString("<=>")
-	case Less:
-		s.WriteRune('<')
-	case LessEq:
-		s.WriteString("<=")
-	case Greater:
-		s.WriteRune('>')
-	case GreaterEq:
-		s.WriteString(">=")
 	case Index:
 		s.WriteString("[]")
 	case Slice:

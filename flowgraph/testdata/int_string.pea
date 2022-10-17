@@ -161,3 +161,15 @@ Func string(u uint64, base uint, neg bool) string {
 	},
 	return: string(bytes[i, bytes.length])
 }
+
+Func <(a, b T) bool : <=>(T, T)ordering {
+	return: a <=> b less? { bool :: [true?] } _? { [false?] }
+}
+
+Func <=(a, b T) bool : <=>(T, T)ordering {
+	return: a <=> b greater? { bool :: [false?] } _? { [true?] }
+}
+
+Func >(a, b T) bool : <=>(T, T)ordering {
+	return: a <=> b greater? { bool :: [true?] } _? { [false?] }
+}

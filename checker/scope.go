@@ -448,10 +448,6 @@ var (
 		{N: "=", Op: Eq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
 		{N: "!=", Op: Neq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
 		{N: "<=>", Op: Cmp, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _ordering},
-		{N: "<", Op: Less, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
-		{N: "<=", Op: LessEq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
-		{N: ">", Op: Greater, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
-		{N: ">=", Op: GreaterEq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
 
 		// TODO: allow the following instead of the hackery in Builtin.sub.
 		/*

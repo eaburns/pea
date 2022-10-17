@@ -2706,7 +2706,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			name: "sort with element typeparm introduced in iface",
 			src: `
 				func main() { target_function([1, 2, 3]) }
-				func target_function(x X) : [](X, int)&U, <(U, U)bool
+				func target_function(x X) : [](X, int)&U, <=>(U, U)ordering
 			`,
 			want: "built-in []([int], int)&int",
 		},
@@ -2941,7 +2941,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 					[](S, int)&T,	// [int] does satisfy this &T.
 					[](S, int, int) S,
 					.length(S)int,
-					<(T, T)bool,
+					<=>(T, T)ordering,
 			`,
 			want: "built-in []([int], int)&int",
 		},
@@ -4030,29 +4030,9 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in !=(float64, float64)bool",
 		},
 		{
-			name: "built-in less <=>",
+			name: "built-in <=>",
 			call: "2.0 <=> 2",
 			want: "built-in <=>(float64, float64)ordering",
-		},
-		{
-			name: "built-in less",
-			call: "2.0 < 2",
-			want: "built-in <(float64, float64)bool",
-		},
-		{
-			name: "built-in less eq",
-			call: "2.0 <= 2",
-			want: "built-in <=(float64, float64)bool",
-		},
-		{
-			name: "built-in greater ",
-			call: "2.0 > 2",
-			want: "built-in >(float64, float64)bool",
-		},
-		{
-			name: "built-in greater eq",
-			call: "2.0 >= 2",
-			want: "built-in >=(float64, float64)bool",
 		},
 		{
 			name: "built-in op ambiguity",
