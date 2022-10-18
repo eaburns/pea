@@ -213,86 +213,20 @@ func (c *Call) subExpr(bindings bindings) Expr {
 		// to pass to bar(&string).
 		args[i], _, err = convertExpr(args[i], fun.parm(i), true)
 		if err != nil {
-			// The conversion should always succeed,
-			// because iface instantiation only binds
-			// functions where arguments implicitly convert.
 			panic(fmt.Sprintf("bad arg convert in Call.subExpr: %s", err))
 		}
 	}
-
-	if exprFunc, ok := fun.(*ExprFunc); ok {
-		return &Call{
-			Func: exprFunc,
-			Args: args,
-			T:    refLiteral(subType(bindings.Types, c.T)),
-			L:    c.L,
-		}
-	}
-
-	// The return type of fun may have too few refs
-	// for normal implicit conversion to retType.
-	// Consider:
-	/*
-		func foo(s S) &S : [](S, int, int)S {
-			return: &S :: s[5, 6]
-		}
-		func main() {
-			str_ref := &string :: "",
-			foo(str_ref)
-		}
-	*/
-	// When S=&string, then [] is bound to built-in [](string,int,int)string.
-	// The call s[5, 6] will return a string,
-	// which can be referenced 1 time resulting in &string.
-	// The conversion &S would try to convert string to &&string,
-	// which is not normally possible.
-	//
-	// However, type variables like S should behave like a def types.
-	// It's possible to take a reference to a call returning a def type S.
-	// So we should be able to take the reference here.
-	//
-	// We need to add a new variable to introduce the extra indirection.
-	//
-	// But this is a call expression, how do we introduce
-	// a variable without affecting order of oprerations?
-	//
-	// We do it by wrapping the called function in a block,
-	// and having that block introduce the variable as a local.
-	// This is exactly what wrapCallInBlock does.
-	// The above becomes:
-	/*
-		func foo(s S) &S : [](S, int, int)S {
-			return: &S :: {
-				ret := s[5, 6], // ret introduces the extra &.
-				ret, // &string return can convert to &&string.
-			}()
-		}
-		func main() {
-			str_ref := &string :: "",
-			foo(str_ref)
-		}
-	*/
-	// Which looks like this when &string is substituted for S:
-	/*
-		func foo(s &string) &&string {
-			return: &&string :: {
-				ret := s[5, 6],	// ret type is &string
-				// wrapCallInBlock converts to the desired return type,
-				// in this case, convert ret (type string) to &string.
-				// It's fine to reference-convert a local,
-				// so this is OK.
-				&string :: ret, // block returns &string
-			}() // return is &string, which can be refed 1 time to &&string.
-		}
-	*/
-	retType := subType(bindings.Types, c.T)
-	expr := wrapCallInBlock(fun, retType.(*RefType).Type, c.L)
-	return &Call{
-		Func: &ExprFunc{Expr: expr, FuncType: expr.Type().(*FuncType)},
+	call := &Call{
+		Func: fun,
 		Args: args,
-		T:    refLiteral(retType),
+		T:    refLiteral(fun.ret().groundType()),
 		L:    c.L,
 	}
+	ret, _, err := convertExpr(call, pattern(subType(bindings.Types, c.T)), false)
+	if err != nil {
+		panic(fmt.Sprintf("bad return convert in Call.subExpr: %s", err))
+	}
+	return ret
 }
 
 func (c *Convert) subExpr(bindings bindings) Expr {
