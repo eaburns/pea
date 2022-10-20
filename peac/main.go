@@ -342,7 +342,9 @@ func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs 
 }
 
 func compileLL(file, oFile string) error {
-	if err := run("llc", file, "-filetype", "obj", "-o", oFile); err != nil {
+	// We use clang here instead of opt+llc, because
+	// it sets the target datalayout and triple for us.
+	if err := run("clang", "-O2", "-o", oFile, "-c", file); err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
 	return nil
