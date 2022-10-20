@@ -191,6 +191,13 @@ func (g *gen) writeFuncDecls(mod *flowgraph.Mod) {
 		if f.Test {
 			continue
 		}
+		if f.Inst {
+			// We need to write function instance definitions
+			// in case they are only referenced by main.
+			// They are linkonce_odr, so duplicates are removed.
+			g.writeFuncDef(f)
+			continue
+		}
 		g.write("declare void ", f, "(", f.Parms, ")\n")
 	}
 }
@@ -238,7 +245,7 @@ func (g *gen) writeTestMain(mod *flowgraph.Mod) {
 		// because pea_run_test fork()s its test,
 		// and GC can't be used before fork().
 		// So init must be done in each child instead.
-		g.write("define void @\"", t.Name, " launcher\"() {\n")
+		g.write("define internal void @\"", t.Name, " launcher\"() {\n")
 		g.write("	call void @\"module init for test\"()\n")
 		g.write("	call void ", t, "()\n")
 		g.write("	ret void\n")
@@ -335,10 +342,28 @@ func (g *gen) declareTestCallLocStrings(mod *flowgraph.Mod) {
 }
 
 func (g *gen) writeFuncDef(f *flowgraph.FuncDef) {
+	var linkage string
+	switch {
+	case f.Inst:
+		linkage = "linkonce_odr"
+	case f.Test:
+		linkage = "internal"
+	default:
+		// All functions that aren't instances
+		// of a type-parameterized definition
+		// or tests need to use external linkage.
+		//
+		// This is even true of non-exported functions,
+		// as they may be called by an instance;
+		// if that instance is from another module,
+		// it assumes that the non-exported, non-instance
+		// is still externally callable.
+		linkage = "external"
+	}
 	if strings.HasSuffix(f.Name, "no_inline") {
-		g.write("define linkonce_odr void ", f, "(", f.Parms, ") noinline {\n")
+		g.write("define ", linkage, " void ", f, "(", f.Parms, ") noinline {\n")
 	} else {
-		g.write("define linkonce_odr void ", f, "(", f.Parms, ") {\n")
+		g.write("define ", linkage, " void ", f, "(", f.Parms, ") {\n")
 	}
 	for _, b := range f.Blocks {
 		g.write(b.Num, ":\n")

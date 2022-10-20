@@ -14,6 +14,17 @@ func (mb *modBuilder) optimize() {
 		mergeBlocks(fb.FuncDef)
 		lateMoveAllocsToStack(fb)
 	}
+
+	// Now that everything is inlined,
+	// Remove the body of functions
+	// that are externally defined in other modules.
+	// They will become simple declarations.
+	for _, fb := range mb.funcBuilders {
+		if !fb.Inst && fb.Mod != mb.Path {
+			fb.Blocks = nil
+		}
+	}
+
 	var i int
 	for _, fb := range mb.funcBuilders {
 		if disused(fb) {
