@@ -484,7 +484,7 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			}
 			switch typ := r.XValue.Type().(type) {
 			case *flowgraph.FloatType:
-				g.line(cond, " = fcmp ult ", typeVal{r.Value}, ", ", r.XValue)
+				g.line(cond, " = fcmp olt ", typeVal{r.Value}, ", ", r.XValue)
 			case *flowgraph.IntType:
 				if typ.Unsigned {
 					g.line(cond, " = icmp ult ", typeVal{r.Value}, ", ", r.XValue)
@@ -495,7 +495,7 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 		case flowgraph.LessEq:
 			switch typ := r.XValue.Type().(type) {
 			case *flowgraph.FloatType:
-				g.line(cond, " = fcmp ule ", typeVal{r.Value}, ", ", r.XValue)
+				g.line(cond, " = fcmp ole ", typeVal{r.Value}, ", ", r.XValue)
 			case *flowgraph.IntType:
 				if typ.Unsigned {
 					g.line(cond, " = icmp ule ", typeVal{r.Value}, ", ", r.XValue)
@@ -715,7 +715,14 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			}
 			if isFloat(r.Args[0]) {
 				op = "fcmp"
-				sign = "u"
+				// u is unordered, which is true if either operand is NaN.
+				// o is ordered, which is false if either operand is NaN.
+				// NaN!=NaN is true, otherwise false if either oparand is NaN.
+				if cond == "ne" {
+					sign = "u"
+				} else {
+					sign = "o"
+				}
 			}
 			c := g.tmp()
 			g.line(c, " = ", op, " ", sign, cond, " ", typeVal{r.Args[0]}, ", ", r.Args[1])

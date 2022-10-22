@@ -1,0 +1,21 @@
+test nan_float64 {
+	NaN := (float64 :: 0.0) / 0.0,
+
+	assert_false: NaN = NaN,
+	assert_false: NaN = 1,
+	assert_true: NaN != NaN,
+	assert_true: NaN != 1,
+	assert_false: NaN = NaN,
+	assert_true: NaN != NaN,
+}
+
+test nan_float32 {
+	NaN := (float32 :: 0.0) / 0.0,
+
+	assert_false: NaN = NaN,
+	assert_false: NaN = 1,
+	assert_true: NaN != NaN,
+	assert_true: NaN != 1,
+	assert_false: NaN = NaN,
+	assert_true: NaN != NaN,
+}
