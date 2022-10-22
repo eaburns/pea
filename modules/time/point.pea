@@ -39,7 +39,6 @@ test point_subtraction {
 
 // Returns the result of comparing a = b, a != b, a < b, a <= b, a > b, or a >= b.
 Func =(a point, b point) bool { return: a.d = b.d }
-Func !=(a point, b point) bool { return: a.d != b.d }
 Func <(a point, b point) bool { return: a.d < b.d }
 Func <=(a point, b point) bool { return: a.d <= b.d }
 Func >(a point, b point) bool { return: a.d > b.d }

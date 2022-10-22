@@ -415,7 +415,6 @@ const (
 	Divide
 	Modulus
 	Eq
-	Neq
 	Cmp
 	Index
 	Slice

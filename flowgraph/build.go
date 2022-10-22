@@ -892,8 +892,7 @@ func (bb *blockBuilder) Call(call *checker.Call) (*blockBuilder, Value) {
 		case checker.BitNot, checker.BitXor, checker.BitAnd, checker.BitOr,
 			checker.LeftShift, checker.RightShift, checker.Negate,
 			checker.Minus, checker.Plus, checker.Times, checker.Divide,
-			checker.Modulus, checker.Eq, checker.Neq,
-			checker.Panic, checker.Print:
+			checker.Modulus, checker.Eq, checker.Panic, checker.Print:
 			return bb.buildOp(call)
 		case checker.Cmp:
 			return bb.buildCmp(call)
@@ -2664,7 +2663,6 @@ var opMap = map[checker.Op]OpKind{
 	checker.Divide:     Divide,
 	checker.Modulus:    Modulus,
 	checker.Eq:         Eq,
-	checker.Neq:        Neq,
 	checker.Panic:      Panic,
 	checker.Print:      Print,
 }

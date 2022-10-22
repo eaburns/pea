@@ -450,10 +450,6 @@ func =(a (K, V) node, b (K, V) node)bool : =(K, K)bool, =(V, V)bool {
 		(a.kids.length = 0 || { a.kids[0, a.n+1] = b.kids[0, b.n+1] })
 }
 
-func !=(a (K, V) node, b (K, V) node)bool : =(K, K)bool, =(V, V)bool {
-	return: !(a = b)
-}
-
 func =(a [.k K, .v V], b [.k K, .v V]) bool : =(K, K)bool, =(V, V)bool {
 	return: a.k = b.k && a.v = b.v
 }

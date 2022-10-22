@@ -80,12 +80,6 @@ Func =(a duration, b duration) bool {
 	return: a.s = b.s && {a.ns = b.ns}
 }
 
-// Returns the result of a!=b.
-Func !=(a duration, b duration) bool {
-	return: !(a = b)
-}
-
-
 // Returns the result of a<b.
 Func <(a duration, b duration) bool {
 	if: a.s != b.s then: {

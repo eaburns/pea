@@ -393,8 +393,6 @@ func (o Op) String() string {
 		return "Modulus"
 	case Eq:
 		return "Eq"
-	case Neq:
-		return "Neq"
 	case Cmp:
 		return "Cmp"
 	case Index:
@@ -504,8 +502,6 @@ func (b *Builtin) name(paren bool) string {
 		s.WriteRune('%')
 	case Eq:
 		s.WriteRune('=')
-	case Neq:
-		s.WriteString("!=")
 	case Cmp:
 		s.WriteString("<=>")
 	case Index:

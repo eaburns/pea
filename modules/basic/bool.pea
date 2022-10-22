@@ -27,9 +27,9 @@ test bool_equal {
 	assert_false: false = true,
 }
 
-// Returns whether two booleans have differing values.
-Func !=(a bool, b bool) bool {
-	return: a true? {!b} false? {b}
+// Returns whether two values are not equal for any type implementing =.
+Func !=(a, b T) bool : =(T, T) bool {
+	return: !(a = b)
 }
 
 test bool_not_equal {

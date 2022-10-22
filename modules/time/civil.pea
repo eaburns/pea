@@ -146,22 +146,6 @@ test equal {
 	assert_false: civil(1, 2, 3, 4, 5, 6, 7) = civil(0, 2, 3, 4, 5, 6, 7),
 }
 
-// Returns the result of comparing a!=b.
-Func !=(a civil, b civil) bool {
-	return: !(a = b)
-}
-
-test not_equal {
-	assert_false: civil(1, 2, 3, 4, 5, 6, 7) != civil(1, 2, 3, 4, 5, 6, 7),
-	assert_true: civil(1, 2, 3, 4, 5, 6, 7) != civil(1, 2, 3, 4, 5, 6, 0),
-	assert_true: civil(1, 2, 3, 4, 5, 6, 7) != civil(1, 2, 3, 4, 5, 0, 7),
-	assert_true: civil(1, 2, 3, 4, 5, 6, 7) != civil(1, 2, 3, 4, 0, 6, 7),
-	assert_true: civil(1, 2, 3, 4, 5, 6, 7) != civil(1, 2, 3, 0, 5, 6, 7),
-	assert_true: civil(1, 2, 3, 4, 5, 6, 7) != civil(1, 2, 0, 4, 5, 6, 7),
-	assert_true: civil(1, 2, 3, 4, 5, 6, 7) != civil(1, 0, 3, 4, 5, 6, 7),
-	assert_true: civil(1, 2, 3, 4, 5, 6, 7) != civil(0, 2, 3, 4, 5, 6, 7),
-}
-
 // Returns the result of comparing a<b.
 Func <(a civil, b civil) bool {
 	if: a.y != b.y then: {

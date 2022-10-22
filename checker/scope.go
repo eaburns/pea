@@ -446,7 +446,6 @@ var (
 
 		// Comparison ops are asserted to only sub Parms[0] with a number type in Builtin.sub.
 		{N: "=", Op: Eq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
-		{N: "!=", Op: Neq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
 		{N: "<=>", Op: Cmp, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _ordering},
 
 		// TODO: allow the following instead of the hackery in Builtin.sub.

@@ -13,9 +13,6 @@ Func =(a, b ordering) bool {
 	}
 }
 
-// Returns whether two orderings are not equal.
-Func !=(a, b [less?, equal?, greater?]) bool { return: !(a = b) }
-
 test ordering_equality {
 	assert_true: less = less,
 	assert_true: equal = equal,
@@ -26,16 +23,6 @@ test ordering_equality {
 	assert_false: equal = greater,
 	assert_false: greater = less,
 	assert_false: greater = equal,
-
-	assert_true: less != equal,
-	assert_true: less != greater,
-	assert_true: equal != less,
-	assert_true: equal != greater,
-	assert_true: greater != less,
-	assert_true: greater != equal,
-	assert_false: less != less,
-	assert_false: equal != equal,
-	assert_false: greater != greater,
 }
 
 // Returns the comparison of two orderings.
@@ -69,7 +56,7 @@ Func <(a, b T) bool : <=>(T, T)[less?, equal?, greater?] {
 
 // Returns whether a is less than or equal to b for any type T implementing <=>.
 Func <=(a, b T) bool : <=>(T, T)[less?, equal?, greater?] {
-	return: a <=> b greater? { false } _? { true }
+	return: a <=> b less? { true } equal? { true } greater? { false }
 }
 
 // Returns whether a is greater than b for any type T implementing <=>.
@@ -79,7 +66,7 @@ Func >(a, b T) bool : <=>(T, T)[less?, equal?, greater?] {
 
 // Returns whether a is greater than or equal to b for any type T implementing <=>.
 Func >=(a, b T) bool : <=>(T, T)[less?, equal?, greater?] {
-	return: a <=> b less? { false } _? { true }
+	return: a <=> b less? { false } equal? { true } greater? { true }
 }
 
 test ordering_comparison_operators {

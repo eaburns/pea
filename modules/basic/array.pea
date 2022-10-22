@@ -70,28 +70,6 @@ test array_equal {
 	assert_false: [1, 2, 3] = [1, 2, 4],
 }
 
-// Returns whether two arrays are not equal.
-// Two arrays are not equal
-// if the array = function returns false.
-Func !=(a [T], b [T]) bool : =(T, T) bool {
-	return: !(a = b)
-}
-
-test array_not_equal {
-	empty := [int] :: [],
-	assert_false: empty != empty,
-	assert_false: [1] != [1],
-	assert_false: [1, 2, 3] != [1, 2, 3],
-
-	assert_true: empty != [1],
-	assert_true: [1] != empty,
-	assert_true: [1] != [1, 2],
-	assert_true: [1, 2] != [1],
-	assert_true: [1, 2, 3] != [4, 2, 3],
-	assert_true: [1, 2, 3] != [1, 4, 3],
-	assert_true: [1, 2, 3] != [1, 2, 4],
-}
-
 // Returns whether an array is less than another.
 // Less is determined lexically: array a is less than b if,
 // * for some 0 ≤ i < a.length, a[i] < b[i], and for all 0 ≤ j < i, a[j] = b[j],

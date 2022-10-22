@@ -28,27 +28,6 @@ test string_equal {
 	assert_false: "こんにちは" = "今日は",
 }
 
-// Returns whether two strings are not equal.
-// Two strings are not equal if the = function returns false for the strings.
-Func !=(a string, b string) bool {
-	return: !(a = b)
-}
-
-test string_not_equal {
-	assert_false: "" != "",
-	assert_false: "a" != "a",
-	assert_false: "aaa" != "aaa",
-	assert_false: "abcdef" != "abcdef",
-	assert_false: "こんにちは" != "こんにちは",
-
-	assert_true: "" != "a",
-	assert_true: "a" != "",
-	assert_true: "aaa" != "aa",
-	assert_true: "aaa" != "aaaa",
-	assert_true: "abc" != "cba",
-	assert_true: "こんにちは" != "今日は",
-}
-
 // Returns whether a string is less than another.
 // Less is determined lexically: string a is less than b if,
 // * for some 0 ≤ i < a.length, a[i] < b[i], and for all 0 ≤ j < i, a[j] = b[j],

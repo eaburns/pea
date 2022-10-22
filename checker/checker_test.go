@@ -4025,11 +4025,6 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in =(float64, float64)bool",
 		},
 		{
-			name: "built-in neq",
-			call: "2.0 != 2",
-			want: "built-in !=(float64, float64)bool",
-		},
-		{
 			name: "built-in <=>",
 			call: "2.0 <=> 2",
 			want: "built-in <=>(float64, float64)ordering",
