@@ -25,7 +25,7 @@ func main() {
 	print(1 <=> 1),
 	print((uint8 :: 2) <=> 2),
 	print(3.14 <=> 3.14),
-	print((uintref :: 0) <=> 0),
+	print((uint64 :: 0) <=> 0),
 
 	print(-1 <=> -2),
 	print(2 <=> 1),
