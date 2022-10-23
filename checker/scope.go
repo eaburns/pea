@@ -413,8 +413,19 @@ var (
 	_P        = &TypeParm{Name: "T"}
 	_T        = &TypeVar{Name: _P.Name, Def: _P}
 	_end      = basic(End)
-	_uint8    = basic(Uint8)
 	_int      = basic(Int)
+	_int8      = basic(Int8)
+	_int16      = basic(Int16)
+	_int32      = basic(Int32)
+	_int64      = basic(Int64)
+	_uint      = basic(Uint)
+	_uint8      = basic(Uint8)
+	_uint16      = basic(Uint16)
+	_uint32      = basic(Uint32)
+	_uint64      = basic(Uint64)
+	_uintref      = basic(UintRef)
+	_float32 = basic(Float32)
+	_float64 = basic(Float64)
 	_bool     = boolUnion
 	_ordering = orderingUnion
 	_string   = basic(String)
@@ -440,9 +451,33 @@ var (
 		{N: "/", Op: Divide, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
 		{N: "%", Op: Modulus, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _T},
 
-		// Comparison ops are asserted to only sub Parms[0] with a number type in Builtin.sub.
-		{N: "=", Op: Eq, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _bool},
-		{N: "<=>", Op: Cmp, TypeParm: _P, Parms: []Type{_T, _T}, Ret: _ordering},
+		{N: "=", Op: Eq, Parms: []Type{_int, _int}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_int8, _int8}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_int16, _int16}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_int32, _int32}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_int64, _int64}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_uint, _uint}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_uint8, _uint8}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_uint16, _uint16}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_uint32, _uint32}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_uint64, _uint64}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_uintref, _uintref}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_float32, _float32}, Ret: _bool},
+		{N: "=", Op: Eq, Parms: []Type{_float64, _float64}, Ret: _bool},
+		{N: "<=>", Op: Cmp, Parms: []Type{_int, _int}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_int8, _int8}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_int16, _int16}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_int32, _int32}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_int64, _int64}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_uint, _uint}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_uint8, _uint8}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_uint16, _uint16}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_uint32, _uint32}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_uint64, _uint64}, Ret: _ordering},
+		// TODO: Remove <=> for uintref.
+		{N: "<=>", Op: Cmp, Parms: []Type{_uintref, _uintref}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_float32, _float32}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_float64, _float64}, Ret: _ordering},
 
 		// TODO: allow the following instead of the hackery in Builtin.sub.
 		/*

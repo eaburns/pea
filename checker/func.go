@@ -625,7 +625,7 @@ func (b *Builtin) sub(bind map[*TypeParm]Type) note {
 			return newNote("%s: does not support type %s", b, typ)
 		}
 		bind[b.TypeParm] = valueType(typ)
-	case Negate, Minus, Plus, Times, Divide, Modulus, Eq, Cmp:
+	case Negate, Minus, Plus, Times, Divide, Modulus:
 		// TODO: Disallow arithmetic operands by default on defined numeric types.
 		if !allowed(numTypes, typ) {
 			return newNote("%s: does not support type %s", b, typ)
