@@ -13,6 +13,7 @@ fail=0
 for mod in $mods; do
 	/bin/echo -n "Testing $mod … "
 	o=$(mktemp pea_tmp.XXXXXXXXXX)
+	trap "rm -f $o" EXIT
 	if ! ./peac/peac -libpea ./libpea -test -root $root $mod > $o; then
 		fail=1
 		rm -f $root/$mod/*.pea_cache
