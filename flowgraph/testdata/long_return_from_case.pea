@@ -8,4 +8,4 @@ func foo() string {
 	return: "fail"
 }
 
-const true := bool :: [true?]
+const true := [false?, true?] :: [true?]

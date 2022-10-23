@@ -34,7 +34,7 @@ func main() {
 	print(3.14 <=> 0.0),
 }
 
-func print(o ordering) {
+func print(o [less?, equal?, greater?]) {
 	o less? {
 		print("less\n")
 	} equal? {

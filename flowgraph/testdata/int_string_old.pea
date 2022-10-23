@@ -66,8 +66,11 @@ func main() {
 	}
 }
 
+Type bool [false?, true?]
 Const true := bool :: [true?]
 Const false := bool :: [false?]
+
+Type ordering [less?, equal?, greater?]
 
 Func !(b bool) bool {
 	return: b true? { false } false? { true }

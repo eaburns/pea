@@ -1,3 +1,6 @@
+// False or true.
+Type bool := [false?, true?]
+
 // The constant value true.
 Const true := bool :: [true?]
 

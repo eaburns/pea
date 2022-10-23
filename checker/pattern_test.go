@@ -125,7 +125,7 @@ func TestCommonPattern(t *testing.T) {
 		{
 			pats: []string{
 				"int",
-				"bool",
+				"[false?, true?]",
 			},
 			want: "_",
 		},
@@ -237,8 +237,8 @@ func TestCommonPattern(t *testing.T) {
 		{
 			pats: []string{
 				"[.x int, .y float32, .z string]",
-				"[.x int, .y bool, .z string]",
-				"[.x bool, .y float32, .z string]",
+				"[.x int, .y [false?, true?], .z string]",
+				"[.x [false?, true?], .y float32, .z string]",
 			},
 			want: "[.x _, .y _, .z string]",
 		},
@@ -273,21 +273,21 @@ func TestCommonPattern(t *testing.T) {
 		{
 			pats: []string{
 				"[x? int, y?, z? string]",
-				"[x? bool, y?, z? string]",
+				"[x? [false?, true?], y?, z? string]",
 			},
 			want: "[x? _, y?, z? string]",
 		},
 		{
 			pats: []string{
 				"[x? int, y?, z? string]",
-				"[x? int, y?, z? bool]",
+				"[x? int, y?, z? [false?, true?]]",
 			},
 			want: "[x? int, y?, z? _]",
 		},
 		{
 			pats: []string{
 				"[x? int, y?, z? string]",
-				"[x? bool, y?, z? bool]",
+				"[x? [false?, true?], y?, z? [false?, true?]]",
 			},
 			want: "[x? _, y?, z? _]",
 		},
@@ -336,28 +336,28 @@ func TestCommonPattern(t *testing.T) {
 		{
 			pats: []string{
 				"(int, string){float64}",
-				"(bool, string){float64}",
+				"([false?, true?], string){float64}",
 			},
 			want: "(_, string){float64}",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
-				"(int, bool){float64}",
+				"(int, [false?, true?]){float64}",
 			},
 			want: "(int, _){float64}",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
-				"(int, string){bool}",
+				"(int, string){[false?, true?]}",
 			},
 			want: "(int, string){_}",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
-				"(int8, float32){bool}",
+				"(int8, float32){[false?, true?]}",
 			},
 			want: "(_, _){_}",
 		},
@@ -622,8 +622,8 @@ func TestConvert(t *testing.T) {
 		{src: "(int){}", dst: "(int){} t", explicit: true, want: c("(int){}", Noop, "(int){} t")},
 		{src: "(){int} t", dst: "(){int}", explicit: true, want: c("(){int} t", Noop, "(){int}")},
 		{src: "(){int}", dst: "(){int} t", explicit: true, want: c("(){int}", Noop, "(){int} t")},
-		{src: "(int){bool} t", dst: "(int){bool}", explicit: true, want: c("(int){bool} t", Noop, "(int){bool}")},
-		{src: "(int){bool}", dst: "(int){bool} t", explicit: true, want: c("(int){bool}", Noop, "(int){bool} t")},
+		{src: "(int){[false?, true?]} t", dst: "(int){[false?, true?]}", explicit: true, want: c("(int){[false?, true?]} t", Noop, "(int){[false?, true?]}")},
+		{src: "(int){[false?, true?]}", dst: "(int){[false?, true?]} t", explicit: true, want: c("(int){[false?, true?]}", Noop, "(int){[false?, true?]} t")},
 		// They cannot implicitly convert to/from non-literal types
 		{src: "struct_x_int", dst: "struct_x_int2", explicit: false, want: nil},
 		{src: "struct_x_int", dst: "struct_x_int t", explicit: false, want: nil},
@@ -644,9 +644,6 @@ func TestConvert(t *testing.T) {
 		// &int is not array, struct, union, or func literal type, it is a literal reference to a named type.
 		{src: "int_ref", dst: "&int", want: nil},
 		{src: "&int", dst: "int_ref", want: nil},
-		// bool is defined as [false?, true?].
-		{src: "bool", dst: "[false?, true?]", want: c("bool", Noop, "[false?, true?]")},
-		{src: "[false?, true?]", dst: "bool", want: c("[false?, true?]", Noop, "bool")},
 
 		// A union can explicitly convert to a union with a superset of the cases.
 		{src: "[x?]", dst: "[x?]", explicit: true, want: c("[x?]", Noop, "[x?]")},

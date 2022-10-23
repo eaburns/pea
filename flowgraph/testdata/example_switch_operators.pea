@@ -31,17 +31,17 @@ func main() {
 	-> { print("else") },
 }
 
-const true := bool :: [true?]
-const false := bool :: [false?]
+const true := [false?, true?] :: [true?]
+const false := [false?, true?] :: [false?]
 
 type switch [more?, done?]
 type case [found?, not_found?, done?]
 
-Func +(c (){bool}) case {
+Func +(c (){[false?, true?]}) case {
 	return: c() true? { case :: [found?] } false? { [not_found?] }
 }
 
-Func +(s switch, c (){bool}) case {
+Func +(s switch, c (){[false?, true?]}) case {
 	return: s more? { +c } done? { [done?] }
 }
 

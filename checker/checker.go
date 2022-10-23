@@ -75,8 +75,6 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 		name  string
 	}
 	seenTypes := map[typeKey]loc.Loc{
-		{0, "bool"}:     {},
-		{0, "ordering"}: {},
 		{0, "int"}:      {},
 		{0, "int8"}:     {},
 		{0, "int16"}:    {},

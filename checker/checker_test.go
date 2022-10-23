@@ -175,7 +175,8 @@ func TestRedef(t *testing.T) {
 			`,
 			err: "t redefined",
 		},
-		{name: "bool redef", src: "type bool float64", err: "redefined"},
+		{name: "bool redef ok", src: "type bool float64", err: ""},
+		{name: "ordering redef ok", src: "type ordering float64", err: ""},
 		{name: "int redef", src: "type int float64", err: "redefined"},
 		{name: "int8 redef", src: "type int8 float64", err: "redefined"},
 		{name: "int16 redef", src: "type int16 float64", err: "redefined"},
@@ -900,7 +901,7 @@ func TestCheckFuncScope(t *testing.T) {
 		{
 			name: "interface function lookup in call resolution",
 			src: `
-				func foo(t T) bool : =(T, T) bool {
+				func foo(t T) [false?, true?] : =(T, T) [false?, true?] {
 					return: t = t
 				}
 			`,
@@ -908,7 +909,7 @@ func TestCheckFuncScope(t *testing.T) {
 		{
 			name: "interface function lookup in ID resolution",
 			src: `
-				func foo(t T) (T,T){bool} : =(T, T) bool {
+				func foo(t T) (T,T){[false?, true?]} : =(T, T) [false?, true?] {
 					return: (=)
 				}
 			`,
@@ -916,7 +917,7 @@ func TestCheckFuncScope(t *testing.T) {
 		{
 			name: "interface function lookup causes ambiguity",
 			src: `
-				func foo() bool : =(int, int) bool {
+				func foo() [false?, true?] : =(int, int) [false?, true?] {
 					return: 1 = 1
 				}
 			`,
@@ -1556,8 +1557,8 @@ func TestTypeResolution(t *testing.T) {
 		err       string
 		otherMods []testMod
 	}{
-		{name: "built-in int type", src: "var t bool", want: "bool"},
-		{name: "built-in int type", src: "var t ordering", want: "ordering"},
+		{name: "built-in int type", src: "var t [false?, true?]", want: "[false?, true?]"},
+		{name: "built-in int type", src: "var t [less?, equal?, greater?]", want: "[less?, equal?, greater?]"},
 		{name: "built-in int type", src: "var t int", want: "int"},
 		{name: "built-in int type", src: "var t int8", want: "int8"},
 		{name: "built-in int type", src: "var t int16", want: "int16"},
@@ -1826,9 +1827,9 @@ func TestIfaceDef(t *testing.T) {
 		{
 			name: "funcs with parms and ret",
 			src: `
-				iface one { one(bool)int, two(int32, uint8)string }
+				iface one { one([false?, true?])int, two(int32, uint8)string }
 			`,
-			wantFuncs: []string{"one(bool)int", "two(int32, uint8)string"},
+			wantFuncs: []string{"one([false?, true?])int", "two(int32, uint8)string"},
 		},
 		{
 			name: "keyword func",
@@ -1913,12 +1914,12 @@ func TestIfaceDef(t *testing.T) {
 			src: `
 				iface one {
 					one(int),
-					one(bool),
+					one([false?, true?]),
 				}
 			`,
 			wantFuncs: []string{
 				"one(int)",
-				"one(bool)",
+				"one([false?, true?])",
 			},
 		},
 		{
@@ -1926,12 +1927,12 @@ func TestIfaceDef(t *testing.T) {
 			src: `
 				iface one {
 					one()int,
-					one()bool,
+					one()[false?, true?],
 				}
 			`,
 			wantFuncs: []string{
 				"one()int",
-				"one()bool",
+				"one()[false?, true?]",
 			},
 		},
 		{
@@ -2020,10 +2021,10 @@ func TestIfaceDef(t *testing.T) {
 		{
 			name: "iface instantiate alias iface type parameter 2",
 			src: `
-				iface S int_set := (S, int, bool) map
+				iface S int_set := (S, int, [false?, true?]) map
 				iface (M, K, V) map { find(M, K)V }
 			`,
-			wantFuncs: []string{"find(S, int)bool"},
+			wantFuncs: []string{"find(S, int)[false?, true?]"},
 		},
 		{
 			name: "iface name cycle",
@@ -2317,20 +2318,20 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 		{
 			name: "one func",
 			src: `
-				func f() : one(int)bool
+				func f() : one(int)[false?, true?]
 			`,
 			wantFuncs: []string{
-				"one(int)bool",
+				"one(int)[false?, true?]",
 			},
 		},
 		{
 			name: "one iface",
 			src: `
 				func f() : one
-				iface one { one(int)bool }
+				iface one { one(int)[false?, true?] }
 			`,
 			wantFuncs: []string{
-				"one(int)bool",
+				"one(int)[false?, true?]",
 			},
 		},
 		{
@@ -2706,7 +2707,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			name: "sort with element typeparm introduced in iface",
 			src: `
 				func main() { target_function([1, 2, 3]) }
-				func target_function(x X) : [](X, int)&U, <=>(U, U)ordering
+				func target_function(x X) : [](X, int)&U, <=>(U, U)[less?, equal?, greater?]
 			`,
 			want: "built-in []([int], int)&int",
 		},
@@ -2928,7 +2929,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 					[](S, int)&T,	// string does not satisfy this &T.
 					[](S, int, int) S,
 					.length(S)int,
-					<(T, T)bool,
+					<(T, T)[false?, true?],
 			`,
 			err: "expected a reference literal &_",
 		},
@@ -2941,7 +2942,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 					[](S, int)&T,	// [int] does satisfy this &T.
 					[](S, int, int) S,
 					.length(S)int,
-					<=>(T, T)ordering,
+					<=>(T, T)[less?, equal?, greater?],
 			`,
 			want: "built-in []([int], int)&int",
 		},
@@ -3516,51 +3517,51 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in switch on bool true?false?",
-			src:  "const true := bool :: [true?]",
+			src:  "const true := [false?, true?] :: [true?]",
 			call: "true true? {} false? {}",
-			want: "built-in true?false?(&bool, (){}, (){})",
+			want: "built-in true?false?(&[false?, true?], (){}, (){})",
 		},
 		{
 			name: "built-in switch on bool false?true?",
-			src:  "const true := bool :: [true?]",
+			src:  "const true := [false?, true?] :: [true?]",
 			call: "true false? {} true? {}",
-			want: "built-in false?true?(&bool, (){}, (){})",
+			want: "built-in false?true?(&[false?, true?], (){}, (){})",
 		},
 		{
 			name: "built-in switch on bool true?",
-			src:  "const true := bool :: [true?]",
+			src:  "const true := [false?, true?] :: [true?]",
 			call: "true true? {}",
-			want: "built-in true?(&bool, (){})",
+			want: "built-in true?(&[false?, true?], (){})",
 		},
 		{
 			name: "built-in switch on bool false?",
-			src:  "const true := bool :: [true?]",
+			src:  "const true := [false?, true?] :: [true?]",
 			call: "true false? {}",
-			want: "built-in false?(&bool, (){})",
+			want: "built-in false?(&[false?, true?], (){})",
 		},
 		{
 			name: "built-in switch on ordering less?equal?greater?",
-			src:  "const less := ordering :: [less?]",
+			src:  "const less := [less?, equal?, greater?] :: [less?]",
 			call: "less less? {} equal? {} greater? {}",
-			want: "built-in less?equal?greater?(&ordering, (){}, (){}, (){})",
+			want: "built-in less?equal?greater?(&[less?, equal?, greater?], (){}, (){}, (){})",
 		},
 		{
 			name: "built-in switch on ordering less?greater?equal?",
-			src:  "const less := ordering :: [less?]",
+			src:  "const less := [less?, equal?, greater?] :: [less?]",
 			call: "less less? {} greater? {} equal? {}",
-			want: "built-in less?greater?equal?(&ordering, (){}, (){}, (){})",
+			want: "built-in less?greater?equal?(&[less?, equal?, greater?], (){}, (){}, (){})",
 		},
 		{
 			name: "built-in switch on ordering less?equal?",
-			src:  "const less := ordering :: [less?]",
+			src:  "const less := [less?, equal?, greater?] :: [less?]",
 			call: "less less? {} equal? {}",
-			want: "built-in less?equal?(&ordering, (){}, (){})",
+			want: "built-in less?equal?(&[less?, equal?, greater?], (){}, (){})",
 		},
 		{
 			name: "built-in switch on ordering greater?",
-			src:  "const less := ordering :: [less?]",
+			src:  "const less := [less?, equal?, greater?] :: [less?]",
 			call: "less greater? {}",
-			want: "built-in greater?(&ordering, (){})",
+			want: "built-in greater?(&[less?, equal?, greater?], (){})",
 		},
 		{
 			name: "built-in switch literal type, not-typed case",
@@ -3722,8 +3723,8 @@ func TestOverloadResolution(t *testing.T) {
 				type int_ref &int
 				var x := int_ref :: 3
 			`,
-			call: "(&bool :: [true?]) true? {x} false? {x}",
-			want: "built-in true?false?(&bool, (){int_ref}, (){int_ref})int_ref",
+			call: "(&[false?, true?] :: [true?]) true? {x} false? {x}",
+			want: "built-in true?false?(&[false?, true?], (){int_ref}, (){int_ref})int_ref",
 		},
 		{
 			name: "built-in switch implicit ref return type 2",
@@ -3731,8 +3732,8 @@ func TestOverloadResolution(t *testing.T) {
 				type int_ref &[.x int]
 				var x := int_ref :: [.x 3]
 			`,
-			call: "(&bool :: [true?]) true? {x} false? {x}",
-			want: "built-in true?false?(&bool, (){int_ref}, (){int_ref})int_ref",
+			call: "(&[false?, true?] :: [true?]) true? {x} false? {x}",
+			want: "built-in true?false?(&[false?, true?], (){int_ref}, (){int_ref})int_ref",
 		},
 		{
 			name: "built-in switch, other mod union",
@@ -4022,12 +4023,12 @@ func TestOverloadResolution(t *testing.T) {
 		{
 			name: "built-in eq",
 			call: "2.0 = 2",
-			want: "built-in =(float64, float64)bool",
+			want: "built-in =(float64, float64)[false?, true?]",
 		},
 		{
 			name: "built-in <=>",
 			call: "2.0 <=> 2",
-			want: "built-in <=>(float64, float64)ordering",
+			want: "built-in <=>(float64, float64)[less?, equal?, greater?]",
 		},
 		{
 			name: "built-in op ambiguity",
@@ -4323,9 +4324,9 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "unify iface",
-			src:  "func =(_ [T], _ [T]) bool : =(T, T) bool",
+			src:  "func =(_ [T], _ [T]) [false?, true?] : =(T, T)[false?, true?]",
 			call: "[1] = [2]",
-			want: "=([int], [int])bool",
+			want: "=([int], [int])[false?, true?]",
 		},
 		{
 			name: "call other module function",
@@ -5560,10 +5561,10 @@ func TestUnionLiteralInference(t *testing.T) {
 		{src: `type t [a?, b? int, c?]`, pat: `&t`, expr: `[a?]`, want: `&t`},
 		{src: `type t [a?, b? int, c?]`, pat: `&t`, expr: `[b? 5]`, want: `&t`},
 
-		{pat: `bool`, expr: `[true?]`, want: `bool`},
-		{pat: `bool`, expr: `[false?]`, want: `bool`},
-		{pat: `&bool`, expr: `[true?]`, want: `&bool`},
-		{pat: `&bool`, expr: `[false?]`, want: `&bool`},
+		{pat: `[false?, true?]`, expr: `[true?]`, want: `[false?, true?]`},
+		{pat: `[false?, true?]`, expr: `[false?]`, want: `[false?, true?]`},
+		{pat: `&[false?, true?]`, expr: `[true?]`, want: `&[false?, true?]`},
+		{pat: `&[false?, true?]`, expr: `[false?]`, want: `&[false?, true?]`},
 
 		{src: `type t &[a?, b? int, c?]`, pat: `t`, expr: `[a?]`, want: `t`},
 		{src: `type t &[a?, b? int, c?]`, pat: `t`, expr: `[b? 5]`, want: `t`},
@@ -6312,10 +6313,10 @@ func TestLiteralInference(t *testing.T) {
 			want: "(){int_ref}",
 		},
 
-		{expr: "[true?]", infer: "bool", want: "bool"},
-		{expr: "[false?]", infer: "bool", want: "bool"},
-		{expr: "[true?]", infer: "&bool", want: "&bool"},
-		{expr: "[false?]", infer: "&bool", want: "&bool"},
+		{expr: "[true?]", infer: "[false?, true?]", want: "[false?, true?]"},
+		{expr: "[false?]", infer: "[false?, true?]", want: "[false?, true?]"},
+		{expr: "[true?]", infer: "&[false?, true?]", want: "&[false?, true?]"},
+		{expr: "[false?]", infer: "&[false?, true?]", want: "&[false?, true?]"},
 		{expr: "[none?]", want: "[none?]"},
 		{expr: "[none?]", infer: "&[none?]", want: "&[none?]"},
 		{expr: "[none?]", infer: "t", want: "t", src: "type t [none?, some? int]"},

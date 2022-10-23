@@ -17,8 +17,8 @@ func for:to:do:(start int, end int, f (int){}) {
 	}
 }
 
-Func <=(a, b T) bool : <=>(T, T)ordering {
-	return: a <=> b greater? { bool :: [false?] } _? { [true?] }
+Func <=(a, b T) [false?, true?] : <=>(T, T)[less?, equal?, greater?] {
+	return: a <=> b greater? { [false?, true?] :: [false?] } _? { [true?] }
 }
 
 type u [none?, int? int, string? string]

@@ -152,19 +152,19 @@ func TestSimplifyCmpSwitchToComparison(t *testing.T) {
 		op        string
 	}{
 		// Various combos of const true, const false, [true?], and [false?] all work.
-		{src: "1 <=> 2 less? { bool :: [true?] } _? { [false?] }", op: "<"},
+		{src: "1 <=> 2 less? { [false?, true?] :: [true?] } _? { [false?] }", op: "<"},
 		{src: "1 <=> 2 less? { true } _? { [false?] }", op: "<"},
-		{src: "1 <=> 2 less? { bool :: [true?] } _? { false }", op: "<"},
+		{src: "1 <=> 2 less? { [false?, true?] :: [true?] } _? { false }", op: "<"},
 		{src: "1 <=> 2 less? { true } _? { false }", op: "<"},
 
 		// Non-const true and false variables do not simplify to conditionals.
 		{
-			otherDefs: "var varTrue := bool :: [true?]",
+			otherDefs: "var varTrue := [false?, true?] :: [true?]",
 			src:       "1 <=> 2 less? { varTrue } _? { false }",
 			op:        "",
 		},
 		{
-			otherDefs: "var varFalse := bool :: [false?]",
+			otherDefs: "var varFalse := [false?, true?] :: [false?]",
 			src:       "1 <=> 2 less? { true } _? { varFalse }",
 			op:        "",
 		},
@@ -224,8 +224,8 @@ func TestSimplifyCmpSwitchToComparison(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {
 			src := fmt.Sprintf(`
-				const true := bool :: [true?]
-				const false := bool :: [false?]
+				const true := [false?, true?] :: [true?]
+				const false := [false?, true?] :: [false?]
 				%s
 				func main() { %s }
 			`, test.otherDefs, test.src)
@@ -267,19 +267,19 @@ func TestSimplificationOfComparisonFunctions(t *testing.T) {
 			use(3 > 4),
 			use(4 >= 5),
 		}
-		Func <(a, b T) bool : <=>(T, T)ordering {
-			return: a <=> b less? { bool :: [true?] } _? { [false?] }
+		Func <(a, b T) [false?, true?] : <=>(T, T)[less?, equal?, greater?] {
+			return: a <=> b less? { [false?, true?] :: [true?] } _? { [false?] }
 		}
-		Func <=(a, b T) bool : <=>(T, T)ordering {
-			return: a <=> b greater? { bool :: [false?] } _? { [true?] }
+		Func <=(a, b T) [false?, true?] : <=>(T, T)[less?, equal?, greater?] {
+			return: a <=> b greater? { [false?, true?] :: [false?] } _? { [true?] }
 		}
-		Func >(a, b T) bool : <=>(T, T)ordering {
-			return: a <=> b greater? { bool :: [true?] } _? { [false?] }
+		Func >(a, b T) [false?, true?] : <=>(T, T)[less?, equal?, greater?] {
+			return: a <=> b greater? { [false?, true?] :: [true?] } _? { [false?] }
 		}
-		Func >=(a, b T) bool : <=>(T, T)ordering {
-			return: a <=> b less? { bool :: [false?] } _? { [true?] }
+		Func >=(a, b T) [false?, true?] : <=>(T, T)[less?, equal?, greater?] {
+			return: a <=> b less? { [false?, true?] :: [false?] } _? { [true?] }
 		}
-		func use(_ bool)
+		func use(_ [false?, true?])
 	`
 
 	const expected = `func "main#main()"() {
@@ -287,22 +287,22 @@ func TestSimplificationOfComparisonFunctions(t *testing.T) {
     x0 := 1
     x1 := 2
     x2 := x0 < x1
-    x3 := &"main#use(bool)"
+    x3 := &"main#use([false?, true?])"
     x3(x2)
     x4 := 2
     x5 := 3
     x6 := x4 <= x5
-    x7 := &"main#use(bool)"
+    x7 := &"main#use([false?, true?])"
     x7(x6)
     x8 := 3
     x9 := 4
     x10 := x8 > x9
-    x11 := &"main#use(bool)"
+    x11 := &"main#use([false?, true?])"
     x11(x10)
     x12 := 4
     x13 := 5
     x14 := x12 >= x13
-    x15 := &"main#use(bool)"
+    x15 := &"main#use([false?, true?])"
     x15(x14)
     return
 }`

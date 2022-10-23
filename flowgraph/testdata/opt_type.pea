@@ -27,7 +27,7 @@ Func if:some:(c T opt, s (T){}) { c some? s }
 Func if:some:none:(c T opt, s (T){}, n (){}) { c some? s none? n }
 Func if:none:(c T opt, n (){}) { c none? n }
 
-Func if:then:else:(c bool, t (){}, f (){}) { c true? t false? f }
+Func if:then:else:(c [false?, true?], t (){}, f (){}) { c true? t false? f }
 
 Func for:to:do:(start int, end int, f (int) {}) {
 	start <= end true? {
@@ -36,8 +36,8 @@ Func for:to:do:(start int, end int, f (int) {}) {
 	}
 }
 
-Func <=(a, b T) bool : <=>(T, T)ordering {
-	return: a <=> b greater? { bool :: [false?] } _? { [true?] }
+Func <=(a, b T) [false?, true?] : <=>(T, T)[less?, equal?, greater?] {
+	return: a <=> b greater? { [false?, true?] :: [false?] } _? { [true?] }
 }
 
 func print_int(_ int)

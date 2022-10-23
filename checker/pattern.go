@@ -51,14 +51,7 @@ func (pat typePattern) withType(typ Type) typePattern {
 // If pat's type is the built-in Bool, the returned pattern is for boolUnion.
 // instType panics if pat is not a defined type type pattern or bool.
 func (pat typePattern) instType() typePattern {
-	switch {
-	case isBool(pat.typ):
-		return pat.withType(boolUnion)
-	case isOrdering(pat.typ):
-		return pat.withType(orderingUnion)
-	default:
-		return pat.withType(pat.typ.(*DefType).Inst.Type)
-	}
+	return pat.withType(pat.typ.(*DefType).Inst.Type)
 }
 
 // typeArg returns the type argument type of a defined type type pattern;
@@ -826,7 +819,9 @@ func findBoundVars(sets *disjointSets, pat typePattern) {
 		for i := range typ.Parms {
 			findBoundVars(sets, pat.parm(i))
 		}
-		findBoundVars(sets, pat.ret())
+		if typ.Ret != nil {
+			findBoundVars(sets, pat.ret())
+		}
 	case *BasicType:
 	case *TypeVar:
 		if pat.bound(typ) {
@@ -1014,6 +1009,9 @@ func bindSets(sets *disjointSets, a, b typePattern) note {
 
 func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Type) (Type, note) {
 	switch typ := typ.(type) {
+	case nil:
+		// The type was an error, just ignore it.
+		return nil, nil
 	case *RefType:
 		copy := *typ
 		elem, note := subSets(sets, onPath, path, typ.Type)

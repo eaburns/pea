@@ -364,10 +364,6 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			return &FloatType{Size: 32}
 		case checker.Float64:
 			return &FloatType{Size: 64}
-		case checker.Bool:
-			return mb.intType()
-		case checker.Ordering:
-			return mb.intType()
 		case checker.String:
 			return &StructType{
 				Name: "string",
@@ -1360,13 +1356,18 @@ func isOrderingRef(typ checker.Type) bool {
 	if !ok {
 		return false
 	}
-	basic, ok := ref.Type.(*checker.BasicType)
-	return ok && basic.Kind == checker.Ordering
+	union, ok := ref.Type.(*checker.UnionType)
+	return ok && len(union.Cases) == 3 &&
+		union.Cases[0].Name == "less?" && union.Cases[0].Type == nil &&
+		union.Cases[1].Name == "equal?" && union.Cases[1].Type == nil &&
+		union.Cases[2].Name == "greater?" && union.Cases[2].Type == nil
 }
 
 func isBool(typ checker.Type) bool {
-	basic, ok := typ.(*checker.BasicType)
-	return ok && basic.Kind == checker.Bool
+	union, ok := typ.(*checker.UnionType)
+	return ok && len(union.Cases) == 2 &&
+		union.Cases[0].Name == "false?" && union.Cases[0].Type == nil &&
+		union.Cases[1].Name == "true?" && union.Cases[1].Type == nil
 }
 
 // boolConstArgs returns "true?", "false?", or ""
@@ -1926,15 +1927,6 @@ func unionType(typ checker.Type) *checker.UnionType {
 		return typ
 	case *checker.DefType:
 		return unionType(typ.Inst.Type)
-	case *checker.BasicType:
-		if typ.Kind == checker.Bool {
-			return &checker.UnionType{
-				Cases: []checker.CaseDef{
-					{Name: "false?"},
-					{Name: "true?"},
-				},
-			}
-		}
 	}
 	panic(fmt.Sprintf("not a union type: %s", typ))
 }

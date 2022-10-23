@@ -14,5 +14,5 @@ func main() {
 	}
 }
 
-const true := bool :: [true?]
-const false := bool :: [false?]
+const true := [false?, true?] :: [true?]
+const false := [false?, true?] :: [false?]

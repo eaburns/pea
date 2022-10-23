@@ -1,3 +1,4 @@
+Type ordering := [less?, equal?, greater?]
 Const less := ordering :: [less?]
 Const equal := ordering :: [equal?]
 Const greater := ordering :: [greater?]

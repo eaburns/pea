@@ -232,10 +232,6 @@ func (k BasicTypeKind) String() string {
 	switch k {
 	case End:
 		return "!"
-	case Bool:
-		return "bool"
-	case Ordering:
-		return "ordering"
 	case Int:
 		return "int"
 	case Int8:

@@ -190,10 +190,6 @@ func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 	switch name {
 	case "!":
 		return &BasicType{Kind: End, L: l}
-	case "bool":
-		return &BasicType{Kind: Bool, L: l}
-	case "ordering":
-		return &BasicType{Kind: Ordering, L: l}
 	case "int":
 		return &BasicType{Kind: Int, L: l}
 	case "int8":
@@ -419,8 +415,8 @@ var (
 	_end      = basic(End)
 	_uint8    = basic(Uint8)
 	_int      = basic(Int)
-	_bool     = basic(Bool)
-	_ordering = basic(Ordering)
+	_bool     = boolUnion
+	_ordering = orderingUnion
 	_string   = basic(String)
 	_empty    = &StructType{}
 

@@ -6,13 +6,13 @@ func main() {
 	print(string(!false))
 }
 
-const true := bool :: [true?]
-const false := bool :: [false?]
+const true := [false?, true?] :: [true?]
+const false := [false?, true?] :: [false?]
 
-func !(b bool) bool {
+func !(b [false?, true?]) [false?, true?] {
 	return: b true? { false } false? { true }
 }
 
-func string(b bool) string {
+func string(b [false?, true?]) string {
 	return: b true? { "true" } false? { "false" }
 }

@@ -81,24 +81,12 @@ func literalType(typ Type) Type {
 		return typ
 	case *FuncType:
 		return typ
-	case *BasicType:
-		switch typ.Kind {
-		case Bool:
-			return copyTypeWithLoc(boolUnion, typ.Loc())
-		case Ordering:
-			return copyTypeWithLoc(orderingUnion, typ.Loc())
-		default:
-			return nil
-		}
 	default:
 		return nil
 	}
 }
 
 func isVisibleDefinedType(typ Type) bool {
-	if isBool(typ) || isOrdering(typ) {
-		return true
-	}
 	defType, ok := typ.(*DefType)
 	if !ok {
 		return false
@@ -169,8 +157,6 @@ func isUnionType(typ Type) bool {
 		if typ.Inst != nil && typ.Inst.Type != nil && isVisibleDefinedType(typ) {
 			return isUnionType(typ.Inst.Type)
 		}
-	case *BasicType:
-		return typ.Kind == Bool || typ.Kind == Ordering
 	}
 	return false
 }
@@ -219,16 +205,6 @@ func isStringType(typ Type) bool {
 func isUintRef(typ Type) bool {
 	basic, ok := typ.(*BasicType)
 	return ok && basic.Kind == UintRef
-}
-
-func isBool(typ Type) bool {
-	basic, ok := typ.(*BasicType)
-	return ok && basic.Kind == Bool
-}
-
-func isOrdering(typ Type) bool {
-	basic, ok := typ.(*BasicType)
-	return ok && basic.Kind == Ordering
 }
 
 func isBasicNum(typ Type) bool {
