@@ -48,8 +48,7 @@ func (pat typePattern) withType(typ Type) typePattern {
 
 // instType returns the type in the definition of a defined type type pattern,
 // substituted with the type arguments of the defined type.
-// If pat's type is the built-in Bool, the returned pattern is for boolUnion.
-// instType panics if pat is not a defined type type pattern or bool.
+// instType panics if pat is not a defined type type pattern.
 func (pat typePattern) instType() typePattern {
 	return pat.withType(pat.typ.(*DefType).Inst.Type)
 }
