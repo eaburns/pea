@@ -35,22 +35,6 @@ func arrayLiteral(typ Type) Type {
 	return &ArrayType{ElemType: typ, L: typ.Loc()}
 }
 
-var (
-	boolUnion = &UnionType{
-		Cases: []CaseDef{
-			{Name: "false?"},
-			{Name: "true?"},
-		},
-	}
-	orderingUnion = &UnionType{
-		Cases: []CaseDef{
-			{Name: "less?"},
-			{Name: "equal?"},
-			{Name: "greater?"},
-		},
-	}
-)
-
 // literalType returns the literal type or nil if the type cannot be converted to a literal.
 func literalType(typ Type) Type {
 	switch typ := typ.(type) {

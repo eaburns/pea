@@ -410,26 +410,37 @@ func (m *Mod) findIDs(name string) []id {
 var (
 	// _P is a placeholder; before returning a Builtin from the scope,
 	// it is always replaced with a brand new TypeParam.
-	_P        = &TypeParm{Name: "T"}
-	_T        = &TypeVar{Name: _P.Name, Def: _P}
-	_end      = basic(End)
-	_int      = basic(Int)
-	_int8      = basic(Int8)
-	_int16      = basic(Int16)
-	_int32      = basic(Int32)
-	_int64      = basic(Int64)
-	_uint      = basic(Uint)
-	_uint8      = basic(Uint8)
-	_uint16      = basic(Uint16)
-	_uint32      = basic(Uint32)
-	_uint64      = basic(Uint64)
-	_uintref      = basic(UintRef)
+	_P       = &TypeParm{Name: "T"}
+	_T       = &TypeVar{Name: _P.Name, Def: _P}
+	_end     = basic(End)
+	_int     = basic(Int)
+	_int8    = basic(Int8)
+	_int16   = basic(Int16)
+	_int32   = basic(Int32)
+	_int64   = basic(Int64)
+	_uint    = basic(Uint)
+	_uint8   = basic(Uint8)
+	_uint16  = basic(Uint16)
+	_uint32  = basic(Uint32)
+	_uint64  = basic(Uint64)
+	_uintref = basic(UintRef)
 	_float32 = basic(Float32)
 	_float64 = basic(Float64)
-	_bool     = boolUnion
-	_ordering = orderingUnion
-	_string   = basic(String)
-	_empty    = &StructType{}
+	_bool    = &UnionType{
+		Cases: []CaseDef{
+			{Name: "false?"},
+			{Name: "true?"},
+		},
+	}
+	_ordering = &UnionType{
+		Cases: []CaseDef{
+			{Name: "less?"},
+			{Name: "equal?"},
+			{Name: "greater?"},
+		},
+	}
+	_string = basic(String)
+	_empty  = &StructType{}
 
 	builtins = []Builtin{
 		{N: ":=", Op: Assign, TypeParm: _P, Parms: []Type{refLiteral(_T), _T}, Ret: _empty},
