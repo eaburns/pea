@@ -4026,9 +4026,74 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in =(float64, float64)[false?, true?]",
 		},
 		{
-			name: "built-in <=>",
+			name: "built-in <=> on int",
+			call: "2 <=> 2",
+			want: "built-in <=>(int, int)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on int8",
+			call: "(int8 :: 2) <=> 2",
+			want: "built-in <=>(int8, int8)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on int16",
+			call: "(int16 :: 2) <=> 2",
+			want: "built-in <=>(int16, int16)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on int16",
+			call: "(int16 :: 2) <=> 2",
+			want: "built-in <=>(int16, int16)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on int32",
+			call: "(int32 :: 2) <=> 2",
+			want: "built-in <=>(int32, int32)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on int64",
+			call: "(int64 :: 2) <=> 2",
+			want: "built-in <=>(int64, int64)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on uint",
+			call: "(uint :: 2) <=> 2",
+			want: "built-in <=>(uint, uint)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on uint8",
+			call: "(uint8 :: 2) <=> 2",
+			want: "built-in <=>(uint8, uint8)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on uint16",
+			call: "(uint16 :: 2) <=> 2",
+			want: "built-in <=>(uint16, uint16)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on uint32",
+			call: "(uint32 :: 2) <=> 2",
+			want: "built-in <=>(uint32, uint32)[less?, equal?, greater?]",
+		},
+		{
+			name: "built-in <=> on uint64",
+			call: "(uint64 :: 2) <=> 2",
+			want: "built-in <=>(uint64, uint64)[less?, equal?, greater?]",
+		},
+		{
+			name: "no built-in <=> on uintref",
+			call: "(uintref :: 2) <=> 2",
+			err:  "not found",
+		},
+		{
+			name: "built-in <=> float32",
+			call: "(float32 :: 2.0) <=> 2",
+			want: "built-in <=>(float32, float32)[less?, equal?, greater?, none?]",
+		},
+		{
+			name: "built-in <=> float64",
 			call: "2.0 <=> 2",
-			want: "built-in <=>(float64, float64)[less?, equal?, greater?]",
+			want: "built-in <=>(float64, float64)[less?, equal?, greater?, none?]",
 		},
 		{
 			name: "built-in op ambiguity",

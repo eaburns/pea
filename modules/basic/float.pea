@@ -1,21 +1,49 @@
 test nan_float64 {
 	NaN := (float64 :: 0.0) / 0.0,
 
+	assert_false: NaN < 1.0,
+	assert_false: NaN <= 1.0,
+	assert_false: NaN = 1.0,
+	assert_true: NaN != 1.0,
+	assert_false: NaN > 1.0,
+	assert_false: NaN >= 1.0,
+
+	assert_false: 1.0 < NaN,
+	assert_false: 1.0 <= NaN,
+	assert_false: 1.0 = NaN,
+	assert_true: 1.0 != NaN,
+	assert_false: 1.0 > NaN,
+	assert_false: 1.0 >= NaN,
+
+	assert_false: NaN < NaN,
+	assert_false: NaN <= NaN,
 	assert_false: NaN = NaN,
-	assert_false: NaN = 1,
 	assert_true: NaN != NaN,
-	assert_true: NaN != 1,
-	assert_false: NaN = NaN,
-	assert_true: NaN != NaN,
+	assert_false: NaN > NaN,
+	assert_false: NaN >= NaN,
 }
 
 test nan_float32 {
 	NaN := (float32 :: 0.0) / 0.0,
 
+	assert_false: NaN < 1.0,
+	assert_false: NaN <= 1.0,
+	assert_false: NaN = 1.0,
+	assert_true: NaN != 1.0,
+	assert_false: NaN > 1.0,
+	assert_false: NaN >= 1.0,
+
+	assert_false: (float32 :: 1.0) < NaN,
+	assert_false: (float32 :: 1.0) <= NaN,
+	assert_false: (float32 :: 1.0) = NaN,
+	assert_true: (float32 :: 1.0) != NaN,
+	assert_false: (float32 :: 1.0) > NaN,
+	assert_false: (float32 :: 1.0) >= NaN,
+
+	assert_false: NaN < NaN,
+	assert_false: NaN <= NaN,
 	assert_false: NaN = NaN,
-	assert_false: NaN = 1,
 	assert_true: NaN != NaN,
-	assert_true: NaN != 1,
-	assert_false: NaN = NaN,
-	assert_true: NaN != NaN,
+	assert_false: NaN > NaN,
+	assert_false: NaN >= NaN,
 }

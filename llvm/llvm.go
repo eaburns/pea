@@ -503,6 +503,17 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 					g.line(cond, " = icmp sle ", typeVal{r.Value}, ", ", r.XValue)
 				}
 			}
+		case flowgraph.Greater:
+			// Greater is currently only implemented for Float comparison on XValue!=nil.
+			if r.XValue == nil {
+				panic("unimplemented")
+			}
+			switch r.XValue.Type().(type) {
+			case *flowgraph.FloatType:
+				g.line(cond, " = fcmp ogt ", typeVal{r.Value}, ", ", r.XValue)
+			case *flowgraph.IntType:
+				panic("unimplemented")
+			}
 		default:
 			panic(fmt.Sprintf("bad If.Op: %s", r.Op))
 		}

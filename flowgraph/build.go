@@ -1330,7 +1330,7 @@ func (bb *blockBuilder) simplifyCmpSwitch(sw *checker.Switch, call *checker.Call
 }
 
 func cmpCall(expr checker.Expr) *checker.Call {
-	if !isOrderingRef(expr.Type()) {
+	if !isOrderingOrPartialOrderingRef(expr.Type()) {
 		return nil
 	}
 	for {
@@ -1351,16 +1351,26 @@ func cmpCall(expr checker.Expr) *checker.Call {
 	return call
 }
 
-func isOrderingRef(typ checker.Type) bool {
+func isOrderingOrPartialOrderingRef(typ checker.Type) bool {
 	ref, ok := typ.(*checker.RefType)
-	if !ok {
-		return false
-	}
-	union, ok := ref.Type.(*checker.UnionType)
+	return ok && (isOrdering(ref.Type) || isPartialOrdering(ref.Type))
+}
+
+func isOrdering(typ checker.Type) bool {
+	union, ok := typ.(*checker.UnionType)
 	return ok && len(union.Cases) == 3 &&
 		union.Cases[0].Name == "less?" && union.Cases[0].Type == nil &&
 		union.Cases[1].Name == "equal?" && union.Cases[1].Type == nil &&
 		union.Cases[2].Name == "greater?" && union.Cases[2].Type == nil
+}
+
+func isPartialOrdering(typ checker.Type) bool {
+	union, ok := typ.(*checker.UnionType)
+	return ok && len(union.Cases) == 4 &&
+		union.Cases[0].Name == "less?" && union.Cases[0].Type == nil &&
+		union.Cases[1].Name == "equal?" && union.Cases[1].Type == nil &&
+		union.Cases[2].Name == "greater?" && union.Cases[2].Type == nil &&
+		union.Cases[3].Name == "none?" && union.Cases[3].Type == nil
 }
 
 func isBool(typ checker.Type) bool {
@@ -1556,19 +1566,45 @@ func (bb *blockBuilder) buildCmp(call *checker.Call) (*blockBuilder, Value) {
 	}
 	orderingType := bb.buildType(fun.Ret)
 	result := bb.alloc(orderingType)
+
+	if isOrdering(fun.Ret) {
+		// If it's not a partial ordering, check and a<=b, a<b.
+		leBlock := bb.fun.newBlock(call.Loc())
+		ltBlock := bb.fun.newBlock(call.Loc())
+		eqBlock := bb.fun.newBlock(call.Loc())
+		gtBlock := bb.fun.newBlock(call.Loc())
+		doneBlock := bb.fun.newBlock(call.Loc())
+		bb.ifLessEq(args[0], args[1], leBlock, gtBlock)
+		leBlock.ifLessValue(args[0], args[1], ltBlock, eqBlock)
+		ltBlock.store(result, ltBlock.intLit("0", orderingType))
+		ltBlock.jump(doneBlock)
+		eqBlock.store(result, eqBlock.intLit("1", orderingType))
+		eqBlock.jump(doneBlock)
+		gtBlock.store(result, gtBlock.intLit("2", orderingType))
+		gtBlock.jump(doneBlock)
+		return doneBlock, result
+	}
 	leBlock := bb.fun.newBlock(call.Loc())
 	ltBlock := bb.fun.newBlock(call.Loc())
 	eqBlock := bb.fun.newBlock(call.Loc())
+	notLEBlock := bb.fun.newBlock(call.Loc())
 	gtBlock := bb.fun.newBlock(call.Loc())
+	noneBlock := bb.fun.newBlock(call.Loc())
 	doneBlock := bb.fun.newBlock(call.Loc())
-	bb.ifLessEq(args[0], args[1], leBlock, gtBlock)
+	// a <= b ?
+	bb.ifLessEq(args[0], args[1], leBlock, notLEBlock)
+	// a < b?
 	leBlock.ifLessValue(args[0], args[1], ltBlock, eqBlock)
 	ltBlock.store(result, ltBlock.intLit("0", orderingType))
 	ltBlock.jump(doneBlock)
 	eqBlock.store(result, eqBlock.intLit("1", orderingType))
 	eqBlock.jump(doneBlock)
+	// a > b?
+	notLEBlock.ifGreaterValue(args[0], args[1], gtBlock, noneBlock)
 	gtBlock.store(result, gtBlock.intLit("2", orderingType))
 	gtBlock.jump(doneBlock)
+	noneBlock.store(result, noneBlock.intLit("3", orderingType))
+	noneBlock.jump(doneBlock)
 	return doneBlock, result
 }
 
@@ -2427,6 +2463,19 @@ func (bb *blockBuilder) ifLessEq(v, x Value, yes, no *blockBuilder) *If {
 	r := &If{
 		Value:  v,
 		Op:     LessEq,
+		XValue: x,
+		Yes:    yes.BasicBlock,
+		No:     no.BasicBlock,
+		L:      bb.L,
+	}
+	bb.addInstr(r)
+	return r
+}
+
+func (bb *blockBuilder) ifGreaterValue(v, x Value, yes, no *blockBuilder) *If {
+	r := &If{
+		Value:  v,
+		Op:     Greater,
 		XValue: x,
 		Yes:    yes.BasicBlock,
 		No:     no.BasicBlock,

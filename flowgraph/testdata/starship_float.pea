@@ -1,0 +1,62 @@
+//  1.0 <=> 2.0 is less
+// 2.0 <=> 2.0 is equal
+// 3.0 <=> 2.0 is greater
+// NaN64 <=> 2.0 is none
+// 2.0 <=> NaN64 is none
+// -0.0 <=> +0.0 is equal
+// -Inf64 <=> +Inf64 is less
+// +Inf64 <=> -Inf64 is greater
+// NaN64 <=> Inf64 is none
+// Inf64 <=> NaN64 is none
+//
+// (float32 :: 1.0) <=> 2.0 is less
+// (float32 :: 2.0) <=> 2.0 is equal
+// (float32 :: 3.0) <=> 2.0 is greater
+// NaN32 <=> 2.0 is none
+// (float32 :: 2.0) <=> NaN32 is none
+// (float32 :: -0.0) <=> +0.0 is equal
+// -Inf32 <=> +Inf32 is less
+// +Inf32 <=> -Inf32 is greater
+// NaN32 <=> Inf32 is none
+// Inf32 <=> NaN32 is none
+//
+func main() {
+	print("1.0 <=> 2.0 is "), print(1.0 <=> 2.0),
+	print("2.0 <=> 2.0 is "), print(2.0 <=> 2.0),
+	print("3.0 <=> 2.0 is "), print(3.0 <=> 2.0),
+	print("NaN64 <=> 2.0 is "), print(NaN64 <=> 2.0),
+	print("2.0 <=> NaN64 is "), print(2.0 <=> NaN64),
+	print("-0.0 <=> +0.0 is "), print(-0.0 <=> +0.0),
+	print("-Inf64 <=> +Inf64 is "), print(-Inf64 <=> Inf64),
+	print("+Inf64 <=> -Inf64 is "), print(Inf64 <=> -Inf64),
+	print("NaN64 <=> Inf64 is "), print(NaN64 <=> Inf64),
+	print("Inf64 <=> NaN64 is "), print(Inf64 <=> NaN64),
+	print("\n"),
+	print("(float32 :: 1.0) <=> 2.0 is "), print((float32 :: 1.0) <=> 2.0),
+	print("(float32 :: 2.0) <=> 2.0 is "), print((float32 :: 2.0) <=> 2.0),
+	print("(float32 :: 3.0) <=> 2.0 is "), print((float32 :: 3.0) <=> 2.0),
+	print("NaN32 <=> 2.0 is "), print(NaN32 <=> 2.0),
+	print("(float32 :: 2.0) <=> NaN32 is "), print((float32 :: 2.0) <=> NaN32),
+	print("(float32 :: -0.0) <=> +0.0 is "), print((float32 :: -0.0) <=> +0.0),
+	print("-Inf32 <=> +Inf32 is "), print(-Inf32 <=> Inf32),
+	print("+Inf32 <=> -Inf32 is "), print(Inf32 <=> -Inf32),
+	print("NaN32 <=> Inf32 is "), print(NaN32 <=> Inf32),
+	print("Inf32 <=> NaN32 is "), print(Inf32 <=> NaN32),
+}
+
+const NaN64 := float64 :: 0.0 / 0.0
+const Inf64 := float64 :: 1.0 / 0.0
+const NaN32 := float32 :: (float32 :: 0.0) / 0.0
+const Inf32 := float32 :: (float32 :: 1.0) / 0.0
+
+func print(o [less?, equal?, greater?, none?]) {
+	o less? {
+		print("less\n")
+	} equal? {
+		print("equal\n")
+	} greater? {
+		print("greater\n")
+	} none? {
+		print("none\n")
+	}
+}

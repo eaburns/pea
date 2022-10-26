@@ -1,0 +1,45 @@
+// -1 <=> 2 is less
+// 1 <=> 2 is less
+// -2 <=> -1 is less
+// (uint8 :: 0) <=> 1 is less
+// (int16 :: 2) <=> 3 is less
+// -1 <=> -1 is equal
+// 1 <=> 1 is equal
+// (uint8 :: 2) <=> 2 is equal
+// (int16 :: 3) <=> 3 is equal
+// (uint64 :: 0) <=> 0 is equal
+// -1 <=> -2 is greater
+// 2 <=> 1 is greater
+// 1 <=> -2 is greater
+// (uint8 :: 2) <=> 1 is greater
+// (int16 :: 3) <=> 0 is greater
+//
+func main() {
+	print("-1 <=> 2 is "), print(-1 <=> 2),
+	print("1 <=> 2 is "), print(1 <=> 2),
+	print("-2 <=> -1 is "), print(-2 <=> -1),
+	print("(uint8 :: 0) <=> 1 is "), print((uint8 :: 0) <=> 1),
+	print("(int16 :: 2) <=> 3 is "), print((int16 :: 2) <=> 3),
+
+	print("-1 <=> -1 is "), print(-1 <=> -1),
+	print("1 <=> 1 is "), print(1 <=> 1),
+	print("(uint8 :: 2) <=> 2 is "), print((uint8 :: 2) <=> 2),
+	print("(int16 :: 3) <=> 3 is "), print((int16 :: 3) <=> 3),
+	print("(uint64 :: 0) <=> 0 is "), print((uint64 :: 0) <=> 0),
+
+	print("-1 <=> -2 is "), print(-1 <=> -2),
+	print("2 <=> 1 is "), print(2 <=> 1),
+	print("1 <=> -2 is "), print(1 <=> -2),
+	print("(uint8 :: 2) <=> 1 is "), print((uint8 :: 2) <=> 1),
+	print("(int16 :: 3) <=> 0 is "), print((int16 :: 3) <=> 0),
+}
+
+func print(o [less?, equal?, greater?]) {
+	o less? {
+		print("less\n")
+	} equal? {
+		print("equal\n")
+	} greater? {
+		print("greater\n")
+	}
+}

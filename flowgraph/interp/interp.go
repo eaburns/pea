@@ -123,7 +123,7 @@ func (interp *Interp) step() {
 		x := frame.vals[instr.Value]
 		if _, ok := instr.Value.Type().(*flowgraph.AddrType); ok {
 			if instr.Op != flowgraph.Eq {
-				panic(fmt.Sprintf("got If.Op=%s, expected =", instr.Op))
+				panic(fmt.Sprintf("got If.Op %s, expected =", instr.Op))
 			}
 			yes = x.Val().(Pointer).Elem == nil
 			if yes {
@@ -172,8 +172,20 @@ func (interp *Interp) step() {
 			case Float64:
 				yes = x.Val().(Float64) <= y.Val().(Float64)
 			}
+		case flowgraph.Greater:
+			y := frame.vals[instr.XValue]
+			switch x.Val().(type) {
+			case SignedInt:
+				yes = x.Val().(SignedInt).Int64() > y.Val().(SignedInt).Int64()
+			case UnsignedInt:
+				yes = x.Val().(UnsignedInt).Uint64() > y.Val().(UnsignedInt).Uint64()
+			case Float32:
+				yes = x.Val().(Float32) > y.Val().(Float32)
+			case Float64:
+				yes = x.Val().(Float64) > y.Val().(Float64)
+			}
 		default:
-			panic(fmt.Sprintf("got If.Op=%s, expected = or <", instr.Op))
+			panic(fmt.Sprintf("got If.Op %s, expected = or <", instr.Op))
 		}
 		if yes {
 			frame.BasicBlock = instr.Yes

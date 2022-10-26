@@ -439,6 +439,14 @@ var (
 			{Name: "greater?"},
 		},
 	}
+	_partialOrdering = &UnionType{
+		Cases: []CaseDef{
+			{Name: "less?"},
+			{Name: "equal?"},
+			{Name: "greater?"},
+			{Name: "none?"},
+		},
+	}
 	_string = basic(String)
 	_empty  = &StructType{}
 
@@ -485,8 +493,8 @@ var (
 		{N: "<=>", Op: Cmp, Parms: []Type{_uint16, _uint16}, Ret: _ordering},
 		{N: "<=>", Op: Cmp, Parms: []Type{_uint32, _uint32}, Ret: _ordering},
 		{N: "<=>", Op: Cmp, Parms: []Type{_uint64, _uint64}, Ret: _ordering},
-		{N: "<=>", Op: Cmp, Parms: []Type{_float32, _float32}, Ret: _ordering},
-		{N: "<=>", Op: Cmp, Parms: []Type{_float64, _float64}, Ret: _ordering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_float32, _float32}, Ret: _partialOrdering},
+		{N: "<=>", Op: Cmp, Parms: []Type{_float64, _float64}, Ret: _partialOrdering},
 
 		// TODO: allow the following instead of the hackery in Builtin.sub.
 		/*
