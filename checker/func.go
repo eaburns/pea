@@ -574,13 +574,30 @@ func (s *Switch) sub(bind map[*TypeParm]Type) note {
 	return nil
 }
 
+func eqCase(a, b *CaseDef) bool {
+	switch {
+	case a == nil && b == nil:
+		return true
+	case a == nil || b == nil:
+		return false
+	case a.Name != b.Name:
+		return false
+	case (a.Type == nil) != (b.Type == nil):
+		return false
+	case a.Type != nil && !eqType(a.Type, b.Type):
+		return false
+	default:
+		return true
+	}
+}
+
 func (s *Switch) eq(other Func) bool {
 	o, ok := other.(*Switch)
-	if !ok || s.Union != o.Union || len(s.Cases) != len(o.Cases) || len(s.Parms) != len(o.Parms) {
+	if !ok || !eqType(s.Union, o.Union) || len(s.Cases) != len(o.Cases) || len(s.Parms) != len(o.Parms) {
 		return false
 	}
 	for i := range s.Cases {
-		if s.Cases[i] != o.Cases[i] {
+		if !eqCase(s.Cases[i], o.Cases[i]) {
 			return false
 		}
 	}
