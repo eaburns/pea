@@ -302,7 +302,7 @@ func compileA(m *mod.Mod, fg *flowgraph.Mod, locs loc.Files) {
 	oFiles = append(oFiles, oFile)
 
 	aFile := binFile(m) + ".a"
-	if err := run("llvm-ar", append([]string{"cr", aFile}, oFiles...)...); err != nil {
+	if err := run("ar", append([]string{"cr", aFile}, oFiles...)...); err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
 }
