@@ -85,11 +85,7 @@ func runTest(t *testing.T, f *flowgraph.Mod, locFiles loc.Files) string {
 
 	// ldl is needed for libunwind
 	runtimeLibs := "-pthread -ldl " + filepath.Join(wd, "/../libpea/libpea.a")
-	cmd := exec.Command(
-		"/bin/sh", "-c", "cd "+dir+"; "+
-			"llc t.ll -filetype obj -o t.o && "+
-			"clang -g t.o "+runtimeLibs+" && "+
-			"./a.out")
+	cmd := exec.Command("/bin/sh", "-c", "cd "+dir+"; clang -O2 t.ll "+runtimeLibs+" && ./a.out")
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
