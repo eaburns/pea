@@ -1,7 +1,4 @@
 #!/bin/sh
-clang=clang
-ar=llvm-ar
-
 echo "Building gc"
 gc_path=vendor/gc-8.2.0
 (cd libpea/$gc_path && \
@@ -13,15 +10,20 @@ libunwind_path=vendor/libunwind-11.0.0.src
 	cmake -Wno-dev . > /dev/null && \
 	make > /dev/null)
 
-echo "Building libpea.a"
+echo "Building libpea"
 rm -f libpea/libpea.a
-$clang -pthread \
+clang -pthread \
 	-g \
 	-I libpea/$gc_path/include \
 	-I libpea/$libunwind_path/include \
 	-c libpea/libpea.c \
 	-o libpea/libpea.o
-$ar qcL libpea/libpea.a \
-	libpea/libpea.o \
-	libpea/$gc_path/gc.a \
-	libpea/$libunwind_path/lib/libunwind.a
+
+echo "Bundling libpea.a"
+mkdir archive
+cd archive
+ar x ../libpea/$gc_path/gc.a
+ar x ../libpea/$libunwind_path/lib/libunwind.a
+ar cr ../libpea/libpea.a ../libpea/libpea.o *.o
+cd ..
+rm -fr archive
