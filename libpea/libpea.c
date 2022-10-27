@@ -27,11 +27,11 @@ static void abort_errno(const char *msg, int err);
 // if a test is currently running, otherwise does nothing.
 static void panic_test_output(const char* data, int n);
 
-void* pea_malloc(int bytes) {
+void* pea_malloc(uint64_t bytes) {
 	return GC_MALLOC(bytes);
 }
 
-void* pea_malloc_no_scan(int bytes) {
+void* pea_malloc_no_scan(uint64_t bytes) {
 	return GC_MALLOC_ATOMIC(bytes);
 }
 

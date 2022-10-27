@@ -29,12 +29,12 @@ struct pea_string {
 // pea_malloc returns a pointer to a new object of the given number of bytes.
 // The returned pointer is owned by the garbage collector, so it should not be freed, but instead will be released once it is determined to be unreachable.
 // Pointer-sized spans of the returned object will be scanned by the garbage collector for liveness checking.
-void* pea_malloc(int bytes);
+void* pea_malloc(uint64_t bytes);
 
 // pea_malloc_no_scan returns a pointer to a new object of the given number of bytes.
 // The returned pointer is owned by the garbage collector, so it should not be freed, but instead will be released once it is determined to be unreachable.
 // The object will not be scanned by the garbage collector, so it must not contain pointers to objects owned by the garbage collector.
-void* pea_malloc_no_scan(int bytes);
+void* pea_malloc_no_scan(uint64_t bytes);
 
 // pea_register_finalizer registers fn to run when obj is collected.
 // The fn function is called with obj as the first argument and data as the second.

@@ -116,19 +116,19 @@ func (g *gen) writeHeader(mod *flowgraph.Mod) {
 	}
 	g.write(
 		"%string = type {", g.int(), ", i8*}\n",
-		"declare i8* @pea_malloc(", g.int(), ")\n",
-		"declare i8* @pea_malloc_no_scan(", g.int(), ")\n",
+		"declare i8* @pea_malloc(i64)\n",
+		"declare i8* @pea_malloc_no_scan(i64)\n",
 		"declare i8* @pea_new_frame()\n",
 		"declare void @pea_finish_frame(i8* nocapture)\n",
 		"declare void @pea_check_frame(i8* nocapture)\n",
 		"declare void @pea_long_return(i8* nocapture) noreturn\n",
 		"declare void @pea_set_test_call_loc(i8*, i32)\n",
-		"declare void @pea_panic(%string* nocapture, i8* nocapture, i32) noreturn\n",
+		"declare void @pea_panic(%string* nocapture, i8* nocapture, i32)  noreturn\n",
 		"declare %string* @pea_index_oob_string(", g.int(), ", ", g.int(), ")\n",
 		"declare %string* @pea_slice_oob_string(", g.int(), ", ", g.int(), ", ", g.int(), ")\n",
 		"declare void @pea_print(%string* nocapture)\n",
 		"declare void @pea_print_int(i64)\n",
-		"declare void @llvm.memcpy.p0i8.p0i8.", g.int(), "(i8*, i8*, ", g.int(), ", i1)\n",
+		"declare void @llvm.memcpy.p0i8.p0i8.i64(i8*, i8*, i64, i1)\n",
 		"declare i32 @setjmp(i8*) returns_twice\n")
 }
 
@@ -447,7 +447,7 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 		s := g.tmp()
 		g.line(s, " = bitcast ", typeVal{r.Src}, " to i8*")
 		l := g.sizeOf(elemType(r.Dst.Type()))
-		g.line("call void @llvm.memcpy.p0i8.p0i8.", g.int(), "(i8* ", d, ", i8* ", s, ", ", g.int(), " ", l, ", i1 0)")
+		g.line("call void @llvm.memcpy.p0i8.p0i8.i64(i8* ", d, ", i8* ", s, ", i64 ", l, ", i1 0)")
 	case *flowgraph.Call:
 		if i, ok := g.callNum[r]; ok {
 			l := g.files.Location(r.L)
@@ -561,14 +561,14 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			switch {
 			case r.Count != nil:
 				x := g.tmp()
-				g.line(x, " = mul ", g.int(), " ", l, ", ", r.Count)
-				g.line(t, " = call i8* @", mallocFunc, "(", g.int(), " ", x, ")")
+				g.line(x, " = mul i64 ", l, ", ", r.Count)
+				g.line(t, " = call i8* @", mallocFunc, "(i64 ", x, ")")
 			case r.CountImm >= 0:
 				x := g.tmp()
-				g.line(x, " = mul ", g.int(), " ", l, ", ", r.CountImm)
-				g.line(t, " = call i8* @", mallocFunc, "(", g.int(), " ", x, ")")
+				g.line(x, " = mul i64 ", l, ", ", r.CountImm)
+				g.line(t, " = call i8* @", mallocFunc, "(i64 ", x, ")")
 			default:
-				g.line(t, " = call i8* @", mallocFunc, "(", g.int(), " ", l, ")")
+				g.line(t, " = call i8* @", mallocFunc, "(i64 ", l, ")")
 			}
 			g.line(r, " = bitcast i8* ", t, " to ", r.Type())
 		case r.Count != nil:
@@ -827,7 +827,7 @@ func (g *gen) sizeOf(t flowgraph.Type) tmp {
 	p := g.tmp()
 	g.write("	", p, " = getelementptr ", t, ", ", t, "* null, i32 1\n")
 	s := g.tmp()
-	g.write("	", s, " = ptrtoint ", t, "* ", p, " to ", g.int(), "\n")
+	g.write("	", s, " = ptrtoint ", t, "* ", p, " to i64\n")
 	return s
 }
 
