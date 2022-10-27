@@ -123,10 +123,10 @@ func (g *gen) writeHeader(mod *flowgraph.Mod) {
 		"declare void @pea_check_frame(i8* nocapture)\n",
 		"declare void @pea_long_return(i8* nocapture) noreturn\n",
 		"declare void @pea_set_test_call_loc(i8*, i32)\n",
-		"declare void @pea_panic(%string* nocapture, i8* nocapture, i32) readonly noreturn\n",
+		"declare void @pea_panic(%string* nocapture, i8* nocapture, i32) noreturn\n",
 		"declare %string* @pea_index_oob_string(", g.int(), ", ", g.int(), ")\n",
 		"declare %string* @pea_slice_oob_string(", g.int(), ", ", g.int(), ", ", g.int(), ")\n",
-		"declare void @pea_print(%string* nocapture) readonly\n",
+		"declare void @pea_print(%string* nocapture)\n",
 		"declare void @pea_print_int(i64)\n",
 		"declare void @llvm.memcpy.p0i8.p0i8.", g.int(), "(i8*, i8*, ", g.int(), ", i1)\n",
 		"declare i32 @setjmp(i8*) returns_twice\n")
