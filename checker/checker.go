@@ -1529,7 +1529,9 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	for _, f := range funcs {
 		_, bind, err := convertExpr(arg, f.parm(i), false)
 		if err != nil {
-			notes = append(notes, err.(note))
+			n := newNote("%s: cannot convert argument %d (%s) to %s", f, i, arg.Type(), f.parm(i))
+			n.setNotes([]note{err.(note)})
+			notes = append(notes, n)
 			continue
 		}
 		if note := f.sub(bind); note != nil {
@@ -1550,19 +1552,25 @@ func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
 	var notes []note
 
 	if len(funcs) == 1 {
+		f := funcs[0]
 		// Just try to substitute it, ignoring conversion errors.
 		// If it fails to convert the parent expression will report the error,
 		// with more information that we would report here,
 		// because it will use convertExpr which has the expression
 		// printed in the error message, but here we just have the type.
-		bind, convertNote := convertType(funcs[0].ret(), pat, implicit)
-		if note := funcs[0].sub(bind); note != nil {
+		bind, convertNote := convertType(f.ret(), pat, implicit)
+		if note := f.sub(bind); note != nil {
 			return nil, append(notes, note)
 		}
-		if !funcs[0].ret().isGroundType() {
+		if !f.ret().isGroundType() {
 			// If the ret is not grounded, it means bind was nil;
 			// the conversion failed and we could not infer the return type.
-			return nil, []note{convertNote}
+			n := newNote("%s: cannot convert return value (%s) to %s", f, f.ret(), pat)
+			if convertNote != nil {
+				n.setNotes([]note{convertNote})
+			}
+			notes = append(notes, n)
+			return nil, notes
 		}
 		return funcs, nil
 	}
@@ -1570,9 +1578,11 @@ func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
 	// First filter out anything that can't even explicitly convert to the desired type.
 	var n int
 	for _, f := range funcs {
-		bind, note := convertType(f.ret(), pat, explicit)
-		if note != nil {
-			notes = append(notes, note)
+		bind, convertNote := convertType(f.ret(), pat, explicit)
+		if convertNote != nil {
+			n := newNote("%s: cannot convert return value (%s) to %s", f, f.ret(), pat)
+			n.setNotes([]note{convertNote})
+			notes = append(notes, n)
 			continue
 		}
 		if note := f.sub(bind); note != nil {
@@ -1591,8 +1601,10 @@ func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
 	// If there is still ambiguity, filter out anything that cannot implicitly convert.
 	n = 0
 	for _, f := range funcs {
-		if _, note := convertType(f.ret(), pat, implicit); note != nil {
-			notes = append(notes, note)
+		if _, convertNote := convertType(f.ret(), pat, implicit); convertNote != nil {
+			n := newNote("%s: cannot convert return value (%s) to %s", f, f.ret(), pat)
+			n.setNotes([]note{convertNote})
+			notes = append(notes, n)
 			continue
 		}
 		// There's no need to sub again.
