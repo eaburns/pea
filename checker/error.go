@@ -90,7 +90,15 @@ func (e *_error) String() string     { return e.msg }
 func (e *_error) Loc() loc.Loc       { return e.loc }
 func (e *_error) verbose(b bool)     { e.v = b }
 func (e *_error) isVerbose() bool    { return e.v }
-func (e *_error) setNotes(ns []note) { e.notes = ns }
+
+func (e *_error) setNotes(ns []note) {
+	for _, n := range ns {
+		if n == nil {
+			panic("nil note")
+		}
+	}
+	e.notes = ns
+}
 
 func (e *_error) setLoc(x interface{}) note {
 	if locer, ok := x.(loc.Locer); ok {
