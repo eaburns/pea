@@ -1,9 +1,0 @@
-// 104
-func main() {
-	x := foo :: "hello",
-	print_int(int :: x[0])
-}
-
-type foo string
-
-func print_int(_ int)

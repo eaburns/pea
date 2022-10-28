@@ -2580,6 +2580,48 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "built-in a?b?(&a_or_b, (int){}, (string){})",
 		},
 		{
+			name: "built-in index",
+			src: `
+				func main() { target_function([5]) }
+				func target_function(_ X) : [](X, int)&int
+			`,
+			want: "built-in []([int], int)&int",
+		},
+		{
+			name: "built-in index works for iface with value return",
+			src: `
+				func main() { target_function([5]) }
+				func target_function(_ X) : [](X, int)int
+			`,
+			want: "built-in []([int], int)&int",
+		},
+		{
+			name: "built-in index works for named array type",
+			src: `
+				type my_array [int]
+				func main() { target_function(my_array :: [5]) }
+				func target_function(_ X) : [](X, int)&int
+			`,
+			want: "built-in []([int], int)&int",
+		},
+		{
+			name: "built-in slice",
+			src: `
+				func main() { target_function([5]) }
+				func target_function(_ X) : [](X, int, int)X
+			`,
+			want: "built-in []([int], int, int)[int]",
+		},
+		{
+			name: "built-in slice works for named array type",
+			src: `
+				type my_array [int]
+				func main() { target_function(my_array :: [5]) }
+				func target_function(_ X) : [](X, int, int)X
+			`,
+			want: "built-in []([int], int, int)[int]",
+		},
+		{
 			name: "match return",
 			src: `
 				func main() { target_function(5) }
@@ -4160,20 +4202,17 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in def array index",
-			src:  "type my_array [int]",
-			call: "(my_array :: [5, 6, 7])[1]",
-			want: "built-in [](my_array, int)&int",
+			src:  `
+				type my_array [int]
+				var ary := my_array :: [5, 6, 7]
+			`,
+			call: "ary[1]",
+			want: "built-in []([int], int)&int",
 		},
 		{
 			name: "built-in string index",
 			call: `"hello"[1]`,
 			want: "built-in [](string, int)uint8",
-		},
-		{
-			name: "built-in def string slice",
-			src:  "type my_string string",
-			call: `(my_string :: "hello")[1]`,
-			want: "built-in [](my_string, int)uint8",
 		},
 		{
 			name: "built-in array slice, no expected type",
@@ -4188,9 +4227,12 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in def array slice",
-			src:  "type my_array [int]",
-			call: "(my_array :: [5, 6, 7])[1, 2]",
-			want: "built-in [](my_array, int, int)my_array",
+			src:  `
+				type my_array [int]
+				var ary := my_array :: [5, 6, 7]
+			`,
+			call: "ary[1, 2]",
+			want: "built-in []([int], int, int)[int]",
 		},
 		{
 			name: "built-in array slice, expected type not an array",
@@ -4201,7 +4243,7 @@ func TestOverloadResolution(t *testing.T) {
 		{
 			name: "built-in array slice, arg not an array",
 			call: "1[1, 2]",
-			err:  "int is not an array or string",
+			err:  "cannot convert argument 0 \\(int\\) to \\[_\\](.|\n)*cannot convert argument 0 \\(int\\) to string",
 		},
 		{
 			name: "built-in string slice",
@@ -4209,27 +4251,9 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in [](string, int, int)string",
 		},
 		{
-			name: "built-in def string slice",
-			src:  "type my_string string",
-			call: `(my_string :: "hello")[1, 5]`,
-			want: "built-in [](my_string, int, int)my_string",
-		},
-		{
 			name: "built-in .length string",
 			call: `"hello".length`,
 			want: "built-in .length(string)int",
-		},
-		{
-			name: "built-in .length def string",
-			src:  "type my_string string",
-			call: `(my_string :: "hello").length`,
-			want: "built-in .length(my_string)int",
-		},
-		{
-			name: "built-in .length def string ref fails",
-			src:  "type my_string &string",
-			call: `(my_string :: "hello").length`,
-			err:  "not an array or string",
 		},
 		{
 			name: "built-in .length array",
@@ -4238,20 +4262,26 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in .length def array",
-			src:  "type my_array [int]",
-			call: `(my_array :: [1, 2, 3]).length`,
-			want: "built-in .length(my_array)int",
+			src:  `
+				type my_array [int]
+				var ary := my_array :: [1, 2, 3]
+			`,
+			call: `ary.length`,
+			want: "built-in .length([int])int",
 		},
 		{
 			name: "built-in .length def array ref fails",
-			src:  "type my_string &[int]",
-			call: `(my_string :: [1, 2, 3]).length`,
-			err:  "not an array or string",
+			src:  `
+				type my_array &[int]
+				var ary := my_array :: [1, 2, 3]
+			`,
+			call: `ary.length`,
+			want:  "built-in .length([int])int",
 		},
 		{
 			name: "built-in .length, not an array or string",
 			call: "5.length",
-			err:  "not an array or string",
+			err:  "cannot convert argument 0 \\(int\\) to \\[_\\](.|\n)*cannot convert argument 0 \\(int\\) to string",
 		},
 		{
 			name: "built-in .length, other mod array",
@@ -4266,7 +4296,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().length",
-			want: "built-in .length(other#foo)int",
+			want: "built-in .length([int])int",
 		},
 		{
 			name: "built-in .length, other mod unexported, opaque array fails",
@@ -4282,7 +4312,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().length",
-			err:  "not an array or string",
+			err:  "cannot convert argument 0 \\(other#_foo\\) to \\[_\\](.|\n)*cannot convert argument 0 \\(other#_foo\\) to string",
 		},
 		{
 			name: "built-in .length, other mod opaque array fails",
@@ -4297,7 +4327,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().length",
-			err:  "not an array or string",
+			err:  "cannot convert argument 0 \\(other#foo\\) to \\[_\\](.|\n)*cannot convert argument 0 \\(other#foo\\) to string",
 		},
 		{
 			name: "built-in panic",

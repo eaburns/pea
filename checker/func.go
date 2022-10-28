@@ -648,38 +648,6 @@ func (b *Builtin) sub(bind map[*TypeParm]Type) note {
 			return newNote("%s: does not support type %s", b, typ)
 		}
 		bind[b.TypeParm] = valueType(typ)
-	case Index:
-		// TODO: Disallow valueType for Index;
-		// it should just be defined on [T] and string.
-		valType := valueType(typ)
-		if isArrayType(valType) {
-			b.Parms[0] = valType
-			b.Ret = refLiteral(literalType(valType).(*ArrayType).ElemType)
-		} else if isStringType(valType) {
-			b.Parms[0] = valType
-			b.Ret = _uint8
-		} else {
-			return newNote("%s: %s is not an array or string", b, typ)
-		}
-	case Slice:
-		// TODO: Disallow valueType for Slice;
-		// it should just be defined on [T] and string.
-		valType := valueType(typ)
-		if !isArrayType(valType) && !isStringType(valType) {
-			return newNote("%s: %s is not an array or string", b, typ)
-		}
-		b.Parms[0] = valType
-		b.Ret = valType
-		return nil
-	case Length:
-		// TODO: Disallow valueType for Length;
-		// it should just be defined on [T] and string.
-		valType := valueType(typ)
-		if !isArrayType(valType) && !isStringType(valType) {
-			return newNote("%s: %s is not an array or string", b, typ)
-		}
-		b.Parms[0] = valType
-		return nil
 	}
 	for i := range b.Parms {
 		b.Parms[i] = subType(bind, b.Parms[i])

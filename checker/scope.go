@@ -496,21 +496,12 @@ var (
 		{N: "<=>", Op: Cmp, Parms: []Type{_float32, _float32}, Ret: _partialOrdering},
 		{N: "<=>", Op: Cmp, Parms: []Type{_float64, _float64}, Ret: _partialOrdering},
 
-		// TODO: allow the following instead of the hackery in Builtin.sub.
-		/*
-			{N: "[]", Op: Index, TypeParm: _P, Parms: []Type{arrayLiteral(_T), _int}, Ret: refLiteral(_T)},
-			{N: "[]", Op: Slice, TypeParm: _P, Parms: []Type{arrayLiteral(_T), _int, _int}, Ret: arrayLiteral(_T)},
-			{N: "[]", Op: Index, Parms: []Type{_string, _int}, Ret: _int},
-			{N: "[]", Op: Slice, Parms: []Type{_string, _int, _int}, Ret: _string},
-			{N: ".length", Op: Length, TypeParm: _P, Parms: []Type{arrayLiteral(_T)}, Ret: _int},
-			{N: ".length", Op: Length, Parms: []Type{_string}, Ret: _int},
-		*/
-		// Index, Slice, and Length ops are asserted to only sub Parms[0]
-		// with an array or string type in Builtin.sub;
-		// for Index, the return type is fixed up also in Builtin.sub.
-		{N: "[]", Op: Index, TypeParm: _P, Parms: []Type{_T, _int}, Ret: refLiteral(_T)},
-		{N: "[]", Op: Slice, TypeParm: _P, Parms: []Type{_T, _int, _int}, Ret: arrayLiteral(_T)},
-		{N: ".length", Op: Length, TypeParm: _P, Parms: []Type{_T}, Ret: _int},
+		{N: "[]", Op: Index, TypeParm: _P, Parms: []Type{arrayLiteral(_T), _int}, Ret: refLiteral(_T)},
+		{N: "[]", Op: Slice, TypeParm: _P, Parms: []Type{arrayLiteral(_T), _int, _int}, Ret: arrayLiteral(_T)},
+		{N: "[]", Op: Index, Parms: []Type{_string, _int}, Ret: _uint8},
+		{N: "[]", Op: Slice, Parms: []Type{_string, _int, _int}, Ret: _string},
+		{N: ".length", Op: Length, TypeParm: _P, Parms: []Type{arrayLiteral(_T)}, Ret: _int},
+		{N: ".length", Op: Length, Parms: []Type{_string}, Ret: _int},
 
 		{N: "panic", Op: Panic, Parms: []Type{_string}, Ret: _end},
 		{N: "print", Op: Print, Parms: []Type{_string}, Ret: _empty},
