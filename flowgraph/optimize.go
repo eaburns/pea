@@ -554,6 +554,9 @@ func findLeaks(fb *funcBuilder) map[Value]bool {
 					fb.tr("x%d leaks: copied into leaked x%d", u.Src.Num(), v.Num())
 					leak(&todo, leaks, u.Src)
 				}
+			case *BitCast:
+				fb.tr("x%d leaks: bitcast of leaked x%d", u.Num(), v.Num())
+				leak(&todo, leaks, u)
 			case *Field:
 				fb.tr("x%d leaks: field of leaked base x%d", u.Num(), v.Num())
 				leak(&todo, leaks, u)
