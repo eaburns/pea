@@ -457,7 +457,7 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 			g.line("call void @pea_set_test_call_loc(i8* ", p, ", i32 ", l.Line[0], ")")
 		}
 		if fun, ok := r.Func.(*flowgraph.Func); ok {
-			if fun.Def.Mod == "main" && fun.Def.Name == "print_int" {
+			if fun.Def.Name == "print_int" {
 				g.line("call void @pea_print_int(", r.Args, ")")
 				break
 			}
