@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +27,7 @@ var (
 	lprofiler    = flag.Bool("lprofiler", false, "whether to link with -lprofiler for CPU profiling")
 	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
 	dumpCheck    = flag.Bool("dump-check", false, "whether to dump the checked graph")
+	dumpLL       = flag.Bool("dump-ll", false, "whether to dump the .ll files")
 	traceEsc     = flag.Bool("trace-esc", false, "whether to trace escape analysis")
 	traceInline  = flag.Bool("trace-inl", false, "whether to trace inlining")
 	printNAllocs = flag.Bool("print-nallocs", false, "whether to print the number of heap allocs")
@@ -199,6 +201,15 @@ func compile(m *mod.Mod) {
 	if err := f.Close(); err != nil {
 		fail(fmt.Errorf("failed to close output file: %s", err))
 	}
+	if *dumpLL {
+		f, err := os.Open(llFile)
+		if err != nil {
+			fail(fmt.Errorf("%s", err))
+		}
+		if _, err := io.Copy(os.Stdout, f); err != nil {
+			fail(fmt.Errorf("%s", err))
+		}
+	}
 	defer os.Remove(llFile)
 	oFile := binFile(m) + ".main.o"
 	if err := compileLL(llFile, oFile); err != nil {
@@ -292,6 +303,15 @@ func compileA(m *mod.Mod, fg *flowgraph.Mod, locs loc.Files) {
 	w.Flush()
 	if err := f.Close(); err != nil {
 		fail(fmt.Errorf("failed to close output file: %s", err))
+	}
+	if *dumpLL {
+		f, err := os.Open(llFile)
+		if err != nil {
+			fail(fmt.Errorf("%s", err))
+		}
+		if _, err := io.Copy(os.Stdout, f); err != nil {
+			fail(fmt.Errorf("%s", err))
+		}
 	}
 	defer os.Remove(llFile)
 	oFile := binFile(m) + ".o"
