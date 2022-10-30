@@ -356,11 +356,16 @@ func (m *Mod) findIDs(name string) []id {
 		// Add a template select type to be filled in with concrete types
 		// or rejected when its 0th parameter is unified.
 		pat := any()
+		tv := &TypeVar{Name: pat.parms[0].Name, Def: pat.parms[0]}
 		ids = append(ids, &Select{
 			N:        name,
 			TypeParm: pat.parms[0],
-			Parm:     &RefType{Type: pat.typ},
-			Ret:      nil, // determined during sub()
+			T: &FuncType{
+				Parms: []Type{tv},
+				// This is really a place-holder for the return type,
+				// which was not yet determined, since we never saw arg0.
+				Ret: tv,
+			},
 		})
 	}
 	if strings.HasSuffix(name, "?") {

@@ -350,11 +350,21 @@ func (f *FuncInst) Type() Type   { return f.T }
 
 type Select struct {
 	// N is the selected field name.
-	N        string
+	N string
+
+	// T is the FuncType of the Select.
+	// Its value changes as the type of Parm[0] is determined.
+	//
+	// If TypeParm is non-nil, the Parm[0] and Ret
+	// are TypeVars defined by the TypeParm.
+	//
+	// If TypeParm is nil, Parm[0] is as reference literal of the Struct type,
+	// and Ret is a reference literal of the Field type.
+	T *FuncType
+
+	// TypeParm is a type parameter for the 0th argument
+	// used until we can determine a struct literal type.
 	TypeParm *TypeParm
-	Parm     Type
-	// Ret is nil until after a successful call to Select.sub().
-	Ret Type
 
 	// Struct is the struct type and the type of the 0th parameter.
 	// It is nil until parm 0 is successfully substituted.
@@ -364,7 +374,7 @@ type Select struct {
 	Field *FieldDef
 }
 
-func (s *Select) Type() Type { return &FuncType{Parms: []Type{s.Parm}, Ret: s.Ret} }
+func (s *Select) Type() Type { return s.T }
 
 type Switch struct {
 	// N is the name of the switch function.

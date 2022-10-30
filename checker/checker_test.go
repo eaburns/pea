@@ -2559,7 +2559,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 				func main() { target_function(point :: [.x 4, .y 8]) }
 				func target_function(_ X) : .x(X)int, .y(X)int
 			`,
-			want: "built-in .x(&point)&int",
+			want: "built-in .x(&[.x int, .y int])&int",
 		},
 		{
 			name: "match built-in switch with no values",
@@ -3392,7 +3392,7 @@ func TestOverloadResolution(t *testing.T) {
 				var t_var t
 			`,
 			call: "t_var.x",
-			want: "built-in .x(&t)&int",
+			want: "built-in .x(&[.x int])&int",
 		},
 		{
 			name: "built-in selector ref def type",
@@ -3401,7 +3401,16 @@ func TestOverloadResolution(t *testing.T) {
 				var t_ref_var &t
 			`,
 			call: "t_ref_var.x",
-			want: "built-in .x(&t)&int",
+			want: "built-in .x(&[.x int])&int",
+		},
+		{
+			name: "built-in selector ref ref def type",
+			src: `
+				type t &[.x int]
+				var t_ref_var &t
+			`,
+			call: "t_ref_var.x",
+			want: "built-in .x(&[.x int])&int",
 		},
 		{
 			name: "built-in selector def ref type",
@@ -3410,7 +3419,7 @@ func TestOverloadResolution(t *testing.T) {
 				var t_var t
 			`,
 			call: "t_var.x",
-			want: "built-in .x(t)&int",
+			want: "built-in .x(&[.x int])&int",
 		},
 		{
 			name: "built-in selector, other field",
@@ -3419,7 +3428,7 @@ func TestOverloadResolution(t *testing.T) {
 				var point_var point
 			`,
 			call: "point_var.y",
-			want: "built-in .y(&point)&float64",
+			want: "built-in .y(&[.x float64, .y float64])&float64",
 		},
 		{
 			name: "built-in selector, not a struct",
@@ -3468,7 +3477,7 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "point_var.x",
 			ret:  "float64",
-			want: "built-in .x(&point)&float64",
+			want: "built-in .x(&[.x float64, .y float64])&float64",
 		},
 		{
 			name: "built-in selector and func def ambiguity",
@@ -3494,7 +3503,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().x",
-			want: "built-in .x(&other#foo)&int",
+			want: "built-in .x(&[.x int, .y int])&int",
 		},
 		{
 			name: "built-in selector, other mod struct, capital Import",
@@ -3509,7 +3518,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().x",
-			want: "built-in .x(&other#foo)&int",
+			want: "built-in .x(&[.x int, .y int])&int",
 		},
 		{
 			name: "built-in selector, other mod unexported fails",

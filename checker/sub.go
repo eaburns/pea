@@ -104,12 +104,7 @@ func subFunc(bindings bindings, fun Func) Func {
 		if fieldCopy == nil {
 			panic("impossible field not found")
 		}
-		return &Select{
-			Struct: structCopy,
-			Field:  fieldCopy,
-			Parm:   subType(bindings.Types, fun.Parm),
-			Ret:    subType(bindings.Types, fun.Ret),
-		}
+		return &Select{Struct: structCopy, Field: fieldCopy}
 	case *Switch:
 		unionCopy := subType(bindings.Types, fun.Union).(*UnionType)
 		casesCopy := make([]*CaseDef, len(fun.Cases))

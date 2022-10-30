@@ -389,8 +389,6 @@ func (s *Select) print(pc *config) {
 	pc.p("Select{")
 	pc.field("Struct", s.Struct)
 	pc.field("Field", s.Field)
-	pc.field("Parm", s.Parm)
-	pc.field("Ret", s.Ret)
 	pc.p("\n}")
 }
 

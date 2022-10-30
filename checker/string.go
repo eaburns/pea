@@ -313,17 +313,9 @@ func (e *Select) buildString(s *strings.Builder) *strings.Builder {
 		return s
 	}
 	s.WriteRune('(')
-	if e.Parm == nil {
-		s.WriteRune('_')
-	} else {
-		e.Parm.buildString(s)
-	}
+	refLiteral(e.Struct).buildString(s)
 	s.WriteRune(')')
-	if e.Ret == nil {
-		s.WriteRune('_')
-	} else {
-		e.Ret.buildString(s)
-	}
+	refLiteral(e.Field.Type).buildString(s)
 	return s
 }
 

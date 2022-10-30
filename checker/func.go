@@ -440,34 +440,25 @@ func (f *FuncInst) eq(other Func) bool {
 func (*Select) arity() int { return 1 }
 
 func (s *Select) parm(i int) typePattern {
-	if i > 0 {
-		panic("impossible") // can't have more than 1 argument
+	pat := pattern(s.T.Parms[i])
+	if s.TypeParm != nil {
+		pat.parms = append(pat.parms, s.TypeParm)
 	}
-	// Technically, there is one selector for every field of every struct type,
-	// but we implement it lazily by using _ for the 0th argument,
-	// and erroring out in sub() if it's not a struct type.
-	if s.TypeParm == nil {
-		return pattern(s.Parm)
-	}
-	return typePattern{parms: []*TypeParm{s.TypeParm}, typ: s.Parm}
+	return pat
 }
 
-func (s *Select) ret() typePattern { return pattern(s.Ret) }
+func (s *Select) ret() typePattern {
+	return pattern(refLiteral(s.Field.Type))
+}
 
 func (s *Select) sub(bind map[*TypeParm]Type) note {
 	typ, ok := bind[s.TypeParm]
 	if !ok {
 		return nil
 	}
-	switch v := valueType(typ); {
-	case isStructType(v):
-		s.Parm = &RefType{Type: v, L: v.Loc()}
-	case isStructRefType(v):
-		s.Parm = v
-	default:
+	if s.Struct, ok = valueType(literalType(typ)).(*StructType); !ok {
 		return newNote("%s: argument 0 (%s) is not a struct type", s, typ).setLoc(typ)
 	}
-	s.Struct = valueType(literalType(typ)).(*StructType)
 	for i := range s.Struct.Fields {
 		if s.Struct.Fields[i].Name == s.N {
 			s.Field = &s.Struct.Fields[i]
@@ -480,14 +471,17 @@ func (s *Select) sub(bind map[*TypeParm]Type) note {
 	if s.Field.Type == nil {
 		panic(fmt.Sprintf("impossible nil field type: %s\n", s.N))
 	}
-	s.Ret = &RefType{Type: s.Field.Type, L: s.Field.Type.Loc()}
+	s.TypeParm = nil
+	s.T = &FuncType{
+		Parms: []Type{refLiteral(s.Struct)},
+		Ret:   refLiteral(s.Field.Type),
+	}
 	return nil
 }
 
 func (s *Select) eq(other Func) bool {
 	o, ok := other.(*Select)
-	return ok && s.Struct == o.Struct && s.Field == o.Field &&
-		eqType(s.Parm, o.Parm) && eqType(s.Ret, o.Ret)
+	return ok && s.N == o.N && s.Struct == o.Struct && s.Field == o.Field
 }
 
 func (s *Switch) arity() int { return len(s.Parms) }
