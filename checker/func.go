@@ -484,14 +484,14 @@ func (s *Select) eq(other Func) bool {
 	return ok && s.N == o.N && s.Struct == o.Struct && s.Field == o.Field
 }
 
-func (s *Switch) arity() int { return len(s.Parms) }
+func (s *Switch) arity() int { return len(s.T.Parms) }
 
 func (s *Switch) parm(i int) typePattern {
-	return typePattern{parms: s.TypeParms, typ: s.Parms[i]}
+	return typePattern{parms: s.TypeParms, typ: s.T.Parms[i]}
 }
 
 func (s *Switch) ret() typePattern {
-	return typePattern{parms: s.TypeParms, typ: s.Ret}
+	return typePattern{parms: s.TypeParms, typ: s.T.Ret}
 }
 
 func (s *Switch) sub(bind map[*TypeParm]Type) note {
@@ -501,70 +501,64 @@ func (s *Switch) sub(bind map[*TypeParm]Type) note {
 	// We detect the 1st time by looking a s.Cases;
 	// it is populated lazily on the 1st substitution,
 	// so if it is non-empty, then we have already substituted.
-	if typ, ok := bind[s.TypeParms[0]]; ok && len(s.Cases) == 0 {
-		// We are substituting the 0th argument, which needs to be a union.
-
-		switch v := valueType(typ); {
-		case isUnionType(v):
-			s.Parms[0] = &RefType{Type: v, L: v.Loc()}
-		case isUnionRefType(v):
-			s.Parms[0] = v
-		default:
-			return newNote("%s: argument 0 (%s) is not a union type", s, typ).setLoc(typ)
-		}
-		s.Union = valueType(literalType(typ)).(*UnionType)
-		seen := make(map[*CaseDef]bool)
-		hasDefault := false
-		for _, name := range s.Names {
-			if name == "_?" {
-				hasDefault = true
-				s.Cases = append(s.Cases, nil)
-				continue
-			}
-			c := findCase(name, s.Union)
-			if c == nil {
-				// TODO: should use the location of the case keyword.
-				return newNote("%s: %s has no case %s", s, typ, name).setLoc(typ)
-			}
-			if seen[c] {
-				// Switch functions only exist for non-duplicated cases.
-				// TODO: should use the location of the case keyword.
-				return newNote("%s: duplicate case %s", s, name).setLoc(typ)
-			}
-			seen[c] = true
-			s.Cases = append(s.Cases, c)
-		}
-		complete := true
-		if !hasDefault {
-			for i := range s.Union.Cases {
-				if !seen[&s.Union.Cases[i]] {
-					complete = false
-					break
-				}
-			}
-		}
-		if !complete {
-			s.Ret = _empty
-		} else {
-			s.Ret = &TypeVar{Name: s.TypeParms[1].Name, Def: s.TypeParms[1]}
-		}
-		for i, c := range s.Cases {
-			switch {
-			case c == nil:
-				s.Parms[1+i] = &FuncType{Ret: s.Ret, L: s.Union.L}
-			case c.Type == nil:
-				s.Parms[1+i] = &FuncType{Ret: s.Ret, L: c.L}
-			default:
-				s.Parms[1+i] = &FuncType{Parms: []Type{c.Type}, Ret: s.Ret, L: c.L}
-			}
-		}
+	typ, ok := bind[s.TypeParms[0]]
+	if !ok || len(s.Cases) > 0 {
+		s.T = subType(bind, s.T).(*FuncType)
 		return nil
 	}
 
-	for i := range s.Parms {
-		s.Parms[i] = subType(bind, s.Parms[i])
+	if s.Union, ok = valueType(literalType(typ)).(*UnionType); !ok {
+		return newNote("%s: argument 0 (%s) is not a union type", s, typ).setLoc(typ)
 	}
-	s.Ret = subType(bind, s.Ret)
+	s.T.Parms[0] = refLiteral(s.Union)
+	seen := make(map[*CaseDef]bool)
+	hasDefault := false
+	for _, name := range s.Names {
+		if name == "_?" {
+			hasDefault = true
+			s.Cases = append(s.Cases, nil)
+			continue
+		}
+		c := findCase(name, s.Union)
+		if c == nil {
+			// TODO: should use the location of the case keyword.
+			return newNote("%s: %s has no case %s", s, typ, name).setLoc(typ)
+		}
+		if seen[c] {
+			// Switch functions only exist for non-duplicated cases.
+			// TODO: should use the location of the case keyword.
+			return newNote("%s: duplicate case %s", s, name).setLoc(typ)
+		}
+		seen[c] = true
+		s.Cases = append(s.Cases, c)
+	}
+	complete := true
+	if !hasDefault {
+		for i := range s.Union.Cases {
+			if !seen[&s.Union.Cases[i]] {
+				complete = false
+				break
+			}
+		}
+	}
+	if !complete {
+		s.T.Ret = _empty
+	} else {
+		s.T.Ret = &TypeVar{
+			Name: s.TypeParms[1].Name,
+			Def:  s.TypeParms[1],
+		}
+	}
+	for i, c := range s.Cases {
+		switch {
+		case c == nil:
+			s.T.Parms[1+i] = &FuncType{Ret: s.T.Ret, L: s.Union.L}
+		case c.Type == nil:
+			s.T.Parms[1+i] = &FuncType{Ret: s.T.Ret, L: c.L}
+		default:
+			s.T.Parms[1+i] = &FuncType{Parms: []Type{c.Type}, Ret: s.T.Ret, L: c.L}
+		}
+	}
 	return nil
 }
 
@@ -587,7 +581,7 @@ func eqCase(a, b *CaseDef) bool {
 
 func (s *Switch) eq(other Func) bool {
 	o, ok := other.(*Switch)
-	if !ok || !eqType(s.Union, o.Union) || len(s.Cases) != len(o.Cases) || len(s.Parms) != len(o.Parms) {
+	if !ok || !eqType(s.Union, o.Union) || len(s.Cases) != len(o.Cases) || len(s.T.Parms) != len(o.T.Parms) {
 		return false
 	}
 	for i := range s.Cases {
@@ -595,12 +589,12 @@ func (s *Switch) eq(other Func) bool {
 			return false
 		}
 	}
-	for i := range s.Parms {
-		if !eqType(s.Parms[i], o.Parms[i]) {
+	for i := range s.T.Parms {
+		if !eqType(s.T.Parms[i], o.T.Parms[i]) {
 			return false
 		}
 	}
-	return eqType(s.Ret, o.Ret)
+	return eqType(s.T.Ret, o.T.Ret)
 }
 
 func (b *Builtin) arity() int { return len(b.Parms) }

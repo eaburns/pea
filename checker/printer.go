@@ -396,8 +396,6 @@ func (s *Switch) print(pc *config) {
 	pc.p("Switch{")
 	pc.field("Union", s.Union)
 	pc.field("Cases", s.Cases)
-	pc.field("Parms", s.Parms)
-	pc.field("Ret", s.Ret)
 	pc.p("\n}")
 }
 

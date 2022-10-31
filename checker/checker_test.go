@@ -2568,7 +2568,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 				func main() { target_function(a_or_b :: [a?]) }
 				func target_function(_ X) : a?b?(X, (){}, (){})
 			`,
-			want: "built-in a?b?(&a_or_b, (){}, (){})",
+			want: "built-in a?b?(&[a?, b?], (){}, (){})",
 		},
 		{
 			name: "match built-in switch with values",
@@ -2577,7 +2577,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 				func main() { target_function(a_or_b :: [a? 2]) }
 				func target_function(_ X) : a?b?(X, (int){}, (T){})
 			`,
-			want: "built-in a?b?(&a_or_b, (int){}, (string){})",
+			want: "built-in a?b?(&[a? int, b? string], (int){}, (string){})",
 		},
 		{
 			name: "built-in index",
@@ -3636,7 +3636,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() a? {} b? {}",
-			want: "built-in a?b?(&a_or_b, (){}, (){})",
+			want: "built-in a?b?(&[a?, b?], (){}, (){})",
 		},
 		{
 			name: "built-in switch def union",
@@ -3645,7 +3645,7 @@ func TestOverloadResolution(t *testing.T) {
 				var a_or_b_var a_or_b
 			`,
 			call: "a_or_b_var a? {} b? {}",
-			want: "built-in a?b?(&a_or_b, (){}, (){})",
+			want: "built-in a?b?(&[a?, b?], (){}, (){})",
 		},
 		{
 			name: "built-in switch def union ref",
@@ -3654,13 +3654,13 @@ func TestOverloadResolution(t *testing.T) {
 				var a_or_b_var a_or_b
 			`,
 			call: "a_or_b_var a? {} b? {}",
-			want: "built-in a?b?(a_or_b, (){}, (){})",
+			want: "built-in a?b?(&[a?, b?], (){}, (){})",
 		},
 		{
 			name: "built-in switch ref def union",
 			src:  "type a_or_b [a?, b?]",
 			call: "(&a_or_b :: [a?]) a? {} b? {}",
-			want: "built-in a?b?(&a_or_b, (){}, (){})",
+			want: "built-in a?b?(&[a?, b?], (){}, (){})",
 		},
 		{
 			name: "built-in switch typed cases",
@@ -3669,7 +3669,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() a? (_ string) {1} b? (_ int) {1}",
-			want: "built-in a?b?(&a_or_b, (string){int}, (int){int})int",
+			want: "built-in a?b?(&[a? string, b? int], (string){int}, (int){int})int",
 		},
 		{
 			name: "built-in switch mixed typed and non-typed cases",
@@ -3678,7 +3678,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() a? () {1} b? (_ int) {1}",
-			want: "built-in a?b?(&a_or_b, (){int}, (int){int})int",
+			want: "built-in a?b?(&[a?, b? int], (){int}, (int){int})int",
 		},
 		{
 			name: "built-in switch cases re-ordered",
@@ -3687,7 +3687,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() b? (_ int) {1} a? () {1} ",
-			want: "built-in b?a?(&a_or_b, (int){int}, (){int})int",
+			want: "built-in b?a?(&[a?, b? int], (int){int}, (){int})int",
 		},
 		{
 			name: "built-in switch not all cases, case not typed",
@@ -3696,7 +3696,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() a? () {1} ",
-			want: "built-in a?(&a_or_b, (){})",
+			want: "built-in a?(&[a?, b? int], (){})",
 		},
 		{
 			name: "built-in switch not all cases, case typed",
@@ -3705,7 +3705,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() b? (_ int) {1} ",
-			want: "built-in b?(&a_or_b, (int){})",
+			want: "built-in b?(&[a?, b? int], (int){})",
 		},
 		{
 			name: "built-in switch only default case",
@@ -3714,7 +3714,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_or_b
 			`,
 			call: "make() _? {1}",
-			want: "built-in _?(&a_or_b, (){int})int",
+			want: "built-in _?(&[a?, b? int], (){int})int",
 		},
 		{
 			name: "built-in switch case and default case",
@@ -3723,7 +3723,7 @@ func TestOverloadResolution(t *testing.T) {
 				func make() a_b_c_d
 			`,
 			call: "make() a? {1} _? {2} d? (_ string){3}",
-			want: "built-in a?_?d?(&a_b_c_d, (){int}, (){int}, (string){int})int",
+			want: "built-in a?_?d?(&[a?, b? int, c?, d? string], (){int}, (){int}, (string){int})int",
 		},
 		{
 			name: "built-in switch multiple default cases not supported",
@@ -3766,7 +3766,7 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "make() a? () {uint8 :: 1} b? () {2}",
 			ret:  "uint8",
-			want: "built-in a?b?(&a_or_b, (){uint8}, (){uint8})uint8",
+			want: "built-in a?b?(&[a?, b?], (){uint8}, (){uint8})uint8",
 		},
 		{
 			name: "built-in switch implicit ref return type",
@@ -3799,7 +3799,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo() none? {} some? (i int) {}",
-			want: "built-in none?some?(&other#foo, (){}, (int){})",
+			want: "built-in none?some?(&[none?, some? int], (){}, (int){})",
 		},
 		{
 			name: "built-in switch, other mod unexported opaque union fails",

@@ -381,13 +381,15 @@ func (m *Mod) findIDs(name string) []id {
 			sw := Switch{
 				N:     name,
 				Names: names,
+				T: &FuncType{
+					Parms: make([]Type, len(names)+1),
+				},
 				TypeParms: []*TypeParm{
 					{Name: "_"},
 					{Name: "_"},
 				},
-				Parms: make([]Type, len(names)+1),
 			}
-			sw.Parms[0] = &TypeVar{Name: "_", Def: sw.TypeParms[0]}
+			sw.T.Parms[0] = &TypeVar{Name: "_", Def: sw.TypeParms[0]}
 			ids = append(ids, &sw)
 		}
 	}

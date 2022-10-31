@@ -332,7 +332,7 @@ func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
 		return s
 	}
 	s.WriteRune('(')
-	for i, p := range w.Parms {
+	for i, p := range w.T.Parms {
 		if i > 0 {
 			s.WriteString(", ")
 		}
@@ -343,8 +343,8 @@ func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
 		}
 	}
 	s.WriteRune(')')
-	if w.Ret != nil && !isEmptyStruct(w.Ret) {
-		w.Ret.buildString(s)
+	if w.T.Ret != nil && !isEmptyStruct(w.T.Ret) {
+		w.T.Ret.buildString(s)
 	}
 	return s
 }

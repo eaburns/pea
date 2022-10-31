@@ -1050,7 +1050,7 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 	}
 
 	var res Value
-	if resType := bb.buildType(sw.Ret); !resType.isEmpty() {
+	if resType := bb.buildType(sw.T.Ret); !resType.isEmpty() {
 		res = bb.alloc(resType)
 	}
 
@@ -1202,7 +1202,7 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 	}
 
 	var res Value
-	if resType := bb.buildType(sw.Ret); !resType.isEmpty() {
+	if resType := bb.buildType(sw.T.Ret); !resType.isEmpty() {
 		res = bb.alloc(resType)
 	}
 

@@ -381,29 +381,36 @@ type Switch struct {
 	N string
 	// Names is the names of the cases; N split by ?.
 	Names []string
+
+	// T is the FuncType of the Switch.
+	//
+	// T.Parms is the correct length, but:
+	// before Switch.sub(), Parms[0] is a type variable of TypeParms[0],
+	// and the remaining elements are nil, and
+	// after Switch.sub() the elements are the correct type for the switch.
+	//
+	// T.Ret is nil until after Switch.sub().
+	T *FuncType
+
 	// TypeParms are the type parameters.
 	//
 	// TypeParms[0] is the fake type parameter representing the union type.
 	// By the spec, there are Switch functions defined directly on every union type,
 	// but we represent this lazily by using a type parameter for it,
-	// and returning an error from Switch.sub() if that parameter is substituted with a non-union.
+	// and returning an error from Switch.sub()
+	// if that parameter is substituted with a non-union.
 	//
 	// TypeParms[1] is the type parameter of the return type.
 	TypeParms []*TypeParm
-	// Parms is the correct length, but:
-	// before Switch.sub(), Parms[0] is a type variable of TypeParms[0],
-	// and the remaining elements are nil, and
-	// after Switch.sub() the elements are the correct type for the switch.
-	Parms []Type
-	// Ret is nil until after Switch.sub().
-	Ret Type
 
+	// Union is the union type being switched.
 	Union *UnionType
+
 	// Cases[i] is nil for the default _? case.
 	Cases []*CaseDef
 }
 
-func (s *Switch) Type() Type { return &FuncType{Parms: s.Parms, Ret: s.Ret} }
+func (s *Switch) Type() Type { return s.T }
 
 type Op int
 
