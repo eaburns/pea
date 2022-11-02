@@ -18,6 +18,7 @@ import (
 var diffOpts = []cmp.Option{
 	cmp.FilterPath(isLoc, cmp.Ignore()),
 	cmpopts.IgnoreUnexported(LocalDef{}),
+	cmp.AllowUnexported(typePattern{}),
 }
 
 func isLoc(path cmp.Path) bool {
@@ -99,6 +100,14 @@ func check(path string, files []string, mods []testMod) (*Mod, []error) {
 	imp := newTestImporter(mods, p.Files)
 	mod, _, errs := Check(path, p.Files, UseImporter(imp), MaxErrorDepth(-1))
 	return mod, errs
+}
+
+func checkTestMod(src string) *Mod {
+	mod, errs := check("test", []string{""}, nil)
+	if len(errs) > 0 {
+		panic("impossible")
+	}
+	return mod
 }
 
 func findTypeDef(t *testing.T, name string, mod *Mod) *TypeDef {

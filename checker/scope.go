@@ -353,18 +353,13 @@ func findIDs(x scope, name string) []id {
 func (m *Mod) findIDs(name string) []id {
 	ids := findInDefs(m.Defs, name, false)
 	if strings.HasPrefix(name, ".") {
-		// Add a template select type to be filled in with concrete types
-		// or rejected when its 0th parameter is unified.
-		pat := any()
-		tv := &TypeVar{Name: pat.parms[0].Name, Def: pat.parms[0]}
+		parms, vars := newAnyParmsAndTypeVars(2)
 		ids = append(ids, &Select{
-			N:        name,
-			TypeParm: pat.parms[0],
+			N:         name,
+			typeParms: parms,
 			T: &FuncType{
-				Parms: []Type{tv},
-				// This is really a place-holder for the return type,
-				// which was not yet determined, since we never saw arg0.
-				Ret: tv,
+				Parms: []Type{refLiteral(vars[0])},
+				Ret:   refLiteral(vars[1]),
 			},
 		})
 	}
@@ -412,6 +407,19 @@ func (m *Mod) findIDs(name string) []id {
 		}
 	}
 	return ids
+}
+
+func newAnyParmsAndTypeVars(n int) ([]*TypeParm, []*TypeVar) {
+	var parms []*TypeParm
+	var vars []*TypeVar
+	for i := 0; i < n; i++ {
+		n := fmt.Sprintf("T%d", i)
+		p := &TypeParm{Name: n}
+		v := &TypeVar{Name: n, Def: p}
+		parms = append(parms, p)
+		vars = append(vars, v)
+	}
+	return parms, vars
 }
 
 var (

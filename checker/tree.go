@@ -353,25 +353,31 @@ type Select struct {
 	N string
 
 	// T is the FuncType of the Select.
-	// Its value changes as the type of Parm[0] is determined.
-	//
-	// If TypeParm is non-nil, the Parm[0] and Ret
-	// are TypeVars defined by the TypeParm.
-	//
-	// If TypeParm is nil, Parm[0] is as reference literal of the Struct type,
-	// and Ret is a reference literal of the Field type.
 	T *FuncType
 
-	// TypeParm is a type parameter for the 0th argument
-	// used until we can determine a struct literal type.
-	TypeParm *TypeParm
-
 	// Struct is the struct type and the type of the 0th parameter.
-	// It is nil until parm 0 is successfully substituted.
 	Struct *StructType
+
 	// Field is a pointer to the selected field in Struct.
-	// It is nil until parm0 is successfully substituted.
 	Field *FieldDef
+
+	// typeParms are the fake type parameter for the struct type and field type.
+	// By the spec, there are Selector functions defined on every struct literal type,
+	// but we represent this lazily by using type parameters and returning an error
+	// from Select.sub() if that parameter is substituted with a non-struct.
+	//
+	// typeParms[0] is the type parameter of the struct reference type.
+	// typeParms[1] is the type parameter of the return type.
+	//
+	// If typeParms is non-nil, the T.Parm[0] and T.Ret
+	// are TypeVars defined by the typeParms.
+	// If typeParms is nil, T.Parm[0] is as reference literal of the Struct type,
+	// and T.Ret is a reference literal of the Field type.
+	//
+	// Struct is nil until parm 0 is successfully substituted.
+	//
+	// Field is nil until parm0 is successfully substituted.
+	typeParms []*TypeParm
 }
 
 func (s *Select) Type() Type { return s.T }

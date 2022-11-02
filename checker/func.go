@@ -440,22 +440,32 @@ func (f *FuncInst) eq(other Func) bool {
 func (*Select) arity() int { return 1 }
 
 func (s *Select) parm(i int) typePattern {
-	pat := pattern(s.T.Parms[i])
-	if s.TypeParm != nil {
-		pat.parms = append(pat.parms, s.TypeParm)
-	}
-	return pat
+	return typePattern{parms: s.typeParms, typ: s.T.Parms[i]}
 }
 
 func (s *Select) ret() typePattern {
-	return pattern(refLiteral(s.Field.Type))
+	return typePattern{parms: s.typeParms, typ: s.T.Ret}
 }
 
 func (s *Select) sub(bind map[*TypeParm]Type) note {
-	typ, ok := bind[s.TypeParm]
-	if !ok {
+	if s.Struct != nil {
+		// We have already substituted for the struct type,
+		// this Select is fully grounded; nothing more to do.
 		return nil
 	}
+
+	defer removeBoundTypeParms(&s.typeParms, bind)
+
+	// If this sub is not for the 0th parameter, there is nothing more to do.
+	// However, if it is for the 0th type, we need to make sure it's a struct literal,
+	// and check that the return type (if already substituted) matches the field.
+	typ, ok := bind[s.typeParms[0]]
+	if !ok {
+		// This is not substituting the 0th parameter type.
+		s.T = subType(bind, s.T).(*FuncType)
+		return nil
+	}
+
 	if s.Struct, ok = valueType(literalType(typ)).(*StructType); !ok {
 		return newNote("%s: argument 0 (%s) is not a struct type", s, typ).setLoc(typ)
 	}
@@ -471,12 +481,40 @@ func (s *Select) sub(bind map[*TypeParm]Type) note {
 	if s.Field.Type == nil {
 		panic(fmt.Sprintf("impossible nil field type: %s\n", s.N))
 	}
-	s.TypeParm = nil
-	s.T = &FuncType{
-		Parms: []Type{refLiteral(s.Struct)},
-		Ret:   refLiteral(s.Field.Type),
+
+	// The return type may have already been substituted;
+	// return an error if it was substituted with a type that
+	// cannot be converted to by a reference to the field's type.
+	// (If it was not substituted, it's a &_, which can be substituted,
+	// so no need to check whether it's already been substituted,
+	// just check whether it can convert.)
+	retPat := pattern(s.T.Ret)
+	retPat.parms = s.typeParms
+	retType := refLiteral(s.Field.Type)
+	if _, cn := convertType(pattern(retType), retPat, false); cn != nil {
+		n := newNote("%s: cannot convert return value (%s) to %s", s, retType, s.T.Ret)
+		n.setLoc(s.T.Ret)
+		n.setNotes([]note{cn})
+		return n
 	}
+	s.T = &FuncType{Parms: []Type{refLiteral(s.Struct)}, Ret: retType}
+	s.typeParms = nil
 	return nil
+}
+
+func removeBoundTypeParms(typeParms *[]*TypeParm, bind map[*TypeParm]Type) {
+	var n int
+	for _, tp := range *typeParms {
+		if _, ok := bind[tp]; !ok {
+			(*typeParms)[n] = tp
+			n++
+		}
+	}
+	if n == 0 {
+		*typeParms = nil
+	} else {
+		*typeParms = (*typeParms)[:n]
+	}
 }
 
 func (s *Select) eq(other Func) bool {
