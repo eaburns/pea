@@ -409,12 +409,9 @@ func TestCommonPattern(t *testing.T) {
 			if len(errs) > 0 {
 				t.Fatalf("failed to parse and check: %s", errs[0])
 			}
-			var err error
 			pats := make([]typePattern, len(test.pats))
 			for i, p := range test.pats {
-				if pats[i], err = parseTestPattern(t, mod, p); err != nil {
-					t.Fatalf("failed to parse type pattern %s: %s", p, err)
-				}
+				pats[i] = parseTestPattern(t, mod, p)
 			}
 			if u := common(pats...); u.String() != test.want {
 				t.Errorf("union(%s)=%s, want %s", pats, u.String(), test.want)
@@ -784,14 +781,8 @@ func TestConvert(t *testing.T) {
 			if len(errs) > 0 {
 				t.Fatalf("failed to parse and check: %s", errs[0])
 			}
-			src, err := parseTestPattern(t, mod, test.src)
-			if err != nil {
-				t.Fatalf("failed to parse type pattern %s: %s", test.src, err)
-			}
-			dst, err := parseTestPattern(t, mod, test.dst)
-			if err != nil {
-				t.Fatalf("failed to parse type pattern %s: %s", test.dst, err)
-			}
+			src := parseTestPattern(t, mod, test.src)
+			dst := parseTestPattern(t, mod, test.dst)
 			var bind map[*TypeParm]Type
 			cvt, _ := convert(nil, src, dst, test.explicit, &bind)
 			if cvt == nil {
@@ -1066,14 +1057,8 @@ func TestPatternIntersection(t *testing.T) {
 			if len(errs) > 0 {
 				t.Fatalf("failed to parse and check: %s", errs[0])
 			}
-			a, err := parseTestPattern(t, mod, test.a)
-			if err != nil {
-				t.Fatalf("failed to parse type pattern %s: %s", test.a, err)
-			}
-			b, err := parseTestPattern(t, mod, test.b)
-			if err != nil {
-				t.Fatalf("failed to parse type pattern %s: %s", test.b, err)
-			}
+			a := parseTestPattern(t, mod, test.a)
+			b := parseTestPattern(t, mod, test.b)
 
 			// Given unique names.
 			for i := range a.parms {
@@ -1116,14 +1101,8 @@ func TestPatternIntersectionOfTwoVariables(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	a, err := parseTestPattern(t, mod, "_")
-	if err != nil {
-		t.Fatalf("failed to parse type pattern _: %s", err)
-	}
-	b, err := parseTestPattern(t, mod, "_")
-	if err != nil {
-		t.Fatalf("failed to parse type pattern _: %s", err)
-	}
+	a := parseTestPattern(t, mod, "_")
+	b := parseTestPattern(t, mod, "_")
 	var bind map[*TypeParm]Type
 	isect, _ := intersection(a, b, &bind)
 	if isect == nil {
@@ -1142,19 +1121,13 @@ func TestPatternIntersectionIgnoreBoundTypeParameters(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	pat0, err := parseTestPattern(t, mod, "_ list")
-	if err != nil {
-		t.Fatalf("failed to parse pat0: %s", errs)
-	}
+	pat0 := parseTestPattern(t, mod, "_ list")
 	pat0.parms = append(pat0.parms,
 		&TypeParm{Name: "U0"},
 		&TypeParm{Name: "U1"},
 		&TypeParm{Name: "U2"})
 
-	pat1, err := parseTestPattern(t, mod, "int list")
-	if err != nil {
-		t.Fatalf("failed to parse pat1: %s", errs)
-	}
+	pat1 := parseTestPattern(t, mod, "int list")
 
 	var bind map[*TypeParm]Type
 	isect, note := intersection(pat0, pat1, &bind)
@@ -1179,10 +1152,7 @@ func TestPatternSelfIntersection(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	pat, err := parseTestPattern(t, mod, "_ list")
-	if err != nil {
-		t.Fatalf("failed to parse pattern: %s", errs)
-	}
+	pat := parseTestPattern(t, mod, "_ list")
 
 	var bind map[*TypeParm]Type
 	isect, note := intersection(pat, pattern(pat.typ), &bind)
@@ -1541,14 +1511,8 @@ func TestPatternUnify(t *testing.T) {
 			if len(errs) > 0 {
 				t.Fatalf("failed to parse and check: %s", errs[0])
 			}
-			pat, err := parseTestPattern(t, mod, test.pat)
-			if err != nil {
-				t.Fatalf("failed to parse type pattern: %s", err)
-			}
-			typ, err := parseTestType(t, mod, test.typ)
-			if err != nil {
-				t.Fatalf("failed to parse type: %s", err)
-			}
+			pat := parseTestPattern(t, mod, test.pat)
+			typ := parseTestType(t, mod, test.typ)
 			bind, note := convertType(pattern(typ), pat, false)
 			if test.want == "" {
 				if note == nil {
@@ -1631,10 +1595,7 @@ func TestTypePatternString(t *testing.T) {
 			if len(errs) > 0 {
 				t.Fatalf("failed to parse and check: %s", errs[0])
 			}
-			pat, err := parseTestPattern(t, mod, test.pat)
-			if err != nil {
-				t.Fatalf("failed to parse type pattern: %s", err)
-			}
+			pat := parseTestPattern(t, mod, test.pat)
 			if got := pat.String(); got != test.want {
 				t.Errorf("(%s).String()=%s, want %s", test.pat, got, test.want)
 			}
@@ -1661,7 +1622,8 @@ func (s *typeParmScope) findType(args []Type, name string, l loc.Loc) []Type {
 	return nil
 }
 
-func parseTestPattern(t *testing.T, m *Mod, src string) (typePattern, error) {
+func parseTestPattern(t *testing.T, m *Mod, src string) typePattern {
+	t.Helper()
 	var parms []*TypeParm
 	parmSet := make(map[string]*TypeParm)
 	nextName := 'A'
@@ -1701,23 +1663,24 @@ func parseTestPattern(t *testing.T, m *Mod, src string) (typePattern, error) {
 	}
 	p, err := parser.ParseType(src2)
 	if err != nil {
-		return typePattern{}, err
+		t.Fatalf("failed to parse type %s: %s", src2, err)
 	}
 	typ, errs := _makeType(&typeParmScope{mod: m, parms: parms}, p, true, true)
 	if len(errs) > 0 {
-		return typePattern{}, errs[0]
+		t.Fatalf("failed to make type: %s", errs[0])
 	}
-	return typePattern{parms: parms, typ: typ}, nil
+	return typePattern{parms: parms, typ: typ}
 }
 
-func parseTestType(t *testing.T, m *Mod, src string) (Type, error) {
+func parseTestType(t *testing.T, m *Mod, src string) Type {
+	t.Helper()
 	p, err := parser.ParseType(src)
 	if err != nil {
-		return nil, err
+		t.Fatalf("failed to parse source: %s", err)
 	}
 	typ, errs := _makeType(m, p, true, true)
 	if len(errs) > 0 {
-		return nil, errs[0]
+		t.Fatalf("failed make type: %s", errs[0])
 	}
-	return typ, nil
+	return typ
 }

@@ -5410,10 +5410,7 @@ func (test exprTypeTest) run(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	pat, err := parseTestPattern(t, mod, test.pat)
-	if err != nil {
-		t.Fatalf("failed to parse type pattern: %s", err)
-	}
+	pat := parseTestPattern(t, mod, test.pat)
 	parserExpr, err := parser.ParseExpr(test.expr)
 	if err != nil {
 		t.Fatalf("failed to parse [%s]: %s", test.expr, err)
@@ -5431,10 +5428,7 @@ func (test exprTypeTest) run(t *testing.T) {
 		t.Errorf("got %v, expected no errors", es)
 		return
 	}
-	want, err := parseTestType(t, mod, test.want)
-	if err != nil {
-		t.Fatalf("failed to parse type: %s", err)
-	}
+	want := parseTestType(t, mod, test.want)
 	if !eqType(expr.Type(), want) {
 		t.Errorf("got %s, want %s", expr.Type(), test.want)
 	}
