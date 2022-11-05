@@ -525,21 +525,20 @@ func (s *Select) eq(other Func) bool {
 func (s *Switch) arity() int { return len(s.T.Parms) }
 
 func (s *Switch) parm(i int) typePattern {
-	return typePattern{parms: s.TypeParms, typ: s.T.Parms[i]}
+	return typePattern{parms: s.typeParms, typ: s.T.Parms[i]}
 }
 
 func (s *Switch) ret() typePattern {
-	return typePattern{parms: s.TypeParms, typ: s.T.Ret}
+	return typePattern{parms: s.typeParms, typ: s.T.Ret}
 }
 
 func (s *Switch) sub(bind map[*TypeParm]Type) note {
-	// The caller of sub() may be lazy and leave keep a binding for TypeParm[0]
-	// in the bind map across multiple calls of sub().
-	// But we only want to substitute the 0th type parameter the first time.
-	// We detect the 1st time by looking a s.Cases;
-	// it is populated lazily on the 1st substitution,
-	// so if it is non-empty, then we have already substituted.
-	typ, ok := bind[s.TypeParms[0]]
+	// If this is not the first time (first determined by len(s.Cases)>0)
+	// we are substituting the union parameter (type parameter 1),
+	// the only thing to do is substitute the parameter and return types.
+	// All the complex work is either already done or to be done
+	// when the union itself is substituted.
+	typ, ok := bind[s.typeParms[1]]
 	if !ok || len(s.Cases) > 0 {
 		s.T = subType(bind, s.T).(*FuncType)
 		return nil
@@ -579,23 +578,69 @@ func (s *Switch) sub(bind map[*TypeParm]Type) note {
 			}
 		}
 	}
+
 	if !complete {
+		// If the union is not complete, the return type must be [.].
+		// We need to make sure that if the return type was already substituted,
+		// we can implicitly convert [.] to the desired type.
+		dstPat := pattern(s.T.Ret)
+		dstPat.parms = s.typeParms
+		srcPat := pattern(_empty)
+		srcPat.parms = s.typeParms
+		if _, cn := convertType(srcPat, dstPat, false); cn != nil {
+			n := newNote("%s: cannot convert return value (%s) to %s", s, srcPat, dstPat)
+			n.setLoc(s.T.Ret)
+			n.setNotes([]note{cn})
+			return n
+		}
 		s.T.Ret = _empty
-	} else {
-		s.T.Ret = &TypeVar{
-			Name: s.TypeParms[1].Name,
-			Def:  s.TypeParms[1],
+	} else if tv, ok := s.T.Ret.(*TypeVar); ok && tv.Def == s.typeParms[0] {
+		// Otherwise, if the return type has not been substituted yet
+		// If any of the parameters have already been substituted,
+		// check whether we can determine the return type.
+		// Take the result type of the first function type parameter (if any).
+		// Below, we will report errors if any other substituted parameters
+		// cannot implicitly convert to have this result type.
+		for _, p := range s.T.Parms[1:] {
+			if fun, ok := p.(*FuncType); ok {
+				s.T.Ret = fun.Ret
+				break
+			}
 		}
 	}
+
+	// For each parameter we expect it to be a function type
+	// possibly with a parameter (if the corresponding case is typed)
+	// and with a result matching s.T.Ret.
+	//
+	// Some parameters may have already been substituted;
+	// if so, they must be implicitly convertible to the desired type.
 	for i, c := range s.Cases {
+		var parmType *FuncType
 		switch {
 		case c == nil:
-			s.T.Parms[1+i] = &FuncType{Ret: s.T.Ret, L: s.Union.L}
+			parmType = &FuncType{Ret: s.T.Ret, L: s.Union.L}
 		case c.Type == nil:
-			s.T.Parms[1+i] = &FuncType{Ret: s.T.Ret, L: c.L}
+			parmType = &FuncType{Ret: s.T.Ret, L: c.L}
 		default:
-			s.T.Parms[1+i] = &FuncType{Parms: []Type{c.Type}, Ret: s.T.Ret, L: c.L}
+			parmType = &FuncType{Parms: []Type{c.Type}, Ret: s.T.Ret, L: c.L}
 		}
+		if tv, ok := s.T.Parms[1+i].(*TypeVar); !ok || tv.Def != s.typeParms[2+i] {
+			// It has already ben substituted, so we need to check it converts.
+			srcPat := pattern(s.T.Parms[1+i])
+			srcPat.parms = s.typeParms
+			dstPat := pattern(parmType)
+			dstPat.parms = s.typeParms
+			if _, cn := convertType(srcPat, dstPat, false); cn != nil {
+				// Set the parm type here so the error message reads correctly.
+				s.T.Parms[1+i] = parmType
+				n := newNote("%s: cannot convert argument %d (%s) to %s", s, i, srcPat, dstPat)
+				n.setLoc(s.T.Parms[1+i])
+				n.setNotes([]note{cn})
+				return n
+			}
+		}
+		s.T.Parms[1+i] = parmType
 	}
 	return nil
 }

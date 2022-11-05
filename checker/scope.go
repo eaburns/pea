@@ -373,18 +373,18 @@ func (m *Mod) findIDs(name string) []id {
 		}
 		// Multiple default cases are not supported.
 		if defaultCases <= 1 {
-			sw := Switch{
-				N:     name,
-				Names: names,
-				T: &FuncType{
-					Parms: make([]Type, len(names)+1),
-				},
-				TypeParms: []*TypeParm{
-					{Name: "_"},
-					{Name: "_"},
-				},
+			// One for each case, one for the union, and one for the return.
+			parms, vars := newAnyParmsAndTypeVars(len(names) + 2)
+			parmTypes := make([]Type, len(vars)-1)
+			for i, v := range vars[1:] {
+				parmTypes[i] = v
 			}
-			sw.T.Parms[0] = &TypeVar{Name: "_", Def: sw.TypeParms[0]}
+			sw := Switch{
+				N:         name,
+				Names:     names,
+				T:         &FuncType{Parms: parmTypes, Ret: vars[0]},
+				typeParms: parms,
+			}
 			ids = append(ids, &sw)
 		}
 	}

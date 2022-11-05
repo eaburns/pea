@@ -385,35 +385,42 @@ func (s *Select) Type() Type { return s.T }
 type Switch struct {
 	// N is the name of the switch function.
 	N string
+
 	// Names is the names of the cases; N split by ?.
 	Names []string
 
 	// T is the FuncType of the Switch.
-	//
-	// T.Parms is the correct length, but:
-	// before Switch.sub(), Parms[0] is a type variable of TypeParms[0],
-	// and the remaining elements are nil, and
-	// after Switch.sub() the elements are the correct type for the switch.
-	//
-	// T.Ret is nil until after Switch.sub().
 	T *FuncType
-
-	// TypeParms are the type parameters.
-	//
-	// TypeParms[0] is the fake type parameter representing the union type.
-	// By the spec, there are Switch functions defined directly on every union type,
-	// but we represent this lazily by using a type parameter for it,
-	// and returning an error from Switch.sub()
-	// if that parameter is substituted with a non-union.
-	//
-	// TypeParms[1] is the type parameter of the return type.
-	TypeParms []*TypeParm
 
 	// Union is the union type being switched.
 	Union *UnionType
 
+	// Cases are the (ordered) cases of the switch function.
 	// Cases[i] is nil for the default _? case.
 	Cases []*CaseDef
+
+	// typeParms are the fake type parameter for the union type and case types.
+	// By the spec, there are Switch functions defined on every union literal type,
+	// but we represent this lazily by using type parameters and returning an error
+	// from Switch.sub() if that parameter is substituted with a non-struct.
+	//
+	// typeParms[0] is the type parameter of the return type.
+	// typeParms[1] is the type parameter of the union reference type.
+	// typeParms[2…N+1] are type parameters of the function parameters.
+	// For example, typeParms[2] is a type parameter
+	// that is expected to be substituted with a function type
+	// appropriate to the 1st case function parameter type.
+	//
+	// If typeParms is non-nil, the T.Parms and T.Ret
+	// are TypeVars defined by the typeParms.
+	// If typeParms is nil, T.Parm[0] is as reference literal of the Struct type,
+	// T.Parms[1:] are the parameter types corresponding to the Cases,
+	// and T.Ret is the return type.
+	//
+	// Union is nil until parm 0 is successfully substituted.
+	//
+	// Cases is nil until parm0 is successfully substituted.
+	typeParms []*TypeParm
 }
 
 func (s *Switch) Type() Type { return s.T }
