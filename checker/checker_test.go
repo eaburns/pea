@@ -3061,7 +3061,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 					src: `
 						Type t int
 						Func t() t { return: t :: 0 }
-						Func +(a t, b t, c t) t { return: a + b + c }
+						Func +(a t, b t, c t) t { return: t :: (int :: a) + (int :: b) + (int :: c) }
 					`,
 				},
 			},
@@ -4160,52 +4160,6 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "func +(_ int, _ int)int",
 			call: "1 + 2",
 			err:  "ambiguous call",
-		},
-		{
-			name: "built-in op, other mod int",
-			src: `
-				import "other"
-				func make_foo() other#foo
-			`,
-			otherMod: testMod{
-				path: "other",
-				src: `
-					Type foo int64
-				`,
-			},
-			call: "make_foo() + make_foo()",
-			want: "built-in +(other#foo, other#foo)other#foo",
-		},
-		{
-			name: "built-in op, other mod unexported, opaque int fails",
-			src: `
-				import "other"
-				func make_foo() other#foo
-			`,
-			otherMod: testMod{
-				path: "other",
-				src: `
-					Type foo := _foo
-					type _foo int32
-				`,
-			},
-			call: "make_foo() + make_foo()",
-			err:  `built-in \+\(T, T\)T: does not support type other#_foo`,
-		},
-		{
-			name: "built-in op, other mod opaque int fails",
-			src: `
-				import "other"
-				func make_foo() other#foo
-			`,
-			otherMod: testMod{
-				path: "other",
-				src: `
-					Type foo (int32)
-				`,
-			},
-			call: "make_foo() + make_foo()",
-			err:  `built-in \+\(T, T\)T: does not support type other#foo`,
 		},
 		{
 			name: "built-in array index, no expected type",

@@ -702,27 +702,7 @@ var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Ui
 var numTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64}
 
 func (b *Builtin) sub(bind map[*TypeParm]Type) note {
-	typ, ok := bind[b.TypeParm]
-	if !ok {
-		return nil
-	}
-	switch b.Op {
-	case BitNot, BitXor, BitAnd, BitOr, LeftShift, RightShift:
-		// TODO: Disallow bit-wise operands by default on defined integer types.
-		if !allowed(intTypes, typ) {
-			return newNote("%s: does not support type %s", b, typ)
-		}
-		bind[b.TypeParm] = valueType(typ)
-	case Negate, Minus, Plus, Times, Divide, Modulus:
-		// TODO: Disallow arithmetic operands by default on defined numeric types.
-		if !allowed(numTypes, typ) {
-			return newNote("%s: does not support type %s", b, typ)
-		}
-		bind[b.TypeParm] = valueType(typ)
-	}
-	for i := range b.Parms {
-		b.Parms[i] = subType(bind, b.Parms[i])
-	}
+	b.Parms = subTypes(bind, b.Parms)
 	b.Ret = subType(bind, b.Ret)
 	return nil
 }
