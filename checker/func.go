@@ -285,7 +285,11 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 	}
 	bind := make(map[*TypeParm]Type)
 	for i := 0; i < dst.arity(); i++ {
-		cvt, notes := convert(nil, srcFunPat.parm(i), dst.parm(i), false, &bind)
+		pat, cvt, notes := convert(nil, srcFunPat.parm(i), dst.parm(i), false, &bind)
+		if !pat.isGroundType() {
+			cvt = nil
+			notes = append(notes, newNote("cannot infer type %s", pat))
+		}
 		if cvt == nil {
 			n := newNote("%s: cannot convert parameter %d %s to %s",
 				dst, i, srcFunPat.parm(i), dst.parm(i))
@@ -307,7 +311,11 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 			return nil, &unifyFuncFailure{note: n1, parms: i}
 		}
 	}
-	cvt, notes := convert(nil, dst.ret(), srcFunPat.ret(), false, &bind)
+	pat, cvt, notes := convert(nil, dst.ret(), srcFunPat.ret(), false, &bind)
+	if !pat.isGroundType() {
+		cvt = nil
+		notes = append(notes, newNote("cannot infer type %s", pat))
+	}
 	if cvt == nil {
 		n := newNote("%s: cannot convert returned %s to %s",
 			dst, dst.ret(), srcFunPat.ret())

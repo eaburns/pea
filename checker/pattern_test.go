@@ -724,7 +724,6 @@ func TestConvert(t *testing.T) {
 		{src: "&byte_array", dst: "&string_val", explicit: true, want: c("&byte_array", Deref, StrConvert, Ref, "&string_val")},
 
 		// Intersection.
-		{src: "_", dst: "_", want: nil},
 		{src: "int", dst: "_", want: c("int", Noop, "int")},
 		{src: "int_val", dst: "_", want: c("int_val", Noop, "int_val")},
 		{src: "&int", dst: "_", want: c("&int", Noop, "&int")},
@@ -740,7 +739,7 @@ func TestConvert(t *testing.T) {
 		{src: "[.x int, .y string]", dst: "(_, _) pair", want: c("[.x int, .y string]", Noop, "(int, string) pair")},
 		{src: "(int, string) pair", dst: "(_, _) pair2", explicit: true, want: c("(int, string) pair", Noop, "(int, string) pair2")},
 		// TODO: _ gets renamed to A during parseTestPattern.
-		{src: "[.x int, .y _]", dst: "[.x _, .y string]", want: c("[.x int, .y A]", Noop, "[.x int, .y string]")},
+		{src: "[.x int, .y _]", dst: "[.x _, .y string]", want: c("[.x int, .y _0]", Noop, "[.x int, .y string]")},
 
 		// Some obvious failing conversions.
 		{src: "[.x int]", dst: "int_val", explicit: true, want: nil},
@@ -748,10 +747,10 @@ func TestConvert(t *testing.T) {
 		{src: "[.x int]", dst: "[x? int]", explicit: true, want: nil},
 		{src: "(){}", dst: "[int]", explicit: true, want: nil},
 
-		// It is an error if the conversion does not fully ground the resulting type.
-		{src: "_", dst: "_", explicit: false, want: nil},
-		{src: "_", dst: "_", explicit: true, want: nil},
-		{src: "[.x _, .y _]", dst: "[.x int, .y _]", want: nil},
+		// It is not an error if the conversion does not fully ground the resulting type.
+		{src: "_", dst: "_", explicit: false, want: c("_0", Noop, "_0")},
+		{src: "_", dst: "_", explicit: true, want: c("_0", Noop, "_0")},
+		{src: "[.x _, .y _]", dst: "[.x int, .y _]", want: c("[.x _0, .y _1]", Noop, "[.x int, .y _0]")},
 
 		{
 			src:  "[.x int, .y int]",
@@ -784,13 +783,17 @@ func TestConvert(t *testing.T) {
 			src := parseTestPattern(t, mod, test.src)
 			dst := parseTestPattern(t, mod, test.dst)
 			var bind map[*TypeParm]Type
-			cvt, _ := convert(nil, src, dst, test.explicit, &bind)
+			pat, cvt, _ := convert(nil, src, dst, test.explicit, &bind)
 			if cvt == nil {
 				if len(test.want) != 0 {
 					t.Fatalf("convert(%s, %s, %v)=nil, want %v",
 						test.src, test.dst, test.explicit, test.want)
 				}
 				return // ok
+			}
+			if !eqType(pat.typ, cvt.Type()) {
+				t.Errorf("convert(%s, %s, %v) pat.typ=%s != cvt.Type()=%s",
+					test.src, test.dst, test.explicit, pat.typ, cvt.Type())
 			}
 			got := []interface{}{src.typ.String()}
 			var get func(cvt *Convert)
@@ -1046,8 +1049,8 @@ func TestPatternIntersection(t *testing.T) {
 			// _10 = [.x _1]
 			// _1 = [.x _11]
 			// _11 = [.x _0]
-			a: `[.a _0,		.b [.x _1],	.c _1,		.d [.x _0]]`,
-			b: `[.a [.x _10],	.b _10,	.c [.x _11],	.d _11]`,
+			a:    `[.a _0,		.b [.x _1],	.c _1,		.d [.x _0]]`,
+			b:    `[.a [.x _10],	.b _10,	.c [.x _11],	.d _11]`,
 			want: ``,
 		},
 	}
@@ -1626,7 +1629,7 @@ func parseTestPattern(t *testing.T, m *Mod, src string) typePattern {
 	t.Helper()
 	var parms []*TypeParm
 	parmSet := make(map[string]*TypeParm)
-	nextName := 'A'
+	nextName := 0
 	src2 := ""
 	var prev rune
 	for len(src) > 0 {
@@ -1650,10 +1653,7 @@ func parseTestPattern(t *testing.T, m *Mod, src string) typePattern {
 			name += "uniq" + strconv.Itoa(len(parmSet))
 		}
 		if _, ok := parmSet[name]; !ok {
-			if nextName > 'Z' {
-				panic("too many names")
-			}
-			p := &TypeParm{Name: string([]rune{nextName})}
+			p := &TypeParm{Name: fmt.Sprintf("_%d", nextName)}
 			nextName++
 			parmSet[name] = p
 			parms = append(parms, p)
