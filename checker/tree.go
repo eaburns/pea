@@ -310,14 +310,24 @@ type Func interface {
 	String() string
 	buildString(*strings.Builder) *strings.Builder
 	eq(Func) bool
+
+	// arity returns the number of parameters of the Func.
 	arity() int
-	// ret() and parm() return the return type pattern and parameter type patterns respectively.
-	// An implementation may assume that for i>0, parm(i) is not called until after parm(i-1)
-	// is called and a subsequent sub() call substitutes any type variables from parm(i-1);
-	// similarly ret() is not called until after parm(arity()-1).
+
+	// ret returns the type pattern of the return value.
 	ret() typePattern
+
+	// parm returns the ith parameter's type pattern.
 	parm(int) typePattern
-	sub(map[*TypeParm]Type) note
+
+	// sub substitutes bound type variables of the Func
+	// using the bindings from a substitution map.
+	// The first parameter is a set of type parameters
+	// that bind values in the map;
+	// these should be added to the Func's type parameters
+	// if any of the values bound to the parameter
+	// substitutes a type in the Func.
+	sub([]*TypeParm, map[*TypeParm]Type) note
 }
 
 type FuncInst struct {
@@ -326,23 +336,17 @@ type FuncInst struct {
 	Def       *FuncDef
 	T         *FuncType
 
-	// subbed parallels TypeParms.
-	// It indicates which TypeParms
-	// have been substituted.
-	// This is used to determine grounded types
-	// with respect to a FuncInst.
-	// It's not enough to look at whether
-	// the type has a TypeParm TypeVar in it,
-	// since the TypeVar may be substituted
-	// for an instance of itself in a recursive call;
-	// this is still "grounded".
-	subbed []bool
+	// typeParms contains all bound type parameters in this inst.
+	// The entries here are not the same *TypeParms
+	// from the definition, they copies.
+	typeParms []*TypeParm
 
 	// The following fields are populated by subFuncInst.
 
 	Parms  []*ParmDef
 	Locals []*LocalDef
 	Exprs  []Expr
+
 }
 
 func (f *FuncInst) Loc() loc.Loc { return f.Def.L }
@@ -456,9 +460,10 @@ const (
 type Builtin struct {
 	N        string
 	Op       Op
-	TypeParm *TypeParm
 	Parms    []Type
 	Ret      Type
+
+	typeParms []*TypeParm
 }
 
 func (b *Builtin) Type() Type { return &FuncType{Parms: b.Parms, Ret: b.Ret} }

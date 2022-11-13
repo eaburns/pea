@@ -1100,7 +1100,7 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 		// This is a not-parameterized function.
 		// Make sure we add it to the Insts memo table,
 		// so its Exprs get built.
-		memoizeFuncInst(newFuncInst(def, nil, def.Loc()))
+		memoizeFuncInst(newFuncInst(def, def.Loc()))
 	}
 	return errs
 }
@@ -1534,7 +1534,7 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 			notes = append(notes, n)
 			continue
 		}
-		if note := f.sub(bind); note != nil {
+		if note := f.sub(nil, bind); note != nil {
 			notes = append(notes, note)
 			continue
 		}
@@ -1559,7 +1559,7 @@ func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
 		// because it will use convertExpr which has the expression
 		// printed in the error message, but here we just have the type.
 		bind, convertNote := convertType(f.ret(), pat, implicit)
-		if note := f.sub(bind); note != nil {
+		if note := f.sub(nil, bind); note != nil {
 			return nil, append(notes, note)
 		}
 		if !f.ret().isGroundType() {
@@ -1585,7 +1585,7 @@ func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
 			notes = append(notes, n)
 			continue
 		}
-		if note := f.sub(bind); note != nil {
+		if note := f.sub(nil, bind); note != nil {
 			notes = append(notes, note)
 			continue
 		}

@@ -28,7 +28,7 @@ func TestSelectSubMatchingParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "[.x int]")
 
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[0]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -65,7 +65,7 @@ func TestSelectSubNonStructParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "int")
 
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[0]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note == nil {
 		t.Fatalf("sub=nil, want error")
 	}
@@ -76,7 +76,7 @@ func TestSelectSubStructWithWrongFieldsParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "[.y int]")
 
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[0]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note == nil {
 		t.Fatalf("sub=nil, want error")
 	}
@@ -105,7 +105,7 @@ func TestSelectSubRetBeforeParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "int")
 
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[1]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -144,7 +144,7 @@ func TestSelectSubRetBeforeParm0(t *testing.T) {
 	//
 
 	typ = parseTestType(t, mod, "[.x int]")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[0]: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -194,10 +194,9 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 	if bind == nil {
 		t.Fatalf("bind is nil")
 	}
-	if note = sel.sub(bind); note != nil {
+	if note = sel.sub(isect.parms, bind); note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
-	sel.typeParms = append(sel.typeParms, isect.parms...)
 
 	//
 	// Parm0 is still a reference to a type variable.
@@ -233,7 +232,7 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 	//
 
 	typ := parseTestType(t, mod, "[.x int]")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[0]: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -273,7 +272,7 @@ func TestSelectSubRetBeforeMismatchingParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "int")
 
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[1]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -281,7 +280,7 @@ func TestSelectSubRetBeforeMismatchingParm0(t *testing.T) {
 	// Substitute parm0 with a type that doesn't match the expected return, &int.
 
 	typ = parseTestType(t, mod, "[.x string]")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[0]: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note == nil {
 		t.Fatalf("sub=nil, want failed conversion error")
 	}
@@ -335,7 +334,7 @@ func TestSwitchSubMatchingParm0(t *testing.T) {
 	typ := parseTestType(t, mod, "[x?, y? int, z?]")
 
 	// We are substituting typeParms[1], which is the union argument.
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[1]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -377,7 +376,7 @@ func TestSwitchSubMatchingParm0IncompleteSwitch(t *testing.T) {
 	typ := parseTestType(t, mod, "[x?, y? int, z?, a?, b?, c?]")
 
 	// We are substituting typeParms[1], which is the union argument.
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[1]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -412,7 +411,7 @@ func TestSwitchSubParm1First(t *testing.T) {
 	typ := parseTestType(t, mod, "(){int}")
 
 	// Parm1 is typeParms[2]
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[2]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[2]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -450,7 +449,7 @@ func TestSwitchSubRetFirst(t *testing.T) {
 	typ := parseTestType(t, mod, "string")
 
 	// Ret is typeParms[0]
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[0]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -488,14 +487,14 @@ func TestSwitchSubRetThenParm0(t *testing.T) {
 
 	// Ret is typeParms[0]
 	typ := parseTestType(t, mod, "string")
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[0]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? int, z?]")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[1]: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -536,10 +535,9 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 	if bind == nil {
 		t.Fatalf("bind is nil")
 	}
-	if note = sel.sub(bind); note != nil {
+	if note = sel.sub(isect.parms, bind); note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
-	sel.typeParms = append(sel.typeParms, isect.parms...)
 	wantParms := []Type{
 		typeVar(sel.typeParms[1]),
 		typeVar(sel.typeParms[2]),
@@ -561,7 +559,7 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 
 	// Parm0 is typeParms[1]
 	unionType := parseTestType(t, mod, "[x?, y? int, z?]")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[1]: unionType})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: unionType})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -586,7 +584,7 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 
 	// Ret is now bind[retTypeParm].(*TypeVar).Def
 	typ := parseTestType(t, mod, "string")
-	note = sel.sub(map[*TypeParm]Type{bind[retTypeParm].(*TypeVar).Def: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{bind[retTypeParm].(*TypeVar).Def: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -616,14 +614,14 @@ func TestSwitchSubParm2ThenMatchingParm0(t *testing.T) {
 
 	// Parm2 is typeParms[3]
 	typ := parseTestType(t, mod, "(int){string}")
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[3]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[3]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? int, z?]")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[1]: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -655,14 +653,14 @@ func TestSwitchSubParm2ThenParameterMismatchingParm0(t *testing.T) {
 
 	// Parm2 is typeParms[3]
 	typ := parseTestType(t, mod, "(int){string}")
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[3]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[3]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? float64, z?]")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[1]: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note == nil {
 		t.Error("sub=nil, want error", note)
 	}
@@ -674,14 +672,14 @@ func TestSwitchSubNonFunctionParm2ThenParm0(t *testing.T) {
 
 	// Parm2 is typeParms[3]
 	typ := parseTestType(t, mod, "int")
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[3]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[3]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? float64, z?]")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[1]: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note == nil {
 		t.Error("sub=nil, want error", note)
 	}
@@ -693,21 +691,21 @@ func TestSwitchSubRetThenMismatchingParm2ThenParm0(t *testing.T) {
 
 	// Ret is typeParms[0]
 	typ := parseTestType(t, mod, "float64")
-	note := sel.sub(map[*TypeParm]Type{sel.typeParms[0]: typ})
+	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm2 is typeParms[3]
 	typ = parseTestType(t, mod, "(int){string}")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[3]: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[3]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? int, z?]")
-	note = sel.sub(map[*TypeParm]Type{sel.typeParms[1]: typ})
+	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note == nil {
 		t.Error("sub=nil, want error", note)
 	}

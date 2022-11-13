@@ -7,10 +7,10 @@ import (
 	"github.com/eaburns/pea/loc"
 )
 
-func (f *FuncDecl) arity() int                  { return len(f.Parms) }
-func (f *FuncDecl) ret() typePattern            { return pattern(f.Ret) }
-func (f *FuncDecl) parm(i int) typePattern      { return pattern(f.Parms[i]) }
-func (f *FuncDecl) sub(map[*TypeParm]Type) note { return nil }
+func (f *FuncDecl) arity() int                               { return len(f.Parms) }
+func (f *FuncDecl) ret() typePattern                         { return pattern(f.Ret) }
+func (f *FuncDecl) parm(i int) typePattern                   { return pattern(f.Parms[i]) }
+func (f *FuncDecl) sub([]*TypeParm, map[*TypeParm]Type) note { return nil }
 
 func (f *FuncDecl) eq(other Func) bool {
 	o, ok := other.(*FuncDecl)
@@ -28,7 +28,7 @@ func (f *FuncDecl) eq(other Func) bool {
 func (f *FuncInst) arity() int { return len(f.T.Parms) }
 
 func (f *FuncInst) ret() typePattern {
-	return typePattern{parms: f.typeParms(), typ: f.T.Ret}
+	return typePattern{parms: f.typeParms, typ: f.T.Ret}
 }
 
 func (f *FuncInst) parm(i int) typePattern {
@@ -38,28 +38,11 @@ func (f *FuncInst) parm(i int) typePattern {
 		// but we must be calling parm() during overload resolution.
 		panic(fmt.Sprintf("impossible: %s\n", f.Name()))
 	}
-	return typePattern{parms: f.typeParms(), typ: f.T.Parms[i]}
+	return typePattern{parms: f.typeParms, typ: f.T.Parms[i]}
 }
 
-func (f *FuncInst) typeParms() []*TypeParm {
-	parms := make([]*TypeParm, 0, len(f.Def.TypeParms))
-	for i := range f.Def.TypeParms {
-		if f.subbed == nil || !f.subbed[i] {
-			parms = append(parms, &f.Def.TypeParms[i])
-		}
-	}
-	return parms
-}
-
-func (f *FuncInst) sub(sub map[*TypeParm]Type) note {
-	if f.subbed == nil && len(f.Def.TypeParms) > 0 {
-		f.subbed = make([]bool, len(f.Def.TypeParms))
-	}
-	for i := range f.Def.TypeParms {
-		if _, ok := sub[&f.Def.TypeParms[i]]; ok {
-			f.subbed[i] = true
-		}
-	}
+func (f *FuncInst) sub(parms []*TypeParm, sub map[*TypeParm]Type) note {
+	f.typeParms = append(f.typeParms, parms...)
 	for i := range f.TypeArgs {
 		f.TypeArgs[i] = subType(sub, f.TypeArgs[i])
 	}
@@ -91,14 +74,6 @@ func instFuncConstraints(x scope, l loc.Loc, fun Func) note {
 		}
 		f.IfaceArgs[i] = fun
 
-		if f.subbed == nil && len(f.Def.TypeParms) > 0 {
-			f.subbed = make([]bool, len(f.Def.TypeParms))
-		}
-		for i := range f.Def.TypeParms {
-			if _, ok := bind[&f.Def.TypeParms[i]]; ok {
-				f.subbed[i] = true
-			}
-		}
 		for i := range f.TypeArgs {
 			f.TypeArgs[i] = subType(bind, f.TypeArgs[i])
 		}
@@ -150,17 +125,10 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 		markVerbose(notFoundNotes)
 	}
 
-	typeParms := make([]*TypeParm, len(funInst.Def.TypeParms))
-	for i := range funInst.Def.TypeParms {
-		if funInst.subbed == nil || !funInst.subbed[i] {
-			typeParms[i] = &funInst.Def.TypeParms[i]
-		}
-	}
-	declPat := typePattern{parms: typeParms, typ: constraint.Type()}
-
 	var n int
 	var unifyFails []*unifyFuncFailure
 	binds := make([]map[*TypeParm]Type, len(funcs))
+	declPat := typePattern{parms: funInst.typeParms, typ: constraint.Type()}
 	for _, f := range funcs {
 		funType := funInst.Def.Iface[i].Type().(*FuncType)
 		bind, fail := unifyFunc(x, l, f, funType, declPat)
@@ -304,7 +272,7 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 			n.setLoc(dst)
 			return nil, &unifyFuncFailure{note: n, parms: i}
 		}
-		if n := dst.sub(bind); n != nil {
+		if n := dst.sub(nil, bind); n != nil {
 			n1 := newNote("%s: parameter %d type substitution failed", dst, i)
 			n1.setNotes([]note{n})
 			n.setLoc(dst)
@@ -330,7 +298,7 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 		n.setLoc(dst)
 		return nil, &unifyFuncFailure{note: n, parms: dst.arity()}
 	}
-	if n := dst.sub(bind); n != nil {
+	if n := dst.sub(nil, bind); n != nil {
 		n1 := newNote("%s: return type substitution failed", dst)
 		n1.setNotes([]note{n})
 		n.setLoc(dst)
@@ -455,14 +423,13 @@ func (s *Select) ret() typePattern {
 	return typePattern{parms: s.typeParms, typ: s.T.Ret}
 }
 
-func (s *Select) sub(bind map[*TypeParm]Type) note {
+func (s *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) note {
+	s.typeParms = append(s.typeParms, parms...)
 	if s.Struct != nil {
 		// We have already substituted for the struct type,
 		// this Select is fully grounded; nothing more to do.
 		return nil
 	}
-
-	defer removeBoundTypeParms(&s.typeParms, bind)
 
 	// If this sub is not for the 0th parameter, there is nothing more to do.
 	// However, if it is for the 0th type, we need to make sure it's a struct literal,
@@ -510,21 +477,6 @@ func (s *Select) sub(bind map[*TypeParm]Type) note {
 	return nil
 }
 
-func removeBoundTypeParms(typeParms *[]*TypeParm, bind map[*TypeParm]Type) {
-	var n int
-	for _, tp := range *typeParms {
-		if _, ok := bind[tp]; !ok {
-			(*typeParms)[n] = tp
-			n++
-		}
-	}
-	if n == 0 {
-		*typeParms = nil
-	} else {
-		*typeParms = (*typeParms)[:n]
-	}
-}
-
 func (s *Select) eq(other Func) bool {
 	o, ok := other.(*Select)
 	return ok && s.N == o.N && s.Struct == o.Struct && s.Field == o.Field
@@ -540,7 +492,9 @@ func (s *Switch) ret() typePattern {
 	return typePattern{parms: s.typeParms, typ: s.T.Ret}
 }
 
-func (s *Switch) sub(bind map[*TypeParm]Type) note {
+func (s *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) note {
+	s.typeParms = append(s.typeParms, parms...)
+
 	// If this is not the first time (first determined by len(s.Cases)>0)
 	// we are substituting the union parameter (type parameter 1),
 	// the only thing to do is substitute the parameter and return types.
@@ -692,24 +646,21 @@ func (b *Builtin) arity() int { return len(b.Parms) }
 
 func (b *Builtin) ret() typePattern {
 	p := pattern(b.Ret)
-	if b.TypeParm != nil {
-		p.parms = []*TypeParm{b.TypeParm}
-	}
+	p.parms = b.typeParms
 	return p
 }
 
 func (b *Builtin) parm(i int) typePattern {
 	p := pattern(b.Parms[i])
-	if b.TypeParm != nil {
-		p.parms = []*TypeParm{b.TypeParm}
-	}
+	p.parms = b.typeParms
 	return p
 }
 
 var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64}
 var numTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64}
 
-func (b *Builtin) sub(bind map[*TypeParm]Type) note {
+func (b *Builtin) sub(parms []*TypeParm, bind map[*TypeParm]Type) note {
+	b.typeParms = append(b.typeParms, parms...)
 	b.Parms = subTypes(bind, b.Parms)
 	b.Ret = subType(bind, b.Ret)
 	return nil
@@ -741,10 +692,10 @@ func (b *Builtin) eq(other Func) bool {
 	return eqType(b.Ret, o.Ret)
 }
 
-func (e *ExprFunc) arity() int                  { return len(e.FuncType.Parms) }
-func (e *ExprFunc) ret() typePattern            { return pattern(e.FuncType.Ret) }
-func (e *ExprFunc) parm(i int) typePattern      { return pattern(e.FuncType.Parms[i]) }
-func (e *ExprFunc) sub(map[*TypeParm]Type) note { return nil }
+func (e *ExprFunc) arity() int                               { return len(e.FuncType.Parms) }
+func (e *ExprFunc) ret() typePattern                         { return pattern(e.FuncType.Ret) }
+func (e *ExprFunc) parm(i int) typePattern                   { return pattern(e.FuncType.Parms[i]) }
+func (e *ExprFunc) sub([]*TypeParm, map[*TypeParm]Type) note { return nil }
 
 func (e *ExprFunc) eq(other Func) bool {
 	o, ok := other.(*ExprFunc)
@@ -767,10 +718,10 @@ func (i *idFunc) buildString(s *strings.Builder) *strings.Builder {
 	s.WriteString(i.String())
 	return s
 }
-func (id *idFunc) arity() int                  { return len(id.funcType.Parms) }
-func (id *idFunc) ret() typePattern            { return pattern(id.funcType.Ret) }
-func (id *idFunc) parm(i int) typePattern      { return pattern(id.funcType.Parms[i]) }
-func (id *idFunc) sub(map[*TypeParm]Type) note { return nil }
+func (id *idFunc) arity() int                               { return len(id.funcType.Parms) }
+func (id *idFunc) ret() typePattern                         { return pattern(id.funcType.Ret) }
+func (id *idFunc) parm(i int) typePattern                   { return pattern(id.funcType.Parms[i]) }
+func (id *idFunc) sub([]*TypeParm, map[*TypeParm]Type) note { return nil }
 
 // eq should never be called; it's used to check equality of FuncInst ifaces.
 // FuncInst ifaces should never have an idFunc, since it is a temporary,

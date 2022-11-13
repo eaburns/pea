@@ -20,6 +20,10 @@ func subFuncInst(inst *FuncInst) {
 		Types:  make(map[*TypeParm]Type),
 		Funcs:  make(map[*FuncDecl]Func),
 	}
+
+	// Here we use the Def.TypeParms instead of the inst.typeParms
+	// to populate the substitution map, because we are going to be substituting
+	// from the fields of Def, not from the fields of the FuncInst itself.
 	for i := range inst.TypeArgs {
 		bindings.Types[&inst.Def.TypeParms[i]] = inst.TypeArgs[i]
 	}

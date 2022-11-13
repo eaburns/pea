@@ -392,11 +392,15 @@ func (m *Mod) findIDs(name string) []id {
 		if builtins[i].N == name {
 			b := builtins[i]
 			b.Parms = append([]Type{}, b.Parms...) // copy
-			if b.TypeParm != nil {
+			if len(b.typeParms) > 0 {
+				if len(b.typeParms) > 1 {
+					panic("impossible")
+				}
 				// create a unique type parameter to replaced _P.
-				b.TypeParm = &TypeParm{Name: "T"}
+				p := &TypeParm{Name: "T"}
+				b.typeParms = []*TypeParm{p}
 				bind := map[*TypeParm]Type{
-					_P: &TypeVar{Name: b.TypeParm.Name, Def: b.TypeParm},
+					_P: &TypeVar{Name: p.Name, Def: p},
 				}
 				for i := range b.Parms {
 					b.Parms[i] = subType(bind, b.Parms[i])
@@ -466,8 +470,8 @@ var (
 	_empty  = &StructType{}
 
 	builtins = []Builtin{
-		{N: ":=", Op: Assign, TypeParm: _P, Parms: []Type{refLiteral(_T), _T}, Ret: _empty},
-		{N: "new", Op: NewArray, TypeParm: _P, Parms: []Type{_int, _T}, Ret: arrayLiteral(_T)},
+		{N: ":=", Op: Assign, typeParms: []*TypeParm{_P}, Parms: []Type{refLiteral(_T), _T}, Ret: _empty},
+		{N: "new", Op: NewArray, typeParms: []*TypeParm{_P}, Parms: []Type{_int, _T}, Ret: arrayLiteral(_T)},
 
 		{N: "^", Op: BitNot, Parms: []Type{_int}, Ret: _int},
 		{N: "^", Op: BitXor, Parms: []Type{_int, _int}, Ret: _int},
@@ -662,11 +666,11 @@ var (
 		{N: "=", Op: Eq, Parms: []Type{_float64, _float64}, Ret: _bool},
 		{N: "<=>", Op: Cmp, Parms: []Type{_float64, _float64}, Ret: _partialOrdering},
 
-		{N: "[]", Op: Index, TypeParm: _P, Parms: []Type{arrayLiteral(_T), _int}, Ret: refLiteral(_T)},
-		{N: "[]", Op: Slice, TypeParm: _P, Parms: []Type{arrayLiteral(_T), _int, _int}, Ret: arrayLiteral(_T)},
+		{N: "[]", Op: Index, typeParms: []*TypeParm{_P}, Parms: []Type{arrayLiteral(_T), _int}, Ret: refLiteral(_T)},
+		{N: "[]", Op: Slice, typeParms: []*TypeParm{_P}, Parms: []Type{arrayLiteral(_T), _int, _int}, Ret: arrayLiteral(_T)},
 		{N: "[]", Op: Index, Parms: []Type{_string, _int}, Ret: _uint8},
 		{N: "[]", Op: Slice, Parms: []Type{_string, _int, _int}, Ret: _string},
-		{N: ".length", Op: Length, TypeParm: _P, Parms: []Type{arrayLiteral(_T)}, Ret: _int},
+		{N: ".length", Op: Length, typeParms: []*TypeParm{_P}, Parms: []Type{arrayLiteral(_T)}, Ret: _int},
 		{N: ".length", Op: Length, Parms: []Type{_string}, Ret: _int},
 
 		{N: "panic", Op: Panic, Parms: []Type{_string}, Ret: _end},
@@ -801,26 +805,29 @@ nextDef:
 					continue nextDef
 				}
 			}
-
-			var typeArgs []Type
-			for i := range def.TypeParms {
-				typeArgs = append(typeArgs, &TypeVar{
-					Name: def.TypeParms[i].Name,
-					Def:  &def.TypeParms[i],
-					L:    def.TypeParms[i].L,
-				})
-			}
-			ids = append(ids, newFuncInst(def, typeArgs, def.L))
+			ids = append(ids, newFuncInst(def, def.L))
 		}
 	}
 	return ids
 }
 
-func newFuncInst(def *FuncDef, typeArgs []Type, l loc.Loc) *FuncInst {
+func newFuncInst(def *FuncDef, l loc.Loc) *FuncInst {
+	// Make a unique set of type parameters for this instance
+	// instead of reusing those of the definition.
 	sub := make(map[*TypeParm]Type)
+	typeArgs := make([]Type, len(def.TypeParms))
+	typeParms := make([]*TypeParm, len(def.TypeParms))
 	for i := range def.TypeParms {
+		copy := def.TypeParms[i]
+		typeParms[i] = &copy
+		typeArgs[i] = &TypeVar{
+			Name: copy.Name,
+			Def:  &copy,
+			L:    copy.L,
+		}
 		sub[&def.TypeParms[i]] = typeArgs[i]
 	}
+
 	var parms []Type
 	for _, p := range def.Parms {
 		parms = append(parms, subType(sub, p.T))
@@ -836,6 +843,7 @@ func newFuncInst(def *FuncDef, typeArgs []Type, l loc.Loc) *FuncInst {
 		IfaceArgs: ifaceArgs,
 		T:         typ,
 		Def:       def,
+		typeParms: typeParms,
 	}
 	return inst
 }
