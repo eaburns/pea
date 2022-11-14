@@ -343,6 +343,9 @@ type If struct {
 	Op OpKind
 	// X and XValue are mutually exclusive.
 	// If XValue is non-nil, it is used, otherwise X.
+	// X must not be negative.
+	//
+	// TODO: get rid of If.X and just use If.XValue.
 	X      int
 	XValue Value
 	Yes    *BasicBlock

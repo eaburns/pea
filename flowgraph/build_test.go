@@ -30,7 +30,9 @@ func TestBuildType(t *testing.T) {
 		{src: "type u [.x int]", typ: "[.nest [.x int]]", want: "struct{nest struct{x int64}}"},
 		{src: "type t [.loop &t]", typ: "t", want: "test.t"},
 		{typ: "(int, string){uint8}", want: "block<func(*struct{}, int64, string)uint8>"},
-		{typ: "[one?, two?, three?]", want: "int64"},
+		{typ: "[false?, true?]", want: "uint8"},
+		{typ: "[less?, equal?, greater?]", want: "uint8"},
+		{typ: "[one?, two?, three?]", want: "uint8"},
 		{typ: "[none?, some? &int]", want: "*int64"},
 		{typ: "[none?, some? int]", want: "struct{tag int64; data union{some int64}}"},
 		{
@@ -217,7 +219,7 @@ func TestSimplifyCmpSwitchToComparison(t *testing.T) {
     x0 := 1
     x1 := 2
     x2 := x0 %s x1
-    x3 := alloc(int64)
+    x3 := alloc(uint8)
     store(*x3, x2)
     return
 }`

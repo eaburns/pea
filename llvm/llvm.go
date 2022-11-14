@@ -66,7 +66,6 @@ type gen struct {
 	w        io.Writer
 	files    loc.Files
 	intBits  int
-	boolBits int
 	panicNum map[*flowgraph.Op]int
 	callNum  map[*flowgraph.Call]int
 	next     int
@@ -84,7 +83,7 @@ func (g *gen) tmp() tmp {
 type intType int
 
 func (g *gen) int() intType  { return intType(g.intBits) }
-func (g *gen) bool() intType { return intType(g.boolBits) }
+func (g *gen) bool() intType { return intType(8) }
 
 type typeVal struct{ Value flowgraph.Value }
 
@@ -93,7 +92,6 @@ func newGen(w io.Writer, files loc.Files) *gen {
 		w:        w,
 		files:    files,
 		intBits:  64,
-		boolBits: 64,
 		panicNum: make(map[*flowgraph.Op]int),
 		callNum:  make(map[*flowgraph.Call]int),
 	}

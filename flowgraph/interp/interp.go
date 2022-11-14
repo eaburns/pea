@@ -146,7 +146,15 @@ func (interp *Interp) step() {
 			}
 		case flowgraph.Less:
 			if instr.XValue == nil {
-				yes = x.Val().(SignedInt).Int64() < int64(instr.X)
+				switch x.Val().(type) {
+				case SignedInt:
+					yes = x.Val().(SignedInt).Int64() < int64(instr.X)
+				case UnsignedInt:
+					if instr.X < 0 {
+						panic("bad x")
+					}
+					yes = x.Val().(UnsignedInt).Uint64() < uint64(instr.X)
+				}
 			} else {
 				y := frame.vals[instr.XValue]
 				switch x.Val().(type) {

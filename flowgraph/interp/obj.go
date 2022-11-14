@@ -525,13 +525,12 @@ func bin(o, p Number, op flowgraph.OpKind) Number {
 	}
 }
 
-// TODO: Bool may not always be Int64.
 // Instead, we should probably make bool always be int8 on all archs.
 func Bool(b bool) Number {
 	if b {
-		return Int64(1)
+		return Uint8(1)
 	}
-	return Int64(0)
+	return Uint8(0)
 }
 
 func convert(obj Val, typ flowgraph.Type) Val {

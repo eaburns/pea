@@ -2,6 +2,7 @@ package flowgraph
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -301,7 +302,16 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 		}
 		switch {
 		case len(cs) == 0:
-			return mb.intType()
+			switch {
+			case len(typ.Cases) > math.MaxUint32:
+				return &IntType{Size: 64, Unsigned: true}
+			case len(typ.Cases) > math.MaxUint16:
+				return &IntType{Size: 32, Unsigned: true}
+			case len(typ.Cases) > math.MaxUint8:
+				return &IntType{Size: 16, Unsigned: true}
+			default:
+				return &IntType{Size: 8, Unsigned: true}
+			}
 		case isPointer(typ):
 			return cs[0].Type
 		default:
@@ -365,15 +375,9 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 		case checker.Float64:
 			return &FloatType{Size: 64}
 		case checker.String:
-			return &StructType{
-				Name: "string",
-				Fields: []*FieldDef{
-					{Num: 0, Name: "length", Type: mb.intType()},
-					{Num: 1, Name: "data", Type: &ArrayType{
-						Elem: &IntType{Size: 8, Unsigned: true},
-					}},
-				},
-			}
+			// stringType() returns the address of the string struct,
+			// but here we need the struct itself.
+			return mb.stringType().Elem
 		default:
 			panic(fmt.Sprintf("bad checker.BasicKind: %d", typ.Kind))
 		}
@@ -2221,7 +2225,7 @@ func (bb *blockBuilder) unionLit(lit *checker.UnionLit) (*blockBuilder, Value) {
 	n := caseNum(lit.Union, lit.Case.Name)
 	switch t := bb.buildType(lit.T).(type) {
 	case *IntType:
-		return bb, bb.intLit(strconv.Itoa(n), bb.fun.mod.intType())
+		return bb, bb.intLit(strconv.Itoa(n), t)
 	case *AddrType:
 		if v == nil {
 			return bb, bb.null(t)
@@ -2421,6 +2425,9 @@ func (bb *blockBuilder) call(fun Value, args []Value) *Call {
 }
 
 func (bb *blockBuilder) ifEq(v Value, x int, yes, no *blockBuilder) *If {
+	if x < 0 {
+		panic("bad x — must be non-negative")
+	}
 	r := &If{
 		Value: v,
 		Op:    Eq,
@@ -2434,6 +2441,9 @@ func (bb *blockBuilder) ifEq(v Value, x int, yes, no *blockBuilder) *If {
 }
 
 func (bb *blockBuilder) ifLess(v Value, x int, yes, no *blockBuilder) *If {
+	if x < 0 {
+		panic("bad x — must be non-negative")
+	}
 	r := &If{
 		Value: v,
 		Op:    Less,
