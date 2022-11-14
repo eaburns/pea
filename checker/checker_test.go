@@ -3648,6 +3648,27 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in a?b?(&[a?, b?], (){}, (){})",
 		},
 		{
+			name: "built-in if-switch not-typed cases",
+			src: `
+				type a_or_b [a?, b?]
+				func make() a_or_b
+			`,
+			call: "if: make() a: {} b: {}",
+			want: "built-in if:a:b:(&[a?, b?], (){}, (){})",
+		},
+		{
+			name: "built-in if-switch case functions return end in types",
+			src: `
+				type a_or_b [a?, b?]
+				func make() a_or_b
+			`,
+			// It doesn't matter that one arg ends with an int and another a string.
+			// The return type of the whole thing is [.],
+			// and so all argument functions result in [.].
+			call: "if: make() a: {5} b: {\"string\"}",
+			want: "built-in if:a:b:(&[a?, b?], (){}, (){})",
+		},
+		{
 			name: "built-in switch def union",
 			src: `
 				type a_or_b [a?, b?]
@@ -3679,6 +3700,15 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "make() a? (_ string) {1} b? (_ int) {1}",
 			want: "built-in a?b?(&[a? string, b? int], (string){int}, (int){int})int",
+		},
+		{
+			name: "built-in if-switch typed cases",
+			src: `
+				type a_or_b [a? string, b? int]
+				func make() a_or_b
+			`,
+			call: "if: make() a: (_ string){1} b: (_ int){1}",
+			want: "built-in if:a:b:(&[a? string, b? int], (string){}, (int){})",
 		},
 		{
 			name: "built-in switch mixed typed and non-typed cases",

@@ -2133,8 +2133,10 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, pat typePattern) (Expr, 
 }
 
 func findCase(name string, u *UnionType) *CaseDef {
+	name = strings.TrimSuffix(name, "?")
+	name = strings.TrimSuffix(name, ":")
 	for i := range u.Cases {
-		if u.Cases[i].Name == name {
+		if strings.TrimSuffix(u.Cases[i].Name, "?") == name {
 			return &u.Cases[i]
 		}
 	}

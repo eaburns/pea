@@ -390,7 +390,7 @@ type Switch struct {
 	// N is the name of the switch function.
 	N string
 
-	// Names is the names of the cases; N split by ?.
+	// Names is the names of the cases; N split by ? or :.
 	Names []string
 
 	// T is the FuncType of the Switch.

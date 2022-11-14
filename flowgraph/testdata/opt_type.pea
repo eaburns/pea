@@ -23,9 +23,6 @@ func main() {
 Type T opt := [none?, some? T]
 Func some(t T) T opt { return: [some? t] }
 Func none() T opt { return: [none?] }
-Func if:some:(c T opt, s (T){}) { c some? s }
-Func if:some:none:(c T opt, s (T){}, n (){}) { c some? s none? n }
-Func if:none:(c T opt, n (){}) { c none? n }
 
 Func if:then:else:(c [false?, true?], t (){}, f (){}) { c true? t false? f }
 

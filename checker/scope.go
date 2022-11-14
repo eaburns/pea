@@ -363,11 +363,11 @@ func (m *Mod) findIDs(name string) []id {
 			},
 		})
 	}
-	if strings.HasSuffix(name, "?") {
+	if strings.HasPrefix(name, "if:") || strings.HasSuffix(name, "?") {
 		names := splitCaseNames(name)
 		defaultCases := 0
 		for _, n := range names {
-			if n == "_?" {
+			if n == "_?" || n == "_:" {
 				defaultCases++
 			}
 		}
@@ -384,6 +384,11 @@ func (m *Mod) findIDs(name string) []id {
 				Names:     names,
 				T:         &FuncType{Parms: parmTypes, Ret: vars[0]},
 				typeParms: parms,
+			}
+			if strings.HasPrefix(name, "if:") {
+				// We replace the return type with _empty,
+				// but keep the typeParm, since sub() expects it.
+				sw.T.Ret = _empty
 			}
 			ids = append(ids, &sw)
 		}
@@ -686,11 +691,15 @@ func splitCaseNames(str string) []string {
 	for i < len(str) {
 		r, w := utf8.DecodeRuneInString(str[i:])
 		i += w
-		if r == '?' {
+		if r == '?' || r == ':' {
 			names = append(names, str[:i])
 			str = str[i:]
 			i = 0
 		}
+	}
+	if len(names) > 0 && names[0] == "if:" {
+		// Only return the case names, so chomp the leading if.
+		names = names[1:]
 	}
 	return names
 }

@@ -513,7 +513,7 @@ func (s *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) note {
 	seen := make(map[*CaseDef]bool)
 	hasDefault := false
 	for _, name := range s.Names {
-		if name == "_?" {
+		if name == "_?" || name == "_:" {
 			hasDefault = true
 			s.Cases = append(s.Cases, nil)
 			continue
