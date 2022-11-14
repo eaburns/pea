@@ -1,18 +1,14 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 
-#include <stdio.h>
-
 #include "libpea.h"
 
-DEFINE_PEA_ARRAY_STRUCT(pea_uint8_array, uint8_t);
-DEFINE_PEA_ARRAY_STRUCT(pea_addr_array, struct pea_uint8_array);
-
-void sys__net__ip__lookup_host(struct pea_string* host, struct pea_addr_array* addrs, int32_t* ret) {
+PEA_FUNC2(pea_int32, sys__net__ip__lookup_host, pea_string* host, PEA_ARRAY(PEA_ARRAY(pea_uint8))* addrs) {
 	char *c_host = malloc(host->length+1);
 	memcpy(c_host, host->data, host->length);
 	c_host[host->length] = 0;
@@ -20,8 +16,8 @@ void sys__net__ip__lookup_host(struct pea_string* host, struct pea_addr_array* a
 	struct addrinfo hint = {0};
 	hint.ai_family = AF_UNSPEC;
 	struct addrinfo *addrinfos = NULL;
-	*ret = getaddrinfo(c_host, NULL, &hint, &addrinfos);
-	if (*ret != 0) {
+	int res = getaddrinfo(c_host, NULL, &hint, &addrinfos);
+	if (res != 0) {
 		goto exit;
 	}
 
@@ -32,10 +28,10 @@ void sys__net__ip__lookup_host(struct pea_string* host, struct pea_addr_array* a
 		}
 	}
 	int i = 0;
-	addrs->data = pea_malloc(sizeof(struct pea_uint8_array)*addrs->length);
+	addrs->data = pea_malloc(sizeof(PEA_ARRAY(pea_uint8))*addrs->length);
 	for (struct addrinfo *p = addrinfos; p != NULL; p = p->ai_next) {
 		if (p->ai_family == AF_INET) {
-			struct pea_uint8_array* pea_addr = &addrs->data[i];
+			PEA_ARRAY(pea_uint8)* pea_addr = &addrs->data[i];
 			struct sockaddr_in *sock = (struct sockaddr_in*) p->ai_addr;
 			in_addr_t addr = sock->sin_addr.s_addr;
 			pea_addr->length = 4;
@@ -48,7 +44,7 @@ void sys__net__ip__lookup_host(struct pea_string* host, struct pea_addr_array* a
 			continue;
 		}
 		if (p->ai_family == AF_INET6) {
-			struct pea_uint8_array* pea_addr = &addrs->data[i];
+			PEA_ARRAY(pea_uint8)* pea_addr = &addrs->data[i];
 			struct sockaddr_in6 *sock = (struct sockaddr_in6*) p->ai_addr;
 			addrs->data[i].length = 16;
 			addrs->data[i].data = pea_malloc(16);
@@ -62,4 +58,5 @@ exit:
 	if (addrinfos != NULL) {
 		freeaddrinfo(addrinfos);
 	}
+	PEA_RETURN(res);
 }

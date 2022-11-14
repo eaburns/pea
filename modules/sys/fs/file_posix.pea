@@ -126,9 +126,7 @@ type _dir [
 	.dir &DIR,
 ]
 
-// DIR is to be treated as an opaque address.
-// TODO: make DIR be &[.] once flowgraph crash is fixed.
-type DIR &int
+type DIR uintref
 
 // Opens a directory for reading.
 Func open_dir(path string) dir open_result {

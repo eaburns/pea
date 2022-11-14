@@ -2,18 +2,18 @@
 #include <sys/errno.h>
 #include <unistd.h>
 
-void sys__io__create_pipe(int32_t* read, int32_t* write, int32_t* ret) {
+#include "libpea.h"
+
+PEA_FUNC2(pea_int32, sys__io__create_pipe, pea_int32* read, pea_int32* write) {
 	int filedes[2];
 	for ( ; ; ) {
 		if (pipe(filedes) == 0) {
 			*read = filedes[0];
 			*write = filedes[1];
-			*ret = 0;
-			return;
+			PEA_RETURN(0);
 		}
 		if (errno != EINTR) {
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }

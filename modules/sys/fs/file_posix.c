@@ -9,101 +9,91 @@
 
 #include "libpea.h"
 
-static char* cstring(struct pea_string* str) {
+static char* cstring(pea_string* str) {
 	char* cstr = calloc(str->length + 1, 1);
 	memcpy(cstr, str->data, str->length);
 	return cstr;
 }
 
-void sys__fs__o_rdonly(int32_t *ret) { *ret = O_RDONLY; }
-void sys__fs__o_wronly(int32_t *ret) { *ret = O_WRONLY; }
-void sys__fs__o_rdwr(int32_t *ret) { *ret = O_RDWR; }
-void sys__fs__o_append(int32_t *ret) { *ret = O_APPEND; }
-void sys__fs__o_create(int32_t *ret) { *ret = O_CREAT; }
-void sys__fs__o_trunc(int32_t *ret) { *ret = O_TRUNC; }
-void sys__fs__o_excl(int32_t *ret) { *ret = O_EXCL; }
-void sys__fs__o_directory(int32_t *ret) { *ret = O_DIRECTORY; }
+PEA_FUNC0(pea_int32, sys__fs__o_rdonly) { PEA_RETURN(O_RDONLY); }
+PEA_FUNC0(pea_int32, sys__fs__o_wronly) { PEA_RETURN(O_WRONLY); }
+PEA_FUNC0(pea_int32, sys__fs__o_rdwr) { PEA_RETURN(O_RDWR); }
+PEA_FUNC0(pea_int32, sys__fs__o_append) { PEA_RETURN(O_APPEND); }
+PEA_FUNC0(pea_int32, sys__fs__o_create) { PEA_RETURN(O_CREAT); }
+PEA_FUNC0(pea_int32, sys__fs__o_trunc) { PEA_RETURN(O_TRUNC); }
+PEA_FUNC0(pea_int32, sys__fs__o_excl) { PEA_RETURN(O_EXCL); }
+PEA_FUNC0(pea_int32, sys__fs__o_directory) { PEA_RETURN(O_DIRECTORY); }
 
-void sys__fs__fstat(int32_t fd, int32_t *is_dir, int32_t *ret) {
+PEA_FUNC2(pea_int32, sys__fs__fstat, pea_int32 fd, pea_int32 *is_dir) {
 	struct stat buf;
 	for ( ; ; ) {
 		int res = fstat(fd, &buf);
 		if (res >= 0) {
 			*is_dir = S_ISDIR(buf.st_mode);
-			*ret = res;
-			return;
+			PEA_RETURN(res);
 		}
 		if (errno != EINTR) {
 			*is_dir = 0;
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
 
-void sys__fs__open(struct pea_string* str, int32_t flags, int32_t perm, int32_t *ret) {
+PEA_FUNC3(pea_int32, sys__fs__open, pea_string* str, pea_int32 flags, pea_int32 perm) {
 	char* cstr = cstring(str);
 	for ( ; ; ) {
 		int fd = open(cstr, flags, perm);
 		if (fd >= 0) {
 			free(cstr);
-			*ret = fd;
-			return;
+			PEA_RETURN(fd);
 		}
 		if (errno != EINTR) {
 			free(cstr);
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
 
-void sys__fs__unlink(struct pea_string* str, int32_t *ret) {
+PEA_FUNC1(pea_int32, sys__fs__unlink, pea_string* str) {
 	char* cstr = cstring(str);
 	for ( ; ; ) {
 		int res = unlink(cstr);
 		if (res >= 0) {
 			free(cstr);
-			*ret = 0;
-			return;
+			PEA_RETURN(0);
 		}
 		if (errno != EINTR) {
 			free(cstr);
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
 
-void sys__fs__fdopendir(int32_t fd, DIR** dir_ret, int32_t *ret) {
+PEA_FUNC2(pea_int32, sys__fs__fdopendir, pea_int32 fd, DIR** dir_ret) {
 	for ( ; ; ) {
 		DIR* dir = fdopendir(fd);
 		if (dir != NULL) {
 			*dir_ret = dir;
-			*ret = 0;
-			return;
+			PEA_RETURN(0);
 		}
 		if (errno != EINTR) {
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
 
-void sys__fs__closedir(void* dir, int32_t *ret) {
+PEA_FUNC1(pea_int32, sys__fs__closedir, void* dir) {
 	for ( ; ; ) {
 		if (closedir(dir) == 0) {
-			*ret = 0;
-			return;
+			PEA_RETURN(0);
 		}
 		if (errno != EINTR) {
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
 
-void sys__fs__readdir(DIR* dir, struct pea_string* str, int32_t *ret) {
+PEA_FUNC2(pea_int32, sys__fs__readdir, DIR* dir, pea_string* str) {
 	struct dirent* ent = NULL;
 	for ( ; ; ) {
 		errno = 0;
@@ -112,51 +102,43 @@ void sys__fs__readdir(DIR* dir, struct pea_string* str, int32_t *ret) {
 			str->length = strlen(ent->d_name);
 			str->data = pea_malloc(str->length);
 			memcpy(str->data, ent->d_name, str->length);
-			*ret = 0;
-			return;
+			PEA_RETURN(0);
 		}
 		if (errno == 0) {
 			str->length = 0;
 			str->data = NULL;
-			*ret = 0;
-			return;
+			PEA_RETURN(0);
 		}
 		if (errno != EINTR) {
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
 
-void sys__fs__mkdir(struct pea_string* str, int32_t perm, int32_t *ret) {
+PEA_FUNC2(pea_int32, sys__fs__mkdir, pea_string* str, pea_int32 perm) {
 	char* cstr = cstring(str);
 	for ( ; ; ) {
 		if (mkdir(cstr, perm) == 0) {
 			free(cstr);
-			*ret = 0;
-			return;
+			PEA_RETURN(0);
 		}
 		if (errno != EINTR) {
 			free(cstr);
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
 
-void sys__fs__rmdir(struct pea_string* str, int32_t *ret) {
+PEA_FUNC1(pea_int32, sys__fs__rmdir, pea_string* str) {
 	char* cstr = cstring(str);
 	for ( ; ; ) {
 		if (rmdir(cstr) == 0) {
 			free(cstr);
-			*ret = 0;
-			return;
+			PEA_RETURN(0);
 		}
 		if (errno != EINTR) {
 			free(cstr);
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
-

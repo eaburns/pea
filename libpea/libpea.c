@@ -42,7 +42,7 @@ void pea_register_finalizer(void* obj, void(*fn)(void*, void*), void* data) {
 }
 
 // pea_print prints a string to standard output.
-void pea_print(struct pea_string* pstr) {
+void pea_print(pea_string* pstr) {
 	for (int i = 0;  i< pstr->length; i++) {
 		putchar(pstr->data[i]);
 	}
@@ -57,7 +57,7 @@ void pea_print_int(int64_t i) {
 
 // pea_panic prints a sting and stack trace to standard output
 // and aborts the program.
-void pea_panic(struct pea_string* pstr, const char* file, int32_t line) {
+void pea_panic(pea_string* pstr, const char* file, int32_t line) {
 	panic_test_output(&pstr->data[0], pstr->length);
 	printf("Panic: ");
 	pea_print(pstr);
@@ -78,24 +78,24 @@ void pea_panic_cstring(const char* str, const char* file, int32_t line) {
 }
 
 // pea_index_oob_string returns an index-out-of-bounds panic string.
-struct pea_string* pea_index_oob_string(intptr_t index, intptr_t length) {
+pea_string* pea_index_oob_string(intptr_t index, intptr_t length) {
 	const int buf_size = 500;
 	char *buf = pea_malloc(buf_size);
 	int n = snprintf(buf, buf_size, "index out of bounds: index=%ld, length=%ld",
 		(long int) index, (long int) length);
-	struct pea_string *pstr = pea_malloc(sizeof(struct pea_string));
+	pea_string *pstr = pea_malloc(sizeof(pea_string));
 	pstr->data = buf;
 	pstr->length = n >= buf_size ? buf_size - 1 : n;
 	return pstr;
 }
 
 // pea_slice_oob_string returns a slice-out-of-bounds panic string.
-struct pea_string* pea_slice_oob_string(intptr_t start, intptr_t end, intptr_t length) {
+pea_string* pea_slice_oob_string(intptr_t start, intptr_t end, intptr_t length) {
 	const int buf_size = 500;
 	char *buf = pea_malloc(buf_size);
 	int n = snprintf(buf, buf_size, "slice out of bounds: start=%ld, end=%ld, length=%ld",
 		(long int) start, (long int) end, (long int) length);
-	struct pea_string *pstr = pea_malloc(sizeof(struct pea_string));
+	pea_string *pstr = pea_malloc(sizeof(pea_string));
 	pstr->data = buf;
 	pstr->length = n >= buf_size ? buf_size - 1 : n;
 	return pstr;

@@ -11,9 +11,7 @@
 
 #include "libpea.h"
 
-DEFINE_PEA_ARRAY_STRUCT(pea_uint8_array, uint8_t);
-
-static void get_pea_addr(const struct sockaddr* sock, struct pea_uint8_array* ip, uint16_t* port) {
+static void get_pea_addr(const struct sockaddr* sock, PEA_ARRAY(pea_uint8)* ip, uint16_t* port) {
 	if (sock->sa_family == AF_INET) {
 		const struct sockaddr_in *sock_ip = (const struct sockaddr_in*) sock;
 		in_addr_t addr = sock_ip->sin_addr.s_addr;
@@ -39,7 +37,7 @@ static void get_pea_addr(const struct sockaddr* sock, struct pea_uint8_array* ip
 
 // The return value is a gai_errno
 // The value by ai must be freed with freeaddrinfo if non-NULL.
-static int get_pea_addrinfo(const struct pea_string* network, const struct pea_string* service, _Bool passive, struct addrinfo** ai) {
+static int get_pea_addrinfo(const pea_string* network, const pea_string* service, _Bool passive, struct addrinfo** ai) {
 	char *c_network = NULL;
 	if (network->length > 0) {
 		c_network = calloc(network->length+1, sizeof(char));
@@ -78,16 +76,15 @@ static int get_pea_addrinfo(const struct pea_string* network, const struct pea_s
 	return res;
 }
 
-void sys__net__tcp__listener_fd(const struct pea_string* network, const struct pea_string* service, struct pea_string* err, int32_t* ret) {
+PEA_FUNC3(pea_int32, sys__net__tcp__listener_fd, const pea_string* network, const pea_string* service, pea_string* err) {
 	struct addrinfo* ai = NULL;
-	int res = get_pea_addrinfo(network, service, true, &ai);
+	pea_int32 res = get_pea_addrinfo(network, service, true, &ai);
 	if (res != 0 || ai == NULL) {
 		const char* str = gai_strerror(res);
 		err->length = strlen(str);
 		err->data = pea_malloc(err->length);
 		memcpy(err->data, str, err->length);
-		*ret = -1;
-		return;
+		PEA_RETURN(-1);
 	}
 	int fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 	if (fd < 0) {
@@ -99,7 +96,7 @@ void sys__net__tcp__listener_fd(const struct pea_string* network, const struct p
 	if (listen(fd, 0) < 0) {
 		goto errno_exit;
 	}
-	*ret = fd;
+	res = fd;
 	goto exit;
 errno_exit:
 	err->data = pea_malloc(100);
@@ -111,28 +108,29 @@ errno_exit:
 	if (fd >= 0) {
 		close(fd);
 	}
-	*ret = -1;
+	res = -1;
 exit:
 	freeaddrinfo(ai);
+	PEA_RETURN(res);
 }
 
-void sys__net__tcp__accept(int32_t fd, int32_t *ret) {
-	*ret = accept(fd, NULL, NULL);
-	if (*ret < 0) {
-		*ret = errno;
+PEA_FUNC1(pea_int32, sys__net__tcp__accept, pea_int32 fd) {
+	pea_int32 accepted = accept(fd, NULL, NULL);
+	if (accepted < 0) {
+		PEA_RETURN(errno);
 	}
+	PEA_RETURN(accepted);
 }
 
-void sys__net__tcp__connect_fd(const struct pea_string* network, const struct pea_string* service, struct pea_string* err, int32_t* ret) {
+PEA_FUNC3(pea_int32, sys__net__tcp__connect_fd, const pea_string* network, const pea_string* service, pea_string* err) {
 	struct addrinfo* ai = NULL;
-	int res = get_pea_addrinfo(network, service, false, &ai);
+	pea_int32 res = get_pea_addrinfo(network, service, false, &ai);
 	if (res != 0 || ai == NULL) {
 		const char* str = gai_strerror(res);
 		err->length = strlen(str);
 		err->data = pea_malloc(err->length);
 		memcpy(err->data, str, err->length);
-		*ret = -1;
-		return;
+		PEA_RETURN(-1);
 	}
 	int fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 	if (fd < 0) {
@@ -140,7 +138,7 @@ void sys__net__tcp__connect_fd(const struct pea_string* network, const struct pe
 	}
 	for (struct addrinfo* p = ai; p != NULL; p = p->ai_next) {
 		if (connect(fd, p->ai_addr, p->ai_addrlen) >= 0) {
-			*ret = fd;
+			res = fd;
 			goto exit;
 		}
 	}
@@ -155,33 +153,30 @@ errno_exit:
 	if (fd >= 0) {
 		close(fd);
 	}
-	*ret = -1;
+	res = -1;
 exit:
 	freeaddrinfo(ai);
+	PEA_RETURN(res);
 }
 
-void sys__net__tcp__getsockname(int32_t fd, struct pea_uint8_array* ip, uint16_t* port, int32_t* ret) {
+PEA_FUNC3(pea_int32, sys__net__tcp__getsockname, pea_int32 fd, PEA_ARRAY(pea_uint8)* ip, pea_int16* port) {
 	struct sockaddr_storage sock = {0};
 	socklen_t socklen = sizeof(sock);
 	int res = getsockname(fd, (struct sockaddr*) &sock, &socklen);
 	if (res < 0) {
-		*ret = -errno;
-		return;
+		PEA_RETURN(-errno);
 	};
 	get_pea_addr((struct sockaddr*) &sock, ip, port);
-	*ret = 0;
-	return;
+	PEA_RETURN(0);
 }
 
-void sys__net__tcp__getpeername(int32_t fd, struct pea_uint8_array* ip, uint16_t* port, int32_t* ret) {
+PEA_FUNC3(pea_int32, sys__net__tcp__getpeername, pea_int32 fd, PEA_ARRAY(pea_uint8)* ip, pea_int16* port) {
 	struct sockaddr_storage sock = {0};
 	socklen_t socklen = sizeof(sock);
 	int res = getpeername(fd, (struct sockaddr*) &sock, &socklen);
 	if (res < 0) {
-		*ret = -errno;
-		return;
+		PEA_RETURN(-errno);
 	};
 	get_pea_addr((struct sockaddr*) &sock, ip, port);
-	*ret = 0;
-	return;
+	PEA_RETURN(0);
 }

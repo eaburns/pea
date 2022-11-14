@@ -2,8 +2,7 @@
 // When f returns, the thread terminates.
 Func new(f (){})
 
-// TODO: make _mutex use &[.] once LLVM output bug is fixed.
-type _mutex &int
+type _mutex uintref
 
 // Returns a new, unlocked mutex.
 Func mutex() mutex
@@ -11,8 +10,7 @@ Func mutex() mutex
 func lock(_ mutex)
 func unlock(_ mutex)
 
-// TODO: make _condition use &[.] once LLVM output bug is fixed.
-type _condition &int
+type _condition uintref
 
 // Returns a new condition.
 Func condition() condition

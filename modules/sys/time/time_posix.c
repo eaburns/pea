@@ -23,11 +23,10 @@ static uint64_t must_clock_gettime_ns(clockid_t clock_type) {
 	return ret;
 }
 
-void sys__time__wall_ns(int64_t* ret) {
-	*ret = must_clock_gettime_ns(CLOCK_REALTIME);
+PEA_FUNC0(pea_int64, sys__time__wall_ns) {
+	PEA_RETURN(must_clock_gettime_ns(CLOCK_REALTIME));
 }
 
-void sys__time__monotonic_ns(int64_t* ret) {
-	*ret = must_clock_gettime_ns(CLOCK_MONOTONIC);
+PEA_FUNC0(pea_int64, sys__time__monotonic_ns) {
+	PEA_RETURN(must_clock_gettime_ns(CLOCK_MONOTONIC));
 }
-

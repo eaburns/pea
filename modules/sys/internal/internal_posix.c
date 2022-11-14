@@ -5,53 +5,47 @@
 
 #include "libpea.h"
 
-void sys__internal__eacces(int32_t *ret) { *ret = EACCES; }
-void sys__internal__eexist(int32_t *ret) { *ret = EEXIST; }
-void sys__internal__enoent(int32_t *ret) { *ret = ENOENT; }
-void sys__internal__enotdir(int32_t *ret) { *ret = ENOTDIR; }
-void sys__internal__eisdir(int32_t *ret) { *ret = EISDIR; }
+PEA_FUNC0(pea_int32, sys__internal__eacces) { PEA_RETURN(EACCES); }
+PEA_FUNC0(pea_int32, sys__internal__eexist) { PEA_RETURN(EEXIST); }
+PEA_FUNC0(pea_int32, sys__internal__enoent) { PEA_RETURN(ENOENT); }
+PEA_FUNC0(pea_int32, sys__internal__enotdir) { PEA_RETURN(ENOTDIR); }
+PEA_FUNC0(pea_int32, sys__internal__eisdir) { PEA_RETURN(EISDIR); }
 
-void sys__internal__strerror_r(int32_t n, struct pea_string* buf) {
+PEA_VOID_FUNC2(sys__internal__strerror_r, pea_int32 n, pea_string* buf) {
 	strerror_r(n, buf->data, buf->length);
 }
 
-void sys__internal__close(int32_t fd, int32_t *ret) {
+PEA_FUNC1(pea_int32, sys__internal__close, pea_int32 fd) {
 	for ( ; ; ) {
 		if (close(fd) == 0) {
-			*ret = 0;
-			return;
+			PEA_RETURN(0);
 		}
 		if (errno != EINTR) {
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
 
-void sys__internal__read(int32_t fd, struct pea_string* buf, int64_t *ret) {
+PEA_FUNC2(pea_int64, sys__internal__read, pea_int32 fd, pea_string* buf) {
 	for ( ; ; ) {
 		ssize_t n = read(fd, buf->data, buf->length);
 		if (n >= 0) {
-			*ret = n;
-			return;
+			PEA_RETURN(n);
 		}
 		if (errno != EINTR) {
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
 
-void sys__internal__write(int32_t fd, struct pea_string* buf, int64_t *ret) {
+PEA_FUNC2(pea_int64, sys__internal__write, pea_int32 fd, pea_string* buf) {
 	for ( ; ; ) {
 		ssize_t n = write(fd, buf->data, buf->length);
 		if (n >= 0) {
-			*ret = n;
-			return;
+			PEA_RETURN(n);
 		}
 		if (errno != EINTR) {
-			*ret = -errno;
-			return;
+			PEA_RETURN(-errno);
 		}
 	}
 }
