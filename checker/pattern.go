@@ -50,6 +50,11 @@ func (pat typePattern) withType(typ Type) typePattern {
 // substituted with the type arguments of the defined type.
 // instType panics if pat is not a defined type type pattern.
 func (pat typePattern) instType() typePattern {
+	if pat.typ.(*DefType).Inst.Type == nil {
+		// There was an error figuring out the DefType's definition type.
+		// Just use the any() pattern, and the error will be reported elsewhere.
+		return any()
+	}
 	return pat.withType(pat.typ.(*DefType).Inst.Type)
 }
 
