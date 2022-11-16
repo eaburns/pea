@@ -1133,9 +1133,13 @@ func checkTestDef(def *TestDef, parserDef *parser.TestDef) []Error {
 }
 
 func checkExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
+	return _checkExpr(x, parserExpr, pat, false)
+}
+
+func _checkExpr(x scope, parserExpr parser.Expr, pat typePattern, explicitConvert bool) (Expr, []Error) {
 	switch parserExpr := parserExpr.(type) {
 	case *parser.Call:
-		return checkCall(x, parserExpr, pat)
+		return checkCall(x, parserExpr, pat, explicitConvert)
 	case *parser.Convert:
 		return checkConvert(x, parserExpr)
 	case *parser.SubExpr:
@@ -1283,11 +1287,11 @@ func newLocalAssign(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Exp
 	return local, assign, errs
 }
 
-func checkCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []Error) {
+func checkCall(x scope, parserCall *parser.Call, pat typePattern, explicitConvert bool) (Expr, []Error) {
 	switch fun := parserCall.Fun.(type) {
 	case parser.Ident:
 		ids := findIDs(x, fun.Name)
-		return resolveIDCall(x, nil, fun, parserCall, pat, ids)
+		return resolveIDCall(x, nil, fun, parserCall, pat, ids, explicitConvert)
 	case *parser.ModSel:
 		imp := findImport(x, fun.Mod.Name)
 		if imp == nil {
@@ -1299,13 +1303,13 @@ func checkCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []Error
 			x = addImportScope(x, imp)
 		}
 		ids := findIDs(imp, fun.Name.Name)
-		return resolveIDCall(x, addMod, fun.Name, parserCall, pat, ids)
+		return resolveIDCall(x, addMod, fun.Name, parserCall, pat, ids, explicitConvert)
 	default:
 		return checkExprCall(x, parserCall, pat)
 	}
 }
 
-func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *parser.Call, pat typePattern, ids []id) (Expr, []Error) {
+func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *parser.Call, pat typePattern, ids []id, explicitConvert bool) (Expr, []Error) {
 	if pat.isGroundType() {
 		if defType, ok := pat.groundType().(*DefType); ok && mod == nil {
 			ids = append(ids, adModuleIDs(x, defType.Def.Mod, parserID.Name)...)
@@ -1339,7 +1343,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 			markVerbose(notes)
 		}
 	}
-	funcs, ns = filterByReturnType(funcs, pat)
+	funcs, ns = filterByReturnType(funcs, pat, explicitConvert)
 	notes = append(notes, ns...)
 	if len(funcs) > 0 {
 		markVerbose(notes)
@@ -1544,13 +1548,8 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
-	const (
-		explicit = true
-		implicit = false
-	)
+func filterByReturnType(funcs []Func, pat typePattern, explicitConvert bool) ([]Func, []note) {
 	var notes []note
-
 	if len(funcs) == 1 {
 		f := funcs[0]
 		// Just try to substitute it, ignoring conversion errors.
@@ -1558,7 +1557,7 @@ func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
 		// with more information that we would report here,
 		// because it will use convertExpr which has the expression
 		// printed in the error message, but here we just have the type.
-		bind, convertNote := convertType(f.ret(), pat, implicit)
+		bind, convertNote := convertType(f.ret(), pat, explicitConvert)
 		if note := f.sub(nil, bind); note != nil {
 			return nil, append(notes, note)
 		}
@@ -1575,10 +1574,9 @@ func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
 		return funcs, nil
 	}
 
-	// First filter out anything that can't even explicitly convert to the desired type.
 	var n int
 	for _, f := range funcs {
-		bind, convertNote := convertType(f.ret(), pat, explicit)
+		bind, convertNote := convertType(f.ret(), pat, explicitConvert)
 		if convertNote != nil {
 			n := newNote("%s: cannot convert return value (%s) to %s", f, f.ret(), pat)
 			n.setNotes([]note{convertNote})
@@ -1589,26 +1587,6 @@ func filterByReturnType(funcs []Func, pat typePattern) ([]Func, []note) {
 			notes = append(notes, note)
 			continue
 		}
-		funcs[n] = f
-		n++
-	}
-	funcs = funcs[:n]
-
-	if len(funcs) == 1 {
-		return funcs, nil
-	}
-
-	// If there is still ambiguity, filter out anything that cannot implicitly convert.
-	n = 0
-	for _, f := range funcs {
-		if _, convertNote := convertType(f.ret(), pat, implicit); convertNote != nil {
-			n := newNote("%s: cannot convert return value (%s) to %s", f, f.ret(), pat)
-			n.setNotes([]note{convertNote})
-			notes = append(notes, n)
-			continue
-		}
-		// There's no need to sub again.
-		// The functions must have been subbed by the first loop.
 		funcs[n] = f
 		n++
 	}
@@ -1945,9 +1923,11 @@ func _wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) (*BlockLit, *Call) {
 }
 
 func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
+	const explicit = true
+
 	typ, errs := makeType(x, parserConvert.Type)
 	// typ may be nil if there was an error in the type, so use patternOrAny.
-	expr, es := checkExpr(x, parserConvert.Expr, patternOrAny(typ))
+	expr, es := _checkExpr(x, parserConvert.Expr, patternOrAny(typ), explicit)
 	if len(es) > 0 {
 		errs = append(errs, es...)
 	}

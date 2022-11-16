@@ -3252,7 +3252,23 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "string :: x()",
 			ret:  "string",
-			err:  "not found",
+			err:  "ambiguous call",
+		},
+		{
+			name: "multiple explicit converts on return, but resolved by iface constraint",
+			src:  `
+				// Both [uint8] returns are not implicitly convertable.
+				// But both are explicitly convertible.
+				// However, the first cannot have its constarint satisfied by T=int.
+				// So these should not fail due to return type conversion;
+				// that should succeed and the first should be removed
+				// by failure to satisfy the interface constraint.
+				func x(_ T) [uint8] : not_satisfied_by_int(T)
+				func x(_ int) [uint8]
+			`,
+			call: "string :: x(5)",
+			ret:  "string",
+			want: "x(int)[uint8]",
 		},
 		{
 			name: "argument type mismatch",
