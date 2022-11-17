@@ -432,7 +432,7 @@ func common(pats ...typePattern) typePattern {
 // Errors must have a location, but notes needn't.
 func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note) {
 	var bind map[*TypeParm]Type
-	pat, cvt, notes := convert(nil, src, dst, explicit, &bind)
+	pat, cvt, notes := convertPattern(nil, src, dst, explicit, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
 		notes = append(notes, newNote("cannot infer type %s", pat))
@@ -453,7 +453,7 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, map[*TypeParm
 		return expr, nil, nil
 	}
 	var bind map[*TypeParm]Type
-	pat, cvt, notes := convert(nil, pattern(expr.Type()), dst, explicit, &bind)
+	pat, cvt, notes := convertPattern(nil, pattern(expr.Type()), dst, explicit, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
 		notes = append(notes, newNote("cannot infer type %s", pat))
@@ -597,7 +597,7 @@ func callRef(expr Expr) Expr {
 	return outerDeref.Expr
 }
 
-// convert returns the resulting typePattern and a chain of *Convert nodes
+// convertPattern returns the resulting typePattern and a chain of *Convert nodes
 // giving the steps to convert from items of the src pattern to the dst pattern.
 //
 // If src cannot convert to dst, the returned pattern is the zero value and *Convert is nil;
@@ -613,7 +613,7 @@ func callRef(expr Expr) Expr {
 // On input, the pointed-to map may be a nil map (the pointer itself must not be nil).
 // In this case, convert will lazily allocate a new map if needed.
 // If the conversion results in any parameter bindings they are added to *bind.
-func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeParm]Type) (typePattern, *Convert, []note) {
+func convertPattern(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeParm]Type) (typePattern, *Convert, []note) {
 	isect, isectNote := intersection(src, dst, bind)
 	if isect != nil {
 		return *isect, conversion(cvt, Noop, isect.typ), nil
@@ -643,10 +643,10 @@ func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeP
 
 	case (explicit || isLiteralType(dst.typ)) && isVisibleDefinedType(src.typ):
 		cvt = conversion(cvt, Noop, src.instType().typ)
-		return convert(cvt, src.instType(), dst, explicit, bind)
+		return convertPattern(cvt, src.instType(), dst, explicit, bind)
 
 	case (explicit || isLiteralType(src.typ)) && isVisibleDefinedType(dst.typ):
-		pat, cvt, notes := convert(cvt, src, dst.instType(), explicit, bind)
+		pat, cvt, notes := convertPattern(cvt, src, dst.instType(), explicit, bind)
 		if cvt == nil {
 			return typePattern{}, nil, notes
 		}
@@ -661,10 +661,10 @@ func convert(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeP
 
 	case isRefLiteral(src.typ):
 		cvt = conversion(cvt, Deref, src.refElem().typ)
-		return convert(cvt, src.refElem(), dst, explicit, bind)
+		return convertPattern(cvt, src.refElem(), dst, explicit, bind)
 
 	case isRefLiteral(dst.typ):
-		pat, cvt, notes := convert(cvt, src, dst.refElem(), explicit, bind)
+		pat, cvt, notes := convertPattern(cvt, src, dst.refElem(), explicit, bind)
 		if cvt == nil {
 			return typePattern{}, nil, notes
 		}

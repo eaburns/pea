@@ -253,7 +253,7 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 	}
 	bind := make(map[*TypeParm]Type)
 	for i := 0; i < dst.arity(); i++ {
-		pat, cvt, notes := convert(nil, srcFunPat.parm(i), dst.parm(i), false, &bind)
+		pat, cvt, notes := convertPattern(nil, srcFunPat.parm(i), dst.parm(i), false, &bind)
 		if !pat.isGroundType() {
 			cvt = nil
 			notes = append(notes, newNote("cannot infer type %s", pat))
@@ -279,7 +279,7 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 			return nil, &unifyFuncFailure{note: n1, parms: i}
 		}
 	}
-	pat, cvt, notes := convert(nil, dst.ret(), srcFunPat.ret(), false, &bind)
+	pat, cvt, notes := convertPattern(nil, dst.ret(), srcFunPat.ret(), false, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
 		notes = append(notes, newNote("cannot infer type %s", pat))
