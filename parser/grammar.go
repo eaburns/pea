@@ -15900,11 +15900,11 @@ func _SubExprAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// _ "(" expr:Expr _ ")" {…}/_ "(" id:(FieldId/IdxOp/Op/Kwds) _ ")" {…}
+	// _ "(" id:FuncName _ ")" {…}/_ "(" expr:Expr _ ")" {…}
 	{
 		pos3 := pos
 		// action
-		// _ "(" expr:Expr _ ")"
+		// _ "(" id:FuncName _ ")"
 		// _
 		if !_accept(parser, __Accepts, &pos, &perr) {
 			goto fail4
@@ -15915,11 +15915,11 @@ func _SubExprAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 			goto fail4
 		}
 		pos++
-		// expr:Expr
+		// id:FuncName
 		{
 			pos6 := pos
-			// Expr
-			if !_accept(parser, _ExprAccepts, &pos, &perr) {
+			// FuncName
+			if !_accept(parser, _FuncNameAccepts, &pos, &perr) {
 				goto fail4
 			}
 			labels[0] = parser.text[pos6:pos]
@@ -15938,7 +15938,7 @@ func _SubExprAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	fail4:
 		pos = pos3
 		// action
-		// _ "(" id:(FieldId/IdxOp/Op/Kwds) _ ")"
+		// _ "(" expr:Expr _ ")"
 		// _
 		if !_accept(parser, __Accepts, &pos, &perr) {
 			goto fail7
@@ -15949,43 +15949,12 @@ func _SubExprAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 			goto fail7
 		}
 		pos++
-		// id:(FieldId/IdxOp/Op/Kwds)
+		// expr:Expr
 		{
 			pos9 := pos
-			// (FieldId/IdxOp/Op/Kwds)
-			// FieldId/IdxOp/Op/Kwds
-			{
-				pos13 := pos
-				// FieldId
-				if !_accept(parser, _FieldIdAccepts, &pos, &perr) {
-					goto fail14
-				}
-				goto ok10
-			fail14:
-				pos = pos13
-				// IdxOp
-				if !_accept(parser, _IdxOpAccepts, &pos, &perr) {
-					goto fail15
-				}
-				goto ok10
-			fail15:
-				pos = pos13
-				// Op
-				if !_accept(parser, _OpAccepts, &pos, &perr) {
-					goto fail16
-				}
-				goto ok10
-			fail16:
-				pos = pos13
-				// Kwds
-				if !_accept(parser, _KwdsAccepts, &pos, &perr) {
-					goto fail17
-				}
-				goto ok10
-			fail17:
-				pos = pos13
+			// Expr
+			if !_accept(parser, _ExprAccepts, &pos, &perr) {
 				goto fail7
-			ok10:
 			}
 			labels[1] = parser.text[pos9:pos]
 		}
@@ -16022,11 +15991,11 @@ func _SubExprFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _SubExpr}
-	// _ "(" expr:Expr _ ")" {…}/_ "(" id:(FieldId/IdxOp/Op/Kwds) _ ")" {…}
+	// _ "(" id:FuncName _ ")" {…}/_ "(" expr:Expr _ ")" {…}
 	{
 		pos3 := pos
 		// action
-		// _ "(" expr:Expr _ ")"
+		// _ "(" id:FuncName _ ")"
 		// _
 		if !_fail(parser, __Fail, errPos, failure, &pos) {
 			goto fail4
@@ -16042,11 +16011,11 @@ func _SubExprFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 			goto fail4
 		}
 		pos++
-		// expr:Expr
+		// id:FuncName
 		{
 			pos6 := pos
-			// Expr
-			if !_fail(parser, _ExprFail, errPos, failure, &pos) {
+			// FuncName
+			if !_fail(parser, _FuncNameFail, errPos, failure, &pos) {
 				goto fail4
 			}
 			labels[0] = parser.text[pos6:pos]
@@ -16070,7 +16039,7 @@ func _SubExprFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	fail4:
 		pos = pos3
 		// action
-		// _ "(" id:(FieldId/IdxOp/Op/Kwds) _ ")"
+		// _ "(" expr:Expr _ ")"
 		// _
 		if !_fail(parser, __Fail, errPos, failure, &pos) {
 			goto fail7
@@ -16086,43 +16055,12 @@ func _SubExprFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 			goto fail7
 		}
 		pos++
-		// id:(FieldId/IdxOp/Op/Kwds)
+		// expr:Expr
 		{
 			pos9 := pos
-			// (FieldId/IdxOp/Op/Kwds)
-			// FieldId/IdxOp/Op/Kwds
-			{
-				pos13 := pos
-				// FieldId
-				if !_fail(parser, _FieldIdFail, errPos, failure, &pos) {
-					goto fail14
-				}
-				goto ok10
-			fail14:
-				pos = pos13
-				// IdxOp
-				if !_fail(parser, _IdxOpFail, errPos, failure, &pos) {
-					goto fail15
-				}
-				goto ok10
-			fail15:
-				pos = pos13
-				// Op
-				if !_fail(parser, _OpFail, errPos, failure, &pos) {
-					goto fail16
-				}
-				goto ok10
-			fail16:
-				pos = pos13
-				// Kwds
-				if !_fail(parser, _KwdsFail, errPos, failure, &pos) {
-					goto fail17
-				}
-				goto ok10
-			fail17:
-				pos = pos13
+			// Expr
+			if !_fail(parser, _ExprFail, errPos, failure, &pos) {
 				goto fail7
-			ok10:
 			}
 			labels[1] = parser.text[pos9:pos]
 		}
@@ -16157,8 +16095,8 @@ fail:
 func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 	var labels [2]string
 	use(labels)
-	var label0 Expr
-	var label1 Ident
+	var label0 Ident
+	var label1 Expr
 	dp := parser.deltaPos[start][_SubExpr]
 	if dp < 0 {
 		return -1, nil
@@ -16171,14 +16109,14 @@ func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 	}
 	var node Expr
 	pos := start
-	// _ "(" expr:Expr _ ")" {…}/_ "(" id:(FieldId/IdxOp/Op/Kwds) _ ")" {…}
+	// _ "(" id:FuncName _ ")" {…}/_ "(" expr:Expr _ ")" {…}
 	{
 		pos3 := pos
 		var node2 Expr
 		// action
 		{
 			start5 := pos
-			// _ "(" expr:Expr _ ")"
+			// _ "(" id:FuncName _ ")"
 			// _
 			if p, n := __Action(parser, pos); n == nil {
 				goto fail4
@@ -16190,11 +16128,11 @@ func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 				goto fail4
 			}
 			pos++
-			// expr:Expr
+			// id:FuncName
 			{
 				pos7 := pos
-				// Expr
-				if p, n := _ExprAction(parser, pos); n == nil {
+				// FuncName
+				if p, n := _FuncNameAction(parser, pos); n == nil {
 					goto fail4
 				} else {
 					label0 = *n
@@ -16214,8 +16152,8 @@ func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 			}
 			pos++
 			node = func(
-				start, end int, expr Expr) Expr {
-				return Expr(&SubExpr{Expr: expr, L: l(parser, start, end)})
+				start, end int, id Ident) Expr {
+				return Expr(&SubExpr{Expr: id, L: l(parser, start, end)})
 			}(
 				start5, pos, label0)
 		}
@@ -16226,7 +16164,7 @@ func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 		// action
 		{
 			start9 := pos
-			// _ "(" id:(FieldId/IdxOp/Op/Kwds) _ ")"
+			// _ "(" expr:Expr _ ")"
 			// _
 			if p, n := __Action(parser, pos); n == nil {
 				goto fail8
@@ -16238,60 +16176,15 @@ func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 				goto fail8
 			}
 			pos++
-			// id:(FieldId/IdxOp/Op/Kwds)
+			// expr:Expr
 			{
 				pos11 := pos
-				// (FieldId/IdxOp/Op/Kwds)
-				// FieldId/IdxOp/Op/Kwds
-				{
-					pos15 := pos
-					var node14 Ident
-					// FieldId
-					if p, n := _FieldIdAction(parser, pos); n == nil {
-						goto fail16
-					} else {
-						label1 = *n
-						pos = p
-					}
-					goto ok12
-				fail16:
-					label1 = node14
-					pos = pos15
-					// IdxOp
-					if p, n := _IdxOpAction(parser, pos); n == nil {
-						goto fail17
-					} else {
-						label1 = *n
-						pos = p
-					}
-					goto ok12
-				fail17:
-					label1 = node14
-					pos = pos15
-					// Op
-					if p, n := _OpAction(parser, pos); n == nil {
-						goto fail18
-					} else {
-						label1 = *n
-						pos = p
-					}
-					goto ok12
-				fail18:
-					label1 = node14
-					pos = pos15
-					// Kwds
-					if p, n := _KwdsAction(parser, pos); n == nil {
-						goto fail19
-					} else {
-						label1 = *n
-						pos = p
-					}
-					goto ok12
-				fail19:
-					label1 = node14
-					pos = pos15
+				// Expr
+				if p, n := _ExprAction(parser, pos); n == nil {
 					goto fail8
-				ok12:
+				} else {
+					label1 = *n
+					pos = p
 				}
 				labels[1] = parser.text[pos11:pos]
 			}
@@ -16307,8 +16200,8 @@ func _SubExprAction(parser *_Parser, start int) (int, *Expr) {
 			}
 			pos++
 			node = func(
-				start, end int, id Ident) Expr {
-				return Expr(&SubExpr{Expr: id, L: l(parser, start, end)})
+				start, end int, expr Expr) Expr {
+				return Expr(&SubExpr{Expr: expr, L: l(parser, start, end)})
 			}(
 				start9, pos, label1)
 		}

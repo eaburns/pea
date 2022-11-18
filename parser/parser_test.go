@@ -612,6 +612,80 @@ func TestExpr(t *testing.T) {
 				},
 			},
 		},
+
+
+		{
+			"(abc)(1, 2)",
+			&Call{
+				Fun: &SubExpr{
+					Expr: Ident{Name: "abc"},
+				},
+				Args: []Expr{
+					&IntLit{Text: "1"},
+					&IntLit{Text: "2"},
+				},
+			},
+		},
+		{
+			"(+)(1, 2)",
+			&Call{
+				Fun: &SubExpr{
+					Expr: Ident{Name: "+"},
+				},
+				Args: []Expr{
+					&IntLit{Text: "1"},
+					&IntLit{Text: "2"},
+				},
+			},
+		},
+		{
+			"([])(1, 2)",
+			&Call{
+				Fun: &SubExpr{
+					Expr: Ident{Name: "[]"},
+				},
+				Args: []Expr{
+					&IntLit{Text: "1"},
+					&IntLit{Text: "2"},
+				},
+			},
+		},
+		{
+			"(.length)(1, 2)",
+			&Call{
+				Fun: &SubExpr{
+					Expr: Ident{Name: ".length"},
+				},
+				Args: []Expr{
+					&IntLit{Text: "1"},
+					&IntLit{Text: "2"},
+				},
+			},
+		},
+		{
+			"(a?b?)(1, 2)",
+			&Call{
+				Fun: &SubExpr{
+					Expr: Ident{Name: "a?b?"},
+				},
+				Args: []Expr{
+					&IntLit{Text: "1"},
+					&IntLit{Text: "2"},
+				},
+			},
+		},
+		{
+			"(a:b:)(1, 2)",
+			&Call{
+				Fun: &SubExpr{
+					Expr: Ident{Name: "a:b:"},
+				},
+				Args: []Expr{
+					&IntLit{Text: "1"},
+					&IntLit{Text: "2"},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -913,10 +987,10 @@ func TestIfaceDef(t *testing.T) {
 		{
 			src: "iface a { b }",
 			want: &IfaceDef{
-				Name:      Ident{Name: "a"},
+				Name: Ident{Name: "a"},
 				Iface: []interface{}{
 					&NamedType{
-						Name:  Ident{Name: "b"},
+						Name: Ident{Name: "b"},
 					},
 				},
 			},
@@ -924,16 +998,16 @@ func TestIfaceDef(t *testing.T) {
 		{
 			src: "iface a { b, c, d }",
 			want: &IfaceDef{
-				Name:      Ident{Name: "a"},
+				Name: Ident{Name: "a"},
 				Iface: []interface{}{
 					&NamedType{
-						Name:  Ident{Name: "b"},
+						Name: Ident{Name: "b"},
 					},
 					&NamedType{
-						Name:  Ident{Name: "c"},
+						Name: Ident{Name: "c"},
 					},
 					&NamedType{
-						Name:  Ident{Name: "d"},
+						Name: Ident{Name: "d"},
 					},
 				},
 			},
@@ -941,13 +1015,13 @@ func TestIfaceDef(t *testing.T) {
 		{
 			src: "iface a { int b }",
 			want: &IfaceDef{
-				Name:      Ident{Name: "a"},
+				Name: Ident{Name: "a"},
 				Iface: []interface{}{
 					&NamedType{
 						Args: []Type{
 							&NamedType{Name: Ident{Name: "int"}},
 						},
-						Name:  Ident{Name: "b"},
+						Name: Ident{Name: "b"},
 					},
 				},
 			},
@@ -955,11 +1029,11 @@ func TestIfaceDef(t *testing.T) {
 		{
 			src: "iface a { mod#b }",
 			want: &IfaceDef{
-				Name:      Ident{Name: "a"},
+				Name: Ident{Name: "a"},
 				Iface: []interface{}{
 					&NamedType{
-						Mod: &Ident{Name: "mod"},
-						Name:  Ident{Name: "b"},
+						Mod:  &Ident{Name: "mod"},
+						Name: Ident{Name: "b"},
 					},
 				},
 			},
@@ -967,14 +1041,14 @@ func TestIfaceDef(t *testing.T) {
 		{
 			src: "iface a { int mod#b }",
 			want: &IfaceDef{
-				Name:      Ident{Name: "a"},
+				Name: Ident{Name: "a"},
 				Iface: []interface{}{
 					&NamedType{
 						Args: []Type{
 							&NamedType{Name: Ident{Name: "int"}},
 						},
-						Mod: &Ident{Name: "mod"},
-						Name:  Ident{Name: "b"},
+						Mod:  &Ident{Name: "mod"},
+						Name: Ident{Name: "b"},
 					},
 				},
 			},
@@ -982,7 +1056,7 @@ func TestIfaceDef(t *testing.T) {
 		{
 			src: "iface a := b",
 			want: &IfaceDef{
-				Name:      Ident{Name: "a"},
+				Name: Ident{Name: "a"},
 				Alias: &NamedType{
 					Name: Ident{Name: "b"},
 				},
@@ -991,7 +1065,7 @@ func TestIfaceDef(t *testing.T) {
 		{
 			src: "iface a := int b",
 			want: &IfaceDef{
-				Name:      Ident{Name: "a"},
+				Name: Ident{Name: "a"},
 				Alias: &NamedType{
 					Args: []Type{
 						&NamedType{Name: Ident{Name: "int"}},
@@ -1003,9 +1077,9 @@ func TestIfaceDef(t *testing.T) {
 		{
 			src: "iface a := mod#b",
 			want: &IfaceDef{
-				Name:      Ident{Name: "a"},
+				Name: Ident{Name: "a"},
 				Alias: &NamedType{
-					Mod: &Ident{Name: "mod"},
+					Mod:  &Ident{Name: "mod"},
 					Name: Ident{Name: "b"},
 				},
 			},
@@ -1013,12 +1087,12 @@ func TestIfaceDef(t *testing.T) {
 		{
 			src: "iface a := int mod#b",
 			want: &IfaceDef{
-				Name:      Ident{Name: "a"},
+				Name: Ident{Name: "a"},
 				Alias: &NamedType{
 					Args: []Type{
 						&NamedType{Name: Ident{Name: "int"}},
 					},
-					Mod: &Ident{Name: "mod"},
+					Mod:  &Ident{Name: "mod"},
 					Name: Ident{Name: "b"},
 				},
 			},
