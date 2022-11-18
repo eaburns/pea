@@ -253,7 +253,7 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 	}
 	bind := make(map[*TypeParm]Type)
 	for i := 0; i < dst.arity(); i++ {
-		pat, cvt, notes := convertPattern(nil, srcFunPat.parm(i), dst.parm(i), false, &bind)
+		pat, cvt, notes := convertPattern(nil, srcFunPat.parm(i), dst.parm(i), implicit, &bind)
 		if !pat.isGroundType() {
 			cvt = nil
 			notes = append(notes, newNote("cannot infer type %s", pat))
@@ -279,7 +279,7 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatter
 			return nil, &unifyFuncFailure{note: n1, parms: i}
 		}
 	}
-	pat, cvt, notes := convertPattern(nil, dst.ret(), srcFunPat.ret(), false, &bind)
+	pat, cvt, notes := convertPattern(nil, dst.ret(), srcFunPat.ret(), implicit, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
 		notes = append(notes, newNote("cannot infer type %s", pat))
@@ -466,7 +466,7 @@ func (s *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) note {
 	retPat := pattern(s.T.Ret)
 	retPat.parms = s.typeParms
 	retType := refLiteral(s.Field.Type)
-	if _, cn := convertType(pattern(retType), retPat, false); cn != nil {
+	if _, cn := convertType(pattern(retType), retPat, implicit); cn != nil {
 		n := newNote("%s: cannot convert return value (%s) to %s", s, retType, s.T.Ret)
 		n.setLoc(s.T.Ret)
 		n.setNotes([]note{cn})
@@ -549,7 +549,7 @@ func (s *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) note {
 		dstPat.parms = s.typeParms
 		srcPat := pattern(_empty)
 		srcPat.parms = s.typeParms
-		if _, cn := convertType(srcPat, dstPat, false); cn != nil {
+		if _, cn := convertType(srcPat, dstPat, implicit); cn != nil {
 			n := newNote("%s: cannot convert return value (%s) to %s", s, srcPat, dstPat)
 			n.setLoc(s.T.Ret)
 			n.setNotes([]note{cn})
@@ -593,7 +593,7 @@ func (s *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) note {
 			srcPat.parms = s.typeParms
 			dstPat := pattern(parmType)
 			dstPat.parms = s.typeParms
-			if _, cn := convertType(srcPat, dstPat, false); cn != nil {
+			if _, cn := convertType(srcPat, dstPat, implicit); cn != nil {
 				// Set the parm type here so the error message reads correctly.
 				s.T.Parms[1+i] = parmType
 				n := newNote("%s: cannot convert argument %d (%s) to %s", s, i, srcPat, dstPat)

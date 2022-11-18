@@ -4,9 +4,9 @@ package checker
 // The second return is a non-nil note on error or nil on success.
 // We use a note here instead of an Error to allow the src type to lack a location;
 // Errors must have a location, but notes needn't.
-func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note) {
+func convertType(src, dst typePattern, mode convertMode) (map[*TypeParm]Type, note) {
 	var bind map[*TypeParm]Type
-	pat, cvt, notes := convertPattern(nil, src, dst, explicit, &bind)
+	pat, cvt, notes := convertPattern(nil, src, dst, mode, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
 		notes = append(notes, newNote("cannot infer type %s", pat))
@@ -21,13 +21,13 @@ func convertType(src, dst typePattern, explicit bool) (map[*TypeParm]Type, note)
 }
 
 // convertExpr returns the expression resulting from converting expr to the given type pattern.
-func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, map[*TypeParm]Type, Error) {
+func convertExpr(expr Expr, dst typePattern, mode convertMode) (Expr, map[*TypeParm]Type, Error) {
 	// TODO: expr should not be nil.
 	if expr == nil || expr.Type() == nil {
 		return expr, nil, nil
 	}
 	var bind map[*TypeParm]Type
-	pat, cvt, notes := convertPattern(nil, pattern(expr.Type()), dst, explicit, &bind)
+	pat, cvt, notes := convertPattern(nil, pattern(expr.Type()), dst, mode, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
 		notes = append(notes, newNote("cannot infer type %s", pat))
@@ -35,7 +35,7 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, map[*TypeParm
 	if cvt == nil {
 		goto fail
 	}
-	if src, ok := expr.(*Convert); ok && !explicit && src.Explicit && !eqType(src.Type(), cvt.Type()) {
+	if src, ok := expr.(*Convert); ok && mode != explicit && src.Explicit && !eqType(src.Type(), cvt.Type()) {
 		// If the src expression is an explicit convert,
 		// and this is an implicit convert,
 		// it is an error if the types are not equal.
@@ -44,7 +44,7 @@ func convertExpr(expr Expr, dst typePattern, explicit bool) (Expr, map[*TypeParm
 	}
 	for p := cvt; p != nil; p, _ = p.Expr.(*Convert) {
 		p.L = expr.Loc()
-		p.Explicit = explicit
+		p.Explicit = mode == explicit
 	}
 	return doConvertExpr(expr, cvt), bind, nil
 fail:
@@ -171,6 +171,13 @@ func callRef(expr Expr) Expr {
 	return outerDeref.Expr
 }
 
+type convertMode int
+
+const (
+	explicit convertMode = iota
+	implicit
+)
+
 // convertPattern returns the resulting typePattern and a chain of *Convert nodes
 // giving the steps to convert from items of the src pattern to the dst pattern.
 //
@@ -187,7 +194,7 @@ func callRef(expr Expr) Expr {
 // On input, the pointed-to map may be a nil map (the pointer itself must not be nil).
 // In this case, convert will lazily allocate a new map if needed.
 // If the conversion results in any parameter bindings they are added to *bind.
-func convertPattern(cvt *Convert, src, dst typePattern, explicit bool, bind *map[*TypeParm]Type) (typePattern, *Convert, []note) {
+func convertPattern(cvt *Convert, src, dst typePattern, mode convertMode, bind *map[*TypeParm]Type) (typePattern, *Convert, []note) {
 	isect, isectNote := intersection(src, dst, bind)
 	if isect != nil {
 		return *isect, conversion(cvt, Noop, isect.typ), nil
@@ -206,28 +213,28 @@ func convertPattern(cvt *Convert, src, dst typePattern, explicit bool, bind *map
 	case isEnd(src.typ):
 		return dst, conversion(cvt, Noop, _empty), nil
 
-	case explicit && isRefLiteral(src.typ) && isUintRef(dst.typ):
+	case mode == explicit && isRefLiteral(src.typ) && isUintRef(dst.typ):
 		return dst, conversion(cvt, NumConvert, dst.typ), nil
 
-	case explicit && isBasicNum(src.typ) && isBasicNum(dst.typ) && !isUintRef(dst.typ):
+	case mode == explicit && isBasicNum(src.typ) && isBasicNum(dst.typ) && !isUintRef(dst.typ):
 		return dst, conversion(cvt, NumConvert, dst.typ), nil
 
-	case explicit && isByteArray(src.typ) && isStringType(dst.typ):
+	case mode == explicit && isByteArray(src.typ) && isStringType(dst.typ):
 		return dst, conversion(cvt, StrConvert, dst.typ), nil
 
-	case (explicit || isLiteralType(dst.typ)) && isVisibleDefinedType(src.typ):
+	case (mode == explicit || isLiteralType(dst.typ)) && isVisibleDefinedType(src.typ):
 		cvt = conversion(cvt, Noop, src.instType().typ)
-		return convertPattern(cvt, src.instType(), dst, explicit, bind)
+		return convertPattern(cvt, src.instType(), dst, mode, bind)
 
-	case (explicit || isLiteralType(src.typ)) && isVisibleDefinedType(dst.typ):
-		pat, cvt, notes := convertPattern(cvt, src, dst.instType(), explicit, bind)
+	case (mode == explicit || isLiteralType(src.typ)) && isVisibleDefinedType(dst.typ):
+		pat, cvt, notes := convertPattern(cvt, src, dst.instType(), mode, bind)
 		if cvt == nil {
 			return typePattern{}, nil, notes
 		}
 		pat.typ = subType(*bind, dst.typ)
 		return pat, conversion(cvt, Noop, pat.typ), nil
 
-	case explicit && isUnionSubset(src.typ, dst.typ):
+	case mode == explicit && isUnionSubset(src.typ, dst.typ):
 		return dst, conversion(cvt, UnionConvert, dst.typ), nil
 
 	case isImplicitFuncConvertible(src.typ, dst.typ):
@@ -235,10 +242,10 @@ func convertPattern(cvt *Convert, src, dst typePattern, explicit bool, bind *map
 
 	case isRefLiteral(src.typ):
 		cvt = conversion(cvt, Deref, src.refElem().typ)
-		return convertPattern(cvt, src.refElem(), dst, explicit, bind)
+		return convertPattern(cvt, src.refElem(), dst, mode, bind)
 
 	case isRefLiteral(dst.typ):
-		pat, cvt, notes := convertPattern(cvt, src, dst.refElem(), explicit, bind)
+		pat, cvt, notes := convertPattern(cvt, src, dst.refElem(), mode, bind)
 		if cvt == nil {
 			return typePattern{}, nil, notes
 		}

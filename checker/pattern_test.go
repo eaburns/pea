@@ -1121,7 +1121,7 @@ func TestPatternUnify(t *testing.T) {
 			}
 			pat := parseTestPattern(t, mod, test.pat)
 			typ := parseTestType(t, mod, test.typ)
-			bind, note := convertType(pattern(typ), pat, false)
+			bind, note := convertType(pattern(typ), pat, implicit)
 			if test.want == "" {
 				if note == nil {
 					t.Errorf("got %s %v, want error", subType(bind, typ), bindAsSlice(bind))

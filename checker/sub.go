@@ -209,7 +209,7 @@ func (c *Call) subExpr(bindings bindings) Expr {
 		// coming out of an explicit convert.
 		// We need to be able to convert it back to &string
 		// to pass to bar(&string).
-		args[i], _, err = convertExpr(args[i], fun.parm(i), true)
+		args[i], _, err = convertExpr(args[i], fun.parm(i), explicit)
 		if err != nil {
 			panic(fmt.Sprintf("bad arg convert in Call.subExpr: %s", err))
 		}
@@ -220,7 +220,7 @@ func (c *Call) subExpr(bindings bindings) Expr {
 		T:    refLiteral(fun.ret().groundType()),
 		L:    c.L,
 	}
-	ret, _, err := convertExpr(call, pattern(subType(bindings.Types, c.T)), false)
+	ret, _, err := convertExpr(call, pattern(subType(bindings.Types, c.T)), implicit)
 	if err != nil {
 		panic(fmt.Sprintf("bad return convert in Call.subExpr: %s", err))
 	}

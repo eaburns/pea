@@ -368,7 +368,11 @@ func TestConvert(t *testing.T) {
 			src := parseTestPattern(t, mod, test.src)
 			dst := parseTestPattern(t, mod, test.dst)
 			var bind map[*TypeParm]Type
-			pat, cvt, _ := convertPattern(nil, src, dst, test.explicit, &bind)
+			mode := implicit
+			if test.explicit {
+				mode = explicit
+			}
+			pat, cvt, _ := convertPattern(nil, src, dst, mode, &bind)
 			if cvt == nil {
 				if len(test.want) != 0 {
 					t.Fatalf("convert(%s, %s, %v)=nil, want %v",
