@@ -537,7 +537,7 @@ func convert(obj Val, typ flowgraph.Type) Val {
 	switch typ := typ.(type) {
 	case *flowgraph.IntType:
 		switch {
-		case typ.Size == 8 && typ.Unsigned:
+		case typ.Size == 8 && !typ.Unsigned:
 			switch obj := obj.(type) {
 			case Float32:
 				return Int8(obj)
