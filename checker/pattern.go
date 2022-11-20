@@ -98,6 +98,9 @@ func (pat typePattern) parm(i int) typePattern {
 // ret returns the return type of a literal function type pattern;
 // panics if pat is not a literal function type pattern.
 func (pat typePattern) ret() typePattern {
+	if pat.typ.(*FuncType).Ret == nil {
+		return any()
+	}
 	return pat.withType(pat.typ.(*FuncType).Ret)
 }
 
