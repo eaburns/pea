@@ -43,9 +43,7 @@ func (f *FuncInst) parm(i int) typePattern {
 
 func (f *FuncInst) sub(parms []*TypeParm, sub map[*TypeParm]Type) note {
 	f.typeParms = append(f.typeParms, parms...)
-	for i := range f.TypeArgs {
-		f.TypeArgs[i] = subType(sub, f.TypeArgs[i])
-	}
+	f.TypeArgs = subTypes(sub, f.TypeArgs)
 	for i, decl := range f.IfaceArgs {
 		// FuncInst.sub is only called before instIface,
 		// so IfaceArgs must be still *FuncDecls.
