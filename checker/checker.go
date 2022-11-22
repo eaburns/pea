@@ -75,20 +75,20 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 		name  string
 	}
 	seenTypes := map[typeKey]loc.Loc{
-		{0, "int"}:      {},
-		{0, "int8"}:     {},
-		{0, "int16"}:    {},
-		{0, "int32"}:    {},
-		{0, "int64"}:    {},
-		{0, "uint"}:     {},
-		{0, "uint8"}:    {},
-		{0, "uint16"}:   {},
-		{0, "uint32"}:   {},
-		{0, "uint64"}:   {},
-		{0, "uintref"}:  {},
-		{0, "float32"}:  {},
-		{0, "float64"}:  {},
-		{0, "string"}:   {},
+		{0, "int"}:     {},
+		{0, "int8"}:    {},
+		{0, "int16"}:   {},
+		{0, "int32"}:   {},
+		{0, "int64"}:   {},
+		{0, "uint"}:    {},
+		{0, "uint8"}:   {},
+		{0, "uint16"}:  {},
+		{0, "uint32"}:  {},
+		{0, "uint64"}:  {},
+		{0, "uintref"}: {},
+		{0, "float32"}: {},
+		{0, "float64"}: {},
+		{0, "string"}:  {},
 	}
 	mod := &Mod{Path: modPath}
 	var importedMods []*Mod
@@ -1323,26 +1323,71 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		markVerbose(notes)
 	}
 	var args []Expr
+	var firstArgConvertError Error
 	for i, parserArg := range parserCall.Args {
-		arg, fs, ns, errs := checkArgAndFilter(x, parserID, i, parserArg, funcs)
+		parmPats := make([]typePattern, 0, len(funcs))
+		for _, f := range funcs {
+			parmPats = append(parmPats, f.parm(i))
+		}
+		parmPat := common(parmPats...)
+
+		var arg Expr
+		var errs []Error
+		// If this is the LHS of an assignment to an Ident,
+		// don't mark it as "used" if it is a local variable.
+		if lhs, ok := parserArg.(parser.Ident); ok && i == 0 && parserID.Name == ":=" {
+			arg, errs = checkID(x, lhs, true, parmPat)
+		} else {
+			arg, errs = checkExpr(x, parserArg, parmPat)
+		}
 		if len(errs) > 0 {
 			errs = append(errs, checkArgsFallback(x, parserCall.Args[i+1:])...)
 			return &Call{L: parserCall.L}, errs
 		}
-		funcs = fs
-		args = append(args, arg)
+		funcs, ns = filterByArg(funcs, i, arg)
 		notes = append(notes, ns...)
+		args = append(args, arg)
 
 		if mod == nil {
 			// Do argument-dependent lookup if the call is not tagged with a module.
-			fs, ns = adLookup(x, parserID, len(parserCall.Args), args, pat)
+			fs, ns := adLookup(x, parserID, len(parserCall.Args), args, pat)
 			funcs = append(funcs, fs...)
 			notes = append(notes, ns...)
 		}
 		if len(funcs) > 0 {
 			markVerbose(notes)
 		}
+		if len(funcs) == 0 && firstArgConvertError == nil {
+			// This is just for simpler error messages:
+			// If all functions have the same pattern (eg, if len(funcs)==1),
+			// we try to convert the argument expression to that pattern.
+			// If the conversion fails, we keep track of the error;
+			// and if there are no more function candidates after checking args,
+			// we can return the first such error instead of returning "not found"
+			// on the called function.
+			//
+			// Note that we do not return the error right away,
+			// as to give ADL a chance to add additional candidate functions.
+			samePat := true
+			for _, f := range funcs {
+				if !eqType(f.parm(i).typ, parmPat.typ) {
+					samePat = false
+					break
+				}
+			}
+			if samePat {
+				_, _, firstArgConvertError = convertExpr(arg, parmPat, implicit)
+			}
+		}
 	}
+
+	// No candidates left.
+	// Consider reporting a simpler error if an argument failed to convert
+	// to a type that was agreed by all considered functions.
+	if len(funcs) == 0 && firstArgConvertError != nil {
+		return &Call{L: parserCall.L}, []Error{firstArgConvertError}
+	}
+
 	funcs, ns = filterByReturnType(funcs, pat, mode)
 	notes = append(notes, ns...)
 	if len(funcs) > 0 {
@@ -1427,33 +1472,6 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 		notes = append(notes, newNote("%s: expects %d arguments, got %d", f, f.arity(), arity).setLoc(f))
 	}
 	return funcs[:n], notes
-}
-
-func checkArgAndFilter(x scope, parserID parser.Ident, i int, parserArg parser.Expr, funcs []Func) (Expr, []Func, []note, []Error) {
-	pats := make([]typePattern, 0, len(funcs))
-	for _, f := range funcs {
-		pats = append(pats, f.parm(i))
-	}
-	pat := common(pats...)
-
-	var arg Expr
-	var errs []Error
-	// If this is the LHS of an assignment to an Ident,
-	// don't mark it as "used" if it is a local variable.
-	if lhs, ok := parserArg.(parser.Ident); ok && i == 0 && parserID.Name == ":=" {
-		arg, errs = checkID(x, lhs, true, pat)
-	} else {
-		arg, errs = checkExpr(x, parserArg, pat)
-		if len(errs) > 0 {
-			return nil, nil, nil, errs
-		}
-	}
-	if len(errs) > 0 {
-		return arg, nil, nil, errs
-	}
-	var notes []note
-	funcs, notes = filterByArg(funcs, i, arg)
-	return arg, funcs, notes, errs
 }
 
 func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, pat typePattern) ([]Func, []note) {
