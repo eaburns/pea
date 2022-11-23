@@ -3,6 +3,7 @@ package checker
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/eaburns/pea/loc"
 )
@@ -373,10 +374,16 @@ func intersection(a, b typePattern, bind *map[*TypeParm]Type) (*typePattern, not
 		return nil, note
 	}
 	var parms []*TypeParm
+	seen := make(map[string]int)
 	for _, parm := range sets.setSlice {
 		set := sets.find(parm)
 		if set.bind == nil {
-			parm := &TypeParm{Name: fmt.Sprintf("_%d", len(parms))}
+			name := strings.TrimRight(parm.Name, "0123456789")
+			seen[parm.Name] = seen[parm.Name] + 1
+			if n := seen[name]; n > 1 {
+				name = fmt.Sprintf("%s%d", name, n)
+			}
+			parm := &TypeParm{Name: name}
 			parms = append(parms, parm)
 			set.bind = &TypeVar{Name: parm.Name, Def: parm}
 		}

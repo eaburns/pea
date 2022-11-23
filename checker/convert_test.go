@@ -333,9 +333,9 @@ func TestConvert(t *testing.T) {
 		{src: "(){}", dst: "[int]", explicit: true, want: nil},
 
 		// It is not an error if the conversion does not fully ground the resulting type.
-		{src: "?", dst: "?", explicit: false, want: c("Z0", Noop, "_0")},
-		{src: "?", dst: "?", explicit: true, want: c("Z0", Noop, "_0")},
-		{src: "[.x ?, .y ?]", dst: "[.x int, .y ?]", want: c("[.x Z0, .y Z1]", Noop, "[.x int, .y _0]")},
+		{src: "?", dst: "?", explicit: false, want: c("Z0", Noop, "Z")},
+		{src: "?", dst: "?", explicit: true, want: c("Z0", Noop, "Z")},
+		{src: "[.x ?, .y ?]", dst: "[.x int, .y ?]", want: c("[.x Z0, .y Z1]", Noop, "[.x int, .y Z]")},
 
 		{
 			src:  "[.x int, .y int]",
