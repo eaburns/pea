@@ -4264,7 +4264,7 @@ func TestOverloadResolution(t *testing.T) {
 		{
 			name: "built-in array slice, arg not an array",
 			call: "1[1, 2]",
-			err:  "cannot convert argument 0 \\(int\\) to \\[\\?\\](.|\n)*cannot convert argument 0 \\(int\\) to string",
+			err:  `cannot convert 1 \(int\) to (\[\?\]|string)`,
 		},
 		{
 			name: "built-in string slice",
@@ -4300,9 +4300,9 @@ func TestOverloadResolution(t *testing.T) {
 			want:  "built-in .length([int])int",
 		},
 		{
-			name: "built-in .length, not an array or string",
+			name: "built-in .length, arg not an array or string",
 			call: "5.length",
-			err:  "cannot convert argument 0 \\(int\\) to \\[\\?\\](.|\n)*cannot convert argument 0 \\(int\\) to string",
+			err:  `cannot convert 5 \(int\) to (\[\?\]|string)`,
 		},
 		{
 			name: "built-in .length, other mod array",
@@ -4333,7 +4333,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().length",
-			err:  "cannot convert argument 0 \\(other#_foo\\) to \\[\\?\\](.|\n)*cannot convert argument 0 \\(other#_foo\\) to string",
+			err:  `built-in .length: argument 0 \(other#_foo\) is not a struct type`,
 		},
 		{
 			name: "built-in .length, other mod opaque array fails",
@@ -4348,7 +4348,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().length",
-			err:  "cannot convert argument 0 \\(other#foo\\) to \\[\\?\\](.|\n)*cannot convert argument 0 \\(other#foo\\) to string",
+			err:  `built-in .length: argument 0 \(other#foo\) is not a struct type`,
 		},
 		{
 			name: "built-in panic",

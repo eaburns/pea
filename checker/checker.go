@@ -1546,14 +1546,13 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 		// Just silently filter out all functions.
 		return nil, nil
 	}
+
 	var n int
 	var notes []note
 	for _, f := range funcs {
 		_, bind, err := convertExpr(arg, f.parm(i), implicit)
 		if err != nil {
-			n := newNote("%s: cannot convert argument %d (%s) to %s", f, i, arg.Type(), f.parm(i))
-			n.setNotes([]note{err.(note)})
-			notes = append(notes, n)
+			notes = append(notes, err.(note))
 			continue
 		}
 		if note := f.sub(nil, bind); note != nil {
@@ -1582,11 +1581,10 @@ func filterByReturnType(funcs []Func, pat typePattern, mode convertMode) ([]Func
 		if !f.ret().isGroundType() {
 			// If the ret is not grounded, it means bind was nil;
 			// the conversion failed and we could not infer the return type.
-			n := newNote("%s: cannot convert return value (%s) to %s", f, f.ret(), pat)
-			if convertNote != nil {
-				n.setNotes([]note{convertNote})
+			if convertNote == nil {
+				convertNote = newNote("%s: cannot infer return type %s", f, f.ret())
 			}
-			notes = append(notes, n)
+			notes = append(notes, convertNote)
 			return nil, notes
 		}
 		return funcs, nil
@@ -1594,11 +1592,9 @@ func filterByReturnType(funcs []Func, pat typePattern, mode convertMode) ([]Func
 
 	var n int
 	for _, f := range funcs {
-		bind, convertNote := convertType(f.ret(), pat, mode)
-		if convertNote != nil {
-			n := newNote("%s: cannot convert return value (%s) to %s", f, f.ret(), pat)
-			n.setNotes([]note{convertNote})
-			notes = append(notes, n)
+		bind, note := convertType(f.ret(), pat, mode)
+		if note != nil {
+			notes = append(notes, note)
 			continue
 		}
 		if note := f.sub(nil, bind); note != nil {
