@@ -23,10 +23,11 @@ var (
 	libpea       = flag.String("libpea", "", "path to libpea source directory")
 	root         = flag.String("root", "", "module root directory (required)")
 	test         = flag.Bool("test", false, "whether to compile a test binary")
-	v            = flag.Bool("v", false, "print commands executed")
+	printCmds            = flag.Bool("print-commands", false, "print commands executed")
 	lprofiler    = flag.Bool("lprofiler", false, "whether to link with -lprofiler for CPU profiling")
 	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
 	dumpCheck    = flag.Bool("dump-check", false, "whether to dump the checked graph")
+	verbose    = flag.Bool("v", false, "verbose error messages")
 	dumpLL       = flag.Bool("dump-ll", false, "whether to dump the .ll files")
 	traceEsc     = flag.Bool("trace-esc", false, "whether to trace escape analysis")
 	traceInline  = flag.Bool("trace-inl", false, "whether to trace inlining")
@@ -134,11 +135,11 @@ func compile(m *mod.Mod) {
 	// since type-parameterized function changes in a dependency
 	// can change the .a file for the dependent.
 	if modTime(aFile).After(lastChange(append(aFiles, m.SrcFiles...))) {
-		if *v {
+		if *printCmds {
 			fmt.Printf("---- %s: archive up-to-date\n", m.Path)
 		}
 	} else {
-		if *v {
+		if *printCmds {
 			fmt.Printf("---- %s: building archive\n", m.Path)
 		}
 		if fg == nil {
@@ -157,7 +158,7 @@ func compile(m *mod.Mod) {
 		binFilePath += ".test"
 	}
 	if modTime(binFilePath).After(lastChange(aFiles)) {
-		if *v {
+		if *printCmds {
 			if *test {
 				fmt.Printf("---- %s: test binary up-to-date\n", m.Path)
 			} else {
@@ -166,7 +167,7 @@ func compile(m *mod.Mod) {
 		}
 		return
 	}
-	if *v {
+	if *printCmds {
 		if *test {
 			fmt.Printf("---- %s: building test binary\n", m.Path)
 		} else {
@@ -259,11 +260,11 @@ func _compileDeps(m *mod.Mod, seen map[*mod.Mod]bool) []string {
 	// since type-parameterized function changes in a dependency
 	// can change the .a file for the dependent.
 	if modTime(aFile).After(lastChange(append(aFiles, m.SrcFiles...))) {
-		if *v {
+		if *printCmds {
 			fmt.Printf("---- %s: up-to-date\n", m.Path)
 		}
 	} else {
-		if *v {
+		if *printCmds {
 			fmt.Printf("---- %s: building\n", m.Path)
 		}
 		fg, locs := compileFG(m)
@@ -351,6 +352,9 @@ func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs 
 		checker.UseImporter(imp),
 		checker.TrimErrorPathPrefix(p.TrimErrorPathPrefix),
 	}
+	if *verbose {
+		checkOpts = append(checkOpts, checker.MaxErrorDepth(-1), checker.VerboseNotes(true))
+	}
 	checkMod, locs, errs := checker.Check(m.Path, p.Files, checkOpts...)
 	if len(errs) > 0 {
 		fail(errs...)
@@ -372,7 +376,7 @@ func compileLL(file, oFile string) error {
 
 func run(cmd string, args ...string) error {
 	c := exec.Command(cmd, args...)
-	if *v {
+	if *printCmds {
 		fmt.Println(c)
 	}
 	var out strings.Builder
