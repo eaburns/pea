@@ -313,14 +313,42 @@ func isSpace(s string) bool {
 	return unicode.IsSpace(r)
 }
 
-func l(p *_Parser, s, e int) loc.Loc {
-	for {
-		r, w := utf8.DecodeRuneInString(p.text[s:])
-		if !unicode.IsSpace(r) {
-			break
+func countLeadingSpaceAndComments(s0 string) int {
+	s := s0
+loop:
+	for len(s) > 0 {
+		switch r, w := utf8.DecodeRuneInString(s); {
+		case unicode.IsSpace(r):
+			s = s[w:]
+		case strings.HasPrefix(s, "//"):
+			s = strings.TrimPrefix(s, "//")
+			for len(s) > 0 && s[0] != '\n' {
+				s = s[1:]
+			}
+		case strings.HasPrefix(s, "/*"):
+			depth := 1
+			s = strings.TrimPrefix(s, "/*")
+			for len(s) > 0 && depth > 0 {
+				switch {
+				case strings.HasPrefix(s, "/*"):
+					depth++
+					s = strings.TrimPrefix(s, "/*")
+				case strings.HasPrefix(s, "*/"):
+					depth--
+					s = strings.TrimPrefix(s, "*/")
+				default:
+					s = s[1:]
+				}
+			}
+		default:
+			break loop
 		}
-		s += w
 	}
+	return len(s0) - len(s)
+}
+
+func l(p *_Parser, s, e int) loc.Loc {
+	s += countLeadingSpaceAndComments(p.text[s:])
 	for {
 		r, w := utf8.DecodeLastRuneInString(p.text[:e])
 		if !unicode.IsSpace(r) {

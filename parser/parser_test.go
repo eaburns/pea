@@ -613,7 +613,6 @@ func TestExpr(t *testing.T) {
 			},
 		},
 
-
 		{
 			"(abc)(1, 2)",
 			&Call{
@@ -1182,6 +1181,22 @@ func TestNestedBlockComments(t *testing.T) {
 	if err := New().Parse("", strings.NewReader(src)); err != nil {
 		t.Log(src)
 		t.Fatalf("got %s parse, want nil", err)
+	}
+}
+
+func TestStripLeadingComments(t *testing.T) {
+	const src = `
+		/* /* */ */
+		// /* */
+
+		identifier
+	`
+	expr, err := ParseExpr(src)
+	if err != nil {
+		t.Fatalf("failed to parse: %s", err.Error())
+	}
+	if got := expr.(Ident).L[0]; got != 30 {
+		t.Errorf("expecte identifier start location to be offset 29, got %d", got)
 	}
 }
 
