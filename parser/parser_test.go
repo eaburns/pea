@@ -1169,6 +1169,22 @@ func TestImportsOnly_NoImports(t *testing.T) {
 	}
 }
 
+func TestNestedBlockComments(t *testing.T) {
+	const src = `
+		/* /* nested */ invalid source code, but part of a comment */
+		/*
+			/*
+				/* Hello */
+			*/
+		*/
+		func main() {}
+	`
+	if err := New().Parse("", strings.NewReader(src)); err != nil {
+		t.Log(src)
+		t.Fatalf("got %s parse, want nil", err)
+	}
+}
+
 func TestImportsOnly(t *testing.T) {
 	const src = `
 		import "bar"

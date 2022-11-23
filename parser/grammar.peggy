@@ -507,13 +507,14 @@ Id "identifier" <- _ !Kwd !CaseId !ModId name:NAME {
 	return Ident{Name: name, L: l(parser, start, end)}
 }
 
-_ "" <- (SPACE / COMMENT)*
 NAME <- !RESERVED !TypeVar ("_" / L) ("_" / L / D)*
 RESERVED <- ("import" / "Import" / "const" / "Const" / "var" / "Var" / "type" / "Type" / "iface" / "Iface" / "func" / "Func" / "test") !("_" / L / D)
 D <- [0-9]
 X <- [a-fA-F0-9]
 L <- r:. &{isLetter(r)}
 O <- [*/%+\-^=!<>&|~@$]
+_ "" <- (SPACE / LINE_COMMENT / BLOCK_COMMENT)*
 SPACE <- r:. &{isSpace(r)}
-COMMENT <- "//" (!"\n" .)* / "/*" (!"*/" .)* "*/"
+LINE_COMMENT <- "//" (!"\n" .)*
+BLOCK_COMMENT <- "/*" (BLOCK_COMMENT / (!"*/" .))* "*/"
 EOF <- !.

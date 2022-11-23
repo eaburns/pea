@@ -108,33 +108,34 @@ const (
 	_CaseId                     int = 102
 	_ModId                      int = 103
 	_Id                         int = 104
-	__                          int = 105
-	_NAME                       int = 106
-	_RESERVED                   int = 107
-	_D                          int = 108
-	_X                          int = 109
-	_L                          int = 110
-	_O                          int = 111
+	_NAME                       int = 105
+	_RESERVED                   int = 106
+	_D                          int = 107
+	_X                          int = 108
+	_L                          int = 109
+	_O                          int = 110
+	__                          int = 111
 	_SPACE                      int = 112
-	_COMMENT                    int = 113
-	_EOF                        int = 114
-	_Bin__AsgnOp__AsgnArg       int = 115
-	_NameArg__Kwd__KwArg        int = 116
-	_NameArg__Kwd__KwArg1       int = 117
-	_NameArg__CaseId__SwitchArg int = 118
-	_Bin__Bin5Op__Bin5Arg       int = 119
-	_Bin__Bin4Op__Bin4Arg       int = 120
-	_Bin__Bin3Op__Bin3Arg       int = 121
-	_Bin__Bin2Op__Bin2Arg       int = 122
-	_Bin__Bin1Op__Bin1Arg       int = 123
-	_BinTail__AsgnOp__AsgnArg   int = 124
-	_BinTail__Bin5Op__Bin5Arg   int = 125
-	_BinTail__Bin4Op__Bin4Arg   int = 126
-	_BinTail__Bin3Op__Bin3Arg   int = 127
-	_BinTail__Bin2Op__Bin2Arg   int = 128
-	_BinTail__Bin1Op__Bin1Arg   int = 129
+	_LINE_COMMENT               int = 113
+	_BLOCK_COMMENT              int = 114
+	_EOF                        int = 115
+	_Bin__AsgnOp__AsgnArg       int = 116
+	_NameArg__Kwd__KwArg        int = 117
+	_NameArg__Kwd__KwArg1       int = 118
+	_NameArg__CaseId__SwitchArg int = 119
+	_Bin__Bin5Op__Bin5Arg       int = 120
+	_Bin__Bin4Op__Bin4Arg       int = 121
+	_Bin__Bin3Op__Bin3Arg       int = 122
+	_Bin__Bin2Op__Bin2Arg       int = 123
+	_Bin__Bin1Op__Bin1Arg       int = 124
+	_BinTail__AsgnOp__AsgnArg   int = 125
+	_BinTail__Bin5Op__Bin5Arg   int = 126
+	_BinTail__Bin4Op__Bin4Arg   int = 127
+	_BinTail__Bin3Op__Bin3Arg   int = 128
+	_BinTail__Bin2Op__Bin2Arg   int = 129
+	_BinTail__Bin1Op__Bin1Arg   int = 130
 
-	_N int = 130
+	_N int = 131
 )
 
 type _Parser struct {
@@ -23437,145 +23438,6 @@ fail:
 	return -1, nil
 }
 
-func __Accepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	if dp, de, ok := _memo(parser, __, start); ok {
-		return dp, de
-	}
-	pos, perr := start, -1
-	// (SPACE/COMMENT)*
-	for {
-		pos1 := pos
-		// (SPACE/COMMENT)
-		// SPACE/COMMENT
-		{
-			pos7 := pos
-			// SPACE
-			if !_accept(parser, _SPACEAccepts, &pos, &perr) {
-				goto fail8
-			}
-			goto ok4
-		fail8:
-			pos = pos7
-			// COMMENT
-			if !_accept(parser, _COMMENTAccepts, &pos, &perr) {
-				goto fail9
-			}
-			goto ok4
-		fail9:
-			pos = pos7
-			goto fail3
-		ok4:
-		}
-		continue
-	fail3:
-		pos = pos1
-		break
-	}
-	perr = start
-	return _memoize(parser, __, start, pos, perr)
-}
-
-func __Fail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	pos, failure := _failMemo(parser, __, start, errPos)
-	if failure != nil {
-		return pos, failure
-	}
-	failure = &peg.Fail{
-		Name: "_",
-		Pos:  int(start),
-	}
-	key := _key{start: start, rule: __}
-	// (SPACE/COMMENT)*
-	for {
-		pos1 := pos
-		// (SPACE/COMMENT)
-		// SPACE/COMMENT
-		{
-			pos7 := pos
-			// SPACE
-			if !_fail(parser, _SPACEFail, errPos, failure, &pos) {
-				goto fail8
-			}
-			goto ok4
-		fail8:
-			pos = pos7
-			// COMMENT
-			if !_fail(parser, _COMMENTFail, errPos, failure, &pos) {
-				goto fail9
-			}
-			goto ok4
-		fail9:
-			pos = pos7
-			goto fail3
-		ok4:
-		}
-		continue
-	fail3:
-		pos = pos1
-		break
-	}
-	failure.Kids = nil
-	parser.fail[key] = failure
-	return pos, failure
-}
-
-func __Action(parser *_Parser, start int) (int, *string) {
-	dp := parser.deltaPos[start][__]
-	if dp < 0 {
-		return -1, nil
-	}
-	key := _key{start: start, rule: __}
-	n := parser.act[key]
-	if n != nil {
-		n := n.(string)
-		return start + int(dp-1), &n
-	}
-	var node string
-	pos := start
-	// (SPACE/COMMENT)*
-	for {
-		pos1 := pos
-		var node2 string
-		// (SPACE/COMMENT)
-		// SPACE/COMMENT
-		{
-			pos7 := pos
-			var node6 string
-			// SPACE
-			if p, n := _SPACEAction(parser, pos); n == nil {
-				goto fail8
-			} else {
-				node2 = *n
-				pos = p
-			}
-			goto ok4
-		fail8:
-			node2 = node6
-			pos = pos7
-			// COMMENT
-			if p, n := _COMMENTAction(parser, pos); n == nil {
-				goto fail9
-			} else {
-				node2 = *n
-				pos = p
-			}
-			goto ok4
-		fail9:
-			node2 = node6
-			pos = pos7
-			goto fail3
-		ok4:
-		}
-		node += node2
-		continue
-	fail3:
-		pos = pos1
-		break
-	}
-	parser.act[key] = node
-	return pos, &node
-}
-
 func _NAMEAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	if dp, de, ok := _memo(parser, _NAME, start); ok {
 		return dp, de
@@ -24924,6 +24786,170 @@ fail:
 	return -1, nil
 }
 
+func __Accepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, __, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// (SPACE/LINE_COMMENT/BLOCK_COMMENT)*
+	for {
+		pos1 := pos
+		// (SPACE/LINE_COMMENT/BLOCK_COMMENT)
+		// SPACE/LINE_COMMENT/BLOCK_COMMENT
+		{
+			pos7 := pos
+			// SPACE
+			if !_accept(parser, _SPACEAccepts, &pos, &perr) {
+				goto fail8
+			}
+			goto ok4
+		fail8:
+			pos = pos7
+			// LINE_COMMENT
+			if !_accept(parser, _LINE_COMMENTAccepts, &pos, &perr) {
+				goto fail9
+			}
+			goto ok4
+		fail9:
+			pos = pos7
+			// BLOCK_COMMENT
+			if !_accept(parser, _BLOCK_COMMENTAccepts, &pos, &perr) {
+				goto fail10
+			}
+			goto ok4
+		fail10:
+			pos = pos7
+			goto fail3
+		ok4:
+		}
+		continue
+	fail3:
+		pos = pos1
+		break
+	}
+	perr = start
+	return _memoize(parser, __, start, pos, perr)
+}
+
+func __Fail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, __, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "_",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: __}
+	// (SPACE/LINE_COMMENT/BLOCK_COMMENT)*
+	for {
+		pos1 := pos
+		// (SPACE/LINE_COMMENT/BLOCK_COMMENT)
+		// SPACE/LINE_COMMENT/BLOCK_COMMENT
+		{
+			pos7 := pos
+			// SPACE
+			if !_fail(parser, _SPACEFail, errPos, failure, &pos) {
+				goto fail8
+			}
+			goto ok4
+		fail8:
+			pos = pos7
+			// LINE_COMMENT
+			if !_fail(parser, _LINE_COMMENTFail, errPos, failure, &pos) {
+				goto fail9
+			}
+			goto ok4
+		fail9:
+			pos = pos7
+			// BLOCK_COMMENT
+			if !_fail(parser, _BLOCK_COMMENTFail, errPos, failure, &pos) {
+				goto fail10
+			}
+			goto ok4
+		fail10:
+			pos = pos7
+			goto fail3
+		ok4:
+		}
+		continue
+	fail3:
+		pos = pos1
+		break
+	}
+	failure.Kids = nil
+	parser.fail[key] = failure
+	return pos, failure
+}
+
+func __Action(parser *_Parser, start int) (int, *string) {
+	dp := parser.deltaPos[start][__]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: __}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(string)
+		return start + int(dp-1), &n
+	}
+	var node string
+	pos := start
+	// (SPACE/LINE_COMMENT/BLOCK_COMMENT)*
+	for {
+		pos1 := pos
+		var node2 string
+		// (SPACE/LINE_COMMENT/BLOCK_COMMENT)
+		// SPACE/LINE_COMMENT/BLOCK_COMMENT
+		{
+			pos7 := pos
+			var node6 string
+			// SPACE
+			if p, n := _SPACEAction(parser, pos); n == nil {
+				goto fail8
+			} else {
+				node2 = *n
+				pos = p
+			}
+			goto ok4
+		fail8:
+			node2 = node6
+			pos = pos7
+			// LINE_COMMENT
+			if p, n := _LINE_COMMENTAction(parser, pos); n == nil {
+				goto fail9
+			} else {
+				node2 = *n
+				pos = p
+			}
+			goto ok4
+		fail9:
+			node2 = node6
+			pos = pos7
+			// BLOCK_COMMENT
+			if p, n := _BLOCK_COMMENTAction(parser, pos); n == nil {
+				goto fail10
+			} else {
+				node2 = *n
+				pos = p
+			}
+			goto ok4
+		fail10:
+			node2 = node6
+			pos = pos7
+			goto fail3
+		ok4:
+		}
+		node += node2
+		continue
+	fail3:
+		pos = pos1
+		break
+	}
+	parser.act[key] = node
+	return pos, &node
+}
+
 func _SPACEAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	var labels [1]string
 	use(labels)
@@ -25047,272 +25073,128 @@ fail:
 	return -1, nil
 }
 
-func _COMMENTAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
-	if dp, de, ok := _memo(parser, _COMMENT, start); ok {
+func _LINE_COMMENTAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, _LINE_COMMENT, start); ok {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// "//" (!"\n" .)*/"/*" (!"*/" .)* "*/"
-	{
-		pos3 := pos
-		// "//" (!"\n" .)*
-		// "//"
-		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "//" {
+	// "//" (!"\n" .)*
+	// "//"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "//" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos += 2
+	// (!"\n" .)*
+	for {
+		pos2 := pos
+		// (!"\n" .)
+		// !"\n" .
+		// !"\n"
+		{
+			pos7 := pos
+			perr9 := perr
+			// "\n"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "\n" {
+				perr = _max(perr, pos)
+				goto ok6
+			}
+			pos++
+			pos = pos7
+			perr = _max(perr9, pos)
+			goto fail4
+		ok6:
+			pos = pos7
+			perr = perr9
+		}
+		// .
+		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
 			perr = _max(perr, pos)
 			goto fail4
+		} else {
+			pos += w
 		}
-		pos += 2
-		// (!"\n" .)*
-		for {
-			pos7 := pos
-			// (!"\n" .)
-			// !"\n" .
-			// !"\n"
-			{
-				pos12 := pos
-				perr14 := perr
-				// "\n"
-				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "\n" {
-					perr = _max(perr, pos)
-					goto ok11
-				}
-				pos++
-				pos = pos12
-				perr = _max(perr14, pos)
-				goto fail9
-			ok11:
-				pos = pos12
-				perr = perr14
-			}
-			// .
-			if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
-				perr = _max(perr, pos)
-				goto fail9
-			} else {
-				pos += w
-			}
-			continue
-		fail9:
-			pos = pos7
-			break
-		}
-		goto ok0
+		continue
 	fail4:
-		pos = pos3
-		// "/*" (!"*/" .)* "*/"
-		// "/*"
-		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "/*" {
-			perr = _max(perr, pos)
-			goto fail15
-		}
-		pos += 2
-		// (!"*/" .)*
-		for {
-			pos18 := pos
-			// (!"*/" .)
-			// !"*/" .
-			// !"*/"
-			{
-				pos23 := pos
-				perr25 := perr
-				// "*/"
-				if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
-					perr = _max(perr, pos)
-					goto ok22
-				}
-				pos += 2
-				pos = pos23
-				perr = _max(perr25, pos)
-				goto fail20
-			ok22:
-				pos = pos23
-				perr = perr25
-			}
-			// .
-			if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
-				perr = _max(perr, pos)
-				goto fail20
-			} else {
-				pos += w
-			}
-			continue
-		fail20:
-			pos = pos18
-			break
-		}
-		// "*/"
-		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
-			perr = _max(perr, pos)
-			goto fail15
-		}
-		pos += 2
-		goto ok0
-	fail15:
-		pos = pos3
-		goto fail
-	ok0:
+		pos = pos2
+		break
 	}
-	return _memoize(parser, _COMMENT, start, pos, perr)
+	return _memoize(parser, _LINE_COMMENT, start, pos, perr)
 fail:
-	return _memoize(parser, _COMMENT, start, -1, perr)
+	return _memoize(parser, _LINE_COMMENT, start, -1, perr)
 }
 
-func _COMMENTFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
-	pos, failure := _failMemo(parser, _COMMENT, start, errPos)
+func _LINE_COMMENTFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, _LINE_COMMENT, start, errPos)
 	if failure != nil {
 		return pos, failure
 	}
 	failure = &peg.Fail{
-		Name: "COMMENT",
+		Name: "LINE_COMMENT",
 		Pos:  int(start),
 	}
-	key := _key{start: start, rule: _COMMENT}
-	// "//" (!"\n" .)*/"/*" (!"*/" .)* "*/"
-	{
-		pos3 := pos
-		// "//" (!"\n" .)*
-		// "//"
-		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "//" {
+	key := _key{start: start, rule: _LINE_COMMENT}
+	// "//" (!"\n" .)*
+	// "//"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "//" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\"//\"",
+			})
+		}
+		goto fail
+	}
+	pos += 2
+	// (!"\n" .)*
+	for {
+		pos2 := pos
+		// (!"\n" .)
+		// !"\n" .
+		// !"\n"
+		{
+			pos7 := pos
+			nkids8 := len(failure.Kids)
+			// "\n"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "\n" {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "\"\\n\"",
+					})
+				}
+				goto ok6
+			}
+			pos++
+			pos = pos7
+			failure.Kids = failure.Kids[:nkids8]
 			if pos >= errPos {
 				failure.Kids = append(failure.Kids, &peg.Fail{
 					Pos:  int(pos),
-					Want: "\"//\"",
+					Want: "!\"\\n\"",
 				})
 			}
 			goto fail4
-		}
-		pos += 2
-		// (!"\n" .)*
-		for {
-			pos7 := pos
-			// (!"\n" .)
-			// !"\n" .
-			// !"\n"
-			{
-				pos12 := pos
-				nkids13 := len(failure.Kids)
-				// "\n"
-				if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "\n" {
-					if pos >= errPos {
-						failure.Kids = append(failure.Kids, &peg.Fail{
-							Pos:  int(pos),
-							Want: "\"\\n\"",
-						})
-					}
-					goto ok11
-				}
-				pos++
-				pos = pos12
-				failure.Kids = failure.Kids[:nkids13]
-				if pos >= errPos {
-					failure.Kids = append(failure.Kids, &peg.Fail{
-						Pos:  int(pos),
-						Want: "!\"\\n\"",
-					})
-				}
-				goto fail9
-			ok11:
-				pos = pos12
-				failure.Kids = failure.Kids[:nkids13]
-			}
-			// .
-			if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
-				if pos >= errPos {
-					failure.Kids = append(failure.Kids, &peg.Fail{
-						Pos:  int(pos),
-						Want: ".",
-					})
-				}
-				goto fail9
-			} else {
-				pos += w
-			}
-			continue
-		fail9:
+		ok6:
 			pos = pos7
-			break
+			failure.Kids = failure.Kids[:nkids8]
 		}
-		goto ok0
+		// .
+		if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
+			if pos >= errPos {
+				failure.Kids = append(failure.Kids, &peg.Fail{
+					Pos:  int(pos),
+					Want: ".",
+				})
+			}
+			goto fail4
+		} else {
+			pos += w
+		}
+		continue
 	fail4:
-		pos = pos3
-		// "/*" (!"*/" .)* "*/"
-		// "/*"
-		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "/*" {
-			if pos >= errPos {
-				failure.Kids = append(failure.Kids, &peg.Fail{
-					Pos:  int(pos),
-					Want: "\"/*\"",
-				})
-			}
-			goto fail15
-		}
-		pos += 2
-		// (!"*/" .)*
-		for {
-			pos18 := pos
-			// (!"*/" .)
-			// !"*/" .
-			// !"*/"
-			{
-				pos23 := pos
-				nkids24 := len(failure.Kids)
-				// "*/"
-				if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
-					if pos >= errPos {
-						failure.Kids = append(failure.Kids, &peg.Fail{
-							Pos:  int(pos),
-							Want: "\"*/\"",
-						})
-					}
-					goto ok22
-				}
-				pos += 2
-				pos = pos23
-				failure.Kids = failure.Kids[:nkids24]
-				if pos >= errPos {
-					failure.Kids = append(failure.Kids, &peg.Fail{
-						Pos:  int(pos),
-						Want: "!\"*/\"",
-					})
-				}
-				goto fail20
-			ok22:
-				pos = pos23
-				failure.Kids = failure.Kids[:nkids24]
-			}
-			// .
-			if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
-				if pos >= errPos {
-					failure.Kids = append(failure.Kids, &peg.Fail{
-						Pos:  int(pos),
-						Want: ".",
-					})
-				}
-				goto fail20
-			} else {
-				pos += w
-			}
-			continue
-		fail20:
-			pos = pos18
-			break
-		}
-		// "*/"
-		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
-			if pos >= errPos {
-				failure.Kids = append(failure.Kids, &peg.Fail{
-					Pos:  int(pos),
-					Want: "\"*/\"",
-				})
-			}
-			goto fail15
-		}
-		pos += 2
-		goto ok0
-	fail15:
-		pos = pos3
-		goto fail
-	ok0:
+		pos = pos2
+		break
 	}
 	parser.fail[key] = failure
 	return pos, failure
@@ -25321,12 +25203,12 @@ fail:
 	return -1, failure
 }
 
-func _COMMENTAction(parser *_Parser, start int) (int, *string) {
-	dp := parser.deltaPos[start][_COMMENT]
+func _LINE_COMMENTAction(parser *_Parser, start int) (int, *string) {
+	dp := parser.deltaPos[start][_LINE_COMMENT]
 	if dp < 0 {
 		return -1, nil
 	}
-	key := _key{start: start, rule: _COMMENT}
+	key := _key{start: start, rule: _LINE_COMMENT}
 	n := parser.act[key]
 	if n != nil {
 		n := n.(string)
@@ -25334,127 +25216,335 @@ func _COMMENTAction(parser *_Parser, start int) (int, *string) {
 	}
 	var node string
 	pos := start
-	// "//" (!"\n" .)*/"/*" (!"*/" .)* "*/"
+	// "//" (!"\n" .)*
 	{
-		pos3 := pos
-		var node2 string
-		// "//" (!"\n" .)*
-		{
-			var node5 string
-			// "//"
-			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "//" {
-				goto fail4
-			}
-			node5 = parser.text[pos : pos+2]
-			pos += 2
-			node, node5 = node+node5, ""
-			// (!"\n" .)*
-			for {
-				pos7 := pos
-				var node8 string
-				// (!"\n" .)
-				// !"\n" .
-				{
-					var node10 string
-					// !"\n"
-					{
-						pos12 := pos
-						// "\n"
-						if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "\n" {
-							goto ok11
-						}
-						pos++
-						pos = pos12
-						goto fail9
-					ok11:
-						pos = pos12
-						node10 = ""
-					}
-					node8, node10 = node8+node10, ""
-					// .
-					if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
-						goto fail9
-					} else {
-						node10 = parser.text[pos : pos+w]
-						pos += w
-					}
-					node8, node10 = node8+node10, ""
-				}
-				node5 += node8
-				continue
-			fail9:
-				pos = pos7
-				break
-			}
-			node, node5 = node+node5, ""
+		var node0 string
+		// "//"
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "//" {
+			goto fail
 		}
-		goto ok0
-	fail4:
-		node = node2
-		pos = pos3
-		// "/*" (!"*/" .)* "*/"
-		{
-			var node16 string
-			// "/*"
-			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "/*" {
-				goto fail15
+		node0 = parser.text[pos : pos+2]
+		pos += 2
+		node, node0 = node+node0, ""
+		// (!"\n" .)*
+		for {
+			pos2 := pos
+			var node3 string
+			// (!"\n" .)
+			// !"\n" .
+			{
+				var node5 string
+				// !"\n"
+				{
+					pos7 := pos
+					// "\n"
+					if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "\n" {
+						goto ok6
+					}
+					pos++
+					pos = pos7
+					goto fail4
+				ok6:
+					pos = pos7
+					node5 = ""
+				}
+				node3, node5 = node3+node5, ""
+				// .
+				if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
+					goto fail4
+				} else {
+					node5 = parser.text[pos : pos+w]
+					pos += w
+				}
+				node3, node5 = node3+node5, ""
 			}
-			node16 = parser.text[pos : pos+2]
-			pos += 2
-			node, node16 = node+node16, ""
-			// (!"*/" .)*
-			for {
-				pos18 := pos
-				var node19 string
+			node0 += node3
+			continue
+		fail4:
+			pos = pos2
+			break
+		}
+		node, node0 = node+node0, ""
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _BLOCK_COMMENTAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, _BLOCK_COMMENT, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// "/*" (BLOCK_COMMENT/(!"*/" .))* "*/"
+	// "/*"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "/*" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos += 2
+	// (BLOCK_COMMENT/(!"*/" .))*
+	for {
+		pos2 := pos
+		// (BLOCK_COMMENT/(!"*/" .))
+		// BLOCK_COMMENT/(!"*/" .)
+		{
+			pos8 := pos
+			// BLOCK_COMMENT
+			if !_accept(parser, _BLOCK_COMMENTAccepts, &pos, &perr) {
+				goto fail9
+			}
+			goto ok5
+		fail9:
+			pos = pos8
+			// (!"*/" .)
+			// !"*/" .
+			// !"*/"
+			{
+				pos13 := pos
+				perr15 := perr
+				// "*/"
+				if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
+					perr = _max(perr, pos)
+					goto ok12
+				}
+				pos += 2
+				pos = pos13
+				perr = _max(perr15, pos)
+				goto fail10
+			ok12:
+				pos = pos13
+				perr = perr15
+			}
+			// .
+			if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
+				perr = _max(perr, pos)
+				goto fail10
+			} else {
+				pos += w
+			}
+			goto ok5
+		fail10:
+			pos = pos8
+			goto fail4
+		ok5:
+		}
+		continue
+	fail4:
+		pos = pos2
+		break
+	}
+	// "*/"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos += 2
+	return _memoize(parser, _BLOCK_COMMENT, start, pos, perr)
+fail:
+	return _memoize(parser, _BLOCK_COMMENT, start, -1, perr)
+}
+
+func _BLOCK_COMMENTFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, _BLOCK_COMMENT, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "BLOCK_COMMENT",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _BLOCK_COMMENT}
+	// "/*" (BLOCK_COMMENT/(!"*/" .))* "*/"
+	// "/*"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "/*" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\"/*\"",
+			})
+		}
+		goto fail
+	}
+	pos += 2
+	// (BLOCK_COMMENT/(!"*/" .))*
+	for {
+		pos2 := pos
+		// (BLOCK_COMMENT/(!"*/" .))
+		// BLOCK_COMMENT/(!"*/" .)
+		{
+			pos8 := pos
+			// BLOCK_COMMENT
+			if !_fail(parser, _BLOCK_COMMENTFail, errPos, failure, &pos) {
+				goto fail9
+			}
+			goto ok5
+		fail9:
+			pos = pos8
+			// (!"*/" .)
+			// !"*/" .
+			// !"*/"
+			{
+				pos13 := pos
+				nkids14 := len(failure.Kids)
+				// "*/"
+				if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
+					if pos >= errPos {
+						failure.Kids = append(failure.Kids, &peg.Fail{
+							Pos:  int(pos),
+							Want: "\"*/\"",
+						})
+					}
+					goto ok12
+				}
+				pos += 2
+				pos = pos13
+				failure.Kids = failure.Kids[:nkids14]
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "!\"*/\"",
+					})
+				}
+				goto fail10
+			ok12:
+				pos = pos13
+				failure.Kids = failure.Kids[:nkids14]
+			}
+			// .
+			if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: ".",
+					})
+				}
+				goto fail10
+			} else {
+				pos += w
+			}
+			goto ok5
+		fail10:
+			pos = pos8
+			goto fail4
+		ok5:
+		}
+		continue
+	fail4:
+		pos = pos2
+		break
+	}
+	// "*/"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\"*/\"",
+			})
+		}
+		goto fail
+	}
+	pos += 2
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _BLOCK_COMMENTAction(parser *_Parser, start int) (int, *string) {
+	dp := parser.deltaPos[start][_BLOCK_COMMENT]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _BLOCK_COMMENT}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(string)
+		return start + int(dp-1), &n
+	}
+	var node string
+	pos := start
+	// "/*" (BLOCK_COMMENT/(!"*/" .))* "*/"
+	{
+		var node0 string
+		// "/*"
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "/*" {
+			goto fail
+		}
+		node0 = parser.text[pos : pos+2]
+		pos += 2
+		node, node0 = node+node0, ""
+		// (BLOCK_COMMENT/(!"*/" .))*
+		for {
+			pos2 := pos
+			var node3 string
+			// (BLOCK_COMMENT/(!"*/" .))
+			// BLOCK_COMMENT/(!"*/" .)
+			{
+				pos8 := pos
+				var node7 string
+				// BLOCK_COMMENT
+				if p, n := _BLOCK_COMMENTAction(parser, pos); n == nil {
+					goto fail9
+				} else {
+					node3 = *n
+					pos = p
+				}
+				goto ok5
+			fail9:
+				node3 = node7
+				pos = pos8
 				// (!"*/" .)
 				// !"*/" .
 				{
-					var node21 string
+					var node11 string
 					// !"*/"
 					{
-						pos23 := pos
+						pos13 := pos
 						// "*/"
 						if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
-							goto ok22
+							goto ok12
 						}
 						pos += 2
-						pos = pos23
-						goto fail20
-					ok22:
-						pos = pos23
-						node21 = ""
+						pos = pos13
+						goto fail10
+					ok12:
+						pos = pos13
+						node11 = ""
 					}
-					node19, node21 = node19+node21, ""
+					node3, node11 = node3+node11, ""
 					// .
 					if r, w := _next(parser, pos); w == 0 || r == '\uFFFD' {
-						goto fail20
+						goto fail10
 					} else {
-						node21 = parser.text[pos : pos+w]
+						node11 = parser.text[pos : pos+w]
 						pos += w
 					}
-					node19, node21 = node19+node21, ""
+					node3, node11 = node3+node11, ""
 				}
-				node16 += node19
-				continue
-			fail20:
-				pos = pos18
-				break
+				goto ok5
+			fail10:
+				node3 = node7
+				pos = pos8
+				goto fail4
+			ok5:
 			}
-			node, node16 = node+node16, ""
-			// "*/"
-			if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
-				goto fail15
-			}
-			node16 = parser.text[pos : pos+2]
-			pos += 2
-			node, node16 = node+node16, ""
+			node0 += node3
+			continue
+		fail4:
+			pos = pos2
+			break
 		}
-		goto ok0
-	fail15:
-		node = node2
-		pos = pos3
-		goto fail
-	ok0:
+		node, node0 = node+node0, ""
+		// "*/"
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "*/" {
+			goto fail
+		}
+		node0 = parser.text[pos : pos+2]
+		pos += 2
+		node, node0 = node+node0, ""
 	}
 	parser.act[key] = node
 	return pos, &node
