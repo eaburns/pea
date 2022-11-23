@@ -7,7 +7,7 @@ mods=$(
 	done) | sort | uniq
 )
 
-go build -o peac/peac ./peac
+go build -o peac/peac ./peac || exit 1
 
 fail=0
 for mod in $mods; do
