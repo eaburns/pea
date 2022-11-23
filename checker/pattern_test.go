@@ -21,7 +21,7 @@ func TestCommonPattern(t *testing.T) {
 	}{
 		{
 			pats: []string{},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{"int"},
@@ -61,7 +61,7 @@ func TestCommonPattern(t *testing.T) {
 				"int",
 				"[x? int, y? string]",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			src: "type point [.x int, .y int]",
@@ -80,7 +80,7 @@ func TestCommonPattern(t *testing.T) {
 				"point",
 				"rect",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			src: "type (X, Y) pair [.x X, .y Y]",
@@ -96,7 +96,7 @@ func TestCommonPattern(t *testing.T) {
 				"(int, int) pair",
 				"(string, int) pair",
 			},
-			want: "(_, int) pair",
+			want: "(?, int) pair",
 		},
 		{
 			src: "type (X, Y) pair [.x X, .y Y]",
@@ -104,7 +104,7 @@ func TestCommonPattern(t *testing.T) {
 				"(int, int) pair",
 				"(int, string) pair",
 			},
-			want: "(int, _) pair",
+			want: "(int, ?) pair",
 		},
 		{
 			src: "type (X, Y) pair [.x X, .y Y]",
@@ -112,7 +112,7 @@ func TestCommonPattern(t *testing.T) {
 				"(int, int) pair",
 				"(string, string) pair",
 			},
-			want: "(_, _) pair",
+			want: "(?, ?) pair",
 		},
 		{
 			pats: []string{
@@ -126,14 +126,14 @@ func TestCommonPattern(t *testing.T) {
 				"int",
 				"[false?, true?]",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
 				"&int",
 				"int",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
@@ -147,14 +147,14 @@ func TestCommonPattern(t *testing.T) {
 				"&int",
 				"&string",
 			},
-			want: "&_",
+			want: "&?",
 		},
 		{
 			pats: []string{
 				"[int]",
 				"int",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
@@ -168,35 +168,35 @@ func TestCommonPattern(t *testing.T) {
 				"[int]",
 				"[string]",
 			},
-			want: "[_]",
+			want: "[?]",
 		},
 		{
 			pats: []string{
 				"[.x int, .y string]",
 				"int",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
 				"[.x int, .y string]",
 				"[.a int, .b string]",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
 				"[.x int, .y string]",
 				"[.y string, .x int]",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
 				"[.x int, .y string]",
 				"[.x int]",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
@@ -217,21 +217,21 @@ func TestCommonPattern(t *testing.T) {
 				"[.x int, .y int]",
 				"[.x int32, .y int]",
 			},
-			want: "[.x _, .y int]",
+			want: "[.x ?, .y int]",
 		},
 		{
 			pats: []string{
 				"[.x int, .y int]",
 				"[.x int, .y int32]",
 			},
-			want: "[.x int, .y _]",
+			want: "[.x int, .y ?]",
 		},
 		{
 			pats: []string{
 				"[.x int, .y int]",
 				"[.x int32, .y int32]",
 			},
-			want: "[.x _, .y _]",
+			want: "[.x ?, .y ?]",
 		},
 		{
 			pats: []string{
@@ -239,14 +239,14 @@ func TestCommonPattern(t *testing.T) {
 				"[.x int, .y [false?, true?], .z string]",
 				"[.x [false?, true?], .y float32, .z string]",
 			},
-			want: "[.x _, .y _, .z string]",
+			want: "[.x ?, .y ?, .z string]",
 		},
 		{
 			pats: []string{
 				"[x? int, y?, z? string]",
 				"int",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
@@ -260,63 +260,63 @@ func TestCommonPattern(t *testing.T) {
 				"[x? int, y?, z? string]",
 				"[a? int, b?, c? string]",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
 				"[x? int, y?, z? string]",
 				"[x? int, y?]",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
 				"[x? int, y?, z? string]",
 				"[x? [false?, true?], y?, z? string]",
 			},
-			want: "[x? _, y?, z? string]",
+			want: "[x? ?, y?, z? string]",
 		},
 		{
 			pats: []string{
 				"[x? int, y?, z? string]",
 				"[x? int, y?, z? [false?, true?]]",
 			},
-			want: "[x? int, y?, z? _]",
+			want: "[x? int, y?, z? ?]",
 		},
 		{
 			pats: []string{
 				"[x? int, y?, z? string]",
 				"[x? [false?, true?], y?, z? [false?, true?]]",
 			},
-			want: "[x? _, y?, z? _]",
+			want: "[x? ?, y?, z? ?]",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
 				"int",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
 				"(int){float64}",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
 				"(int, string, float32){float64}",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
 				"(int, string){}",
 			},
-			want: "(int, string){_}",
+			want: "(int, string){?}",
 		},
 		{
 			pats: []string{
@@ -337,35 +337,35 @@ func TestCommonPattern(t *testing.T) {
 				"(int, string){float64}",
 				"([false?, true?], string){float64}",
 			},
-			want: "(_, string){float64}",
+			want: "(?, string){float64}",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
 				"(int, [false?, true?]){float64}",
 			},
-			want: "(int, _){float64}",
+			want: "(int, ?){float64}",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
 				"(int, string){[false?, true?]}",
 			},
-			want: "(int, string){_}",
+			want: "(int, string){?}",
 		},
 		{
 			pats: []string{
 				"(int, string){float64}",
 				"(int8, float32){[false?, true?]}",
 			},
-			want: "(_, _){_}",
+			want: "(?, ?){?}",
 		},
 		{
 			pats: []string{
 				"T",
 				"int",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
@@ -376,30 +376,30 @@ func TestCommonPattern(t *testing.T) {
 		},
 		{
 			pats: []string{
-				"_",
+				"?",
 				"int",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
-				"_",
-				"_",
+				"?",
+				"?",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
-				"_1",
-				"_2",
+				"?1",
+				"?2",
 			},
-			want: "_",
+			want: "?",
 		},
 		{
 			pats: []string{
-				"(int, string){_}",
+				"(int, string){?}",
 			},
-			want: "(int, string){_}",
+			want: "(int, string){?}",
 		},
 	}
 	for _, test := range tests {
@@ -426,98 +426,98 @@ func TestPatternIntersection(t *testing.T) {
 		b    string
 		want string
 	}{
-		// Sub _ with all the different kinds of types.
-		{a: `_`, b: `_`, want: `_`},
-		{a: `_`, b: `int`, want: `int`},
-		{src: `type t int`, a: `_`, b: `t`, want: `t`},
-		{src: `type (T, U) t int`, a: `_`, b: `(int, string) t`, want: `(int, string) t`},
-		{a: `_`, b: `T`, want: `T`},
-		{a: `_`, b: `&int`, want: `&int`},
-		{a: `_`, b: `[int]`, want: `[int]`},
-		{a: `_`, b: `[.x int]`, want: `[.x int]`},
-		{a: `_`, b: `[x?]`, want: `[x?]`},
-		{a: `_`, b: `[x? int]`, want: `[x? int]`},
-		{a: `_`, b: `(int, string){float32}`, want: `(int, string){float32}`},
+		// Sub ? with all the different kinds of types.
+		{a: `?`, b: `?`, want: `?`},
+		{a: `?`, b: `int`, want: `int`},
+		{src: `type t int`, a: `?`, b: `t`, want: `t`},
+		{src: `type (T, U) t int`, a: `?`, b: `(int, string) t`, want: `(int, string) t`},
+		{a: `?`, b: `T`, want: `T`},
+		{a: `?`, b: `&int`, want: `&int`},
+		{a: `?`, b: `[int]`, want: `[int]`},
+		{a: `?`, b: `[.x int]`, want: `[.x int]`},
+		{a: `?`, b: `[x?]`, want: `[x?]`},
+		{a: `?`, b: `[x? int]`, want: `[x? int]`},
+		{a: `?`, b: `(int, string){float32}`, want: `(int, string){float32}`},
 
-		// Sub _ with all the different kinds of types, leading to recursive sub error.
-		{src: `type T t int`, a: `[.x _0, .y _0]`, b: `[.x _1 t, .y _1]`, want: ``},
-		{a: `[.x _0, .y _0]`, b: `[.x &_1, .y _1]`, want: ``},
-		{a: `[.x _0, .y _0]`, b: `[.x [_1], .y _1]`, want: ``},
-		{a: `[.x _0, .y _0]`, b: `[.x [.y _1], .y _1]`, want: ``},
-		{a: `[.x _0, .y _0]`, b: `[.x [y? _1], .y _1]`, want: ``},
-		{a: `[.x _0, .y _0]`, b: `[.x (_1){}, .y _1]`, want: ``},
-		{a: `[.x _0, .y _0]`, b: `[.x (){_1}, .y _1]`, want: ``},
+		// Sub ? with all the different kinds of types, leading to recursive sub error.
+		{src: `type T t int`, a: `[.x ?0, .y ?0]`, b: `[.x ?1 t, .y ?1]`, want: ``},
+		{a: `[.x ?0, .y ?0]`, b: `[.x &?1, .y ?1]`, want: ``},
+		{a: `[.x ?0, .y ?0]`, b: `[.x [?1], .y ?1]`, want: ``},
+		{a: `[.x ?0, .y ?0]`, b: `[.x [.y ?1], .y ?1]`, want: ``},
+		{a: `[.x ?0, .y ?0]`, b: `[.x [y? ?1], .y ?1]`, want: ``},
+		{a: `[.x ?0, .y ?0]`, b: `[.x (?1){}, .y ?1]`, want: ``},
+		{a: `[.x ?0, .y ?0]`, b: `[.x (){?1}, .y ?1]`, want: ``},
 
 		// Sub into all different spots.
-		{a: `[.x int, .y _]`, b: `[.x _0, .y _0]`, want: `[.x int, .y int]`},
-		{a: `[.x int, .y _]`, b: `[.x _0, .y &_0]`, want: `[.x int, .y &int]`},
-		{src: `type T t int`, a: `[.x int, .y _]`, b: `[.x _0, .y _0 t]`, want: `[.x int, .y int t]`},
-		{a: `[.x int, .y _]`, b: `[.x _0, .y [_0]]`, want: `[.x int, .y [int]]`},
-		{a: `[.x int, .y _]`, b: `[.x _0, .y [.a _0]]`, want: `[.x int, .y [.a int]]`},
-		{a: `[.x int, .y _]`, b: `[.x _0, .y [a? _0]]`, want: `[.x int, .y [a? int]]`},
-		{a: `[.x int, .y _]`, b: `[.x _0, .y (_0){}]`, want: `[.x int, .y (int){}]`},
-		{a: `[.x int, .y _]`, b: `[.x _0, .y (){_0}]`, want: `[.x int, .y (){int}]`},
-		{a: `[.x int, .y _]`, b: `[.x _0, .y (_0, _0){_0}]`, want: `[.x int, .y (int, int){int}]`},
+		{a: `[.x int, .y ?]`, b: `[.x ?0, .y ?0]`, want: `[.x int, .y int]`},
+		{a: `[.x int, .y ?]`, b: `[.x ?0, .y &?0]`, want: `[.x int, .y &int]`},
+		{src: `type T t int`, a: `[.x int, .y ?]`, b: `[.x ?0, .y ?0 t]`, want: `[.x int, .y int t]`},
+		{a: `[.x int, .y ?]`, b: `[.x ?0, .y [?0]]`, want: `[.x int, .y [int]]`},
+		{a: `[.x int, .y ?]`, b: `[.x ?0, .y [.a ?0]]`, want: `[.x int, .y [.a int]]`},
+		{a: `[.x int, .y ?]`, b: `[.x ?0, .y [a? ?0]]`, want: `[.x int, .y [a? int]]`},
+		{a: `[.x int, .y ?]`, b: `[.x ?0, .y (?0){}]`, want: `[.x int, .y (int){}]`},
+		{a: `[.x int, .y ?]`, b: `[.x ?0, .y (){?0}]`, want: `[.x int, .y (){int}]`},
+		{a: `[.x int, .y ?]`, b: `[.x ?0, .y (?0, ?0){?0}]`, want: `[.x int, .y (int, int){int}]`},
 
 		{a: `int`, b: `int`, want: `int`},
 		{a: `int`, b: `float32`, want: ``},
 		{a: `int`, b: `&int`, want: ``},
-		{a: `int`, b: `_`, want: `int`},
-		{a: `_`, b: `int`, want: `int`},
+		{a: `int`, b: `?`, want: `int`},
+		{a: `?`, b: `int`, want: `int`},
 
 		{src: `type t int 	type u string`, a: `t`, b: `t`, want: `t`},
 		{src: `type t int 	type u string`, a: `t`, b: `[int]`, want: ``},
 		{src: `type t int 	type u string`, a: `t`, b: `u`, want: ``},
-		{src: `type t int 	type u string`, a: `t`, b: `_`, want: `t`},
-		{src: `type t int 	type u string`, a: `_`, b: `u`, want: `u`},
+		{src: `type t int 	type u string`, a: `t`, b: `?`, want: `t`},
+		{src: `type t int 	type u string`, a: `?`, b: `u`, want: `u`},
 
 		{src: `type T t T`, a: `int t`, b: `int t`, want: `int t`},
 		{src: `type T t T`, a: `string t`, b: `int t`, want: ``},
-		{src: `type T t T`, a: `int t`, b: `_ t`, want: `int t`},
-		{src: `type T t T`, a: `_ t`, b: `int t`, want: `int t`},
-		{src: `type T t T`, a: `_ t`, b: `_ t`, want: `_ t`},
+		{src: `type T t T`, a: `int t`, b: `? t`, want: `int t`},
+		{src: `type T t T`, a: `? t`, b: `int t`, want: `int t`},
+		{src: `type T t T`, a: `? t`, b: `? t`, want: `? t`},
 		{src: `type T t T 	type U u U`, a: `int t`, b: `int u`, want: ``},
-		{src: `type T t T 	type U u U`, a: `_ t`, b: `int u`, want: ``},
-		{src: `type T t T 	type U u U`, a: `int t`, b: `_ u`, want: ``},
-		{src: `type T t T 	type U u U`, a: `_ t`, b: `_ u`, want: ``},
+		{src: `type T t T 	type U u U`, a: `? t`, b: `int u`, want: ``},
+		{src: `type T t T 	type U u U`, a: `int t`, b: `? u`, want: ``},
+		{src: `type T t T 	type U u U`, a: `? t`, b: `? u`, want: ``},
 
 		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(int, int) t`, want: `(int, int) t`},
-		{src: `type (T, U) t int`, a: `(_, int) t`, b: `(int, int) t`, want: `(int, int) t`},
-		{src: `type (T, U) t int`, a: `(int, _) t`, b: `(int, int) t`, want: `(int, int) t`},
-		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(_, int) t`, want: `(int, int) t`},
-		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(int, _) t`, want: `(int, int) t`},
-		{src: `type (T, U) t int`, a: `(_, _) t`, b: `(int, int) t`, want: `(int, int) t`},
-		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(_, _) t`, want: `(int, int) t`},
-		{src: `type (T, U) t int`, a: `(_, int) t`, b: `(int, _) t`, want: `(int, int) t`},
-		{src: `type (T, U) t int`, a: `(int, _) t`, b: `(_, int) t`, want: `(int, int) t`},
-		{src: `type (T, U) t int`, a: `(int, _) t`, b: `(int, _) t`, want: `(int, _) t`},
-		{src: `type (T, U) t int`, a: `(_, int) t`, b: `(_, int) t`, want: `(_, int) t`},
-		{src: `type (T, U) t int`, a: `(_, _) t`, b: `(_, _) t`, want: `(_, _) t`},
-		{src: `type (T, U) t int`, a: `(_, string) t`, b: `(int, _) t`, want: `(int, string) t`},
-		{src: `type (T, U) t int`, a: `(int, string) t`, b: `(_, int) t`, want: ``},
-		{src: `type (T, U) t int`, a: `(int, _) t`, b: `(string, _) t`, want: ``},
-		{src: `type (T, U) t int`, a: `(_0, _0) t`, b: `(string, _) t`, want: `(string, string) t`},
-		{src: `type (T, U) t int`, a: `(_0, _0) t`, b: `(string, int) t`, want: ``},
+		{src: `type (T, U) t int`, a: `(?, int) t`, b: `(int, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, ?) t`, b: `(int, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(?, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(int, ?) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(?, ?) t`, b: `(int, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, int) t`, b: `(?, ?) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(?, int) t`, b: `(int, ?) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, ?) t`, b: `(?, int) t`, want: `(int, int) t`},
+		{src: `type (T, U) t int`, a: `(int, ?) t`, b: `(int, ?) t`, want: `(int, ?) t`},
+		{src: `type (T, U) t int`, a: `(?, int) t`, b: `(?, int) t`, want: `(?, int) t`},
+		{src: `type (T, U) t int`, a: `(?, ?) t`, b: `(?, ?) t`, want: `(?, ?) t`},
+		{src: `type (T, U) t int`, a: `(?, string) t`, b: `(int, ?) t`, want: `(int, string) t`},
+		{src: `type (T, U) t int`, a: `(int, string) t`, b: `(?, int) t`, want: ``},
+		{src: `type (T, U) t int`, a: `(int, ?) t`, b: `(string, ?) t`, want: ``},
+		{src: `type (T, U) t int`, a: `(?0, ?0) t`, b: `(string, ?) t`, want: `(string, string) t`},
+		{src: `type (T, U) t int`, a: `(?0, ?0) t`, b: `(string, int) t`, want: ``},
 
 		{a: `T`, b: `T`, want: `T`},
 		{a: `T`, b: `U`, want: `T`},
 		{a: `T`, b: `int`, want: ``},
-		{a: `T`, b: `_`, want: `T`},
-		{a: `_`, b: `T`, want: `T`},
+		{a: `T`, b: `?`, want: `T`},
+		{a: `?`, b: `T`, want: `T`},
 
 		{a: `&int`, b: `&int`, want: `&int`},
 		{a: `&int`, b: `int`, want: ``},
 		{a: `&int`, b: `&float32`, want: ``},
-		{a: `&int`, b: `&_`, want: `&int`},
-		{a: `&_`, b: `&int`, want: `&int`},
-		{a: `&_`, b: `&_`, want: `&_`},
+		{a: `&int`, b: `&?`, want: `&int`},
+		{a: `&?`, b: `&int`, want: `&int`},
+		{a: `&?`, b: `&?`, want: `&?`},
 
 		{a: `[int]`, b: `[int]`, want: `[int]`},
 		{a: `[int]`, b: `int`, want: ``},
 		{a: `[int]`, b: `string`, want: ``},
-		{a: `[int]`, b: `[_]`, want: `[int]`},
-		{a: `[_]`, b: `[int]`, want: `[int]`},
-		{a: `[_]`, b: `[_]`, want: `[_]`},
+		{a: `[int]`, b: `[?]`, want: `[int]`},
+		{a: `[?]`, b: `[int]`, want: `[int]`},
+		{a: `[?]`, b: `[?]`, want: `[?]`},
 
 		{a: `[.]`, b: `[.]`, want: `[.]`},
 		{a: `[.x int]`, b: `[.x int]`, want: `[.x int]`},
@@ -525,21 +525,21 @@ func TestPatternIntersection(t *testing.T) {
 		{a: `[.x int]`, b: `int`, want: ``},
 		{a: `[.x int]`, b: `[.x int, .y string]`, want: ``},
 		{a: `[.x int]`, b: `[.y int]`, want: ``},
-		{a: `[.x int]`, b: `[.x _]`, want: `[.x int]`},
-		{a: `[.x _]`, b: `[.x int]`, want: `[.x int]`},
-		{a: `[.x _]`, b: `[.x _]`, want: `[.x _]`},
-		{a: `[.x _, .y string]`, b: `[.x int, .y string]`, want: `[.x int, .y string]`},
-		{a: `[.x int, .y _]`, b: `[.x int, .y string]`, want: `[.x int, .y string]`},
-		{a: `[.x int, .y string]`, b: `[.x _, .y string]`, want: `[.x int, .y string]`},
-		{a: `[.x int, .y string]`, b: `[.x int, .y _]`, want: `[.x int, .y string]`},
-		{a: `[.x _, .y string]`, b: `[.x _, .y string]`, want: `[.x _, .y string]`},
-		{a: `[.x int, .y _]`, b: `[.x int, .y _]`, want: `[.x int, .y _]`},
-		{a: `[.x _, .y _]`, b: `[.x _, .y _]`, want: `[.x _, .y _]`},
-		{a: `[.x _, .y _]`, b: `[.x _]`, want: ``},
-		{a: `[.x _, .y int]`, b: `[.x _, .y string]`, want: ``},
-		{a: `[.x _, .y int]`, b: `[.x _, .y T]`, want: ``},
-		{a: `[.x _, .y T]`, b: `[.x _, .y string]`, want: ``},
-		{a: `[.x _, .y T]`, b: `[.x U, .y T]`, want: `[.x U, .y T]`},
+		{a: `[.x int]`, b: `[.x ?]`, want: `[.x int]`},
+		{a: `[.x ?]`, b: `[.x int]`, want: `[.x int]`},
+		{a: `[.x ?]`, b: `[.x ?]`, want: `[.x ?]`},
+		{a: `[.x ?, .y string]`, b: `[.x int, .y string]`, want: `[.x int, .y string]`},
+		{a: `[.x int, .y ?]`, b: `[.x int, .y string]`, want: `[.x int, .y string]`},
+		{a: `[.x int, .y string]`, b: `[.x ?, .y string]`, want: `[.x int, .y string]`},
+		{a: `[.x int, .y string]`, b: `[.x int, .y ?]`, want: `[.x int, .y string]`},
+		{a: `[.x ?, .y string]`, b: `[.x ?, .y string]`, want: `[.x ?, .y string]`},
+		{a: `[.x int, .y ?]`, b: `[.x int, .y ?]`, want: `[.x int, .y ?]`},
+		{a: `[.x ?, .y ?]`, b: `[.x ?, .y ?]`, want: `[.x ?, .y ?]`},
+		{a: `[.x ?, .y ?]`, b: `[.x ?]`, want: ``},
+		{a: `[.x ?, .y int]`, b: `[.x ?, .y string]`, want: ``},
+		{a: `[.x ?, .y int]`, b: `[.x ?, .y T]`, want: ``},
+		{a: `[.x ?, .y T]`, b: `[.x ?, .y string]`, want: ``},
+		{a: `[.x ?, .y T]`, b: `[.x U, .y T]`, want: `[.x U, .y T]`},
 
 		{a: `[x?]`, b: `[x?]`, want: `[x?]`},
 		{a: `[x? float64]`, b: `[x? float64]`, want: `[x? float64]`},
@@ -549,14 +549,14 @@ func TestPatternIntersection(t *testing.T) {
 		{a: `[x? float64, y?]`, b: `[a? float64, y?]`, want: ``},
 		{a: `[x? float64, y?]`, b: `[x? float64, y? int]`, want: ``},
 		{a: `[x? float64, y? string]`, b: `[x? float64, y? int]`, want: ``},
-		{a: `[x? _, y?, z? string]`, b: `[x? int, y?, z? string]`, want: `[x? int, y?, z? string]`},
-		{a: `[x? int, y?, z? string]`, b: `[x? _, y?, z? string]`, want: `[x? int, y?, z? string]`},
-		{a: `[x? _, y?, z? string]`, b: `[x? int]`, want: ``},
-		{a: `[x? _, y?, z? string]`, b: `[x? int, y?, z? int]`, want: ``},
-		{a: `[x? _, y?, z? string]`, b: `[x? int, y? string, z? string]`, want: ``},
-		{a: `[x? _0, y? _0]`, b: `[x? int, y? _]`, want: `[x? int, y? int]`},
-		{a: `[x? _0, y? _0]`, b: `[x? _, y? int]`, want: `[x? int, y? int]`},
-		{a: `[x? _0, y? _0]`, b: `[x? string, y? int]`, want: ``},
+		{a: `[x? ?, y?, z? string]`, b: `[x? int, y?, z? string]`, want: `[x? int, y?, z? string]`},
+		{a: `[x? int, y?, z? string]`, b: `[x? ?, y?, z? string]`, want: `[x? int, y?, z? string]`},
+		{a: `[x? ?, y?, z? string]`, b: `[x? int]`, want: ``},
+		{a: `[x? ?, y?, z? string]`, b: `[x? int, y?, z? int]`, want: ``},
+		{a: `[x? ?, y?, z? string]`, b: `[x? int, y? string, z? string]`, want: ``},
+		{a: `[x? ?0, y? ?0]`, b: `[x? int, y? ?]`, want: `[x? int, y? int]`},
+		{a: `[x? ?0, y? ?0]`, b: `[x? ?, y? int]`, want: `[x? int, y? int]`},
+		{a: `[x? ?0, y? ?0]`, b: `[x? string, y? int]`, want: ``},
 
 		{a: `(){}`, b: `(){}`, want: `(){}`},
 		{a: `(int){}`, b: `(int){}`, want: `(int){}`},
@@ -567,95 +567,95 @@ func TestPatternIntersection(t *testing.T) {
 		{a: `(int, string){int}`, b: `(int, string, float32){int}`, want: ``},
 		{a: `(int, string){int}`, b: `(string, int){int}`, want: ``},
 
-		{a: `(_, string){int}`, b: `(int, string){int}`, want: `(int, string){int}`},
-		{a: `(int, _){int}`, b: `(int, string){int}`, want: `(int, string){int}`},
-		{a: `(int, string){_}`, b: `(int, string){int}`, want: `(int, string){int}`},
-		{a: `(int, string){int}`, b: `(_, string){int}`, want: `(int, string){int}`},
-		{a: `(int, string){int}`, b: `(int, _){int}`, want: `(int, string){int}`},
-		{a: `(int, string){int}`, b: `(int, string){_}`, want: `(int, string){int}`},
-		{a: `(_, _){_}`, b: `(int, string){int}`, want: `(int, string){int}`},
-		{a: `(_, string){int}`, b: `(int, _){int}`, want: `(int, string){int}`},
-		{a: `(int, _){int}`, b: `(_, string){int}`, want: `(int, string){int}`},
-		{a: `(int, _){int}`, b: `(_){int}`, want: ``},
-		{a: `(int, _){int}`, b: `(string, int){int}`, want: ``},
-		{a: `(int, _){int}`, b: `(_, int){string}`, want: ``},
-		{a: `(_0, _0){int}`, b: `(int, _){int}`, want: `(int, int){int}`},
-		{a: `(_0, _0){_0}`, b: `(int, _){_}`, want: `(int, int){int}`},
-		{a: `(_0, _0){_0}`, b: `(_, int){_}`, want: `(int, int){int}`},
-		{a: `(_0, _0){_0}`, b: `(_, _){int}`, want: `(int, int){int}`},
-		{a: `(_0, _0){_0}`, b: `(string, int){int}`, want: ``},
-		{a: `(_0, _0){_0}`, b: `(int, string){int}`, want: ``},
-		{a: `(_0, _0){_0}`, b: `(int, int){string}`, want: ``},
-		{a: `(_0, _0){_1}`, b: `(int, int){string}`, want: `(int, int){string}`},
+		{a: `(?, string){int}`, b: `(int, string){int}`, want: `(int, string){int}`},
+		{a: `(int, ?){int}`, b: `(int, string){int}`, want: `(int, string){int}`},
+		{a: `(int, string){?}`, b: `(int, string){int}`, want: `(int, string){int}`},
+		{a: `(int, string){int}`, b: `(?, string){int}`, want: `(int, string){int}`},
+		{a: `(int, string){int}`, b: `(int, ?){int}`, want: `(int, string){int}`},
+		{a: `(int, string){int}`, b: `(int, string){?}`, want: `(int, string){int}`},
+		{a: `(?, ?){?}`, b: `(int, string){int}`, want: `(int, string){int}`},
+		{a: `(?, string){int}`, b: `(int, ?){int}`, want: `(int, string){int}`},
+		{a: `(int, ?){int}`, b: `(?, string){int}`, want: `(int, string){int}`},
+		{a: `(int, ?){int}`, b: `(?){int}`, want: ``},
+		{a: `(int, ?){int}`, b: `(string, int){int}`, want: ``},
+		{a: `(int, ?){int}`, b: `(?, int){string}`, want: ``},
+		{a: `(?0, ?0){int}`, b: `(int, ?){int}`, want: `(int, int){int}`},
+		{a: `(?0, ?0){?0}`, b: `(int, ?){?}`, want: `(int, int){int}`},
+		{a: `(?0, ?0){?0}`, b: `(?, int){?}`, want: `(int, int){int}`},
+		{a: `(?0, ?0){?0}`, b: `(?, ?){int}`, want: `(int, int){int}`},
+		{a: `(?0, ?0){?0}`, b: `(string, int){int}`, want: ``},
+		{a: `(?0, ?0){?0}`, b: `(int, string){int}`, want: ``},
+		{a: `(?0, ?0){?0}`, b: `(int, int){string}`, want: ``},
+		{a: `(?0, ?0){?1}`, b: `(int, int){string}`, want: `(int, int){string}`},
 
-		{a: `[.x _0, .y _0]`, b: `[.x _, .y int]`, want: `[.x int, .y int]`},
-		{a: `[.x _0, .y _0]`, b: `[.x _0, .y _0]`, want: `[.x _0, .y _0]`},
-		{a: `[.x _0, .y _0]`, b: `[.x _0, .y _1]`, want: `[.x _0, .y _0]`},
-		{a: `[.x _0, .y _1]`, b: `[.x _0, .y _0]`, want: `[.x _0, .y _0]`},
-		{a: `[.x _0, .y _1]`, b: `[.x _0, .y _1]`, want: `[.x _, .y _]`},
-		{a: `[.x _0, .y _0]`, b: `[.x int, .y int]`, want: `[.x int, .y int]`},
-		{a: `[.x _0, .y _0]`, b: `[.x string, .y int]`, want: ``},
-		{a: `[.x string, .y int]`, b: `[.x _0, .y _0]`, want: ``},
-		{a: `[.x int, .y int]`, b: `[.x _0, .y _0]`, want: `[.x int, .y int]`},
-		{a: `[.x _0, .y _0, .z int]`, b: `[.x string, .y _0, .z _0]`, want: ``},
-		{a: `[.x _0, .y _1, .z int]`, b: `[.x string, .y _0, .z _0]`, want: `[.x string, .y int, .z int]`},
-		{a: `[.x _0, .y _0, .z int]`, b: `[.x string, .y _1, .z _0]`, want: `[.x string, .y string, .z int]`},
+		{a: `[.x ?0, .y ?0]`, b: `[.x ?, .y int]`, want: `[.x int, .y int]`},
+		{a: `[.x ?0, .y ?0]`, b: `[.x ?0, .y ?0]`, want: `[.x ?0, .y ?0]`},
+		{a: `[.x ?0, .y ?0]`, b: `[.x ?0, .y ?1]`, want: `[.x ?0, .y ?0]`},
+		{a: `[.x ?0, .y ?1]`, b: `[.x ?0, .y ?0]`, want: `[.x ?0, .y ?0]`},
+		{a: `[.x ?0, .y ?1]`, b: `[.x ?0, .y ?1]`, want: `[.x ?, .y ?]`},
+		{a: `[.x ?0, .y ?0]`, b: `[.x int, .y int]`, want: `[.x int, .y int]`},
+		{a: `[.x ?0, .y ?0]`, b: `[.x string, .y int]`, want: ``},
+		{a: `[.x string, .y int]`, b: `[.x ?0, .y ?0]`, want: ``},
+		{a: `[.x int, .y int]`, b: `[.x ?0, .y ?0]`, want: `[.x int, .y int]`},
+		{a: `[.x ?0, .y ?0, .z int]`, b: `[.x string, .y ?0, .z ?0]`, want: ``},
+		{a: `[.x ?0, .y ?1, .z int]`, b: `[.x string, .y ?0, .z ?0]`, want: `[.x string, .y int, .z int]`},
+		{a: `[.x ?0, .y ?0, .z int]`, b: `[.x string, .y ?1, .z ?0]`, want: `[.x string, .y string, .z int]`},
 		{
-			a:    `[.a _0,     .b _0, .c _1, .d _1, .e _2, .f _2, .g int]`,
-			b:    `[.a string, .b _0, .c _0, .d _1, .e _1, .f _2, .g _2]`,
+			a:    `[.a ?0,     .b ?0, .c ?1, .d ?1, .e ?2, .f ?2, .g int]`,
+			b:    `[.a string, .b ?0, .c ?0, .d ?1, .e ?1, .f ?2, .g ?2]`,
 			want: ``,
 		},
 		{
-			a:    `[.a _0, .b _0, .c _1, .d _1, .e int, .f _1]`,
-			b:    `[.a _0, .b _0, .c _1, .d _1, .e _0, .f string]`,
+			a:    `[.a ?0, .b ?0, .c ?1, .d ?1, .e int, .f ?1]`,
+			b:    `[.a ?0, .b ?0, .c ?1, .d ?1, .e ?0, .f string]`,
 			want: `[.a int, .b int, .c string, .d string, .e int, .f string]`,
 		},
-		{a: `[.x [.y [.z _]]]`, b: `[.x [.y [.z int]]]`, want: `[.x [.y [.z int]]]`},
-		{a: `[.x [.y [.z int]]]`, b: `[.x [.y [.z _]]]`, want: `[.x [.y [.z int]]]`},
-		{a: `[.x [.y [.z _]]]`, b: `[.x [.y [.z _]]]`, want: `[.x [.y [.z _]]]`},
-		{a: `[.x [.y [.z int]]]`, b: `[.x [.y _]]`, want: `[.x [.y [.z int]]]`},
-		{a: `[.x [.y [.z int]]]`, b: `[.x _]`, want: `[.x [.y [.z int]]]`},
-		{a: `[.x [.y [.z _]]]`, b: `[.x _]`, want: `[.x [.y [.z _]]]`},
-		{a: `[.x [.y [.z _]]]`, b: `_`, want: `[.x [.y [.z _]]]`},
+		{a: `[.x [.y [.z ?]]]`, b: `[.x [.y [.z int]]]`, want: `[.x [.y [.z int]]]`},
+		{a: `[.x [.y [.z int]]]`, b: `[.x [.y [.z ?]]]`, want: `[.x [.y [.z int]]]`},
+		{a: `[.x [.y [.z ?]]]`, b: `[.x [.y [.z ?]]]`, want: `[.x [.y [.z ?]]]`},
+		{a: `[.x [.y [.z int]]]`, b: `[.x [.y ?]]`, want: `[.x [.y [.z int]]]`},
+		{a: `[.x [.y [.z int]]]`, b: `[.x ?]`, want: `[.x [.y [.z int]]]`},
+		{a: `[.x [.y [.z ?]]]`, b: `[.x ?]`, want: `[.x [.y [.z ?]]]`},
+		{a: `[.x [.y [.z ?]]]`, b: `?`, want: `[.x [.y [.z ?]]]`},
 		{
-			a: `[.a _0, .x [.y [.z _0]]]`,
-			b: `[.a _1, .x _1]`,
+			a: `[.a ?0, .x [.y [.z ?0]]]`,
+			b: `[.a ?1, .x ?1]`,
 			// This would be recursive.
 			want: ``,
 		},
 		{
-			a: `[.a [.y [.z _0]], .x _0]`,
-			b: `[.a _1, .x _1]`,
+			a: `[.a [.y [.z ?0]], .x ?0]`,
+			b: `[.a ?1, .x ?1]`,
 			// This would be recursive.
 			want: ``,
 		},
 		{
-			a: `[.a _0, .b [.y [.z _0]], .c _]`,
-			b: `[.a int, .b _2,              .c _2]`,
-			// Sub int into _0, and then into [.x [.z _0]] which was bound to _2.
+			a: `[.a ?0, .b [.y [.z ?0]], .c ?]`,
+			b: `[.a int, .b ?2,              .c ?2]`,
+			// Sub int into ?0, and then into [.x [.z ?0]] which was bound to ?2.
 			want: `[.a int, .b [.y [.z int]], .c [.y [.z int]]]`,
 		},
 		{
-			a: `[.a _0, .b [.y [.z _1]], .c _1]`,
-			b: `[.a _2, .b _2,              .c int]`,
-			// Merge _0 and _2, then sub [.y. [.z _1]] for _2 (and _0),
-			// and then later sub int for _1.
+			a: `[.a ?0, .b [.y [.z ?1]], .c ?1]`,
+			b: `[.a ?2, .b ?2,              .c int]`,
+			// Merge ?0 and ?2, then sub [.y. [.z ?1]] for ?2 (and ?0),
+			// and then later sub int for ?1.
 			want: `[.a [.y [.z int]], .b [.y [.z int]], .c int]`,
 		},
 		{
-			a:    `[.a _0,    .b [.x _1], .c _1, .d _2]`,
-			b:    `[.a _3,    .b _3,       .c int, .d _3]`,
+			a:    `[.a ?0,    .b [.x ?1], .c ?1, .d ?2]`,
+			b:    `[.a ?3,    .b ?3,       .c int, .d ?3]`,
 			want: `[.a [.x int], .b [.x int], .c int, .d [.x int]]`,
 		},
 
 		// Multi-step recursive substitution.
 		{
-			// _0 = [.x _10]
-			// _10 = [.x _1]
-			// _1 = [.x _11]
-			// _11 = [.x _0]
-			a:    `[.a _0,		.b [.x _1],	.c _1,		.d [.x _0]]`,
-			b:    `[.a [.x _10],	.b _10,	.c [.x _11],	.d _11]`,
+			// ?0 = [.x ?10]
+			// ?10 = [.x ?1]
+			// ?1 = [.x ?11]
+			// ?11 = [.x ?0]
+			a:    `[.a ?0,		.b [.x ?1],	.c ?1,		.d [.x ?0]]`,
+			b:    `[.a [.x ?10],	.b ?10,	.c [.x ?11],	.d ?11]`,
 			want: ``,
 		},
 	}
@@ -709,12 +709,12 @@ func TestPatternIntersectionOfTwoVariables(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	a := parseTestPattern(t, mod, "_")
-	b := parseTestPattern(t, mod, "_")
+	a := parseTestPattern(t, mod, "?")
+	b := parseTestPattern(t, mod, "?")
 	var bind map[*TypeParm]Type
 	isect, _ := intersection(a, b, &bind)
 	if isect == nil {
-		t.Fatalf("intersection(%s, %s)=nil, wanted _", a, b)
+		t.Fatalf("intersection(%s, %s)=nil, wanted ?", a, b)
 	}
 	if isect.isGroundType() {
 		t.Fatalf("intersection(%s, %s).isGroundType()=true, want false", a, b)
@@ -729,7 +729,7 @@ func TestPatternIntersectionIgnoreBoundTypeParameters(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	pat0 := parseTestPattern(t, mod, "_ list")
+	pat0 := parseTestPattern(t, mod, "? list")
 	pat0.parms = append(pat0.parms,
 		&TypeParm{Name: "U0"},
 		&TypeParm{Name: "U1"},
@@ -760,7 +760,7 @@ func TestPatternSelfIntersection(t *testing.T) {
 	if len(errs) > 0 {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
-	pat := parseTestPattern(t, mod, "_ list")
+	pat := parseTestPattern(t, mod, "? list")
 
 	var bind map[*TypeParm]Type
 	isect, note := intersection(pat, pattern(pat.typ), &bind)
@@ -828,7 +828,7 @@ func TestPatternUnify(t *testing.T) {
 		{typ: "int", pat: "string", want: ""},
 		{typ: "int", pat: "int", want: "int"},
 		{typ: "int", pat: "T", want: ""},
-		{typ: "int", pat: "_", want: "int"},
+		{typ: "int", pat: "?", want: "int"},
 		{typ: "int", pat: "&string", want: ""},
 		{typ: "int", pat: "&int", want: "&int"},
 		{typ: "int", pat: "[int]", want: ""},
@@ -839,13 +839,13 @@ func TestPatternUnify(t *testing.T) {
 		{src: "type t [.x int]", typ: "t", pat: "string", want: ""},
 		{src: "type t [.x int]", typ: "t", pat: "t", want: "t"},
 		{src: "type t [.x int]", typ: "t", pat: "[.x int]", want: "[.x int]"},
-		{src: "type t [.x int]", typ: "t", pat: "[.x _]", want: "[.x int]"},
+		{src: "type t [.x int]", typ: "t", pat: "[.x ?]", want: "[.x int]"},
 		{src: "type t [.x int]", typ: "t", pat: "T", want: ""},
-		{src: "type t [.x int]", typ: "t", pat: "_", want: "t"},
+		{src: "type t [.x int]", typ: "t", pat: "?", want: "t"},
 		{src: "type t [.x int]", typ: "t", pat: "&string", want: ""},
 		{src: "type t [.x int]", typ: "t", pat: "&t", want: "&t"},
 		{src: "type t [.x int]", typ: "t", pat: "&[.x int]", want: "&[.x int]"},
-		{src: "type t [.x int]", typ: "t", pat: "&[.x _]", want: "&[.x int]"},
+		{src: "type t [.x int]", typ: "t", pat: "&[.x ?]", want: "&[.x int]"},
 		{src: "type t [.x int]", typ: "t", pat: "[int]", want: ""},
 		{src: "type t [.x int]", typ: "t", pat: "[.x int, .y int]", want: ""},
 		{src: "type t [.x int]", typ: "t", pat: "[x? int, y?]", want: ""},
@@ -854,7 +854,7 @@ func TestPatternUnify(t *testing.T) {
 		{typ: "T", pat: "string", want: ""},
 		{typ: "T", pat: "int", want: ""},
 		{typ: "T", pat: "T", want: "T"},
-		{typ: "T", pat: "_", want: "T"},
+		{typ: "T", pat: "?", want: "T"},
 		{typ: "T", pat: "&string", want: ""},
 		{typ: "T", pat: "&T", want: "&T"},
 		{typ: "T", pat: "[int]", want: ""},
@@ -865,7 +865,7 @@ func TestPatternUnify(t *testing.T) {
 		{typ: "&int", pat: "string", want: ""},
 		{typ: "&int", pat: "int", want: "int"},
 		{typ: "&int", pat: "T", want: ""},
-		{typ: "&int", pat: "_", want: "&int"},
+		{typ: "&int", pat: "?", want: "&int"},
 		{typ: "&int", pat: "&int", want: "&int"},
 		{typ: "&int", pat: "[int]", want: ""},
 		{typ: "&int", pat: "[.x int, .y int]", want: ""},
@@ -875,7 +875,7 @@ func TestPatternUnify(t *testing.T) {
 		{typ: "[int]", pat: "string", want: ""},
 		{typ: "[int]", pat: "int", want: ""},
 		{typ: "[int]", pat: "T", want: ""},
-		{typ: "[int]", pat: "_", want: "[int]"},
+		{typ: "[int]", pat: "?", want: "[int]"},
 		{typ: "[int]", pat: "&int", want: ""},
 		{typ: "[int]", pat: "&[int]", want: "&[int]"},
 		{typ: "[int]", pat: "[int]", want: "[int]"},
@@ -884,13 +884,13 @@ func TestPatternUnify(t *testing.T) {
 		{typ: "[int]", pat: "(int){float32}", want: ""},
 		{src: "type t [int]", typ: "t", pat: "[int]", want: "[int]"},
 		{src: "type t [int]", typ: "t", pat: "&[int]", want: "&[int]"},
-		{src: "type t [int]", typ: "t", pat: "[_]", want: "[int]"},
-		{src: "type t [int]", typ: "t", pat: "&[_]", want: "&[int]"},
+		{src: "type t [int]", typ: "t", pat: "[?]", want: "[int]"},
+		{src: "type t [int]", typ: "t", pat: "&[?]", want: "&[int]"},
 
 		{typ: "[.x int, .y int]", pat: "string", want: ""},
 		{typ: "[.x int, .y int]", pat: "int", want: ""},
 		{typ: "[.x int, .y int]", pat: "T", want: ""},
-		{typ: "[.x int, .y int]", pat: "_", want: "[.x int, .y int]"},
+		{typ: "[.x int, .y int]", pat: "?", want: "[.x int, .y int]"},
 		{typ: "[.x int, .y int]", pat: "&int", want: ""},
 		{typ: "[.x int, .y int]", pat: "&[.x int, .y int]", want: "&[.x int, .y int]"},
 		{typ: "[.x int, .y int]", pat: "[int]", want: ""},
@@ -898,24 +898,24 @@ func TestPatternUnify(t *testing.T) {
 		{typ: "[.x int, .y int]", pat: "[.x int]", want: ""},
 		{typ: "[.x int, .y int]", pat: "[.y int, .x int]", want: ""},
 		{typ: "[.x int, .y int]", pat: "[.x int, .y int]", want: "[.x int, .y int]"},
-		{typ: "[.x int, .y int]", pat: "[.x _, .y int]", want: "[.x int, .y int]"},
-		{typ: "[.x int, .y int]", pat: "[.x int, .y _]", want: "[.x int, .y int]"},
-		{typ: "[.x int, .y int]", pat: "[.x _, .y _]", want: "[.x int, .y int]"},
+		{typ: "[.x int, .y int]", pat: "[.x ?, .y int]", want: "[.x int, .y int]"},
+		{typ: "[.x int, .y int]", pat: "[.x int, .y ?]", want: "[.x int, .y int]"},
+		{typ: "[.x int, .y int]", pat: "[.x ?, .y ?]", want: "[.x int, .y int]"},
 		{typ: "[.x int, .y string]", pat: "[.x int, .y string]", want: "[.x int, .y string]"},
-		{typ: "[.x int, .y string]", pat: "[.x _, .y string]", want: "[.x int, .y string]"},
-		{typ: "[.x int, .y string]", pat: "[.x int, .y _]", want: "[.x int, .y string]"},
-		{typ: "[.x int, .y string]", pat: "[.x _, .y _]", want: "[.x int, .y string]"},
+		{typ: "[.x int, .y string]", pat: "[.x ?, .y string]", want: "[.x int, .y string]"},
+		{typ: "[.x int, .y string]", pat: "[.x int, .y ?]", want: "[.x int, .y string]"},
+		{typ: "[.x int, .y string]", pat: "[.x ?, .y ?]", want: "[.x int, .y string]"},
 		{typ: "[.x int, .y int]", pat: "[x? int, y?]", want: ""},
 		{typ: "[.x int, .y int]", pat: "(int){float32}", want: ""},
 		{src: "type t [.x int]", typ: "t", pat: "[.x int]", want: "[.x int]"},
 		{src: "type t [.x int]", typ: "t", pat: "&[.x int]", want: "&[.x int]"},
-		{src: "type t [.x int]", typ: "t", pat: "[.x _]", want: "[.x int]"},
-		{src: "type t [.x int]", typ: "t", pat: "&[.x _]", want: "&[.x int]"},
+		{src: "type t [.x int]", typ: "t", pat: "[.x ?]", want: "[.x int]"},
+		{src: "type t [.x int]", typ: "t", pat: "&[.x ?]", want: "&[.x int]"},
 
 		{typ: "[x? int, y?, z? string]", pat: "string", want: ""},
 		{typ: "[x? int, y?, z? string]", pat: "int", want: ""},
 		{typ: "[x? int, y?, z? string]", pat: "T", want: ""},
-		{typ: "[x? int, y?, z? string]", pat: "_", want: "[x? int, y?, z? string]"},
+		{typ: "[x? int, y?, z? string]", pat: "?", want: "[x? int, y?, z? string]"},
 		{typ: "[x? int, y?, z? string]", pat: "&int", want: ""},
 		{typ: "[x? int, y?, z? string]", pat: "&[x? int, y?, z? string]", want: "&[x? int, y?, z? string]"},
 		{typ: "[x? int, y?, z? string]", pat: "[int]", want: ""},
@@ -929,19 +929,19 @@ func TestPatternUnify(t *testing.T) {
 		{typ: "[x? int, y?, z? string]", pat: "[z? int, y?, x? string]", want: ""},
 		{typ: "[x? int, y?, z? string]", pat: "[x? int, y?, z? string]", want: "[x? int, y?, z? string]"},
 		{typ: "[x? int, y?, z? string]", pat: "[x? int, y?, z? string]", want: "[x? int, y?, z? string]"},
-		{typ: "[x? int, y?, z? string]", pat: "[x? _, y?, z? string]", want: "[x? int, y?, z? string]"},
-		{typ: "[x? int, y?, z? string]", pat: "[x? int, y?, z? _]", want: "[x? int, y?, z? string]"},
-		{typ: "[x? int, y?, z? string]", pat: "[x? _, y?, z? _]", want: "[x? int, y?, z? string]"},
+		{typ: "[x? int, y?, z? string]", pat: "[x? ?, y?, z? string]", want: "[x? int, y?, z? string]"},
+		{typ: "[x? int, y?, z? string]", pat: "[x? int, y?, z? ?]", want: "[x? int, y?, z? string]"},
+		{typ: "[x? int, y?, z? string]", pat: "[x? ?, y?, z? ?]", want: "[x? int, y?, z? string]"},
 		{typ: "[x? int, y?, z? string]", pat: "(int){float32}", want: ""},
 		{src: "type t [x? int]", typ: "t", pat: "[x? int]", want: "[x? int]"},
 		{src: "type t [x? int]", typ: "t", pat: "&[x? int]", want: "&[x? int]"},
-		{src: "type t [x? int]", typ: "t", pat: "[x? _]", want: "[x? int]"},
-		{src: "type t [x? int]", typ: "t", pat: "&[x? _]", want: "&[x? int]"},
+		{src: "type t [x? int]", typ: "t", pat: "[x? ?]", want: "[x? int]"},
+		{src: "type t [x? int]", typ: "t", pat: "&[x? ?]", want: "&[x? int]"},
 
 		{typ: "(int){float32}", pat: "string", want: ""},
 		{typ: "(int){float32}", pat: "int", want: ""},
 		{typ: "(int){float32}", pat: "T", want: ""},
-		{typ: "(int){float32}", pat: "_", want: "(int){float32}"},
+		{typ: "(int){float32}", pat: "?", want: "(int){float32}"},
 		{typ: "(int){float32}", pat: "&int", want: ""},
 		{typ: "(int){float32}", pat: "&(int){float32}", want: "&(int){float32}"},
 		{typ: "(int){float32}", pat: "[int]", want: ""},
@@ -953,18 +953,18 @@ func TestPatternUnify(t *testing.T) {
 		{typ: "(int){float32}", pat: "(int){float64}", want: ""},
 		{typ: "(int){float32}", pat: "(int32){float32}", want: ""},
 		{typ: "(int){float32}", pat: "(int, string){float32}", want: ""},
-		{typ: "(int){float32}", pat: "(_){float32}", want: "(int){float32}"},
-		{typ: "(int){float32}", pat: "(int){_}", want: "(int){float32}"},
-		{typ: "(int){float32}", pat: "(_){_}", want: "(int){float32}"},
-		{typ: "(int, string){float32}", pat: "(_, _){_}", want: "(int, string){float32}"},
+		{typ: "(int){float32}", pat: "(?){float32}", want: "(int){float32}"},
+		{typ: "(int){float32}", pat: "(int){?}", want: "(int){float32}"},
+		{typ: "(int){float32}", pat: "(?){?}", want: "(int){float32}"},
+		{typ: "(int, string){float32}", pat: "(?, ?){?}", want: "(int, string){float32}"},
 		{src: "type t (int){float32}", typ: "t", pat: "(int){float32}", want: "(int){float32}"},
 		{src: "type t (int){float32}", typ: "t", pat: "&(int){float32}", want: "&(int){float32}"},
-		{src: "type t (int){float32}", typ: "t", pat: "(_){float32}", want: "(int){float32}"},
-		{src: "type t (int){float32}", typ: "t", pat: "(int){_}", want: "(int){float32}"},
-		{src: "type t (int){float32}", typ: "t", pat: "(_){_}", want: "(int){float32}"},
-		{src: "type t (int){float32}", typ: "t", pat: "&(_){float32}", want: "&(int){float32}"},
-		{src: "type t (int){float32}", typ: "t", pat: "&(int){_}", want: "&(int){float32}"},
-		{src: "type t (int){float32}", typ: "t", pat: "&(_){_}", want: "&(int){float32}"},
+		{src: "type t (int){float32}", typ: "t", pat: "(?){float32}", want: "(int){float32}"},
+		{src: "type t (int){float32}", typ: "t", pat: "(int){?}", want: "(int){float32}"},
+		{src: "type t (int){float32}", typ: "t", pat: "(?){?}", want: "(int){float32}"},
+		{src: "type t (int){float32}", typ: "t", pat: "&(?){float32}", want: "&(int){float32}"},
+		{src: "type t (int){float32}", typ: "t", pat: "&(int){?}", want: "&(int){float32}"},
+		{src: "type t (int){float32}", typ: "t", pat: "&(?){?}", want: "&(int){float32}"},
 
 		{
 			src: `
@@ -974,7 +974,7 @@ func TestPatternUnify(t *testing.T) {
 				type d [.x int]
 			`,
 			typ:  "a",
-			pat:  "[.x _]",
+			pat:  "[.x ?]",
 			want: "[.x int]",
 		},
 		{
@@ -1008,7 +1008,7 @@ func TestPatternUnify(t *testing.T) {
 				type (T, U) d [.t T, .u U]
 			`,
 			typ:  "(string, int) a",
-			pat:  "[.t string, .u _]",
+			pat:  "[.t string, .u ?]",
 			want: "[.t string, .u int]",
 		},
 		{
@@ -1019,7 +1019,7 @@ func TestPatternUnify(t *testing.T) {
 				type (T, U) d [.t T, .u U]
 			`,
 			typ:  "(string, int) a",
-			pat:  "[.t _, .u int]",
+			pat:  "[.t ?, .u int]",
 			want: "[.t string, .u int]",
 		},
 		{
@@ -1030,7 +1030,7 @@ func TestPatternUnify(t *testing.T) {
 				type (T, U) d [.t T, .u U]
 			`,
 			typ:  "(string, int) a",
-			pat:  "[.t _, .u _]",
+			pat:  "[.t ?, .u ?]",
 			want: "[.t string, .u int]",
 		},
 		{
@@ -1076,7 +1076,7 @@ func TestPatternUnify(t *testing.T) {
 				type (T, U) d [.t T, .u U]
 			`,
 			typ:  "[.t int, .u string][",
-			pat:  "(_, string) a",
+			pat:  "(?, string) a",
 			want: "(int, string) a",
 		},
 		{
@@ -1087,7 +1087,7 @@ func TestPatternUnify(t *testing.T) {
 				type (T, U) d [.t T, .u U]
 			`,
 			typ:  "[.t int, .u string][",
-			pat:  "(int, _) a",
+			pat:  "(int, ?) a",
 			want: "(int, string) a",
 		},
 		{
@@ -1098,7 +1098,7 @@ func TestPatternUnify(t *testing.T) {
 				type (T, U) d [.t T, .u U]
 			`,
 			typ:  "[.t int, .u string][",
-			pat:  "(_, _) a",
+			pat:  "(?, ?) a",
 			want: "(int, string) a",
 		},
 		{
@@ -1146,71 +1146,6 @@ func bindAsSlice(bind map[*TypeParm]Type) [][2]string {
 	return a
 }
 
-func TestTypePatternString(t *testing.T) {
-	tests := []struct {
-		src  string
-		pat  string
-		want string
-	}{
-		{pat: "int", want: "int"},
-		{pat: "&int", want: "&int"},
-		{pat: "[int]", want: "[int]"},
-		{pat: "[.x int, .y int]", want: "[.x int, .y int]"},
-		{pat: "[x?, y?, z?]", want: "[x?, y?, z?]"},
-		{pat: "[x? int, y?, z? string]", want: "[x? int, y?, z? string]"},
-		{pat: "(){}", want: "(){}"},
-		{pat: "(int){}", want: "(int){}"},
-		{pat: "(){int}", want: "(){int}"},
-		{pat: "_", want: "_"},
-		{pat: "_0", want: "_"},
-		{pat: "&_", want: "&_"},
-		{pat: "[_]", want: "[_]"},
-		{pat: "[.x _, .y int]", want: "[.x _, .y int]"},
-		{pat: "[.x int, .y _]", want: "[.x int, .y _]"},
-		{pat: "[x? _, y?, z? string]", want: "[x? _, y?, z? string]"},
-		{pat: "[x? int, y?, z? _]", want: "[x? int, y?, z? _]"},
-		{pat: "(_){}", want: "(_){}"},
-		{pat: "(){_}", want: "(){_}"},
-		{pat: "(int, _){}", want: "(int, _){}"},
-		{pat: "[.x _, .y _0, .z _0]", want: "[.x _, .y _0, .z _0]"},
-		{pat: "[.x _, .y _1, .z _1]", want: "[.x _, .y _0, .z _0]"},
-		{pat: "[.x _, .y U, .z _]", want: "[.x _, .y U, .z _]"},
-		{pat: "[.high [.med [.low _]]]", want: "[.high [.med [.low _]]]"},
-		{
-			src:  "type (X, Y) pair [.x X, .y Y]",
-			pat:  "(string, int) pair",
-			want: "(string, int) pair",
-		},
-		{
-			src:  "type (X, Y) pair [.x X, .y Y]",
-			pat:  "(_, _) pair",
-			want: "(_, _) pair",
-		},
-		{
-			src:  "type (X, Y) pair [.x X, .y Y]",
-			pat:  "(_0, _0) pair",
-			want: "(_0, _0) pair",
-		},
-		{
-			src:  "type (X, Y) pair [.x X, .y Y]",
-			pat:  "(_, int) pair",
-			want: "(_, int) pair",
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.pat, func(t *testing.T) {
-			mod, errs := check("test", []string{test.src}, nil)
-			if len(errs) > 0 {
-				t.Fatalf("failed to parse and check: %s", errs[0])
-			}
-			pat := parseTestPattern(t, mod, test.pat)
-			if got := pat.String(); got != test.want {
-				t.Errorf("(%s).String()=%s, want %s", test.pat, got, test.want)
-			}
-		})
-	}
-}
-
 type typeParmScope struct {
 	mod   *Mod
 	parms []*TypeParm
@@ -1240,7 +1175,7 @@ func parseTestPattern(t *testing.T, m *Mod, src string) typePattern {
 	for len(src) > 0 {
 		r, w := utf8.DecodeRuneInString(src)
 		src = src[w:]
-		if r != '_' || unicode.IsLetter(prev) || unicode.IsNumber(prev) || prev == '_' {
+		if r != '?' || unicode.IsLetter(prev) || unicode.IsNumber(prev) || prev == '?' {
 			src2 += string([]rune{r})
 			prev = r
 			continue
@@ -1258,7 +1193,7 @@ func parseTestPattern(t *testing.T, m *Mod, src string) typePattern {
 			name += "uniq" + strconv.Itoa(len(parmSet))
 		}
 		if _, ok := parmSet[name]; !ok {
-			p := &TypeParm{Name: fmt.Sprintf("_%d", nextName)}
+			p := &TypeParm{Name: fmt.Sprintf("Z%d", nextName)}
 			nextName++
 			parmSet[name] = p
 			parms = append(parms, p)

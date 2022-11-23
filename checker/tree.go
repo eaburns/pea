@@ -3,7 +3,6 @@ package checker
 import (
 	"math/big"
 	"path/filepath"
-	"strings"
 
 	"github.com/eaburns/pea/loc"
 )
@@ -119,7 +118,7 @@ type Type interface {
 	String() string
 	Loc() loc.Loc
 
-	buildString(w *strings.Builder) *strings.Builder
+	buildString(w *stringBuilder)
 }
 
 type DefType struct {
@@ -308,7 +307,7 @@ func (f *FuncDecl) Type() Type {
 
 type Func interface {
 	String() string
-	buildString(*strings.Builder) *strings.Builder
+	buildString(*stringBuilder)
 	eq(Func) bool
 
 	// arity returns the number of parameters of the Func.
@@ -478,7 +477,7 @@ type Expr interface {
 	Type() Type
 	Loc() loc.Loc
 
-	buildString(*strings.Builder) *strings.Builder
+	buildString(*stringBuilder)
 	// subExpr returns a copy of the Expr
 	// with TypeVars and FuncDecls substituted.
 	// The return is always a copy.

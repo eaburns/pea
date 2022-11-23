@@ -1,9 +1,20 @@
 package checker
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
+
+type stringBuilder struct {
+	// fullString specifies to use the full name for everything.
+	// This is intended for test strings.
+	fullString bool
+
+	elideMod string
+	builder  strings.Builder
+}
 
 func (v *VarDef) String() string   { return v.Name }
 func (f *FuncDef) String() string  { return f.Name }
@@ -21,117 +32,297 @@ func (b *BlockCap) String() string {
 	}
 }
 
+func (p typePattern) String() string {
+	var w stringBuilder
+	p.buildString(&w)
+	return w.builder.String()
+}
+
 func (r *RefType) String() string {
-	return r.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	r.buildString(&w)
+	return w.builder.String()
 }
 
 func (d *DefType) String() string {
-	return d.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	d.buildString(&w)
+	return w.builder.String()
 }
 
 func (a *ArrayType) String() string {
-	return a.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	a.buildString(&w)
+	return w.builder.String()
 }
 
 func (s *StructType) String() string {
-	return s.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	s.buildString(&w)
+	return w.builder.String()
 }
 
 func (u *UnionType) String() string {
-	return u.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	u.buildString(&w)
+	return w.builder.String()
 }
 
 func (f *FuncType) String() string {
-	return f.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	f.buildString(&w)
+	return w.builder.String()
 }
 
 func (t *TypeVar) String() string {
-	return t.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	t.buildString(&w)
+	return w.builder.String()
 }
 
 func (b *BasicType) String() string {
-	return b.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	b.buildString(&w)
+	return w.builder.String()
 }
 
 func (f *FuncDecl) String() string {
-	return f.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	f.buildString(&w)
+	return w.builder.String()
 }
 
 func (f *FuncInst) String() string {
-	return f.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	f.buildString(&w)
+	return w.builder.String()
 }
 
 func (e *Select) String() string {
-	return e.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	e.buildString(&w)
+	return w.builder.String()
 }
 
-func (w *Switch) String() string {
-	return w.buildString(new(strings.Builder)).String()
+func (s *Switch) String() string {
+	var w stringBuilder
+	s.buildString(&w)
+	return w.builder.String()
 }
 
 func (b *Builtin) String() string {
-	return b.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	b.buildString(&w)
+	return w.builder.String()
 }
 
 func (c *Call) String() string {
-	return c.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	c.buildString(&w)
+	return w.builder.String()
 }
 
 func (c *Convert) String() string {
-	return c.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	c.buildString(&w)
+	return w.builder.String()
 }
 
 func (v *Var) String() string {
-	return v.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	v.buildString(&w)
+	return w.builder.String()
 }
 
 func (l *Local) String() string {
-	return l.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	l.buildString(&w)
+	return w.builder.String()
 }
 
 func (p *Parm) String() string {
-	return p.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	p.buildString(&w)
+	return w.builder.String()
 }
 
 func (c *Cap) String() string {
-	return c.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	c.buildString(&w)
+	return w.builder.String()
 }
 
 func (a *ArrayLit) String() string {
-	return a.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	a.buildString(&w)
+	return w.builder.String()
 }
 
 func (t *StructLit) String() string {
-	return t.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	t.buildString(&w)
+	return w.builder.String()
 }
 
 func (u *UnionLit) String() string {
-	return u.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	u.buildString(&w)
+	return w.builder.String()
 }
 
 func (b *BlockLit) String() string {
-	return b.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	b.buildString(&w)
+	return w.builder.String()
 }
 
 func (t *StrLit) String() string {
-	return t.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	t.buildString(&w)
+	return w.builder.String()
 }
 
 func (i *IntLit) String() string {
-	return i.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	i.buildString(&w)
+	return w.builder.String()
 }
 
 func (f *FloatLit) String() string {
-	return f.buildString(new(strings.Builder)).String()
+	var w stringBuilder
+	f.buildString(&w)
+	return w.builder.String()
 }
 
-func (r *RefType) buildString(w *strings.Builder) *strings.Builder {
+func (w *stringBuilder) WriteString(s string) {
+	w.builder.WriteString(s)
+}
+
+func (w *stringBuilder) WriteRune(r rune) {
+	w.builder.WriteRune(r)
+}
+
+func (pat typePattern) buildString(w *stringBuilder) {
+	numRefs := make(map[*TypeParm]int)
+	var countBoundVarRefs func(Type)
+	countBoundVarRefs = func(t Type) {
+		switch t := t.(type) {
+		case *DefType:
+			for i := range t.Args {
+				countBoundVarRefs(t.Args[i])
+			}
+		case *RefType:
+			countBoundVarRefs(t.Type)
+		case *ArrayType:
+			countBoundVarRefs(t.ElemType)
+		case *StructType:
+			for i := range t.Fields {
+				countBoundVarRefs(t.Fields[i].Type)
+			}
+		case *UnionType:
+			for i := range t.Cases {
+				countBoundVarRefs(t.Cases[i].Type)
+			}
+		case *FuncType:
+			for i := range t.Parms {
+				countBoundVarRefs(t.Parms[i])
+			}
+			countBoundVarRefs(t.Ret)
+		case *TypeVar:
+			if pat.bound(t) {
+				numRefs[t.Def] = numRefs[t.Def] + 1
+			}
+		case *BasicType:
+		case nil:
+		default:
+			panic(fmt.Sprintf("bad type type: %T", t))
+		}
+	}
+	countBoundVarRefs(pat.typ)
+	if len(numRefs) == 0 {
+		pat.typ.buildString(w)
+		return
+	}
+
+	nextNumber := 0
+	name := make(map[*TypeParm]string)
+	var renameBoundVars func(Type) Type
+	renameBoundVars = func(t Type) Type {
+		switch t := t.(type) {
+		case *RefType:
+			copy := *t
+			copy.Type = renameBoundVars(t.Type)
+			return &copy
+		case *DefType:
+			copy := *t
+			copy.Args = nil
+			for i := range t.Args {
+				copy.Args = append(copy.Args, renameBoundVars(t.Args[i]))
+			}
+			return &copy
+		case *ArrayType:
+			copy := *t
+			copy.ElemType = renameBoundVars(t.ElemType)
+			return &copy
+		case *StructType:
+			copy := *t
+			copy.Fields = nil
+			for _, fieldCopy := range t.Fields {
+				fieldCopy.Type = renameBoundVars(fieldCopy.Type)
+				copy.Fields = append(copy.Fields, fieldCopy)
+			}
+			return &copy
+		case *UnionType:
+			copy := *t
+			copy.Cases = nil
+			for _, caseCopy := range t.Cases {
+				if caseCopy.Type != nil {
+					caseCopy.Type = renameBoundVars(caseCopy.Type)
+				}
+				copy.Cases = append(copy.Cases, caseCopy)
+			}
+			return &copy
+		case *FuncType:
+			copy := *t
+			copy.Parms = nil
+			for _, parm := range t.Parms {
+				copy.Parms = append(copy.Parms, renameBoundVars(parm))
+			}
+			copy.Ret = renameBoundVars(copy.Ret)
+			return &copy
+		case *TypeVar:
+			copy := *t
+			if !pat.bound(&copy) {
+				return &copy
+			}
+			if _, ok := name[copy.Def]; !ok {
+				n := "?"
+				if numRefs[copy.Def] > 1 {
+					n += strconv.Itoa(nextNumber)
+					nextNumber++
+				}
+				name[copy.Def] = n
+			}
+			copy.Name = name[copy.Def]
+			return &copy
+		case *BasicType:
+			copy := *t
+			return &copy
+		case nil:
+			return nil
+		default:
+			panic(fmt.Sprintf("bad type type: %T", t))
+		}
+	}
+	renameBoundVars(pat.typ).buildString(w)
+}
+
+func (r *RefType) buildString(w *stringBuilder) {
 	w.WriteRune('&')
 	r.Type.buildString(w)
-	return w
 }
 
-func (d *DefType) buildString(w *strings.Builder) *strings.Builder {
+func (d *DefType) buildString(w *stringBuilder) {
 	if needParens(d) {
 		w.WriteRune('(')
 	}
@@ -147,12 +338,11 @@ func (d *DefType) buildString(w *strings.Builder) *strings.Builder {
 	case len(d.Args) == 1:
 		w.WriteRune(' ')
 	}
-	if d.Def != nil && d.Def.File.Mod.Imported {
-		w.WriteString(d.Def.File.Mod.Name())
+	if d.Def != nil && d.Def.File.Mod.Imported && d.Def.Mod != w.elideMod {
+		w.WriteString(d.Def.Mod)
 		w.WriteRune('#')
 	}
 	w.WriteString(d.Name)
-	return w
 }
 
 func needParens(d *DefType) bool {
@@ -167,14 +357,13 @@ func needParens(d *DefType) bool {
 	}
 }
 
-func (a *ArrayType) buildString(w *strings.Builder) *strings.Builder {
+func (a *ArrayType) buildString(w *stringBuilder) {
 	w.WriteRune('[')
 	a.ElemType.buildString(w)
 	w.WriteRune(']')
-	return w
 }
 
-func (s *StructType) buildString(w *strings.Builder) *strings.Builder {
+func (s *StructType) buildString(w *stringBuilder) {
 	w.WriteRune('[')
 	for i, f := range s.Fields {
 		if i > 0 {
@@ -188,10 +377,9 @@ func (s *StructType) buildString(w *strings.Builder) *strings.Builder {
 		w.WriteRune('.')
 	}
 	w.WriteRune(']')
-	return w
 }
 
-func (u *UnionType) buildString(w *strings.Builder) *strings.Builder {
+func (u *UnionType) buildString(w *stringBuilder) {
 	w.WriteRune('[')
 	for i, c := range u.Cases {
 		if i > 0 {
@@ -204,10 +392,9 @@ func (u *UnionType) buildString(w *strings.Builder) *strings.Builder {
 		}
 	}
 	w.WriteRune(']')
-	return w
 }
 
-func (f FuncType) buildString(w *strings.Builder) *strings.Builder {
+func (f FuncType) buildString(w *stringBuilder) {
 	w.WriteRune('(')
 	for i, p := range f.Parms {
 		if i > 0 {
@@ -220,12 +407,10 @@ func (f FuncType) buildString(w *strings.Builder) *strings.Builder {
 		f.Ret.buildString(w)
 	}
 	w.WriteRune('}')
-	return w
 }
 
-func (t *TypeVar) buildString(w *strings.Builder) *strings.Builder {
+func (t *TypeVar) buildString(w *stringBuilder) {
 	w.WriteString(t.Name)
-	return w
 }
 
 func (k BasicTypeKind) String() string {
@@ -265,82 +450,170 @@ func (k BasicTypeKind) String() string {
 	}
 }
 
-func (b *BasicType) buildString(w *strings.Builder) *strings.Builder {
+func (b *BasicType) buildString(w *stringBuilder) {
 	w.WriteString(b.Kind.String())
-	return w
 }
 
-func (f *FuncDecl) buildString(s *strings.Builder) *strings.Builder {
+func (f *FuncDecl) buildString(s *stringBuilder) {
 	s.WriteString(f.Name)
 	s.WriteRune('(')
-	for i, p := range f.Parms {
-		if i > 0 {
-			s.WriteString(", ")
-		}
-		p.buildString(s)
-	}
+	buildParmsString(f.Parms, s)
 	s.WriteRune(')')
 	if f.Ret != nil && !isEmptyStruct(f.Ret) {
 		f.Ret.buildString(s)
 	}
-	return s
 }
 
-func (f *FuncInst) buildString(s *strings.Builder) *strings.Builder {
+func (f *FuncInst) buildString(s *stringBuilder) {
 	if f.Def.File.Mod.Imported {
 		s.WriteString(f.Def.Mod)
+		if !s.fullString {
+			s.elideMod = unambiguousMod(f)
+		}
 		s.WriteRune('#')
 	}
 	s.WriteString(f.Def.Name)
 	s.WriteRune('(')
-	for i, p := range f.T.Parms {
-		if i > 0 {
-			s.WriteString(", ")
-		}
-		p.buildString(s)
-	}
+	buildParmsString(f.T.Parms, s)
 	s.WriteRune(')')
 	if f.T.Ret != nil && !isEmptyStruct(f.T.Ret) {
 		f.T.Ret.buildString(s)
 	}
-	return s
 }
 
-func (e *Select) buildString(s *strings.Builder) *strings.Builder {
+func unambiguousMod(f *FuncInst) string {
+	if !f.Def.File.Mod.Imported {
+		return ""
+	}
+	thisModDefs := make(map[string]bool)
+	otherModDefs := make(map[string]bool)
+	for _, typ := range defTypes(f) {
+		if typ.Def != nil && typ.Def.Mod == f.Def.Mod {
+			thisModDefs[typ.Name] = true
+		} else {
+			otherModDefs[typ.Name] = true
+		}
+	}
+	for name := range thisModDefs {
+		if otherModDefs[name] {
+			return ""
+		}
+	}
+	return f.Def.Mod
+}
+
+func defTypes(f *FuncInst) []*DefType {
+	var defTypes []*DefType
+	for _, p := range f.T.Parms {
+		defTypes = appendDefTypes(defTypes, p)
+	}
+	return appendDefTypes(defTypes, f.T.Ret)
+}
+
+func appendDefTypes(defTypes []*DefType, typ Type) []*DefType {
+	switch typ := typ.(type) {
+	case nil:
+		return defTypes
+	case *RefType:
+		return appendDefTypes(defTypes, typ.Type)
+	case *DefType:
+		defTypes = append(defTypes, typ)
+		for _, arg := range typ.Args {
+			defTypes = appendDefTypes(defTypes, arg)
+		}
+		return defTypes
+	case *ArrayType:
+		return appendDefTypes(defTypes, typ.ElemType)
+	case *StructType:
+		for i := range typ.Fields {
+			defTypes = appendDefTypes(defTypes, typ.Fields[i].Type)
+		}
+		return defTypes
+	case *UnionType:
+		for i := range typ.Cases {
+			defTypes = appendDefTypes(defTypes, typ.Cases[i].Type)
+		}
+		return defTypes
+	case *FuncType:
+		for i := range typ.Parms {
+			defTypes = appendDefTypes(defTypes, typ.Parms[i])
+		}
+		return appendDefTypes(defTypes, typ.Ret)
+	case *TypeVar:
+		return defTypes
+	case *BasicType:
+		return defTypes
+	default:
+		panic(fmt.Sprintf("unsupported Type type: %T", typ))
+	}
+
+}
+
+func buildParmsString(parms []Type, s *stringBuilder) {
+	argsLen := 0
+	var prev Type
+	var canCollapse bool
+	for _, p := range parms {
+		if prev != nil && eqType(prev, p) {
+			canCollapse = true
+		}
+		prev = p
+		argsLen += utf8.RuneCountInString(p.String())
+	}
+	if s.fullString || !canCollapse || argsLen < 20 {
+		for i, p := range parms {
+			if i > 0 {
+				s.WriteString(", ")
+			}
+			if p == nil {
+				s.WriteString("?")
+			} else {
+				p.buildString(s)
+			}
+		}
+		return
+	}
+	for i, p := range parms {
+		if i < len(parms)-1 && eqType(p, parms[i+1]) {
+			s.WriteString("_, ")
+			continue
+		}
+		s.WriteString("_ ")
+		if p == nil {
+			s.WriteString("?")
+		} else {
+			p.buildString(s)
+		}
+		if i < len(parms)-1 {
+			s.WriteString(", ")
+		}
+	}
+}
+
+func (e *Select) buildString(s *stringBuilder) {
 	s.WriteString("built-in ")
 	s.WriteString(e.N)
 	if e.Struct == nil {
-		return s
+		return
 	}
 	s.WriteRune('(')
 	refLiteral(e.Struct).buildString(s)
 	s.WriteRune(')')
 	refLiteral(e.Field.Type).buildString(s)
-	return s
 }
 
-func (w *Switch) buildString(s *strings.Builder) *strings.Builder {
+func (w *Switch) buildString(s *stringBuilder) {
 	s.WriteString("built-in ")
 	s.WriteString(w.N)
 	if w.Union == nil {
-		return s
+		return
 	}
 	s.WriteRune('(')
-	for i, p := range w.T.Parms {
-		if i > 0 {
-			s.WriteString(", ")
-		}
-		if p == nil {
-			s.WriteRune('_')
-		} else {
-			p.buildString(s)
-		}
-	}
+	buildParmsString(w.T.Parms, s)
 	s.WriteRune(')')
 	if w.T.Ret != nil && !isEmptyStruct(w.T.Ret) {
 		w.T.Ret.buildString(s)
 	}
-	return s
 }
 
 func (o Op) String() string {
@@ -394,28 +667,18 @@ func (o Op) String() string {
 	}
 }
 
-func (b *Builtin) buildString(s *strings.Builder) *strings.Builder {
+func (b *Builtin) buildString(s *stringBuilder) {
 	s.WriteString("built-in ")
 	s.WriteString(b.name(false))
 	s.WriteRune('(')
-	for i, p := range b.Parms {
-		if i > 0 {
-			s.WriteString(", ")
-		}
-		if p == nil {
-			s.WriteRune('_')
-		} else {
-			p.buildString(s)
-		}
-	}
+	buildParmsString(b.Parms, s)
 	s.WriteRune(')')
 	if b.Ret != nil && !isEmptyStruct(b.Ret) {
 		b.Ret.buildString(s)
 	}
-	return s
 }
 
-func (c *Call) buildString(s *strings.Builder) *strings.Builder {
+func (c *Call) buildString(s *stringBuilder) {
 	if namer, ok := c.Func.(interface{ Name() string }); ok {
 		s.WriteString(namer.Name())
 	} else {
@@ -429,7 +692,6 @@ func (c *Call) buildString(s *strings.Builder) *strings.Builder {
 		a.buildString(s)
 	}
 	s.WriteRune(')')
-	return s
 }
 
 func (f *FuncInst) Name() string { return f.Def.Name }
@@ -532,32 +794,29 @@ func (c ConvertKind) String() string {
 	}
 }
 
-func (c *Convert) buildString(s *strings.Builder) *strings.Builder {
+func (c *Convert) buildString(s *stringBuilder) {
 	if !c.Explicit {
-		return c.Expr.buildString(s)
+		c.Expr.buildString(s)
+		return
 	}
 	c.T.buildString(s)
 	s.WriteString(" :: ")
 	c.Expr.buildString(s)
-	return s
 }
 
-func (v *Var) buildString(s *strings.Builder) *strings.Builder {
+func (v *Var) buildString(s *stringBuilder) {
 	s.WriteString(v.Def.Name)
-	return s
 }
 
-func (l *Local) buildString(s *strings.Builder) *strings.Builder {
+func (l *Local) buildString(s *stringBuilder) {
 	s.WriteString(l.Def.Name)
-	return s
 }
 
-func (p *Parm) buildString(s *strings.Builder) *strings.Builder {
+func (p *Parm) buildString(s *stringBuilder) {
 	s.WriteString(p.Def.Name)
-	return s
 }
 
-func (c Cap) buildString(s *strings.Builder) *strings.Builder {
+func (c Cap) buildString(s *stringBuilder) {
 	switch {
 	case c.Def.Parm != nil:
 		s.WriteString(c.Def.Parm.Name)
@@ -566,10 +825,9 @@ func (c Cap) buildString(s *strings.Builder) *strings.Builder {
 	case c.Def.Cap != nil:
 		Cap{Def: c.Def.Cap}.buildString(s)
 	}
-	return s
 }
 
-func (a *ArrayLit) buildString(s *strings.Builder) *strings.Builder {
+func (a *ArrayLit) buildString(s *stringBuilder) {
 	s.WriteRune('[')
 	for i, e := range a.Elems {
 		if i > 0 {
@@ -578,11 +836,10 @@ func (a *ArrayLit) buildString(s *strings.Builder) *strings.Builder {
 		e.buildString(s)
 	}
 	s.WriteRune(']')
-	return s
 
 }
 
-func (t *StructLit) buildString(s *strings.Builder) *strings.Builder {
+func (t *StructLit) buildString(s *stringBuilder) {
 	s.WriteRune('[')
 	for i, f := range t.Fields {
 		if i > 0 {
@@ -593,10 +850,9 @@ func (t *StructLit) buildString(s *strings.Builder) *strings.Builder {
 		f.buildString(s)
 	}
 	s.WriteRune(']')
-	return s
 }
 
-func (u *UnionLit) buildString(s *strings.Builder) *strings.Builder {
+func (u *UnionLit) buildString(s *stringBuilder) {
 	s.WriteRune('[')
 	s.WriteString(u.Case.Name)
 	if u.Val != nil {
@@ -604,10 +860,9 @@ func (u *UnionLit) buildString(s *strings.Builder) *strings.Builder {
 		u.Val.buildString(s)
 	}
 	s.WriteRune(']')
-	return s
 }
 
-func (b *BlockLit) buildString(s *strings.Builder) *strings.Builder {
+func (b *BlockLit) buildString(s *stringBuilder) {
 	s.WriteRune('(')
 	for i, p := range b.Parms {
 		if i > 0 {
@@ -619,20 +874,16 @@ func (b *BlockLit) buildString(s *strings.Builder) *strings.Builder {
 		}
 	}
 	s.WriteString("){…}")
-	return s
 }
 
-func (t *StrLit) buildString(s *strings.Builder) *strings.Builder {
+func (t *StrLit) buildString(s *stringBuilder) {
 	s.WriteString(strconv.Quote(t.Text))
-	return s
 }
 
-func (i *IntLit) buildString(s *strings.Builder) *strings.Builder {
+func (i *IntLit) buildString(s *stringBuilder) {
 	s.WriteString(i.Text)
-	return s
 }
 
-func (f *FloatLit) buildString(s *strings.Builder) *strings.Builder {
+func (f *FloatLit) buildString(s *stringBuilder) {
 	s.WriteString(f.Text)
-	return s
 }

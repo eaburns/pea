@@ -2,7 +2,6 @@ package checker
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/eaburns/pea/loc"
 )
@@ -712,9 +711,8 @@ type idFunc struct {
 
 func (i *idFunc) String() string { return i.id.String() }
 
-func (i *idFunc) buildString(s *strings.Builder) *strings.Builder {
+func (i *idFunc) buildString(s *stringBuilder) {
 	s.WriteString(i.String())
-	return s
 }
 func (id *idFunc) arity() int                               { return len(id.funcType.Parms) }
 func (id *idFunc) ret() typePattern                         { return pattern(id.funcType.Ret) }

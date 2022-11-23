@@ -40,7 +40,7 @@ func TestConvert(t *testing.T) {
 		want []interface{}
 	}{
 		{src: "[int]", dst: "[int] pointer", want: c("[int]", Ref, "[int] pointer")},
-		{src: "[int]", dst: "_ pointer", want: c("[int]", Ref, "[int] pointer")},
+		{src: "[int]", dst: "? pointer", want: c("[int]", Ref, "[int] pointer")},
 
 		// Anything can implicitly convert to [.].
 		{src: "[.]", dst: "[.]", want: c("[.]", Noop, "[.]")},
@@ -309,22 +309,22 @@ func TestConvert(t *testing.T) {
 		{src: "&byte_array", dst: "&string_val", explicit: true, want: c("&byte_array", Deref, StrConvert, Ref, "&string_val")},
 
 		// Intersection.
-		{src: "int", dst: "_", want: c("int", Noop, "int")},
-		{src: "int_val", dst: "_", want: c("int_val", Noop, "int_val")},
-		{src: "&int", dst: "_", want: c("&int", Noop, "&int")},
-		{src: "T", dst: "_", want: c("T", Noop, "T")},
-		{src: "[int]", dst: "_", want: c("[int]", Noop, "[int]")},
-		{src: "[.x int]", dst: "_", want: c("[.x int]", Noop, "[.x int]")},
-		{src: "[x? int]", dst: "_", want: c("[x? int]", Noop, "[x? int]")},
-		{src: "(int){float64}", dst: "_", want: c("(int){float64}", Noop, "(int){float64}")},
-		{src: "&int", dst: "&_", want: c("&int", Noop, "&int")},
-		{src: "int", dst: "&_", want: c("int", Ref, "&int")},
-		{src: "[.x int]", dst: "[.x _]", want: c("[.x int]", Noop, "[.x int]")},
-		{src: "(int, string) pair", dst: "[.x _, .y _]", want: c("(int, string) pair", Noop, "[.x int, .y string]")},
-		{src: "[.x int, .y string]", dst: "(_, _) pair", want: c("[.x int, .y string]", Noop, "(int, string) pair")},
-		{src: "(int, string) pair", dst: "(_, _) pair2", explicit: true, want: c("(int, string) pair", Noop, "(int, string) pair2")},
-		// TODO: _ gets renamed to A during parseTestPattern.
-		{src: "[.x int, .y _]", dst: "[.x _, .y string]", want: c("[.x int, .y _0]", Noop, "[.x int, .y string]")},
+		{src: "int", dst: "?", want: c("int", Noop, "int")},
+		{src: "int_val", dst: "?", want: c("int_val", Noop, "int_val")},
+		{src: "&int", dst: "?", want: c("&int", Noop, "&int")},
+		{src: "T", dst: "?", want: c("T", Noop, "T")},
+		{src: "[int]", dst: "?", want: c("[int]", Noop, "[int]")},
+		{src: "[.x int]", dst: "?", want: c("[.x int]", Noop, "[.x int]")},
+		{src: "[x? int]", dst: "?", want: c("[x? int]", Noop, "[x? int]")},
+		{src: "(int){float64}", dst: "?", want: c("(int){float64}", Noop, "(int){float64}")},
+		{src: "&int", dst: "&?", want: c("&int", Noop, "&int")},
+		{src: "int", dst: "&?", want: c("int", Ref, "&int")},
+		{src: "[.x int]", dst: "[.x ?]", want: c("[.x int]", Noop, "[.x int]")},
+		{src: "(int, string) pair", dst: "[.x ?, .y ?]", want: c("(int, string) pair", Noop, "[.x int, .y string]")},
+		{src: "[.x int, .y string]", dst: "(?, ?) pair", want: c("[.x int, .y string]", Noop, "(int, string) pair")},
+		{src: "(int, string) pair", dst: "(?, ?) pair2", explicit: true, want: c("(int, string) pair", Noop, "(int, string) pair2")},
+		// TODO: ? gets renamed to Z0 during parseTestPattern.
+		{src: "[.x int, .y ?]", dst: "[.x ?, .y string]", want: c("[.x int, .y Z0]", Noop, "[.x int, .y string]")},
 
 		// Some obvious failing conversions.
 		{src: "[.x int]", dst: "int_val", explicit: true, want: nil},
@@ -333,9 +333,9 @@ func TestConvert(t *testing.T) {
 		{src: "(){}", dst: "[int]", explicit: true, want: nil},
 
 		// It is not an error if the conversion does not fully ground the resulting type.
-		{src: "_", dst: "_", explicit: false, want: c("_0", Noop, "_0")},
-		{src: "_", dst: "_", explicit: true, want: c("_0", Noop, "_0")},
-		{src: "[.x _, .y _]", dst: "[.x int, .y _]", want: c("[.x _0, .y _1]", Noop, "[.x int, .y _0]")},
+		{src: "?", dst: "?", explicit: false, want: c("Z0", Noop, "_0")},
+		{src: "?", dst: "?", explicit: true, want: c("Z0", Noop, "_0")},
+		{src: "[.x ?, .y ?]", dst: "[.x int, .y ?]", want: c("[.x Z0, .y Z1]", Noop, "[.x int, .y _0]")},
 
 		{
 			src:  "[.x int, .y int]",
@@ -349,7 +349,7 @@ func TestConvert(t *testing.T) {
 		{
 			src: "[b? int]",
 			// type T abc_union_ref &[a?, b? T, c?]
-			dst:      "_ abc_union_ref",
+			dst:      "? abc_union_ref",
 			explicit: true,
 			want:     nil,
 		},
