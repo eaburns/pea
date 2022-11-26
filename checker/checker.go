@@ -1555,7 +1555,8 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 			notes = append(notes, err.(note))
 			continue
 		}
-		if note := f.sub(nil, bind); note != nil {
+		var note note
+		if f, note = f.sub(nil, bind); note != nil {
 			notes = append(notes, note)
 			continue
 		}
@@ -1575,7 +1576,8 @@ func filterByReturnType(funcs []Func, pat typePattern, mode convertMode) ([]Func
 		// because it will use convertExpr which has the expression
 		// printed in the error message, but here we just have the type.
 		bind, convertNote := convertType(f.ret(), pat, mode)
-		if note := f.sub(nil, bind); note != nil {
+		var note note
+		if f, note = f.sub(nil, bind); note != nil {
 			return nil, append(notes, note)
 		}
 		if !f.ret().isGroundType() {
@@ -1587,7 +1589,7 @@ func filterByReturnType(funcs []Func, pat typePattern, mode convertMode) ([]Func
 			notes = append(notes, convertNote)
 			return nil, notes
 		}
-		return funcs, nil
+		return []Func{f}, nil
 	}
 
 	var n int
@@ -1597,7 +1599,7 @@ func filterByReturnType(funcs []Func, pat typePattern, mode convertMode) ([]Func
 			notes = append(notes, note)
 			continue
 		}
-		if note := f.sub(nil, bind); note != nil {
+		if f, note = f.sub(nil, bind); note != nil {
 			notes = append(notes, note)
 			continue
 		}
@@ -1728,29 +1730,31 @@ func checkID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern) (E
 func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, ids []id) (Expr, []Error) {
 	var n int
 	var notFoundNotes []note
-	for _, id := range ids {
-		fun, ok := id.(Func)
+	for _, i := range ids {
+		fun, ok := i.(Func)
 		if !ok {
-			ids[n] = id
+			ids[n] = i
 			n++
 			continue
 		}
-		if !isGround(id) {
+		if !isGround(i) {
 			if !pat.isGroundType() {
-				n := newNote("cannot ground %s", id).setLoc(id)
+				n := newNote("cannot ground %s", i).setLoc(i)
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
-			if _, fail := unifyFunc(x, parserID.L, fun, nil, pat); fail != nil {
+			fun2, _, fail := _unifyFunc(x, parserID.L, fun, nil, pat)
+			if fail != nil {
 				notFoundNotes = append(notFoundNotes, fail.note)
 				continue
 			}
+			fun = fun2
 		}
 		if note := instFuncConstraints(x, parserID.L, fun); note != nil {
 			notFoundNotes = append(notFoundNotes, note)
 			continue
 		}
-		ids[n] = id
+		ids[n] = fun.(id)
 		n++
 	}
 	ids = ids[:n]

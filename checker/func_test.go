@@ -28,7 +28,7 @@ func TestSelectSubMatchingParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "[.x int]")
 
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
+	sel, note := subSelect(sel, nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -54,10 +54,6 @@ func TestSelectSubMatchingParm0(t *testing.T) {
 	if diff := cmp.Diff(sel.Struct, typ, diffOpts...); diff != "" {
 		t.Fatalf("sel.Struct=%s, expected %s: %s", sel.Struct, typ, diff)
 	}
-
-	if len(sel.typeParms) != 0 {
-		t.Fatalf("len(sel.typeParms)=%d, expected 0", len(sel.typeParms))
-	}
 }
 
 func TestSelectSubNonStructParm0(t *testing.T) {
@@ -65,7 +61,7 @@ func TestSelectSubNonStructParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "int")
 
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
+	sel, note := subSelect(sel, nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note == nil {
 		t.Fatalf("sub=nil, want error")
 	}
@@ -76,7 +72,7 @@ func TestSelectSubStructWithWrongFieldsParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "[.y int]")
 
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
+	sel, note := subSelect(sel, nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note == nil {
 		t.Fatalf("sub=nil, want error")
 	}
@@ -105,7 +101,7 @@ func TestSelectSubRetBeforeParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "int")
 
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
+	sel, note := subSelect(sel, nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -144,7 +140,7 @@ func TestSelectSubRetBeforeParm0(t *testing.T) {
 	//
 
 	typ = parseTestType(t, mod, "[.x int]")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
+	sel, note = subSelect(sel, nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -170,10 +166,6 @@ func TestSelectSubRetBeforeParm0(t *testing.T) {
 	if diff := cmp.Diff(sel.Struct, typ, diffOpts...); diff != "" {
 		t.Fatalf("sel.Struct=%s, expected %s: %s", sel.Struct, typ, diff)
 	}
-
-	if len(sel.typeParms) != 0 {
-		t.Fatalf("len(sel.typeParms)=%d, expected 0", len(sel.typeParms))
-	}
 }
 
 // Tests that it is possible to first substitute the return type
@@ -194,7 +186,8 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 	if bind == nil {
 		t.Fatalf("bind is nil")
 	}
-	if note = sel.sub(isect.parms, bind); note != nil {
+	sel, note = subSelect(sel, isect.parms, bind)
+	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
@@ -232,7 +225,7 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 	//
 
 	typ := parseTestType(t, mod, "[.x int]")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
+	sel, note = subSelect(sel, nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -258,10 +251,6 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 	if diff := cmp.Diff(sel.Struct, typ, diffOpts...); diff != "" {
 		t.Fatalf("sel.Struct=%s, expected %s: %s", sel.Struct, typ, diff)
 	}
-
-	if len(sel.typeParms) != 0 {
-		t.Fatalf("len(sel.typeParms)=%d, expected 0", len(sel.typeParms))
-	}
 }
 
 // First substitute the return, then parm0, but the parm0 type
@@ -272,7 +261,7 @@ func TestSelectSubRetBeforeMismatchingParm0(t *testing.T) {
 	sel := mod.findIDs(".x")[0].(*Select)
 	typ := parseTestType(t, mod, "int")
 
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
+	sel, note := subSelect(sel, nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -280,7 +269,7 @@ func TestSelectSubRetBeforeMismatchingParm0(t *testing.T) {
 	// Substitute parm0 with a type that doesn't match the expected return, &int.
 
 	typ = parseTestType(t, mod, "[.x string]")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
+	sel, note = subSelect(sel, nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
 	if note == nil {
 		t.Fatalf("sub=nil, want failed conversion error")
 	}
@@ -330,11 +319,11 @@ func TestSwitchParmsAndRetWithoutSub(t *testing.T) {
 
 func TestSwitchSubMatchingParm0(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 	typ := parseTestType(t, mod, "[x?, y? int, z?]")
 
 	// We are substituting typeParms[1], which is the union argument.
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
+	sw, note := subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -342,29 +331,29 @@ func TestSwitchSubMatchingParm0(t *testing.T) {
 	wantParms := []Type{
 		&RefType{Type: typ},
 		&FuncType{
-			Ret: typeVar(sel.typeParms[0]),
+			Ret: typeVar(sw.typeParms[0]),
 		},
 		&FuncType{
 			Parms: []Type{_int},
-			Ret:   typeVar(sel.typeParms[0]),
+			Ret:   typeVar(sw.typeParms[0]),
 		},
 		&FuncType{
-			Ret: typeVar(sel.typeParms[0]),
+			Ret: typeVar(sw.typeParms[0]),
 		},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
-		got := sel.parm(i)
+		want := typePattern{parms: sw.typeParms, typ: wantType}
+		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
 
 	want := typePattern{
-		parms: sel.typeParms,
-		typ:   typeVar(sel.typeParms[0]),
+		parms: sw.typeParms,
+		typ:   typeVar(sw.typeParms[0]),
 	}
-	got := sel.ret()
+	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
 	}
@@ -372,11 +361,11 @@ func TestSwitchSubMatchingParm0(t *testing.T) {
 
 func TestSwitchSubMatchingParm0IncompleteSwitch(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 	typ := parseTestType(t, mod, "[x?, y? int, z?, a?, b?, c?]")
 
 	// We are substituting typeParms[1], which is the union argument.
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
+	sw, note := subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -388,18 +377,18 @@ func TestSwitchSubMatchingParm0IncompleteSwitch(t *testing.T) {
 		&FuncType{Ret: _empty},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
-		got := sel.parm(i)
+		want := typePattern{parms: sw.typeParms, typ: wantType}
+		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
 
 	want := typePattern{
-		parms: sel.typeParms,
+		parms: sw.typeParms,
 		typ:   _empty,
 	}
-	got := sel.ret()
+	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
 	}
@@ -407,24 +396,24 @@ func TestSwitchSubMatchingParm0IncompleteSwitch(t *testing.T) {
 
 func TestSwitchSubParm1First(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 	typ := parseTestType(t, mod, "(){int}")
 
 	// Parm1 is typeParms[2]
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[2]: typ})
+	sw, note := subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[2]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	wantParms := []Type{
-		typeVar(sel.typeParms[1]),
+		typeVar(sw.typeParms[1]),
 		&FuncType{Ret: _int},
-		typeVar(sel.typeParms[3]),
-		typeVar(sel.typeParms[4]),
+		typeVar(sw.typeParms[3]),
+		typeVar(sw.typeParms[4]),
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
-		got := sel.parm(i)
+		want := typePattern{parms: sw.typeParms, typ: wantType}
+		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
@@ -434,10 +423,10 @@ func TestSwitchSubParm1First(t *testing.T) {
 	// We don't yet know whether this is a complete switch.
 	// We only know that when we sub parm0.
 	want := typePattern{
-		parms: sel.typeParms,
-		typ:   typeVar(sel.typeParms[0]),
+		parms: sw.typeParms,
+		typ:   typeVar(sw.typeParms[0]),
 	}
-	got := sel.ret()
+	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
 	}
@@ -445,24 +434,24 @@ func TestSwitchSubParm1First(t *testing.T) {
 
 func TestSwitchSubRetFirst(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 	typ := parseTestType(t, mod, "string")
 
 	// Ret is typeParms[0]
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
+	sw, note := subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	wantParms := []Type{
-		typeVar(sel.typeParms[1]),
-		typeVar(sel.typeParms[2]),
-		typeVar(sel.typeParms[3]),
-		typeVar(sel.typeParms[4]),
+		typeVar(sw.typeParms[1]),
+		typeVar(sw.typeParms[2]),
+		typeVar(sw.typeParms[3]),
+		typeVar(sw.typeParms[4]),
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
-		got := sel.parm(i)
+		want := typePattern{parms: sw.typeParms, typ: wantType}
+		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
@@ -472,10 +461,10 @@ func TestSwitchSubRetFirst(t *testing.T) {
 	// We don't yet know whether this is a complete switch.
 	// We only know that when we sub parm0.
 	want := typePattern{
-		parms: sel.typeParms,
+		parms: sw.typeParms,
 		typ:   _string,
 	}
-	got := sel.ret()
+	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
 	}
@@ -483,18 +472,18 @@ func TestSwitchSubRetFirst(t *testing.T) {
 
 func TestSwitchSubRetThenParm0(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 
 	// Ret is typeParms[0]
 	typ := parseTestType(t, mod, "string")
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
+	sw, note := subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? int, z?]")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
+	sw, note = subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -506,15 +495,15 @@ func TestSwitchSubRetThenParm0(t *testing.T) {
 		&FuncType{Ret: _string},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
-		got := sel.parm(i)
+		want := typePattern{parms: sw.typeParms, typ: wantType}
+		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
 
-	want := typePattern{parms: sel.typeParms, typ: _string}
-	got := sel.ret()
+	want := typePattern{parms: sw.typeParms, typ: _string}
+	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
 	}
@@ -522,11 +511,11 @@ func TestSwitchSubRetThenParm0(t *testing.T) {
 
 func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 
 	anyPat := any()
-	retPat := sel.ret()
-	retTypeParm := sel.typeParms[0]
+	retPat := sw.ret()
+	retTypeParm := sw.typeParms[0]
 	var bind map[*TypeParm]Type
 	isect, note := intersection(anyPat, retPat, &bind)
 	if note != nil {
@@ -535,31 +524,32 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 	if bind == nil {
 		t.Fatalf("bind is nil")
 	}
-	if note = sel.sub(isect.parms, bind); note != nil {
+	sw, note = subSwitch(sw, isect.parms, bind)
+	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 	wantParms := []Type{
-		typeVar(sel.typeParms[1]),
-		typeVar(sel.typeParms[2]),
-		typeVar(sel.typeParms[3]),
-		typeVar(sel.typeParms[4]),
+		typeVar(sw.typeParms[1]),
+		typeVar(sw.typeParms[2]),
+		typeVar(sw.typeParms[3]),
+		typeVar(sw.typeParms[4]),
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
-		got := sel.parm(i)
+		want := typePattern{parms: sw.typeParms, typ: wantType}
+		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
-	want := typePattern{parms: sel.typeParms, typ: bind[retTypeParm]}
-	got := sel.ret()
+	want := typePattern{parms: sw.typeParms, typ: bind[retTypeParm]}
+	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
 	}
 
 	// Parm0 is typeParms[1]
 	unionType := parseTestType(t, mod, "[x?, y? int, z?]")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: unionType})
+	sw, note = subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[1]: unionType})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -570,21 +560,21 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 		&FuncType{Ret: bind[retTypeParm]},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
-		got := sel.parm(i)
+		want := typePattern{parms: sw.typeParms, typ: wantType}
+		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
-	want = typePattern{parms: sel.typeParms, typ: bind[retTypeParm]}
-	got = sel.ret()
+	want = typePattern{parms: sw.typeParms, typ: bind[retTypeParm]}
+	got = sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
 	}
 
 	// Ret is now bind[retTypeParm].(*TypeVar).Def
 	typ := parseTestType(t, mod, "string")
-	note = sel.sub(nil, map[*TypeParm]Type{bind[retTypeParm].(*TypeVar).Def: typ})
+	sw, note = subSwitch(sw, nil, map[*TypeParm]Type{bind[retTypeParm].(*TypeVar).Def: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -595,14 +585,14 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 		&FuncType{Ret: _string},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
-		got := sel.parm(i)
+		want := typePattern{parms: sw.typeParms, typ: wantType}
+		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
-	want = typePattern{parms: sel.typeParms, typ: _string}
-	got = sel.ret()
+	want = typePattern{parms: sw.typeParms, typ: _string}
+	got = sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
 	}
@@ -610,18 +600,18 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 
 func TestSwitchSubParm2ThenMatchingParm0(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 
 	// Parm2 is typeParms[3]
 	typ := parseTestType(t, mod, "(int){string}")
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[3]: typ})
+	sw, note := subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[3]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? int, z?]")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
+	sw, note = subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[1]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -633,15 +623,15 @@ func TestSwitchSubParm2ThenMatchingParm0(t *testing.T) {
 		&FuncType{Ret: _string},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
-		got := sel.parm(i)
+		want := typePattern{parms: sw.typeParms, typ: wantType}
+		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
 
-	want := typePattern{parms: sel.typeParms, typ: _string}
-	got := sel.ret()
+	want := typePattern{parms: sw.typeParms, typ: _string}
+	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
 	}
@@ -649,18 +639,18 @@ func TestSwitchSubParm2ThenMatchingParm0(t *testing.T) {
 
 func TestSwitchSubParm2ThenParameterMismatchingParm0(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 
 	// Parm2 is typeParms[3]
 	typ := parseTestType(t, mod, "(int){string}")
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[3]: typ})
+	sw, note := subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[3]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? float64, z?]")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
+	sw, note = subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[1]: typ})
 	if note == nil {
 		t.Error("sub=nil, want error", note)
 	}
@@ -668,18 +658,18 @@ func TestSwitchSubParm2ThenParameterMismatchingParm0(t *testing.T) {
 
 func TestSwitchSubNonFunctionParm2ThenParm0(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 
 	// Parm2 is typeParms[3]
 	typ := parseTestType(t, mod, "int")
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[3]: typ})
+	sw, note := subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[3]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? float64, z?]")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
+	sw, note = subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[1]: typ})
 	if note == nil {
 		t.Error("sub=nil, want error", note)
 	}
@@ -687,28 +677,38 @@ func TestSwitchSubNonFunctionParm2ThenParm0(t *testing.T) {
 
 func TestSwitchSubRetThenMismatchingParm2ThenParm0(t *testing.T) {
 	mod := checkTestMod("")
-	sel := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("x?y?z?")[0].(*Switch)
 
 	// Ret is typeParms[0]
 	typ := parseTestType(t, mod, "float64")
-	note := sel.sub(nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
+	sw, note := subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[0]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm2 is typeParms[3]
 	typ = parseTestType(t, mod, "(int){string}")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[3]: typ})
+	sw, note = subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[3]: typ})
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
 	// Parm0 is typeParms[1]
 	typ = parseTestType(t, mod, "[x?, y? int, z?]")
-	note = sel.sub(nil, map[*TypeParm]Type{sel.typeParms[1]: typ})
+	sw, note = subSwitch(sw, nil, map[*TypeParm]Type{sw.typeParms[1]: typ})
 	if note == nil {
 		t.Error("sub=nil, want error", note)
 	}
+}
+
+func subSelect(sel *Select, parms []*TypeParm, bind map[*TypeParm]Type) (*Select, note) {
+	f, note := sel.sub(parms, bind)
+	return f.(*Select), note
+}
+
+func subSwitch(sw *Switch, parms []*TypeParm, bind map[*TypeParm]Type) (*Switch, note) {
+	f, note := sw.sub(parms, bind)
+	return f.(*Switch), note
 }
 
 func typeVar(parm *TypeParm) *TypeVar {

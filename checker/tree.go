@@ -319,14 +319,20 @@ type Func interface {
 	// parm returns the ith parameter's type pattern.
 	parm(int) typePattern
 
-	// sub substitutes bound type variables of the Func
-	// using the bindings from a substitution map.
+	// sub returns a copy of the Func after substituting
+	// types for bound TypeVars in the Func signature.
+	// On error, the original Func is returned with a non-nil note.
+	//
 	// The first parameter is a set of type parameters
 	// that bind values in the map;
 	// these should be added to the Func's type parameters
 	// if any of the values bound to the parameter
 	// substitutes a type in the Func.
-	sub([]*TypeParm, map[*TypeParm]Type) note
+	//
+	// If the substitution would not cause
+	// any observable changes to the Func,
+	// the original Func may be returned.
+	sub([]*TypeParm, map[*TypeParm]Type) (Func, note)
 }
 
 type FuncInst struct {
