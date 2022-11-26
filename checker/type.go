@@ -545,3 +545,4 @@ func hasTypeVariable(typ Type) bool {
 		panic(fmt.Sprintf("unsupported Type type: %T", typ))
 	}
 }
+

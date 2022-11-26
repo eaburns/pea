@@ -49,7 +49,7 @@ func (f *FuncDecl) eq(other Func) bool {
 func (f *FuncInst) arity() int { return len(f.T.Parms) }
 
 func (f *FuncInst) ret() typePattern {
-	return typePattern{parms: f.typeParms, typ: f.T.Ret}
+	return makeTypePattern(f.typeParms, f.T.Ret)
 }
 
 func (f *FuncInst) parm(i int) typePattern {
@@ -59,7 +59,7 @@ func (f *FuncInst) parm(i int) typePattern {
 		// but we must be calling parm() during overload resolution.
 		panic(fmt.Sprintf("impossible: %s\n", f.Name()))
 	}
-	return typePattern{parms: f.typeParms, typ: f.T.Parms[i]}
+	return makeTypePattern(f.typeParms, f.T.Parms[i])
 }
 
 func (f *FuncInst) sub(parms []*TypeParm, sub map[*TypeParm]Type) (Func, note) {
@@ -150,7 +150,7 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 	var n int
 	var unifyFails []*unifyFuncFailure
 	binds := make([]map[*TypeParm]Type, len(funcs))
-	declPat := typePattern{parms: funInst.typeParms, typ: constraint.Type()}
+	declPat := makeTypePattern(funInst.typeParms, constraint.Type())
 	for _, f := range funcs {
 		funType := funInst.Def.Iface[i].Type().(*FuncType)
 		f2, bind, fail := _unifyFunc(x, l, f, funType, declPat)
@@ -440,11 +440,11 @@ func (f *FuncInst) eq(other Func) bool {
 func (*Select) arity() int { return 1 }
 
 func (f *Select) parm(i int) typePattern {
-	return typePattern{parms: f.typeParms, typ: f.T.Parms[i]}
+	return makeTypePattern(f.typeParms, f.T.Parms[i])
 }
 
 func (f *Select) ret() typePattern {
-	return typePattern{parms: f.typeParms, typ: f.T.Ret}
+	return makeTypePattern(f.typeParms, f.T.Ret)
 }
 
 func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
@@ -488,8 +488,7 @@ func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 	// (If it was not substituted, it's a &_, which can be substituted,
 	// so no need to check whether it's already been substituted,
 	// just check whether it can convert.)
-	retPat := pattern(copy.T.Ret)
-	retPat.parms = copy.typeParms
+	retPat := makeTypePattern(copy.typeParms, copy.T.Ret)
 	retType := refLiteral(copy.Field.Type)
 	if _, cn := convertType(pattern(retType), retPat, implicit); cn != nil {
 		n := newNote("%s: cannot convert return value (%s) to %s", &copy, retType, copy.T.Ret)
@@ -509,11 +508,11 @@ func (f *Select) eq(other Func) bool {
 func (f *Switch) arity() int { return len(f.T.Parms) }
 
 func (f *Switch) parm(i int) typePattern {
-	return typePattern{parms: f.typeParms, typ: f.T.Parms[i]}
+	return makeTypePattern(f.typeParms, f.T.Parms[i])
 }
 
 func (f *Switch) ret() typePattern {
-	return typePattern{parms: f.typeParms, typ: f.T.Ret}
+	return makeTypePattern(f.typeParms, f.T.Ret)
 }
 
 func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
@@ -571,10 +570,8 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 		// If the union is not complete, the return type must be [.].
 		// We need to make sure that if the return type was already substituted,
 		// we can implicitly convert [.] to the desired type.
-		dstPat := pattern(copy.T.Ret)
-		dstPat.parms = copy.typeParms
-		srcPat := pattern(_empty)
-		srcPat.parms = copy.typeParms
+		dstPat := makeTypePattern(copy.typeParms, copy.T.Ret)
+		srcPat := makeTypePattern(copy.typeParms, _empty)
 		if _, cn := convertType(srcPat, dstPat, implicit); cn != nil {
 			n := newNote("%s: cannot convert return value (%s) to %s", &copy, srcPat, dstPat)
 			n.setLoc(copy.T.Ret)
@@ -615,10 +612,8 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 		}
 		if tv, ok := copy.T.Parms[1+i].(*TypeVar); !ok || tv.Def != copy.typeParms[2+i] {
 			// It has already ben substituted, so we need to check it converts.
-			srcPat := pattern(copy.T.Parms[1+i])
-			srcPat.parms = copy.typeParms
-			dstPat := pattern(parmType)
-			dstPat.parms = copy.typeParms
+			srcPat := makeTypePattern(copy.typeParms, copy.T.Parms[1+i])
+			dstPat := makeTypePattern(copy.typeParms, parmType)
 			if _, cn := convertType(srcPat, dstPat, implicit); cn != nil {
 				// Set the parm type here so the error message reads correctly.
 				copy.T.Parms[1+i] = parmType
@@ -671,15 +666,11 @@ func (f *Switch) eq(other Func) bool {
 func (f *Builtin) arity() int { return len(f.Parms) }
 
 func (f *Builtin) ret() typePattern {
-	p := pattern(f.Ret)
-	p.parms = f.typeParms
-	return p
+	return makeTypePattern(f.typeParms, f.Ret)
 }
 
 func (f *Builtin) parm(i int) typePattern {
-	p := pattern(f.Parms[i])
-	p.parms = f.typeParms
-	return p
+	return makeTypePattern(f.typeParms, f.Parms[i])
 }
 
 var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64}

@@ -218,7 +218,6 @@ func (pat typePattern) buildString(w *stringBuilder) {
 	orig := w.typeParms
 	defer func() { w.typeParms = orig }()
 	w.typeParms = appendTypeParmsToCopy(orig, pat.parms)
-
 	pat.typ.buildString(w)
 }
 

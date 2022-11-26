@@ -14,6 +14,13 @@ type typePattern struct {
 	typ   Type
 }
 
+func makeTypePattern(parms []*TypeParm, typ Type) typePattern {
+	return typePattern{
+		parms: filterTypeParms(parms, typ),
+		typ:   typ,
+	}
+}
+
 // any returns a new typePattern with a single, bound type variable.
 func any() typePattern {
 	n := "_"
@@ -168,8 +175,8 @@ func (pat typePattern) isGroundType() bool {
 
 // bound returns whether the type variable is bound to a type parameter of the typePattern.
 func (pat *typePattern) bound(v *TypeVar) bool {
-	for _, parm := range pat.parms {
-		if v.Def == parm {
+	for _, p := range pat.parms {
+		if v.Def == p {
 			return true
 		}
 	}
@@ -805,5 +812,72 @@ func (sets *disjointSets) union(a, b *TypeParm) {
 	y.parent = x
 	if x.rank != y.rank {
 		x.rank++
+	}
+}
+
+// filterTypeParms filters parms to only contain *TypeParms
+// that are referenced by at least one TypeVar in types.
+// The order of the parameters is preserved;
+// and the underlying array is only copied
+// if the slice is actually modified.
+func filterTypeParms(parms []*TypeParm, types ...Type) []*TypeParm {
+	if len(parms) == 0 {
+		return parms
+	}
+	nSeen := 0
+	seen := make([]bool, len(parms))
+	var visit func(Type)
+	visit = func(t Type) {
+		switch t := t.(type) {
+		case nil:
+		case *RefType:
+			visit(t.Type)
+		case *DefType:
+			for _, arg := range t.Args {
+				visit(arg)
+			}
+		case *ArrayType:
+			visit(t.ElemType)
+		case *StructType:
+			for i := range t.Fields {
+				visit(t.Fields[i].Type)
+			}
+		case *UnionType:
+			for i := range t.Cases {
+				visit(t.Cases[i].Type)
+			}
+		case *FuncType:
+			for _, p := range t.Parms {
+				visit(p)
+			}
+			visit(t.Ret)
+		case *TypeVar:
+			for i, p := range parms {
+				if !seen[i] && p == t.Def {
+					seen[i] = true
+					nSeen++
+				}
+			}
+		case *BasicType:
+		default:
+			panic(fmt.Sprintf("unsupported Type type: %T", t))
+		}
+	}
+	for _, t := range types {
+		visit(t)
+	}
+	switch {
+	case nSeen == 0:
+		return nil
+	case nSeen == len(parms):
+		return parms
+	default:
+		copy := make([]*TypeParm, 0, nSeen)
+		for i, p := range parms {
+			if seen[i] {
+				copy = append(copy, p)
+			}
+		}
+		return copy
 	}
 }

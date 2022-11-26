@@ -8,15 +8,14 @@ import (
 
 func TestSelectParm0(t *testing.T) {
 	sel := checkTestMod("").findIDs(".x")[0].(*Select)
-	want := typePattern{
-		parms: sel.typeParms,
-		typ: &RefType{
+	want := makeTypePattern(
+		sel.typeParms,
+		&RefType{
 			Type: &TypeVar{
 				Name: sel.typeParms[0].Name,
 				Def:  sel.typeParms[0],
 			},
-		},
-	}
+		})
 	got := sel.parm(0)
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("parm(0)=%T, expected %s: %s", got, want, diff)
@@ -33,19 +32,15 @@ func TestSelectSubMatchingParm0(t *testing.T) {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
-	parm0Want := typePattern{
-		parms: sel.typeParms,
-		typ:   &RefType{Type: typ},
-	}
+	parm0Want := makeTypePattern(sel.typeParms, &RefType{Type: typ})
 	parm0Got := sel.parm(0)
 	if diff := cmp.Diff(parm0Want, parm0Got, diffOpts...); diff != "" {
 		t.Fatalf("parm(0)=%s, expected %s: %s", parm0Got, parm0Want, diff)
 	}
 
-	retWant := typePattern{
-		parms: sel.typeParms,
-		typ:   &RefType{Type: &BasicType{Kind: Int}},
-	}
+	retWant := makeTypePattern(
+		sel.typeParms,
+		&RefType{Type: &BasicType{Kind: Int}})
 	retGot := sel.ret()
 	if diff := cmp.Diff(parm0Want, parm0Got, diffOpts...); diff != "" {
 		t.Fatalf("ret=%s, expected %s: %s", retGot, retWant, diff)
@@ -81,15 +76,14 @@ func TestSelectSubStructWithWrongFieldsParm0(t *testing.T) {
 // TestSelectRetBeforeSub tests the behavior of calling ret() before parm() and sub().
 func TestSelectRetBeforeParmAndSub(t *testing.T) {
 	sel := checkTestMod("").findIDs(".x")[0].(*Select)
-	want := typePattern{
-		parms: sel.typeParms,
-		typ: &RefType{
+	want := makeTypePattern(
+		sel.typeParms,
+		&RefType{
 			Type: &TypeVar{
 				Name: sel.typeParms[1].Name,
 				Def:  sel.typeParms[1],
 			},
-		},
-	}
+		})
 	got := sel.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%T, expected %s: %s", got, want, diff)
@@ -109,15 +103,14 @@ func TestSelectSubRetBeforeParm0(t *testing.T) {
 	//
 	// Parm0 is still a reference to a type variable.
 	//
-	parm0Want := typePattern{
-		parms: sel.typeParms,
-		typ: &RefType{
+	parm0Want := makeTypePattern(
+		sel.typeParms,
+		&RefType{
 			Type: &TypeVar{
 				Name: sel.typeParms[0].Name,
 				Def:  sel.typeParms[0],
 			},
-		},
-	}
+		})
 	parm0Got := sel.parm(0)
 	if diff := cmp.Diff(parm0Want, parm0Got, diffOpts...); diff != "" {
 		t.Fatalf("parm(0)=%T, expected %s: %s", parm0Got, parm0Want, diff)
@@ -126,10 +119,9 @@ func TestSelectSubRetBeforeParm0(t *testing.T) {
 	//
 	// But the return is the bound int type.
 	//
-	retWant := typePattern{
-		parms: sel.typeParms,
-		typ:   &RefType{Type: &BasicType{Kind: Int}},
-	}
+	retWant := makeTypePattern(
+		sel.typeParms,
+		&RefType{Type: &BasicType{Kind: Int}})
 	retGot := sel.ret()
 	if diff := cmp.Diff(retWant, retGot, diffOpts...); diff != "" {
 		t.Fatalf("ret=%s, expected %s: %s", retGot, retWant, diff)
@@ -145,19 +137,17 @@ func TestSelectSubRetBeforeParm0(t *testing.T) {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
-	parm0Want = typePattern{
-		parms: sel.typeParms,
-		typ:   &RefType{Type: typ},
-	}
+	parm0Want = makeTypePattern(
+		sel.typeParms,
+		&RefType{Type: typ})
 	parm0Got = sel.parm(0)
 	if diff := cmp.Diff(parm0Want, parm0Got, diffOpts...); diff != "" {
 		t.Fatalf("parm(0)=%s, expected %s: %s", parm0Got, parm0Want, diff)
 	}
 
-	retWant = typePattern{
-		parms: sel.typeParms,
-		typ:   &RefType{Type: &BasicType{Kind: Int}},
-	}
+	retWant = makeTypePattern(
+		sel.typeParms,
+		&RefType{Type: &BasicType{Kind: Int}})
 	retGot = sel.ret()
 	if diff := cmp.Diff(parm0Want, parm0Got, diffOpts...); diff != "" {
 		t.Fatalf("ret=%s, expected %s: %s", retGot, retWant, diff)
@@ -194,15 +184,14 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 	//
 	// Parm0 is still a reference to a type variable.
 	//
-	parm0Want := typePattern{
-		parms: sel.typeParms,
-		typ: &RefType{
+	parm0Want := makeTypePattern(
+		sel.typeParms,
+		&RefType{
 			Type: &TypeVar{
 				Name: sel.typeParms[0].Name,
 				Def:  sel.typeParms[0],
 			},
-		},
-	}
+		})
 	parm0Got := sel.parm(0)
 	if diff := cmp.Diff(parm0Want, parm0Got, diffOpts...); diff != "" {
 		t.Fatalf("parm(0)=%T, expected %s: %s", parm0Got, parm0Want, diff)
@@ -211,10 +200,9 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 	//
 	// But the return is the bound int type.
 	//
-	retWant := typePattern{
-		parms: sel.typeParms,
-		typ:   &RefType{Type: bind[retTypeParm]},
-	}
+	retWant := makeTypePattern(
+		sel.typeParms,
+		&RefType{Type: bind[retTypeParm]})
 	retGot := sel.ret()
 	if diff := cmp.Diff(retWant, retGot, diffOpts...); diff != "" {
 		t.Fatalf("ret=%s, expected %s: %s", retGot, retWant, diff)
@@ -230,19 +218,17 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 		t.Fatalf("sub=%s, want nil", note)
 	}
 
-	parm0Want = typePattern{
-		parms: sel.typeParms,
-		typ:   &RefType{Type: typ},
-	}
+	parm0Want = makeTypePattern(
+		sel.typeParms,
+		&RefType{Type: typ})
 	parm0Got = sel.parm(0)
 	if diff := cmp.Diff(parm0Want, parm0Got, diffOpts...); diff != "" {
 		t.Fatalf("parm(0)=%s, expected %s: %s", parm0Got, parm0Want, diff)
 	}
 
-	retWant = typePattern{
-		parms: sel.typeParms,
-		typ:   &RefType{Type: &BasicType{Kind: Int}},
-	}
+	retWant = makeTypePattern(
+		sel.typeParms,
+		&RefType{Type: &BasicType{Kind: Int}})
 	retGot = sel.ret()
 	if diff := cmp.Diff(parm0Want, parm0Got, diffOpts...); diff != "" {
 		t.Fatalf("ret=%s, expected %s: %s", retGot, retWant, diff)
@@ -277,10 +263,9 @@ func TestSelectSubRetBeforeMismatchingParm0(t *testing.T) {
 
 func TestSwitchRet(t *testing.T) {
 	sel := checkTestMod("").findIDs("x?y?z?")[0].(*Switch)
-	want := typePattern{
-		parms: sel.typeParms,
-		typ:   typeVar(sel.typeParms[0]),
-	}
+	want := makeTypePattern(
+		sel.typeParms,
+		typeVar(sel.typeParms[0]))
 	got := sel.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -300,17 +285,14 @@ func TestSwitchParmsAndRetWithoutSub(t *testing.T) {
 		typeVar(sel.typeParms[4]),
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sel.typeParms, typ: wantType}
+		want := makeTypePattern(sel.typeParms, wantType)
 		got := sel.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
 
-	want := typePattern{
-		parms: sel.typeParms,
-		typ:   typeVar(sel.typeParms[0]),
-	}
+	want := makeTypePattern(sel.typeParms, typeVar(sel.typeParms[0]))
 	got := sel.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -342,17 +324,14 @@ func TestSwitchSubMatchingParm0(t *testing.T) {
 		},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sw.typeParms, typ: wantType}
+		want := makeTypePattern(sw.typeParms, wantType)
 		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
 
-	want := typePattern{
-		parms: sw.typeParms,
-		typ:   typeVar(sw.typeParms[0]),
-	}
+	want := makeTypePattern(sw.typeParms, typeVar(sw.typeParms[0]))
 	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -377,17 +356,14 @@ func TestSwitchSubMatchingParm0IncompleteSwitch(t *testing.T) {
 		&FuncType{Ret: _empty},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sw.typeParms, typ: wantType}
+		want := makeTypePattern(sw.typeParms,  wantType)
 		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
 
-	want := typePattern{
-		parms: sw.typeParms,
-		typ:   _empty,
-	}
+	want := makeTypePattern(sw.typeParms,_empty)
 	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -412,7 +388,7 @@ func TestSwitchSubParm1First(t *testing.T) {
 		typeVar(sw.typeParms[4]),
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sw.typeParms, typ: wantType}
+		want := makeTypePattern( sw.typeParms, wantType)
 		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
@@ -422,10 +398,7 @@ func TestSwitchSubParm1First(t *testing.T) {
 	// We do not yet substitute the return type.
 	// We don't yet know whether this is a complete switch.
 	// We only know that when we sub parm0.
-	want := typePattern{
-		parms: sw.typeParms,
-		typ:   typeVar(sw.typeParms[0]),
-	}
+	want := makeTypePattern(sw.typeParms,  typeVar(sw.typeParms[0]))
 	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -450,7 +423,7 @@ func TestSwitchSubRetFirst(t *testing.T) {
 		typeVar(sw.typeParms[4]),
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sw.typeParms, typ: wantType}
+		want := makeTypePattern( sw.typeParms, wantType)
 		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
@@ -460,10 +433,7 @@ func TestSwitchSubRetFirst(t *testing.T) {
 	// We do not yet substitute the return type.
 	// We don't yet know whether this is a complete switch.
 	// We only know that when we sub parm0.
-	want := typePattern{
-		parms: sw.typeParms,
-		typ:   _string,
-	}
+	want := makeTypePattern(sw.typeParms,_string)
 	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -495,14 +465,14 @@ func TestSwitchSubRetThenParm0(t *testing.T) {
 		&FuncType{Ret: _string},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sw.typeParms, typ: wantType}
+		want := makeTypePattern( sw.typeParms, wantType)
 		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
 
-	want := typePattern{parms: sw.typeParms, typ: _string}
+	want := makeTypePattern( sw.typeParms, _string)
 	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -535,13 +505,13 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 		typeVar(sw.typeParms[4]),
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sw.typeParms, typ: wantType}
+		want := makeTypePattern( sw.typeParms, wantType)
 		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
-	want := typePattern{parms: sw.typeParms, typ: bind[retTypeParm]}
+	want := makeTypePattern( sw.typeParms,  bind[retTypeParm])
 	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -560,13 +530,13 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 		&FuncType{Ret: bind[retTypeParm]},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sw.typeParms, typ: wantType}
+		want := makeTypePattern( sw.typeParms,  wantType)
 		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
-	want = typePattern{parms: sw.typeParms, typ: bind[retTypeParm]}
+	want = makeTypePattern( sw.typeParms, bind[retTypeParm])
 	got = sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -585,13 +555,13 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 		&FuncType{Ret: _string},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sw.typeParms, typ: wantType}
+		want := makeTypePattern( sw.typeParms, wantType)
 		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
-	want = typePattern{parms: sw.typeParms, typ: _string}
+	want = makeTypePattern( sw.typeParms, _string)
 	got = sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
@@ -623,14 +593,14 @@ func TestSwitchSubParm2ThenMatchingParm0(t *testing.T) {
 		&FuncType{Ret: _string},
 	}
 	for i, wantType := range wantParms {
-		want := typePattern{parms: sw.typeParms, typ: wantType}
+		want := makeTypePattern( sw.typeParms,  wantType)
 		got := sw.parm(i)
 		if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 			t.Fatalf("parm(%d)=%s, expected %s: %s", i, got, want, diff)
 		}
 	}
 
-	want := typePattern{parms: sw.typeParms, typ: _string}
+	want := makeTypePattern( sw.typeParms,  _string)
 	got := sw.ret()
 	if diff := cmp.Diff(want, got, diffOpts...); diff != "" {
 		t.Fatalf("ret()=%s, expected %s: %s", got, want, diff)
