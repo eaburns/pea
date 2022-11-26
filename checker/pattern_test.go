@@ -112,7 +112,7 @@ func TestCommonPattern(t *testing.T) {
 				"(int, int) pair",
 				"(string, string) pair",
 			},
-			want: "(?, ?) pair",
+			want: "(?0, ?1) pair",
 		},
 		{
 			pats: []string{
@@ -231,7 +231,7 @@ func TestCommonPattern(t *testing.T) {
 				"[.x int, .y int]",
 				"[.x int32, .y int32]",
 			},
-			want: "[.x ?, .y ?]",
+			want: "[.x ?0, .y ?1]",
 		},
 		{
 			pats: []string{
@@ -239,7 +239,7 @@ func TestCommonPattern(t *testing.T) {
 				"[.x int, .y [false?, true?], .z string]",
 				"[.x [false?, true?], .y float32, .z string]",
 			},
-			want: "[.x ?, .y ?, .z string]",
+			want: "[.x ?0, .y ?1, .z string]",
 		},
 		{
 			pats: []string{
@@ -288,7 +288,7 @@ func TestCommonPattern(t *testing.T) {
 				"[x? int, y?, z? string]",
 				"[x? [false?, true?], y?, z? [false?, true?]]",
 			},
-			want: "[x? ?, y?, z? ?]",
+			want: "[x? ?0, y?, z? ?1]",
 		},
 		{
 			pats: []string{
@@ -358,7 +358,7 @@ func TestCommonPattern(t *testing.T) {
 				"(int, string){float64}",
 				"(int8, float32){[false?, true?]}",
 			},
-			want: "(?, ?){?}",
+			want: "(?0, ?1){?2}",
 		},
 		{
 			pats: []string{
@@ -492,7 +492,7 @@ func TestPatternIntersection(t *testing.T) {
 		{src: `type (T, U) t int`, a: `(int, ?) t`, b: `(?, int) t`, want: `(int, int) t`},
 		{src: `type (T, U) t int`, a: `(int, ?) t`, b: `(int, ?) t`, want: `(int, ?) t`},
 		{src: `type (T, U) t int`, a: `(?, int) t`, b: `(?, int) t`, want: `(?, int) t`},
-		{src: `type (T, U) t int`, a: `(?, ?) t`, b: `(?, ?) t`, want: `(?, ?) t`},
+		{src: `type (T, U) t int`, a: `(?, ?) t`, b: `(?, ?) t`, want: `(?0, ?1) t`},
 		{src: `type (T, U) t int`, a: `(?, string) t`, b: `(int, ?) t`, want: `(int, string) t`},
 		{src: `type (T, U) t int`, a: `(int, string) t`, b: `(?, int) t`, want: ``},
 		{src: `type (T, U) t int`, a: `(int, ?) t`, b: `(string, ?) t`, want: ``},
@@ -534,7 +534,7 @@ func TestPatternIntersection(t *testing.T) {
 		{a: `[.x int, .y string]`, b: `[.x int, .y ?]`, want: `[.x int, .y string]`},
 		{a: `[.x ?, .y string]`, b: `[.x ?, .y string]`, want: `[.x ?, .y string]`},
 		{a: `[.x int, .y ?]`, b: `[.x int, .y ?]`, want: `[.x int, .y ?]`},
-		{a: `[.x ?, .y ?]`, b: `[.x ?, .y ?]`, want: `[.x ?, .y ?]`},
+		{a: `[.x ?, .y ?]`, b: `[.x ?, .y ?]`, want: `[.x ?0, .y ?1]`},
 		{a: `[.x ?, .y ?]`, b: `[.x ?]`, want: ``},
 		{a: `[.x ?, .y int]`, b: `[.x ?, .y string]`, want: ``},
 		{a: `[.x ?, .y int]`, b: `[.x ?, .y T]`, want: ``},
@@ -589,10 +589,10 @@ func TestPatternIntersection(t *testing.T) {
 		{a: `(?0, ?0){?1}`, b: `(int, int){string}`, want: `(int, int){string}`},
 
 		{a: `[.x ?0, .y ?0]`, b: `[.x ?, .y int]`, want: `[.x int, .y int]`},
-		{a: `[.x ?0, .y ?0]`, b: `[.x ?0, .y ?0]`, want: `[.x ?0, .y ?0]`},
-		{a: `[.x ?0, .y ?0]`, b: `[.x ?0, .y ?1]`, want: `[.x ?0, .y ?0]`},
-		{a: `[.x ?0, .y ?1]`, b: `[.x ?0, .y ?0]`, want: `[.x ?0, .y ?0]`},
-		{a: `[.x ?0, .y ?1]`, b: `[.x ?0, .y ?1]`, want: `[.x ?, .y ?]`},
+		{a: `[.x ?0, .y ?0]`, b: `[.x ?0, .y ?0]`, want: `[.x ?, .y ?]`},
+		{a: `[.x ?0, .y ?0]`, b: `[.x ?0, .y ?1]`, want: `[.x ?, .y ?]`},
+		{a: `[.x ?0, .y ?1]`, b: `[.x ?0, .y ?0]`, want: `[.x ?, .y ?]`},
+		{a: `[.x ?0, .y ?1]`, b: `[.x ?0, .y ?1]`, want: `[.x ?0, .y ?1]`},
 		{a: `[.x ?0, .y ?0]`, b: `[.x int, .y int]`, want: `[.x int, .y int]`},
 		{a: `[.x ?0, .y ?0]`, b: `[.x string, .y int]`, want: ``},
 		{a: `[.x string, .y int]`, b: `[.x ?0, .y ?0]`, want: ``},

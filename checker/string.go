@@ -12,7 +12,19 @@ type stringBuilder struct {
 	// This is intended for test strings.
 	fullString bool
 
+	// typeParms are the current type parameters;
+	// their type variables are re-named to ?#,
+	// where # is teh index of the TypeParm in the array.
+	typeParms []*TypeParm
+	// typeParm0Name is the name given to the 0th type parameter.
+	// When first named, if there is only one type parameter, its name is ?.
+	// For correctness, this choice must be carried through
+	// even if typeParms is later appended to.
+	typeParm0Name string
+
+	// elideMod is a module name to elide in type names.
 	elideMod string
+
 	builder  strings.Builder
 }
 
@@ -203,118 +215,11 @@ func (w *stringBuilder) WriteRune(r rune) {
 }
 
 func (pat typePattern) buildString(w *stringBuilder) {
-	numRefs := make(map[*TypeParm]int)
-	var countBoundVarRefs func(Type)
-	countBoundVarRefs = func(t Type) {
-		switch t := t.(type) {
-		case *DefType:
-			for i := range t.Args {
-				countBoundVarRefs(t.Args[i])
-			}
-		case *RefType:
-			countBoundVarRefs(t.Type)
-		case *ArrayType:
-			countBoundVarRefs(t.ElemType)
-		case *StructType:
-			for i := range t.Fields {
-				countBoundVarRefs(t.Fields[i].Type)
-			}
-		case *UnionType:
-			for i := range t.Cases {
-				countBoundVarRefs(t.Cases[i].Type)
-			}
-		case *FuncType:
-			for i := range t.Parms {
-				countBoundVarRefs(t.Parms[i])
-			}
-			countBoundVarRefs(t.Ret)
-		case *TypeVar:
-			if pat.bound(t) {
-				numRefs[t.Def] = numRefs[t.Def] + 1
-			}
-		case *BasicType:
-		case nil:
-		default:
-			panic(fmt.Sprintf("bad type type: %T", t))
-		}
-	}
-	countBoundVarRefs(pat.typ)
-	if len(numRefs) == 0 {
-		pat.typ.buildString(w)
-		return
-	}
+	orig := w.typeParms
+	defer func() { w.typeParms = orig }()
+	w.typeParms = appendTypeParmsToCopy(orig, pat.parms)
 
-	nextNumber := 0
-	name := make(map[*TypeParm]string)
-	var renameBoundVars func(Type) Type
-	renameBoundVars = func(t Type) Type {
-		switch t := t.(type) {
-		case *RefType:
-			copy := *t
-			copy.Type = renameBoundVars(t.Type)
-			return &copy
-		case *DefType:
-			copy := *t
-			copy.Args = nil
-			for i := range t.Args {
-				copy.Args = append(copy.Args, renameBoundVars(t.Args[i]))
-			}
-			return &copy
-		case *ArrayType:
-			copy := *t
-			copy.ElemType = renameBoundVars(t.ElemType)
-			return &copy
-		case *StructType:
-			copy := *t
-			copy.Fields = nil
-			for _, fieldCopy := range t.Fields {
-				fieldCopy.Type = renameBoundVars(fieldCopy.Type)
-				copy.Fields = append(copy.Fields, fieldCopy)
-			}
-			return &copy
-		case *UnionType:
-			copy := *t
-			copy.Cases = nil
-			for _, caseCopy := range t.Cases {
-				if caseCopy.Type != nil {
-					caseCopy.Type = renameBoundVars(caseCopy.Type)
-				}
-				copy.Cases = append(copy.Cases, caseCopy)
-			}
-			return &copy
-		case *FuncType:
-			copy := *t
-			copy.Parms = nil
-			for _, parm := range t.Parms {
-				copy.Parms = append(copy.Parms, renameBoundVars(parm))
-			}
-			copy.Ret = renameBoundVars(copy.Ret)
-			return &copy
-		case *TypeVar:
-			copy := *t
-			if !pat.bound(&copy) {
-				return &copy
-			}
-			if _, ok := name[copy.Def]; !ok {
-				n := "?"
-				if numRefs[copy.Def] > 1 {
-					n += strconv.Itoa(nextNumber)
-					nextNumber++
-				}
-				name[copy.Def] = n
-			}
-			copy.Name = name[copy.Def]
-			return &copy
-		case *BasicType:
-			copy := *t
-			return &copy
-		case nil:
-			return nil
-		default:
-			panic(fmt.Sprintf("bad type type: %T", t))
-		}
-	}
-	renameBoundVars(pat.typ).buildString(w)
+	pat.typ.buildString(w)
 }
 
 func (r *RefType) buildString(w *stringBuilder) {
@@ -410,7 +315,27 @@ func (f FuncType) buildString(w *stringBuilder) {
 }
 
 func (t *TypeVar) buildString(w *stringBuilder) {
-	w.WriteString(t.Name)
+	parmIndex := -1
+	for i, p := range w.typeParms {
+		if t.Def == p {
+			parmIndex = i
+			break
+		}
+	}
+	switch {
+	case parmIndex < 0:
+		w.WriteString(t.Name)
+	case parmIndex == 0:
+		switch {
+		case w.typeParm0Name == "" && len(w.typeParms) == 1:
+			w.typeParm0Name = "?"
+		case w.typeParm0Name == "":
+			w.typeParm0Name = "?0"
+		}
+		w.WriteString(w.typeParm0Name)
+	default:
+		w.WriteString(fmt.Sprintf("?%d", parmIndex))
+	}
 }
 
 func (k BasicTypeKind) String() string {
