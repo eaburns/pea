@@ -8,7 +8,11 @@ import (
 	"github.com/eaburns/pea/loc"
 )
 
-// typePattern is a type pattern.
+// A typePattern describes a set of types matching the pattern,
+// it consists of a set of type parameters, and a type.
+// The type may contain type variables bound to the parameters.
+// The pattern represents all types that are the result of
+// substituting types for the type parameters.
 type typePattern struct {
 	parms []*TypeParm
 	typ   Type
