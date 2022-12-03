@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/eaburns/pea/loc"
+	"github.com/eaburns/pea/parser"
 )
 
 type Error interface {
@@ -25,10 +26,6 @@ func newError(locer loc.Locer, f string, vs ...interface{}) Error {
 		panic("impossible no location")
 	}
 	return &_error{msg: fmt.Sprintf(f, vs...), loc: l}
-}
-
-func notFound(name string, locer loc.Locer) Error {
-	return newError(locer, "%s: not found", name)
 }
 
 func ambigType(name string, locer loc.Locer, types []Type) Error {
@@ -127,4 +124,53 @@ func (e *_error) buildString(c *topScope, mustIdent bool, depth int, s *strings.
 			n.buildString(c, true, depth, s)
 		}
 	}
+}
+
+// NotFoundError indicates an identifier whose definition is not found.
+type NotFoundError struct {
+	Ident parser.Ident
+	scope scope
+	notes []note
+}
+
+func notFound(x scope, ident parser.Ident) *NotFoundError {
+	return &NotFoundError{Ident: ident, scope: x}
+}
+
+func notFoundTypeVar(x scope, tv parser.TypeVar) *NotFoundError {
+	return &NotFoundError{Ident: parser.Ident(tv), scope: x}
+}
+
+func (err *NotFoundError) add(ns ...note)     { err.notes = append(err.notes, ns...) }
+func (err *NotFoundError) done(top *topScope) {}
+func (err *NotFoundError) Loc() loc.Loc       { return err.Ident.L }
+
+func (err *NotFoundError) Error() string {
+	var s strings.Builder
+	writeLoc(err.scope, err.Loc(), &s)
+	s.WriteString(fmt.Sprintf(": %s not found", err.Ident.Name))
+	writeNotes(err.scope, err.notes, &s)
+	return s.String()
+}
+
+func writeNotes(x scope, notes []note, s *strings.Builder) {
+	t := top(x)
+	for _, n := range notes {
+		s.WriteRune('\n')
+		n.buildString(t, true, 1, s)
+	}
+}
+
+func writeLoc(x scope, l loc.Loc, s *strings.Builder) {
+	t := top(x)
+	if t.importer.Files().Len() == 0 {
+		// This happens in some tests,
+		// where the location info is not correctly tracked
+		// across calls to parseTestPattern and such helpers.
+		// TODO: tests to always have location information.
+		return
+	}
+	location := t.importer.Files().Location(l)
+	location.Path = strings.TrimPrefix(location.Path, t.trimErrorPathPrefix)
+	s.WriteString(location.String())
 }

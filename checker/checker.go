@@ -450,11 +450,9 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 			break
 		}
 		if parserType.Mod != nil {
-			modName := parserType.Mod.Name
-			modLoc := parserType.Mod.L
 			imp := findImport(x, parserType.Mod.Name)
 			if imp == nil {
-				errs = append(errs, notFound(modName, modLoc))
+				errs = append(errs, notFound(x, *parserType.Mod))
 				return nil, errs
 			}
 			x = imp
@@ -477,7 +475,7 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 			}
 			fallthrough
 		case len(types) == 0:
-			errs = append(errs, notFound(name, parserType.L))
+			errs = append(errs, notFound(x, parserType.Name))
 		case len(types) > 1:
 			errs = append(errs, ambigType(name, parserType.L, types))
 		default:
@@ -538,7 +536,7 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 			if allowUnboundForTest {
 				typ = &TypeVar{Name: name, L: parserType.L}
 			} else {
-				errs = append(errs, notFound(name, parserType.L))
+				errs = append(errs, notFoundTypeVar(x, parserType))
 			}
 		case len(types) > 1:
 			errs = append(errs, ambigType(name, parserType.L, types))
@@ -864,7 +862,7 @@ func newIfaceInst(x scope, parserType *parser.NamedType, args []Type) (*IfaceIns
 	if parserType.Mod != nil {
 		imp := findImport(x, parserType.Mod.Name)
 		if imp == nil {
-			return nil, notFound(parserType.Mod.Name, parserType.L)
+			return nil, notFound(x, *parserType.Mod)
 		}
 		x = imp
 	}
@@ -872,7 +870,7 @@ func newIfaceInst(x scope, parserType *parser.NamedType, args []Type) (*IfaceIns
 	l := parserType.L
 	switch defs := findIfaceDef(x, len(parserType.Args), name, l); {
 	case len(defs) == 0:
-		return nil, notFound(name, l)
+		return nil, notFound(x, parserType.Name)
 	case len(defs) > 1:
 		return nil, ambigIface(name, l, defs)
 	case defs[0].File.Mod.Imported && defs[0].Opaque:
@@ -1267,7 +1265,7 @@ func checkCall(x scope, parserCall *parser.Call, pat typePattern, mode convertMo
 	case *parser.ModSel:
 		imp := findImport(x, fun.Mod.Name)
 		if imp == nil {
-			return nil, []Error{notFound(fun.Mod.Name, fun.L)}
+			return nil, []Error{notFound(x, fun.Mod)}
 		}
 		var addMod *Import
 		if !imp.Exp {
@@ -1364,7 +1362,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 
 	switch {
 	case len(funcs) == 0:
-		err := notFound(parserID.Name, parserID.L)
+		err := notFound(x, parserID)
 		err.add(notes...)
 		return &Call{Args: args, L: parserCall.L}, []Error{err}
 	case len(funcs) > 1:
@@ -1661,7 +1659,7 @@ func checkExprCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []E
 func checkModSel(x scope, parserSel *parser.ModSel, pat typePattern) (Expr, []Error) {
 	imp := findImport(x, parserSel.Mod.Name)
 	if imp == nil {
-		return nil, []Error{notFound(parserSel.Mod.Name, parserSel.L)}
+		return nil, []Error{notFound(x, parserSel.Mod)}
 	}
 	parserID := parserSel.Name
 	ids := findIDs(imp, parserID.Name)
@@ -1756,7 +1754,7 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, 
 
 	switch {
 	case len(ids) == 0:
-		err := notFound(parserID.Name, parserID.L)
+		err := notFound(x, parserID)
 		err.add(notFoundNotes...)
 		return nil, []Error{err}
 	case len(ids) > 1:

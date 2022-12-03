@@ -69,7 +69,7 @@ func (imp *testImporter) Load(path string) (*Mod, error) {
 		}
 	}
 	if testMod == nil {
-		return nil, fmt.Errorf("%s: not found", path)
+		return nil, fmt.Errorf("%s not found", path)
 	}
 	p := parser.NewWithOffset(imp.files.Len() + 1)
 	err := p.Parse(testMod.path, strings.NewReader(testMod.src))
@@ -674,7 +674,7 @@ func TestNoNewLocalInNestedExpr(t *testing.T) {
 	switch _, errs := check("test", []string{src}, nil); {
 	case len(errs) != 1:
 		t.Errorf("expected 1 error, got %d", len(errs))
-	case !strings.Contains(errs[0].Error(), "x: not found"):
+	case !strings.Contains(errs[0].Error(), "x not found"):
 		t.Errorf("expected not found error, got %s", errs[0])
 	}
 }
@@ -686,7 +686,7 @@ func TestNoNewLocalInArrayExprs(t *testing.T) {
 	switch _, errs := check("test", []string{src}, nil); {
 	case len(errs) != 1:
 		t.Errorf("expected 1 error, got %d", len(errs))
-	case !strings.Contains(errs[0].Error(), "x: not found"):
+	case !strings.Contains(errs[0].Error(), "x not found"):
 		t.Errorf("expected not found error, got %s", errs[0])
 	}
 }
@@ -3122,7 +3122,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 					`,
 				},
 			},
-			err: `\+\(foo#t, foo#t, foo#t\)foo#t: not found`,
+			err: `\+ not found`,
 		},
 	}
 	for _, test := range tests {
@@ -3259,7 +3259,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "multiple explicit converts on return, but resolved by iface constraint",
-			src:  `
+			src: `
 				// Both [uint8] returns are not implicitly convertable.
 				// But both are explicitly convertible.
 				// However, the first cannot have its constarint satisfied by T=int.
@@ -3561,7 +3561,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().x",
-			err:  "foo: not found",
+			err:  "foo not found",
 		},
 		{
 			name: "built-in selector, other mod opaque fails",
@@ -4223,7 +4223,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in def array index",
-			src:  `
+			src: `
 				type my_array [int]
 				var ary := my_array :: [5, 6, 7]
 			`,
@@ -4248,7 +4248,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in def array slice",
-			src:  `
+			src: `
 				type my_array [int]
 				var ary := my_array :: [5, 6, 7]
 			`,
@@ -4283,7 +4283,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in .length def array",
-			src:  `
+			src: `
 				type my_array [int]
 				var ary := my_array :: [1, 2, 3]
 			`,
@@ -4292,12 +4292,12 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "built-in .length def array ref fails",
-			src:  `
+			src: `
 				type my_array &[int]
 				var ary := my_array :: [1, 2, 3]
 			`,
 			call: `ary.length`,
-			want:  "built-in .length([int])int",
+			want: "built-in .length([int])int",
 		},
 		{
 			name: "built-in .length, arg not an array or string",
@@ -4525,7 +4525,7 @@ func TestOverloadResolution(t *testing.T) {
 				func foo(_ not_found_type)
 			`,
 			call: "foo(5)",
-			err:  "foo: not found",
+			err:  "foo not found",
 		},
 		{
 			name: "adl parm 0",
@@ -4721,7 +4721,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 				},
 			},
-			err: "f: not found",
+			err: "f not found",
 		},
 		{
 			name: "consider called function mod for iface functions",
@@ -4930,7 +4930,7 @@ func TestIDResolution(t *testing.T) {
 				path: "foo",
 				src:  "var x := int :: 5",
 			},
-			err: "x: not found",
+			err: "x not found",
 		},
 		{
 			name: "mod selector not ambiguous with current mod ID",
@@ -5037,7 +5037,7 @@ func TestIDResolution(t *testing.T) {
 					f(5)
 				}
 			`,
-			err: "f: not found",
+			err: "f not found",
 		},
 		{
 			name: "adl",
