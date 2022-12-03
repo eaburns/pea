@@ -15,7 +15,7 @@ type Error interface {
 
 	setNotes([]note)
 	note(string, ...interface{}) note
-	done(*checker)
+	done(*topScope)
 }
 
 func newError(locer loc.Locer, f string, vs ...interface{}) Error {
@@ -62,7 +62,7 @@ type note interface {
 	isVerbose() bool
 	setNotes([]note)
 	setLoc(x interface{}) note
-	buildString(c *checker, mustIdent bool, depth int, s *strings.Builder)
+	buildString(c *topScope, mustIdent bool, depth int, s *strings.Builder)
 }
 
 func newNote(f string, vs ...interface{}) note {
@@ -112,7 +112,7 @@ func (e *_error) note(f string, vs ...interface{}) note {
 	return e.notes[len(e.notes)-1]
 }
 
-func (e *_error) done(c *checker) {
+func (e *_error) done(c *topScope) {
 	var s strings.Builder
 	l := c.importer.Files().Location(e.loc)
 	l.Path = strings.TrimPrefix(l.Path, c.trimErrorPathPrefix)
@@ -133,7 +133,7 @@ func (e *_error) done(c *checker) {
 	e.msg = s.String()
 }
 
-func (e *_error) buildString(c *checker, mustIdent bool, depth int, s *strings.Builder) {
+func (e *_error) buildString(c *topScope, mustIdent bool, depth int, s *strings.Builder) {
 	s.WriteString(strings.Repeat("\t", depth))
 	s.WriteString(e.msg)
 	if e.loc != (loc.Loc{}) {

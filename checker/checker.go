@@ -14,32 +14,25 @@ import (
 	"github.com/eaburns/pea/parser"
 )
 
-type checker struct {
-	importer            Importer
-	maxErrorDepth       int
-	verboseNotes        bool
-	trimErrorPathPrefix string
-}
-
 // Option is an option to Check.
-type Option func(*checker)
+type Option func(*topScope)
 
 // UseImporter returns an Option that sets the importer to use for checking.
-// By default checker uses an importer loads modules from the current directory.
+// By default topScope uses an importer loads modules from the current directory.
 func UseImporter(imp Importer) Option {
-	return func(c *checker) { c.importer = imp }
+	return func(c *topScope) { c.importer = imp }
 }
 
 // TrimErrorPathPrefix returns an Option that trims the given prefix
 // from file paths reported in error messages.
 func TrimErrorPathPrefix(p string) Option {
-	return func(c *checker) { c.trimErrorPathPrefix = p }
+	return func(c *topScope) { c.trimErrorPathPrefix = p }
 }
 
 // MaxErrorDepth returns an Option that sets the max nesting depth for reported errors.
 // A value of -1 indicates no maximum depth.
 func MaxErrorDepth(m int) Option {
-	return func(c *checker) { c.maxErrorDepth = m }
+	return func(c *topScope) { c.maxErrorDepth = m }
 }
 
 // VerboseNotes returns an Option that sets whether to
@@ -48,21 +41,21 @@ func MaxErrorDepth(m int) Option {
 // If VerboseNotes is true, there is no truncation.
 // By default VerboseNotes is false.
 func VerboseNotes(b bool) Option {
-	return func(c *checker) { c.verboseNotes = b }
+	return func(c *topScope) { c.verboseNotes = b }
 }
 
 // Check does semantic checking, and returns a *Mod on success.
 func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.Files, []error) {
-	checker := checker{
+	topScope := topScope{
 		maxErrorDepth: 3,
 		verboseNotes:  false,
 	}
 	for _, opt := range opts {
-		opt(&checker)
+		opt(&topScope)
 	}
-	if checker.importer == nil {
+	if topScope.importer == nil {
 		r := mod.NewRoot(".")
-		checker.importer = NewImporter(r, files, checker.trimErrorPathPrefix)
+		topScope.importer = NewImporter(r, files, topScope.trimErrorPathPrefix)
 	}
 
 	modPath = cleanImportPath(modPath)
@@ -90,12 +83,12 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 		{0, "float64"}: {},
 		{0, "string"}:  {},
 	}
-	mod := &Mod{Path: modPath}
+	mod := &Mod{Path: modPath, topScope: &topScope}
 	var importedMods []*Mod
 	for _, parserFile := range files {
 		var imports []*Import
 		for _, parserImport := range parserFile.Imports {
-			m, err := checker.importer.Load(parserImport.Path)
+			m, err := topScope.importer.Load(parserImport.Path)
 			if err != nil {
 				errs = append(errs, newError(parserImport.L, err.Error()))
 				continue
@@ -122,6 +115,7 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 				Exp:  parserImport.Exp,
 				L:    parserImport.L,
 				Defs: m.Defs,
+				topScope: &topScope,
 			}
 			imports = append(imports, imp)
 		}
@@ -147,7 +141,7 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 			case *parser.TypeDef:
 				arity = len(parserDef.TypeParms)
 				name = parserDef.Name.Name
-				parms, es := makeTypeParms(checker.importer.Files(), parserDef.TypeParms)
+				parms, es := makeTypeParms(topScope.importer.Files(), parserDef.TypeParms)
 				errs = append(errs, es...)
 				def = &TypeDef{
 					File:   file,
@@ -162,7 +156,7 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 			case *parser.IfaceDef:
 				arity = len(parserDef.TypeParms)
 				name = parserDef.Name.Name
-				parms, es := makeTypeParms(checker.importer.Files(), parserDef.TypeParms)
+				parms, es := makeTypeParms(topScope.importer.Files(), parserDef.TypeParms)
 				errs = append(errs, es...)
 				def = &IfaceDef{
 					File:   file,
@@ -239,7 +233,7 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 				}
 			case *parser.FuncDef:
 				origErrorCount := len(errs)
-				typeParms := findTypeParms(checker.importer.Files(), parserDef)
+				typeParms := findTypeParms(topScope.importer.Files(), parserDef)
 				funDef := &FuncDef{
 					File:      file,
 					Mod:       modPath,
@@ -335,7 +329,7 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 	if len(errs) > 0 {
 		var es []error
 		for _, err := range errs {
-			err.done(&checker)
+			err.done(&topScope)
 			es = append(es, err)
 		}
 		return nil, nil, es
@@ -377,9 +371,9 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 		return nil, nil, []error{errors.New("too much substitution")}
 	}
 
-	mod.Deps = checker.importer.Deps()
+	mod.Deps = topScope.importer.Deps()
 
-	return mod, checker.importer.Files(), nil
+	return mod, topScope.importer.Files(), nil
 }
 
 func importName(path string) string {

@@ -12,6 +12,13 @@ type scope interface {
 	up() scope
 }
 
+type topScope struct {
+	importer            Importer
+	maxErrorDepth       int
+	verboseNotes        bool
+	trimErrorPathPrefix string
+}
+
 type blockLitScope struct {
 	parent scope
 	*BlockLit
@@ -39,8 +46,9 @@ type addedImportScope struct {
 	Import *Import
 }
 
-func (*Mod) up() scope                { return nil }
-func (*Import) up() scope             { return nil }
+func (t *topScope) up() scope { return nil }
+func (m *Mod) up() scope                { return m.topScope }
+func (i *Import) up() scope             { return i.topScope }
 func (f *File) up() scope             { return f.Mod }
 func (v *VarDef) up() scope           { return v.File }
 func (t *TypeDef) up() scope          { return t.File }
@@ -51,6 +59,16 @@ func (b *blockLitScope) up() scope    { return b.parent }
 func (e *ifaceLookup) up() scope      { return e.parent }
 func (o *localScope) up() scope       { return o.parent }
 func (o *addedImportScope) up() scope { return o.parent }
+
+func top(x scope) *topScope {
+	for x != nil {
+		if t, ok := x.(*topScope); ok {
+			return t
+		}
+		x = x.up()
+	}
+	panic("impossible")
+}
 
 func file(x scope) *File {
 	for x != nil {

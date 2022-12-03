@@ -22,6 +22,8 @@ type Mod struct {
 	Deps []string
 
 	toSub []*FuncInst
+
+	*topScope
 }
 
 func (m *Mod) Name() string {
@@ -50,6 +52,8 @@ type Import struct {
 	Defs []Def
 	Exp  bool
 	L    loc.Loc
+
+	*topScope
 }
 
 type VarDef struct {
