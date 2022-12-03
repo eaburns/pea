@@ -10,7 +10,6 @@ import (
 
 type Error interface {
 	error
-	fmt.Stringer
 	loc.Locer
 
 	setNotes([]note)
@@ -86,7 +85,6 @@ type _error struct {
 }
 
 func (e *_error) Error() string      { return e.msg }
-func (e *_error) String() string     { return e.msg }
 func (e *_error) Loc() loc.Loc       { return e.loc }
 func (e *_error) verbose(b bool)     { e.v = b }
 func (e *_error) isVerbose() bool    { return e.v }
