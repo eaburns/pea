@@ -14,7 +14,7 @@ func convertType(src, dst typePattern, mode convertMode) (map[*TypeParm]Type, no
 	if cvt == nil {
 		n := newNote("cannot convert %s to %s", src, dst)
 		n.setLoc(src.typ)
-		n.setNotes(notes)
+		n.add(notes...)
 		return nil, n
 	}
 	return bind, nil
@@ -49,7 +49,7 @@ func convertExpr(expr Expr, dst typePattern, mode convertMode) (Expr, map[*TypeP
 	return doConvertExpr(expr, cvt), bind, nil
 fail:
 	err := newError(expr, "cannot convert %s (%s) to %s", expr, expr.Type(), dst)
-	err.setNotes(notes)
+	err.add(notes...)
 	return expr, nil, err
 }
 

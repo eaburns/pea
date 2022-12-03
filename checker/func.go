@@ -107,7 +107,7 @@ func instFuncConstraints(x scope, l loc.Loc, fun Func) note {
 	}
 	if len(notes) > 0 {
 		note := newNote("%s: failed to instantiate interface", fun).setLoc(fun)
-		note.setNotes(notes)
+		note.add(notes...)
 		return note
 	}
 	return nil
@@ -184,15 +184,13 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 			notFoundNotes = append(notFoundNotes, fail.note)
 		}
 		note := newNote("%s: not found", constraint).setLoc(constraint.L)
-		note.setNotes(notFoundNotes)
+		note.add(notFoundNotes...)
 		return nil, nil, note
 	case len(funcs) > 1:
-		var notes []note
-		for _, f := range funcs {
-			notes = append(notes, newNote(f.String()).setLoc(f))
-		}
 		note := newNote("%s: ambiguous", constraint).setLoc(constraint.L)
-		note.setNotes(notes)
+		for _, f := range funcs {
+			note.add(newNote(f.String()).setLoc(f))
+		}
 		return nil, nil, note
 	default:
 		fun := useFunc(x, l, funcs[0])
@@ -283,21 +281,21 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatte
 		if cvt == nil {
 			n := newNote("%s: cannot convert parameter %d %s to %s",
 				dst, i, srcFunPat.parm(i), dst.parm(i))
-			n.setNotes(notes)
+			n.add(notes...)
 			n.setLoc(dst)
 			return nil, nil, &unifyFuncFailure{note: n, parms: i}
 		}
 		if srcOrigin != nil && isRefLiteral(srcOrigin.Parms[i]) && cvt.Kind == Deref {
 			n := newNote("%s: parameter %d has type %s, but expected a reference literal %s",
 				dst, i, dst.parm(i), srcFunPat.parm(i))
-			n.setNotes(notes)
+			n.add(notes...)
 			n.setLoc(dst)
 			return nil, nil, &unifyFuncFailure{note: n, parms: i}
 		}
 		var n note
 		if dst, n = dst.sub(nil, bind); n != nil {
 			n1 := newNote("%s: parameter %d type substitution failed", dst, i)
-			n1.setNotes([]note{n})
+			n1.add(n)
 			n.setLoc(dst)
 			return nil, nil, &unifyFuncFailure{note: n1, parms: i}
 		}
@@ -310,21 +308,21 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatte
 	if cvt == nil {
 		n := newNote("%s: cannot convert returned %s to %s",
 			dst, dst.ret(), srcFunPat.ret())
-		n.setNotes(notes)
+		n.add(notes...)
 		n.setLoc(dst)
 		return nil, nil, &unifyFuncFailure{note: n, parms: dst.arity()}
 	}
 	if srcOrigin != nil && isRefLiteral(srcOrigin.Ret) && cvt.Kind == Ref {
 		n := newNote("%s: return has type %s, but expected a reference literal %s",
 			dst, dst.ret(), srcFunPat.ret())
-		n.setNotes(notes)
+		n.add(notes...)
 		n.setLoc(dst)
 		return nil, nil, &unifyFuncFailure{note: n, parms: dst.arity()}
 	}
 	var n note
 	if dst, n = dst.sub(nil, bind); n != nil {
 		n1 := newNote("%s: return type substitution failed", dst)
-		n1.setNotes([]note{n})
+		n1.add(n)
 		n.setLoc(dst)
 		return nil, nil, &unifyFuncFailure{note: n1, parms: dst.arity()}
 	}
@@ -493,7 +491,7 @@ func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 	if _, cn := convertType(pattern(retType), retPat, implicit); cn != nil {
 		n := newNote("%s: cannot convert return value (%s) to %s", &copy, retType, copy.T.Ret)
 		n.setLoc(copy.T.Ret)
-		n.setNotes([]note{cn})
+		n.add(cn)
 		return f, n
 	}
 	copy.T = &FuncType{Parms: []Type{refLiteral(copy.Struct)}, Ret: retType}
@@ -575,7 +573,7 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 		if _, cn := convertType(srcPat, dstPat, implicit); cn != nil {
 			n := newNote("%s: cannot convert return value (%s) to %s", &copy, srcPat, dstPat)
 			n.setLoc(copy.T.Ret)
-			n.setNotes([]note{cn})
+			n.add(cn)
 			return f, n
 		}
 		copy.T.Ret = _empty
@@ -619,7 +617,7 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 				copy.T.Parms[1+i] = parmType
 				n := newNote("%s: cannot convert argument %d (%s) to %s", &copy, i, srcPat, dstPat)
 				n.setLoc(copy.T.Parms[1+i])
-				n.setNotes([]note{cn})
+				n.add(cn)
 				return f, n
 			}
 		}

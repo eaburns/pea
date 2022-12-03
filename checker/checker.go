@@ -620,7 +620,7 @@ func checkTypeAliasCycle(root *TypeDef) Error {
 		// Break the alias so that checking can continue reporting more errors.
 		root.Alias = false
 		err := newError(root.L, "type alias cycle")
-		err.setNotes(notes)
+		err.add(notes...)
 		return err
 	}
 	return nil
@@ -819,12 +819,10 @@ func checkIfaceDefBody(def *IfaceDef, path []*IfaceDef) (errs []Error) {
 			continue
 		}
 		err := newError(p, "interface cycle")
-		var notes []note
 		for _, d := range path[1:] {
-			notes = append(notes, newNote(d.Name).setLoc(d))
+			err.add(newNote(d.Name).setLoc(d))
 		}
-		notes = append(notes, newNote(path[0].Name).setLoc(path[0]))
-		err.setNotes(notes)
+		err.add(newNote(path[0].Name).setLoc(path[0]))
 		return []Error{err}
 	}
 
@@ -980,32 +978,30 @@ func topoSortVars(mod *Mod) []Error {
 					break
 				}
 			}
-			var notes []note
+			err := newError(vr, "%s has a cyclic initialization", vr.Name)
 			prev := vr.Name
 			for i++; i < len(path); i++ {
 				switch use := path[i].(type) {
 				case varUse:
 					note := newNote("%s uses %s", prev, use.Var.Name)
 					note.setLoc(use.L)
-					notes = append(notes, note)
+					err.add(note)
 					prev = use.Var.Name
 				case funcUse:
 					note := newNote("%s calls %s", prev, use.Func.Name)
 					prev = use.Func.Name
 					note.setLoc(use.L)
-					notes = append(notes, note)
+					err.add(note)
 					if use.Arg != nil {
 						note = newNote("%s calls %s", prev, use.Arg.Name)
 						prev = use.Arg.Name
 						note.setLoc(use.Parm.L)
-						notes = append(notes, note)
+						err.add(note)
 					}
 				default:
 					panic("impossible")
 				}
 			}
-			err := newError(vr, "%s has a cyclic initialization", vr.Name)
-			err.setNotes(notes)
 			errs = append(errs, err)
 			return false
 		}
@@ -1394,7 +1390,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	switch {
 	case len(funcs) == 0:
 		err := notFound(parserID.Name, parserID.L)
-		err.setNotes(notes)
+		err.add(notes...)
 		return &Call{Args: args, L: parserCall.L}, []Error{err}
 	case len(funcs) > 1:
 		err := ambiguousCall(parserID.Name, funcs, parserID.L)
@@ -1633,12 +1629,10 @@ func useFunc(x scope, l loc.Loc, fun Func) Func {
 }
 
 func ambiguousCall(name string, funcs []Func, l loc.Loc) Error {
-	var notes []note
-	for _, f := range funcs {
-		notes = append(notes, newNote("%s", f).setLoc(f))
-	}
 	err := newError(l, "%s: ambiguous call", name)
-	err.setNotes(notes)
+	for _, f := range funcs {
+		err.add(newNote("%s", f).setLoc(f))
+	}
 	return err
 }
 
@@ -1768,7 +1762,7 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, 
 			if _, n0 := convertType(pattern(id.Type()), pat, implicit); n0 != nil {
 				n := newNote("cannot convert %s (%s) to %s", id, id.Type(), pat)
 				n.setLoc(id.Type().Loc())
-				n.setNotes([]note{n0})
+				n.add(n0)
 				notFoundNotes = append(notFoundNotes, n)
 				continue
 			}
@@ -1788,11 +1782,11 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, 
 	switch {
 	case len(ids) == 0:
 		err := notFound(parserID.Name, parserID.L)
-		err.setNotes(notFoundNotes)
+		err.add(notFoundNotes...)
 		return nil, []Error{err}
 	case len(ids) > 1:
 		err := newError(parserID.L, "%s is ambiguous for pattern %s", parserID.Name, pat)
-		err.setNotes(ambigNotes)
+		err.add(ambigNotes...)
 		return nil, []Error{err}
 	default:
 		return useID(x, parserID.L, assignLHS, ids[0]), nil

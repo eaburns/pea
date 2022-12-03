@@ -12,7 +12,7 @@ type Error interface {
 	error
 	loc.Locer
 
-	setNotes([]note)
+	add(...note)
 	done(*topScope)
 }
 
@@ -33,28 +33,24 @@ func notFound(name string, locer loc.Locer) Error {
 
 func ambigType(name string, locer loc.Locer, types []Type) Error {
 	err := newError(locer, "type %s is ambiguous", name)
-	var notes []note
 	for _, t := range types {
-		notes = append(notes, newNote(t.String()).setLoc(t))
+		err.add(newNote(t.String()).setLoc(t))
 	}
-	err.setNotes(notes)
 	return err
 }
 
 func ambigIface(name string, locer loc.Locer, ifaces []*IfaceDef) Error {
 	err := newError(locer, "interface %s is ambiguous", name)
-	var notes []note
 	for _, iface := range ifaces {
-		notes = append(notes, newNote(iface.Name).setLoc(iface))
+		err.add(newNote(iface.Name).setLoc(iface))
 	}
-	err.setNotes(notes)
 	return err
 }
 
 func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 	err := newError(locer, "%s redefined", name)
 	if (prev.Loc() != loc.Loc{}) {
-		err.setNotes([]note{newNote("previous").setLoc(prev)})
+		err.add(newNote("previous").setLoc(prev))
 	}
 	return err
 }
@@ -62,7 +58,7 @@ func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 type note interface {
 	verbose(bool)
 	isVerbose() bool
-	setNotes([]note)
+	add(...note)
 	setLoc(x interface{}) note
 	buildString(c *topScope, mustIdent bool, depth int, s *strings.Builder)
 }
@@ -92,13 +88,13 @@ func (e *_error) Loc() loc.Loc    { return e.loc }
 func (e *_error) verbose(b bool)  { e.v = b }
 func (e *_error) isVerbose() bool { return e.v }
 
-func (e *_error) setNotes(ns []note) {
-	for _, n := range ns {
+func (e *_error) add(notes ...note) {
+	for _, n := range notes {
 		if n == nil {
 			panic("nil note")
 		}
 	}
-	e.notes = ns
+	e.notes = append(e.notes, notes...)
 }
 
 func (e *_error) setLoc(x interface{}) note {
