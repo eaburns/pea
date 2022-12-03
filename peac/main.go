@@ -27,7 +27,6 @@ var (
 	lprofiler    = flag.Bool("lprofiler", false, "whether to link with -lprofiler for CPU profiling")
 	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
 	dumpCheck    = flag.Bool("dump-check", false, "whether to dump the checked graph")
-	verbose    = flag.Bool("v", false, "verbose error messages")
 	dumpLL       = flag.Bool("dump-ll", false, "whether to dump the .ll files")
 	traceEsc     = flag.Bool("trace-esc", false, "whether to trace escape analysis")
 	traceInline  = flag.Bool("trace-inl", false, "whether to trace inlining")
@@ -351,9 +350,6 @@ func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs 
 	checkOpts := []checker.Option{
 		checker.UseImporter(imp),
 		checker.TrimErrorPathPrefix(p.TrimErrorPathPrefix),
-	}
-	if *verbose {
-		checkOpts = append(checkOpts, checker.MaxErrorDepth(-1), checker.VerboseNotes(true))
 	}
 	checkMod, locs, errs := checker.Check(m.Path, p.Files, checkOpts...)
 	if len(errs) > 0 {

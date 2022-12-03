@@ -29,27 +29,9 @@ func TrimErrorPathPrefix(p string) Option {
 	return func(c *topScope) { c.trimErrorPathPrefix = p }
 }
 
-// MaxErrorDepth returns an Option that sets the max nesting depth for reported errors.
-// A value of -1 indicates no maximum depth.
-func MaxErrorDepth(m int) Option {
-	return func(c *topScope) { c.maxErrorDepth = m }
-}
-
-// VerboseNotes returns an Option that sets whether to
-// suppresses truncation of error notes.
-// Notes can be truncated to those most likely to be relevant.
-// If VerboseNotes is true, there is no truncation.
-// By default VerboseNotes is false.
-func VerboseNotes(b bool) Option {
-	return func(c *topScope) { c.verboseNotes = b }
-}
-
 // Check does semantic checking, and returns a *Mod on success.
 func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.Files, []error) {
-	topScope := topScope{
-		maxErrorDepth: 3,
-		verboseNotes:  false,
-	}
+	topScope := topScope{}
 	for _, opt := range opts {
 		opt(&topScope)
 	}
@@ -1309,9 +1291,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	funcs, notes := filterToFuncs(ids, parserID.L)
 	funcs, ns := filterByArity(funcs, len(parserCall.Args))
 	notes = append(notes, ns...)
-	if len(funcs) > 0 {
-		markVerbose(notes)
-	}
+
 	var args []Expr
 	var firstArgConvertError Error
 	for i, parserArg := range parserCall.Args {
@@ -1344,9 +1324,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 			funcs = append(funcs, fs...)
 			notes = append(notes, ns...)
 		}
-		if len(funcs) > 0 {
-			markVerbose(notes)
-		}
+
 		if len(funcs) == 0 && firstArgConvertError == nil {
 			// This is just for simpler error messages:
 			// If all functions have the same pattern (eg, if len(funcs)==1),
@@ -1380,9 +1358,6 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 
 	funcs, ns = filterByReturnType(funcs, pat, mode)
 	notes = append(notes, ns...)
-	if len(funcs) > 0 {
-		markVerbose(notes)
-	}
 
 	funcs, ns = filterIfaceConstraints(x, parserCall.L, funcs)
 	notes = append(notes, ns...)

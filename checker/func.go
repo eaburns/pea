@@ -143,9 +143,6 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 	fs, ns := ifaceADLookup(x, constraint)
 	funcs = append(funcs, fs...)
 	notFoundNotes = append(notFoundNotes, ns...)
-	if len(funcs) > 0 {
-		markVerbose(notFoundNotes)
-	}
 
 	var n int
 	var unifyFails []*unifyFuncFailure
@@ -178,9 +175,6 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 			}
 		}
 		for _, fail := range unifyFails {
-			if fail.parms < maxParms {
-				fail.note.verbose(true)
-			}
 			notFoundNotes = append(notFoundNotes, fail.note)
 		}
 		note := newNote("%s: not found", constraint).setLoc(constraint.L)

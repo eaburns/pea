@@ -56,8 +56,6 @@ func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 }
 
 type note interface {
-	verbose(bool)
-	isVerbose() bool
 	add(...note)
 	setLoc(x interface{}) note
 	buildString(c *topScope, mustIdent bool, depth int, s *strings.Builder)
@@ -65,12 +63,6 @@ type note interface {
 
 func newNote(f string, vs ...interface{}) note {
 	return &_error{msg: fmt.Sprintf(f, vs...)}
-}
-
-func markVerbose(notes []note) {
-	for i := range notes {
-		notes[i].verbose(true)
-	}
 }
 
 type _error struct {
@@ -83,10 +75,8 @@ type _error struct {
 	v bool
 }
 
-func (e *_error) Error() string   { return e.msg }
-func (e *_error) Loc() loc.Loc    { return e.loc }
-func (e *_error) verbose(b bool)  { e.v = b }
-func (e *_error) isVerbose() bool { return e.v }
+func (e *_error) Error() string { return e.msg }
+func (e *_error) Loc() loc.Loc  { return e.loc }
 
 func (e *_error) add(notes ...note) {
 	for _, n := range notes {
@@ -111,17 +101,10 @@ func (e *_error) done(c *topScope) {
 	s.WriteString(l.String())
 	s.WriteString(": ")
 	s.WriteString(e.msg)
-	i := 0
 	for _, n := range e.notes {
-		if n.isVerbose() && !c.verboseNotes {
-			continue
-		}
 		s.WriteRune('\n')
 		n.buildString(c, true, 1, &s)
-		e.notes[i] = n
-		i++
 	}
-	e.notes = e.notes[:i]
 	e.msg = s.String()
 }
 
@@ -136,16 +119,7 @@ func (e *_error) buildString(c *topScope, mustIdent bool, depth int, s *strings.
 		s.WriteRune(')')
 	}
 	mustIdent = mustIdent || len(e.notes) > 1
-	if c.maxErrorDepth >= 0 && depth+1 > c.maxErrorDepth {
-		s.WriteRune('\n')
-		s.WriteString(strings.Repeat("\t", depth+1))
-		s.WriteRune('…')
-		return
-	}
 	for _, n := range e.notes {
-		if n.isVerbose() && !c.verboseNotes {
-			continue
-		}
 		s.WriteRune('\n')
 		if mustIdent {
 			n.buildString(c, false, depth+1, s)

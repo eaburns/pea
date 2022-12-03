@@ -77,7 +77,7 @@ func (imp *testImporter) Load(path string) (*Mod, error) {
 		return nil, err
 	}
 	imp.files = append(imp.files, p.Files[0])
-	mod, _, errs := Check(testMod.path, p.Files, UseImporter(imp), MaxErrorDepth(20))
+	mod, _, errs := Check(testMod.path, p.Files, UseImporter(imp))
 	if len(errs) > 0 {
 		return nil, errs[0]
 	}
@@ -98,7 +98,7 @@ func check(path string, files []string, mods []testMod) (*Mod, []error) {
 		}
 	}
 	imp := newTestImporter(mods, p.Files)
-	mod, _, errs := Check(path, p.Files, UseImporter(imp), MaxErrorDepth(-1))
+	mod, _, errs := Check(path, p.Files, UseImporter(imp))
 	return mod, errs
 }
 

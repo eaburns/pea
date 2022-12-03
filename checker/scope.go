@@ -14,8 +14,6 @@ type scope interface {
 
 type topScope struct {
 	importer            Importer
-	maxErrorDepth       int
-	verboseNotes        bool
 	trimErrorPathPrefix string
 }
 
@@ -46,9 +44,9 @@ type addedImportScope struct {
 	Import *Import
 }
 
-func (t *topScope) up() scope { return nil }
-func (m *Mod) up() scope                { return m.topScope }
-func (i *Import) up() scope             { return i.topScope }
+func (t *topScope) up() scope         { return nil }
+func (m *Mod) up() scope              { return m.topScope }
+func (i *Import) up() scope           { return i.topScope }
 func (f *File) up() scope             { return f.Mod }
 func (v *VarDef) up() scope           { return v.File }
 func (t *TypeDef) up() scope          { return t.File }
