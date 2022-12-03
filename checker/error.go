@@ -13,7 +13,6 @@ type Error interface {
 	loc.Locer
 
 	setNotes([]note)
-	note(string, ...interface{}) note
 	done(*topScope)
 }
 
@@ -34,24 +33,28 @@ func notFound(name string, locer loc.Locer) Error {
 
 func ambigType(name string, locer loc.Locer, types []Type) Error {
 	err := newError(locer, "type %s is ambiguous", name)
+	var notes []note
 	for _, t := range types {
-		err.note(t.String()).setLoc(t)
+		notes = append(notes, newNote(t.String()).setLoc(t))
 	}
+	err.setNotes(notes)
 	return err
 }
 
 func ambigIface(name string, locer loc.Locer, ifaces []*IfaceDef) Error {
 	err := newError(locer, "interface %s is ambiguous", name)
+	var notes []note
 	for _, iface := range ifaces {
-		err.note(iface.Name).setLoc(iface)
+		notes = append(notes, newNote(iface.Name).setLoc(iface))
 	}
+	err.setNotes(notes)
 	return err
 }
 
 func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 	err := newError(locer, "%s redefined", name)
 	if (prev.Loc() != loc.Loc{}) {
-		err.note("previous").setLoc(prev)
+		err.setNotes([]note{newNote("previous").setLoc(prev)})
 	}
 	return err
 }
@@ -84,10 +87,10 @@ type _error struct {
 	v bool
 }
 
-func (e *_error) Error() string      { return e.msg }
-func (e *_error) Loc() loc.Loc       { return e.loc }
-func (e *_error) verbose(b bool)     { e.v = b }
-func (e *_error) isVerbose() bool    { return e.v }
+func (e *_error) Error() string   { return e.msg }
+func (e *_error) Loc() loc.Loc    { return e.loc }
+func (e *_error) verbose(b bool)  { e.v = b }
+func (e *_error) isVerbose() bool { return e.v }
 
 func (e *_error) setNotes(ns []note) {
 	for _, n := range ns {
@@ -103,11 +106,6 @@ func (e *_error) setLoc(x interface{}) note {
 		e.loc = locer.Loc()
 	}
 	return e
-}
-
-func (e *_error) note(f string, vs ...interface{}) note {
-	e.notes = append(e.notes, newNote(f, vs...))
-	return e.notes[len(e.notes)-1]
 }
 
 func (e *_error) done(c *topScope) {
