@@ -241,7 +241,8 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 
 // First substitute the return, then parm0, but the parm0 type
 // would lead to a return that mis-matches the first subbed return type.
-// This is an error.
+// This is OK. Just set the return type.
+// The convert error should be reported by the parent expression.
 func TestSelectSubRetBeforeMismatchingParm0(t *testing.T) {
 	mod := checkTestMod("")
 	sel := mod.findIDs(".x")[0].(*Select)
@@ -256,8 +257,8 @@ func TestSelectSubRetBeforeMismatchingParm0(t *testing.T) {
 
 	typ = parseTestType(t, mod, "[.x string]")
 	sel, note = subSelect(sel, nil, map[*TypeParm]Type{sel.typeParms[0]: typ})
-	if note == nil {
-		t.Fatalf("sub=nil, want failed conversion error")
+	if note != nil {
+		t.Fatalf("%s=nil, want nil", note)
 	}
 }
 

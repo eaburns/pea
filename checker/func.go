@@ -469,22 +469,10 @@ func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 	if copy.Field.Type == nil {
 		panic(fmt.Sprintf("impossible nil field type: %s\n", copy.N))
 	}
-
-	// The return type may have already been substituted;
-	// return an error if it was substituted with a type that
-	// cannot be converted to by a reference to the field's type.
-	// (If it was not substituted, it's a &_, which can be substituted,
-	// so no need to check whether it's already been substituted,
-	// just check whether it can convert.)
-	retPat := makeTypePattern(copy.typeParms, copy.T.Ret)
-	retType := refLiteral(copy.Field.Type)
-	if _, cn := convertType(pattern(retType), retPat, implicit); cn != nil {
-		n := newNote("%s: cannot convert return value (%s) to %s", &copy, retType, copy.T.Ret)
-		n.setLoc(copy.T.Ret)
-		n.add(cn)
-		return f, n
+	copy.T = &FuncType{
+		Parms: []Type{refLiteral(copy.Struct)},
+		Ret: refLiteral(copy.Field.Type),
 	}
-	copy.T = &FuncType{Parms: []Type{refLiteral(copy.Struct)}, Ret: retType}
 	return &copy, nil
 }
 
@@ -555,17 +543,6 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 	}
 
 	if !complete {
-		// If the union is not complete, the return type must be [.].
-		// We need to make sure that if the return type was already substituted,
-		// we can implicitly convert [.] to the desired type.
-		dstPat := makeTypePattern(copy.typeParms, copy.T.Ret)
-		srcPat := makeTypePattern(copy.typeParms, _empty)
-		if _, cn := convertType(srcPat, dstPat, implicit); cn != nil {
-			n := newNote("%s: cannot convert return value (%s) to %s", &copy, srcPat, dstPat)
-			n.setLoc(copy.T.Ret)
-			n.add(cn)
-			return f, n
-		}
 		copy.T.Ret = _empty
 	} else if tv, ok := copy.T.Ret.(*TypeVar); ok && tv.Def == copy.typeParms[0] {
 		// Otherwise, if the return type has not been substituted yet
