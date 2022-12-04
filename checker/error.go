@@ -129,7 +129,7 @@ func (e *_error) buildString(c *topScope, mustIdent bool, depth int, s *strings.
 type NotFoundError struct {
 	Ident parser.Ident
 	scope scope
-	notes []note
+	notes
 }
 
 func notFound(x scope, ident parser.Ident) *NotFoundError {
@@ -140,8 +140,6 @@ func notFoundTypeVar(x scope, tv parser.TypeVar) *NotFoundError {
 	return &NotFoundError{Ident: parser.Ident(tv), scope: x}
 }
 
-func (err *NotFoundError) add(ns ...note)     { err.notes = append(err.notes, ns...) }
-func (err *NotFoundError) done(top *topScope) {}
 func (err *NotFoundError) Loc() loc.Loc       { return err.Ident.L }
 
 func (err *NotFoundError) Error() string {
@@ -152,13 +150,19 @@ func (err *NotFoundError) Error() string {
 	return s.String()
 }
 
-func writeNotes(x scope, notes []note, s *strings.Builder) {
+type notes []note
+
+func (notes *notes) add(ns ...note)     { *notes = append(*notes, ns...) }
+func (notes *notes) done(top *topScope) {}
+
+func writeNotes(x scope, notes notes, s *strings.Builder) {
 	t := top(x)
 	for _, n := range notes {
 		s.WriteRune('\n')
 		n.buildString(t, true, 1, s)
 	}
 }
+
 
 func writeLoc(x scope, l loc.Loc, s *strings.Builder) {
 	t := top(x)
