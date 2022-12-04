@@ -782,37 +782,12 @@ func TestPatternSelfIntersection(t *testing.T) {
 }
 
 func copyTypeParmNamesToVars(t Type) {
-	switch t := t.(type) {
-	case *DefType:
-		for i := range t.Args {
-			copyTypeParmNamesToVars(t.Args[i])
+	walkType(t, func(t Type)bool {
+		if tv, ok := t.(*TypeVar); ok && tv.Def != nil {
+			tv.Name = tv.Def.Name
 		}
-	case *RefType:
-		copyTypeParmNamesToVars(t.Type)
-	case *ArrayType:
-		copyTypeParmNamesToVars(t.ElemType)
-	case *StructType:
-		for i := range t.Fields {
-			copyTypeParmNamesToVars(t.Fields[i].Type)
-		}
-	case *UnionType:
-		for i := range t.Cases {
-			copyTypeParmNamesToVars(t.Cases[i].Type)
-		}
-	case *FuncType:
-		for i := range t.Parms {
-			copyTypeParmNamesToVars(t.Parms[i])
-		}
-		copyTypeParmNamesToVars(t.Ret)
-	case *TypeVar:
-		if t.Def != nil {
-			t.Name = t.Def.Name
-		}
-	case *BasicType:
-	case nil:
-	default:
-		panic(fmt.Sprintf("bad type type: %T", t))
-	}
+		return false
+	})
 }
 
 // These are the old unify() tests.

@@ -204,31 +204,6 @@ func isBasicNum(typ Type) bool {
 	}
 }
 
-func basicType(typ Type) Type {
-	switch typ := typ.(type) {
-	case nil:
-		return nil
-	case *RefType:
-		if typ.Type == nil {
-			return nil
-		}
-		lit := basicType(typ.Type)
-		if lit == nil {
-			return nil
-		}
-		return &RefType{Type: lit, L: typ.L}
-	case *DefType:
-		if typ.Inst == nil || typ.Inst.Type == nil || !isVisibleDefinedType(typ) {
-			return nil
-		}
-		return basicType(typ.Inst.Type)
-	case *BasicType:
-		return typ
-	default:
-		return nil
-	}
-}
-
 func basicKind(typ Type) BasicTypeKind {
 	switch typ := typ.(type) {
 	case nil:
@@ -502,47 +477,56 @@ func copyTypeWithLoc(typ Type, l loc.Loc) Type {
 }
 
 func hasTypeVariable(typ Type) bool {
-	switch typ := typ.(type) {
-	case nil:
-		return false
-	case *RefType:
-		return hasTypeVariable(typ.Type)
-	case *DefType:
-		for _, arg := range typ.Args {
-			if hasTypeVariable(arg) {
-				return true
-			}
-		}
-		return false
-	case *ArrayType:
-		return hasTypeVariable(typ.ElemType)
-	case *StructType:
-		for i := range typ.Fields {
-			if hasTypeVariable(typ.Fields[i].Type) {
-				return true
-			}
-		}
-		return false
-	case *UnionType:
-		for i := range typ.Cases {
-			if hasTypeVariable(typ.Cases[i].Type) {
-				return true
-			}
-		}
-		return false
-	case *FuncType:
-		for i := range typ.Parms {
-			if hasTypeVariable(typ.Parms[i]) {
-				return true
-			}
-		}
-		return hasTypeVariable(typ.Ret)
-	case *TypeVar:
-		return true
-	case *BasicType:
-		return false
-	default:
-		panic(fmt.Sprintf("unsupported Type type: %T", typ))
-	}
+	return walkType(typ, func(t Type) bool {
+		_, ok := t.(*TypeVar)
+		return ok
+	})
 }
 
+// walkType does a pre-order traversal of t, calling f for each Type.
+// The traversal is stopped at the first call to f that returns true.
+func walkType(t Type, f func(Type) bool) bool {
+	if f(t) {
+		return true
+	}
+	switch t := t.(type) {
+	case *DefType:
+		for i := range t.Args {
+			if walkType(t.Args[i], f) {
+				return true
+			}
+		}
+	case *RefType:
+		return walkType(t.Type, f)
+	case *ArrayType:
+		return walkType(t.ElemType, f)
+	case *StructType:
+		for i := range t.Fields {
+			if walkType(t.Fields[i].Type, f) {
+				return true
+			}
+		}
+	case *UnionType:
+		for i := range t.Cases {
+			if t.Cases[i].Type == nil {
+				continue
+			}
+			if walkType(t.Cases[i].Type, f) {
+				return true
+			}
+		}
+	case *FuncType:
+		for i := range t.Parms {
+			if walkType(t.Parms[i], f) {
+				return true
+			}
+		}
+		return walkType(t.Ret, f)
+	case *BasicType:
+	case *TypeVar:
+	case nil:
+	default:
+		panic(fmt.Sprintf("impossible Type type: %T", t))
+	}
+	return false
+}

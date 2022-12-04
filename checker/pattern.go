@@ -15,7 +15,7 @@ import (
 // substituting types for the type parameters.
 type TypePattern struct {
 	Parms []*TypeParm
-	Type   Type
+	Type  Type
 }
 
 func (pat TypePattern) Loc() loc.Loc { return pat.Type.Loc() }
@@ -23,7 +23,7 @@ func (pat TypePattern) Loc() loc.Loc { return pat.Type.Loc() }
 func makeTypePattern(parms []*TypeParm, typ Type) TypePattern {
 	return TypePattern{
 		Parms: filterTypeParms(parms, typ),
-		Type:   typ,
+		Type:  typ,
 	}
 }
 
@@ -133,50 +133,11 @@ func (pat TypePattern) groundType() Type {
 // isGroundType returns whether the type pattern is a ground type;
 // whether its type has no referenced type parameters.
 func (pat TypePattern) isGroundType() bool {
-	var isGround func(Type) bool
-	isGround = func(t Type) bool {
-		switch t := t.(type) {
-		case *DefType:
-			for i := range t.Args {
-				if !isGround(t.Args[i]) {
-					return false
-				}
-			}
-		case *RefType:
-			return isGround(t.Type)
-		case *ArrayType:
-			return isGround(t.ElemType)
-		case *StructType:
-			for i := range t.Fields {
-				if !isGround(t.Fields[i].Type) {
-					return false
-				}
-			}
-		case *UnionType:
-			for i := range t.Cases {
-				if !isGround(t.Cases[i].Type) {
-					return false
-				}
-			}
-		case *FuncType:
-			for i := range t.Parms {
-				if !isGround(t.Parms[i]) {
-					return false
-				}
-			}
-			return isGround(t.Ret)
-		case *TypeVar:
-			if pat.bound(t) {
-				return false
-			}
-		case *BasicType:
-		case nil:
-		default:
-			panic(fmt.Sprintf("bad type type: %T", t))
-		}
-		return true
-	}
-	return isGround(pat.Type)
+	return !walkType(pat.Type, func(t Type) bool {
+		tv, ok := t.(*TypeVar)
+		return ok && pat.bound(tv)
+		return false
+	})
 }
 
 // bound returns whether the type variable is bound to a type parameter of the TypePattern.
@@ -431,44 +392,12 @@ func intersection(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, not
 }
 
 func findBoundVars(sets *disjointSets, pat TypePattern) {
-	switch typ := pat.Type.(type) {
-	case *DefType:
-		for i := range typ.Args {
-			findBoundVars(sets, pat.typeArg(i))
+	walkType(pat.Type, func(t Type) bool {
+		if tv, ok := t.(*TypeVar); ok && pat.bound(tv) {
+			sets.find(tv.Def)
 		}
-	case *RefType:
-		findBoundVars(sets, pat.refElem())
-	case *ArrayType:
-		findBoundVars(sets, pat.arrayElem())
-	case *StructType:
-		for i := range typ.Fields {
-			if pat.Type.(*StructType).Fields[i].Type == nil {
-				continue
-			}
-			findBoundVars(sets, pat.field(i))
-		}
-	case *UnionType:
-		for i := range typ.Cases {
-			if typ.Cases[i].Type == nil {
-				continue
-			}
-			findBoundVars(sets, pat.Case(i))
-		}
-	case *FuncType:
-		for i := range typ.Parms {
-			findBoundVars(sets, pat.parm(i))
-		}
-		if typ.Ret != nil {
-			findBoundVars(sets, pat.ret())
-		}
-	case *BasicType:
-	case *TypeVar:
-		if pat.bound(typ) {
-			sets.find(typ.Def)
-		}
-	default:
-		panic(fmt.Sprintf("impossible Type type: %T", typ))
-	}
+		return false
+	})
 }
 
 func unionSets(sets *disjointSets, a, b TypePattern) bool {
@@ -832,45 +761,18 @@ func filterTypeParms(parms []*TypeParm, types ...Type) []*TypeParm {
 	}
 	nSeen := 0
 	seen := make([]bool, len(parms))
-	var visit func(Type)
-	visit = func(t Type) {
-		switch t := t.(type) {
-		case nil:
-		case *RefType:
-			visit(t.Type)
-		case *DefType:
-			for _, arg := range t.Args {
-				visit(arg)
-			}
-		case *ArrayType:
-			visit(t.ElemType)
-		case *StructType:
-			for i := range t.Fields {
-				visit(t.Fields[i].Type)
-			}
-		case *UnionType:
-			for i := range t.Cases {
-				visit(t.Cases[i].Type)
-			}
-		case *FuncType:
-			for _, p := range t.Parms {
-				visit(p)
-			}
-			visit(t.Ret)
-		case *TypeVar:
-			for i, p := range parms {
-				if !seen[i] && p == t.Def {
-					seen[i] = true
-					nSeen++
+	for _, t := range types {
+		walkType(t, func(t Type) bool {
+			if tv, ok := t.(*TypeVar); ok {
+				for i, p := range parms {
+					if !seen[i] && p == tv.Def {
+						seen[i] = true
+						nSeen++
+					}
 				}
 			}
-		case *BasicType:
-		default:
-			panic(fmt.Sprintf("unsupported Type type: %T", t))
-		}
-	}
-	for _, t := range types {
-		visit(t)
+			return false
+		})
 	}
 	switch {
 	case nSeen == 0:

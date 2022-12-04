@@ -428,49 +428,13 @@ func unambiguousMod(f *FuncInst) string {
 
 func defTypes(f *FuncInst) []*DefType {
 	var defTypes []*DefType
-	for _, p := range f.T.Parms {
-		defTypes = appendDefTypes(defTypes, p)
-	}
-	return appendDefTypes(defTypes, f.T.Ret)
-}
-
-func appendDefTypes(defTypes []*DefType, typ Type) []*DefType {
-	switch typ := typ.(type) {
-	case nil:
-		return defTypes
-	case *RefType:
-		return appendDefTypes(defTypes, typ.Type)
-	case *DefType:
-		defTypes = append(defTypes, typ)
-		for _, arg := range typ.Args {
-			defTypes = appendDefTypes(defTypes, arg)
+	walkType(f.T, func(t Type) bool {
+		if dt, ok := t.(*DefType); ok {
+			defTypes = append(defTypes, dt)
 		}
-		return defTypes
-	case *ArrayType:
-		return appendDefTypes(defTypes, typ.ElemType)
-	case *StructType:
-		for i := range typ.Fields {
-			defTypes = appendDefTypes(defTypes, typ.Fields[i].Type)
-		}
-		return defTypes
-	case *UnionType:
-		for i := range typ.Cases {
-			defTypes = appendDefTypes(defTypes, typ.Cases[i].Type)
-		}
-		return defTypes
-	case *FuncType:
-		for i := range typ.Parms {
-			defTypes = appendDefTypes(defTypes, typ.Parms[i])
-		}
-		return appendDefTypes(defTypes, typ.Ret)
-	case *TypeVar:
-		return defTypes
-	case *BasicType:
-		return defTypes
-	default:
-		panic(fmt.Sprintf("unsupported Type type: %T", typ))
-	}
-
+		return false
+	})
+	return defTypes
 }
 
 func buildParmsString(parms []Type, s *stringBuilder) {

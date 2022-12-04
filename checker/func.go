@@ -649,19 +649,6 @@ func (f *Builtin) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 	return &copy, nil
 }
 
-func allowed(allowedTypes []BasicTypeKind, typ Type) bool {
-	t, ok := valueType(basicType(typ)).(*BasicType)
-	if !ok {
-		return false
-	}
-	for _, k := range allowedTypes {
-		if k == t.Kind {
-			return true
-		}
-	}
-	return false
-}
-
 func (f *Builtin) eq(other Func) bool {
 	o, ok := other.(*Builtin)
 	if !ok || f.Op != o.Op || len(f.Parms) != len(o.Parms) {
