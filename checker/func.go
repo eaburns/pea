@@ -267,26 +267,24 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePatte
 	}
 	bind := make(map[*TypeParm]Type)
 	for i := 0; i < dst.arity(); i++ {
-		pat, cvt, notes := convertPattern(nil, srcFunPat.parm(i), dst.parm(i), implicit, &bind)
+		pat, cvt, n := convertPattern(nil, srcFunPat.parm(i), dst.parm(i), implicit, &bind)
 		if !pat.isGroundType() {
 			cvt = nil
-			notes = append(notes, newNote("cannot infer type %s", pat))
+			n = newNote("cannot infer type %s", pat)
 		}
 		if cvt == nil {
-			n := newNote("%s: cannot convert parameter %d %s to %s",
+			n1 := newNote("%s: cannot convert parameter %d %s to %s",
 				dst, i, srcFunPat.parm(i), dst.parm(i))
-			n.add(notes...)
-			n.setLoc(dst)
-			return nil, nil, &unifyFuncFailure{note: n, parms: i}
+			n1.add(n)
+			n1.setLoc(dst)
+			return nil, nil, &unifyFuncFailure{note: n1, parms: i}
 		}
 		if srcOrigin != nil && isRefLiteral(srcOrigin.Parms[i]) && cvt.Kind == Deref {
 			n := newNote("%s: parameter %d has type %s, but expected a reference literal %s",
 				dst, i, dst.parm(i), srcFunPat.parm(i))
-			n.add(notes...)
 			n.setLoc(dst)
 			return nil, nil, &unifyFuncFailure{note: n, parms: i}
 		}
-		var n note
 		if dst, n = dst.sub(nil, bind); n != nil {
 			n1 := newNote("%s: parameter %d type substitution failed", dst, i)
 			n1.add(n)
@@ -294,26 +292,24 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePatte
 			return nil, nil, &unifyFuncFailure{note: n1, parms: i}
 		}
 	}
-	pat, cvt, notes := convertPattern(nil, dst.ret(), srcFunPat.ret(), implicit, &bind)
+	pat, cvt, n := convertPattern(nil, dst.ret(), srcFunPat.ret(), implicit, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
-		notes = append(notes, newNote("cannot infer type %s", pat))
+		n = newNote("cannot infer type %s", pat)
 	}
 	if cvt == nil {
-		n := newNote("%s: cannot convert returned %s to %s",
+		n1 := newNote("%s: cannot convert returned %s to %s",
 			dst, dst.ret(), srcFunPat.ret())
-		n.add(notes...)
-		n.setLoc(dst)
-		return nil, nil, &unifyFuncFailure{note: n, parms: dst.arity()}
+		n1.add(n)
+		n1.setLoc(dst)
+		return nil, nil, &unifyFuncFailure{note: n1, parms: dst.arity()}
 	}
 	if srcOrigin != nil && isRefLiteral(srcOrigin.Ret) && cvt.Kind == Ref {
 		n := newNote("%s: return has type %s, but expected a reference literal %s",
 			dst, dst.ret(), srcFunPat.ret())
-		n.add(notes...)
 		n.setLoc(dst)
 		return nil, nil, &unifyFuncFailure{note: n, parms: dst.arity()}
 	}
-	var n note
 	if dst, n = dst.sub(nil, bind); n != nil {
 		n1 := newNote("%s: return type substitution failed", dst)
 		n1.add(n)

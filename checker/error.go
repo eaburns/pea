@@ -76,11 +76,10 @@ func (e *_error) Loc() loc.Loc  { return e.loc }
 
 func (e *_error) add(notes ...note) {
 	for _, n := range notes {
-		if n == nil {
-			panic("nil note")
+		if n != nil {
+			e.notes = append(e.notes, n)
 		}
 	}
-	e.notes = append(e.notes, notes...)
 }
 
 func (e *_error) setLoc(x interface{}) note {
@@ -140,7 +139,7 @@ func notFoundTypeVar(x scope, tv parser.TypeVar) *NotFoundError {
 	return &NotFoundError{Ident: parser.Ident(tv), scope: x}
 }
 
-func (err *NotFoundError) Loc() loc.Loc       { return err.Ident.L }
+func (err *NotFoundError) Loc() loc.Loc { return err.Ident.L }
 
 func (err *NotFoundError) Error() string {
 	var s strings.Builder
@@ -152,7 +151,14 @@ func (err *NotFoundError) Error() string {
 
 type notes []note
 
-func (notes *notes) add(ns ...note)     { *notes = append(*notes, ns...) }
+func (notes *notes) add(ns ...note) {
+	for _, n := range ns {
+		if n != nil {
+			*notes = append(*notes, n)
+		}
+	}
+}
+
 func (notes *notes) done(top *topScope) {}
 
 func writeNotes(x scope, notes notes, s *strings.Builder) {
@@ -162,7 +168,6 @@ func writeNotes(x scope, notes notes, s *strings.Builder) {
 		n.buildString(t, true, 1, s)
 	}
 }
-
 
 func writeLoc(x scope, l loc.Loc, s *strings.Builder) {
 	t := top(x)

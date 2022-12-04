@@ -6,16 +6,16 @@ package checker
 // Errors must have a location, but notes needn't.
 func convertType(src, dst TypePattern, mode convertMode) (map[*TypeParm]Type, note) {
 	var bind map[*TypeParm]Type
-	pat, cvt, notes := convertPattern(nil, src, dst, mode, &bind)
+	pat, cvt, n := convertPattern(nil, src, dst, mode, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
-		notes = append(notes, newNote("cannot infer type %s", pat))
+		n = newNote("cannot infer type %s", pat)
 	}
 	if cvt == nil {
-		n := newNote("cannot convert %s to %s", src, dst)
-		n.setLoc(src.Type)
-		n.add(notes...)
-		return nil, n
+		n1 := newNote("cannot convert %s to %s", src, dst)
+		n1.setLoc(src)
+		n1.add(n)
+		return nil, n1
 	}
 	return bind, nil
 }
@@ -27,10 +27,10 @@ func convertExpr(expr Expr, dst TypePattern, mode convertMode) (Expr, map[*TypeP
 		return expr, nil, nil
 	}
 	var bind map[*TypeParm]Type
-	pat, cvt, notes := convertPattern(nil, pattern(expr.Type()), dst, mode, &bind)
+	pat, cvt, n := convertPattern(nil, pattern(expr.Type()), dst, mode, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
-		notes = append(notes, newNote("cannot infer type %s", pat))
+		n = newNote("cannot infer type %s", pat)
 	}
 	if cvt == nil {
 		goto fail
@@ -39,7 +39,7 @@ func convertExpr(expr Expr, dst TypePattern, mode convertMode) (Expr, map[*TypeP
 		// If the src expression is an explicit convert,
 		// and this is an implicit convert,
 		// it is an error if the types are not equal.
-		notes = append(notes, newNote("cannot implicitly convert an explicit conversion"))
+		n = newNote("cannot implicitly convert an explicit conversion")
 		goto fail
 	}
 	for p := cvt; p != nil; p, _ = p.Expr.(*Convert) {
@@ -49,7 +49,7 @@ func convertExpr(expr Expr, dst TypePattern, mode convertMode) (Expr, map[*TypeP
 	return doConvertExpr(expr, cvt), bind, nil
 fail:
 	err := newError(expr, "cannot convert %s (%s) to %s", expr, expr.Type(), dst)
-	err.add(notes...)
+	err.add(n)
 	return expr, nil, err
 }
 
@@ -194,7 +194,7 @@ const (
 // On input, the pointed-to map may be a nil map (the pointer itself must not be nil).
 // In this case, convert will lazily allocate a new map if needed.
 // If the conversion results in any parameter bindings they are added to *bind.
-func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *map[*TypeParm]Type) (TypePattern, *Convert, []note) {
+func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *map[*TypeParm]Type) (TypePattern, *Convert, note) {
 	isect, isectNote := intersection(src, dst, bind)
 	if isect != nil {
 		return *isect, conversion(cvt, Noop, isect.Type), nil
@@ -205,7 +205,7 @@ func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *
 		if isectNote == nil {
 			return TypePattern{}, nil, nil
 		}
-		return TypePattern{}, nil, []note{isectNote}
+		return TypePattern{}, nil, isectNote
 
 	case isEmptyStruct(dst.Type):
 		return dst, conversion(cvt, Drop, _empty), nil
