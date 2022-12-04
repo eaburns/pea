@@ -176,7 +176,7 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 	if bind == nil {
 		t.Fatalf("bind is nil")
 	}
-	sel, note = subSelect(sel, isect.parms, bind)
+	sel, note = subSelect(sel, isect.Parms, bind)
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}
@@ -494,7 +494,7 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 	if bind == nil {
 		t.Fatalf("bind is nil")
 	}
-	sw, note = subSwitch(sw, isect.parms, bind)
+	sw, note = subSwitch(sw, isect.Parms, bind)
 	if note != nil {
 		t.Fatalf("sub=%s, want nil", note)
 	}

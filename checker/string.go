@@ -44,7 +44,7 @@ func (b *BlockCap) String() string {
 	}
 }
 
-func (p typePattern) String() string {
+func (p TypePattern) String() string {
 	var w stringBuilder
 	p.buildString(&w)
 	return w.builder.String()
@@ -214,11 +214,11 @@ func (w *stringBuilder) WriteRune(r rune) {
 	w.builder.WriteRune(r)
 }
 
-func (pat typePattern) buildString(w *stringBuilder) {
+func (pat TypePattern) buildString(w *stringBuilder) {
 	orig := w.typeParms
 	defer func() { w.typeParms = orig }()
-	w.typeParms = appendTypeParmsToCopy(orig, pat.parms)
-	pat.typ.buildString(w)
+	w.typeParms = appendTypeParmsToCopy(orig, pat.Parms)
+	pat.Type.buildString(w)
 }
 
 func (r *RefType) buildString(w *stringBuilder) {

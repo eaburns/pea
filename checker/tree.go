@@ -318,10 +318,10 @@ type Func interface {
 	arity() int
 
 	// ret returns the type pattern of the return value.
-	ret() typePattern
+	ret() TypePattern
 
 	// parm returns the ith parameter's type pattern.
-	parm(int) typePattern
+	parm(int) TypePattern
 
 	// sub returns a copy of the Func after substituting
 	// types for bound TypeVars in the Func signature.

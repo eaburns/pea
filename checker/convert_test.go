@@ -380,11 +380,11 @@ func TestConvert(t *testing.T) {
 				}
 				return // ok
 			}
-			if !eqType(pat.typ, cvt.Type()) {
-				t.Errorf("convert(%s, %s, %v) pat.typ=%s != cvt.Type()=%s",
-					test.src, test.dst, test.explicit, pat.typ, cvt.Type())
+			if !eqType(pat.Type, cvt.Type()) {
+				t.Errorf("convert(%s, %s, %v) pat.cvt=%s != cvt.Type()=%s",
+					test.src, test.dst, test.explicit, pat.Type, cvt.Type())
 			}
-			got := []interface{}{src.typ.String()}
+			got := []interface{}{src.Type.String()}
 			var get func(cvt *Convert)
 			get = func(cvt *Convert) {
 				if cvt.Expr != nil {

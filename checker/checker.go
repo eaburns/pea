@@ -1093,7 +1093,7 @@ func neverReturns(expr Expr) bool {
 		// just assume it would have been a return.
 		return true
 	}
-	return isEnd(call.Func.ret().typ)
+	return isEnd(call.Func.ret().Type)
 }
 
 func checkTestDef(def *TestDef, parserDef *parser.TestDef) []Error {
@@ -1102,11 +1102,11 @@ func checkTestDef(def *TestDef, parserDef *parser.TestDef) []Error {
 	return errs
 }
 
-func checkExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
+func checkExpr(x scope, parserExpr parser.Expr, pat TypePattern) (Expr, []Error) {
 	return _checkExpr(x, parserExpr, pat, implicit)
 }
 
-func _checkExpr(x scope, parserExpr parser.Expr, pat typePattern, mode convertMode) (Expr, []Error) {
+func _checkExpr(x scope, parserExpr parser.Expr, pat TypePattern, mode convertMode) (Expr, []Error) {
 	switch parserExpr := parserExpr.(type) {
 	case *parser.Call:
 		return checkCall(x, parserExpr, pat, mode)
@@ -1126,7 +1126,7 @@ func _checkExpr(x scope, parserExpr parser.Expr, pat typePattern, mode convertMo
 	}
 }
 
-func checkAndConvertExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
+func checkAndConvertExpr(x scope, parserExpr parser.Expr, pat TypePattern) (Expr, []Error) {
 	expr, errs := checkExpr(x, parserExpr, pat)
 	if expr == nil || !pat.isGroundType() {
 		return expr, errs
@@ -1140,7 +1140,7 @@ func checkAndConvertExpr(x scope, parserExpr parser.Expr, pat typePattern) (Expr
 
 // newLocals indicates whether new local variables may be created.
 // pat is the type pattern for the last expression.
-func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat typePattern) ([]Expr, []Error) {
+func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat TypePattern) ([]Expr, []Error) {
 	var errs []Error
 	var exprs []Expr
 	for i, parserExpr := range parserExprs {
@@ -1257,7 +1257,7 @@ func newLocalAssign(x scope, call *parser.Call, id parser.Ident) (*LocalDef, Exp
 	return local, assign, errs
 }
 
-func checkCall(x scope, parserCall *parser.Call, pat typePattern, mode convertMode) (Expr, []Error) {
+func checkCall(x scope, parserCall *parser.Call, pat TypePattern, mode convertMode) (Expr, []Error) {
 	switch fun := parserCall.Fun.(type) {
 	case parser.Ident:
 		ids := findIDs(x, fun.Name)
@@ -1279,7 +1279,7 @@ func checkCall(x scope, parserCall *parser.Call, pat typePattern, mode convertMo
 	}
 }
 
-func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *parser.Call, pat typePattern, ids []id, mode convertMode) (Expr, []Error) {
+func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *parser.Call, pat TypePattern, ids []id, mode convertMode) (Expr, []Error) {
 	if pat.isGroundType() {
 		if defType, ok := pat.groundType().(*DefType); ok && mod == nil {
 			ids = append(ids, adModuleIDs(x, defType.Def.Mod, parserID.Name)...)
@@ -1293,7 +1293,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	var args []Expr
 	var firstArgConvertError Error
 	for i, parserArg := range parserCall.Args {
-		parmPats := make([]typePattern, 0, len(funcs))
+		parmPats := make([]TypePattern, 0, len(funcs))
 		for _, f := range funcs {
 			parmPats = append(parmPats, f.parm(i))
 		}
@@ -1336,7 +1336,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 			// as to give ADL a chance to add additional candidate functions.
 			samePat := true
 			for _, f := range funcs {
-				if !eqType(f.parm(i).typ, parmPat.typ) {
+				if !eqType(f.parm(i).Type, parmPat.Type) {
 					samePat = false
 					break
 				}
@@ -1437,7 +1437,7 @@ func filterByArity(funcs []Func, arity int) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, pat typePattern) ([]Func, []note) {
+func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, pat TypePattern) ([]Func, []note) {
 	// Only called after args have been added, so args cannot be empty.
 	defType, ok := args[len(args)-1].Type().(*DefType)
 	if !ok {
@@ -1529,7 +1529,7 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	return funcs[:n], notes
 }
 
-func filterByReturnType(funcs []Func, pat typePattern, mode convertMode) ([]Func, []note) {
+func filterByReturnType(funcs []Func, pat TypePattern, mode convertMode) ([]Func, []note) {
 	var notes []note
 	if len(funcs) == 1 {
 		f := funcs[0]
@@ -1609,7 +1609,7 @@ func ambiguousCall(name string, funcs []Func, l loc.Loc) Error {
 	return err
 }
 
-func checkExprCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []Error) {
+func checkExprCall(x scope, parserCall *parser.Call, pat TypePattern) (Expr, []Error) {
 	var errs []Error
 	var fun *ExprFunc
 	expr, fs := checkExpr(x, parserCall.Fun, any())
@@ -1656,7 +1656,7 @@ func checkExprCall(x scope, parserCall *parser.Call, pat typePattern) (Expr, []E
 	return expr, errs
 }
 
-func checkModSel(x scope, parserSel *parser.ModSel, pat typePattern) (Expr, []Error) {
+func checkModSel(x scope, parserSel *parser.ModSel, pat TypePattern) (Expr, []Error) {
 	imp := findImport(x, parserSel.Mod.Name)
 	if imp == nil {
 		return nil, []Error{notFound(x, parserSel.Mod)}
@@ -1666,11 +1666,11 @@ func checkModSel(x scope, parserSel *parser.ModSel, pat typePattern) (Expr, []Er
 	return resolveID(x, parserID, false, pat, ids)
 }
 
-func checkID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern) (Expr, []Error) {
+func checkID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern) (Expr, []Error) {
 	ids := findIDs(x, parserID.Name)
 	// If the pattern wants a FuncType, expand the set of IDs to consider
 	// to include those from the pattern's param and return type modules too.
-	if funType, ok := pat.typ.(*FuncType); ok {
+	if funType, ok := pat.Type.(*FuncType); ok {
 		seen := make(map[string]bool)
 		for i := 0; i < len(funType.Parms); i++ {
 			parm := funType.Parms[i]
@@ -1688,7 +1688,7 @@ func checkID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern) (E
 	return resolveID(x, parserID, assignLHS, pat, ids)
 }
 
-func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat typePattern, ids []id) (Expr, []Error) {
+func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, ids []id) (Expr, []Error) {
 	var n int
 	var notFoundNotes []note
 	for _, i := range ids {
@@ -1918,7 +1918,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	return expr, errs
 }
 
-func checkLit(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
+func checkLit(x scope, parserExpr parser.Expr, pat TypePattern) (Expr, []Error) {
 	expr, errs := _checkLit(x, parserExpr, pat)
 	if len(errs) > 0 {
 		return expr, errs
@@ -1952,11 +1952,11 @@ func checkLit(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) 
 	}
 }
 
-func _checkLit(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error) {
+func _checkLit(x scope, parserExpr parser.Expr, pat TypePattern) (Expr, []Error) {
 	switch {
-	case isRefLiteral(pat.typ):
+	case isRefLiteral(pat.Type):
 		return _checkLit(x, parserExpr, pat.refElem())
-	case isVisibleDefinedType(pat.typ):
+	case isVisibleDefinedType(pat.Type):
 		return _checkLit(x, parserExpr, pat.instType())
 	}
 	switch parserExpr := parserExpr.(type) {
@@ -1981,10 +1981,10 @@ func _checkLit(x scope, parserExpr parser.Expr, pat typePattern) (Expr, []Error)
 	}
 }
 
-func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, []Error) {
+func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat TypePattern) (Expr, []Error) {
 	elemPat := any()
 	lit := &ArrayLit{Array: &ArrayType{L: parserLit.L}, L: parserLit.L}
-	if _, ok := pat.typ.(*ArrayType); ok {
+	if _, ok := pat.Type.(*ArrayType); ok {
 		elemPat = pat.arrayElem()
 	} else if len(parserLit.Exprs) == 0 {
 		return lit, []Error{newError(lit, "cannot infer array type")}
@@ -2004,15 +2004,15 @@ func checkArrayLit(x scope, parserLit *parser.ArrayLit, pat typePattern) (Expr, 
 			elemPat = pat.withType(expr.Type())
 		}
 	}
-	lit.Array.ElemType = elemPat.typ
+	lit.Array.ElemType = elemPat.Type
 	lit.T = lit.Array
 	return lit, errs
 }
 
-func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr, []Error) {
+func checkStructLit(x scope, parserLit *parser.StructLit, pat TypePattern) (Expr, []Error) {
 	var errs []Error
-	var fieldPats []typePattern
-	if st, ok := pat.typ.(*StructType); ok {
+	var fieldPats []TypePattern
+	if st, ok := pat.Type.(*StructType); ok {
 		if isEmptyStruct(st) && len(parserLit.FieldVals) > 0 {
 			errs = append(errs, newError(parserLit, "invalid empty struct literal"))
 		}
@@ -2056,18 +2056,18 @@ func checkStructLit(x scope, parserLit *parser.StructLit, pat typePattern) (Expr
 	return lit, errs
 }
 
-func checkUnionLit(x scope, parserLit *parser.UnionLit, pat typePattern) (Expr, []Error) {
+func checkUnionLit(x scope, parserLit *parser.UnionLit, pat TypePattern) (Expr, []Error) {
 	exprPat := any()
 	lit := &UnionLit{L: parserLit.L}
 	caseName := parserLit.CaseVal.Name.Name
-	if uni, ok := pat.typ.(*UnionType); ok {
+	if uni, ok := pat.Type.(*UnionType); ok {
 		if c := findCase(caseName, uni); c != nil && (c.Type == nil) == (parserLit.CaseVal.Val == nil) {
 			if c.Type != nil {
 				exprPat = pat.withType(c.Type)
 			}
 			// Copy the type, because we will later replace the type for the expr case
 			// with the type of the checked expression.
-			lit.Union = copyTypeWithLoc(uni, pat.typ.Loc()).(*UnionType)
+			lit.Union = copyTypeWithLoc(uni, pat.Type.Loc()).(*UnionType)
 		}
 	}
 	if lit.Union == nil {
@@ -2100,7 +2100,7 @@ func findCase(name string, u *UnionType) *CaseDef {
 	return nil
 }
 
-func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, []Error) {
+func checkBlockLit(x scope, parserLit *parser.BlockLit, pat TypePattern) (Expr, []Error) {
 	lit := &BlockLit{
 		L:    parserLit.L,
 		Func: &FuncType{L: parserLit.L},
@@ -2109,7 +2109,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 	lit.Parms, errs = makeFuncParms(x, parserLit.Parms)
 
 	retPat := any()
-	if fun, ok := pat.typ.(*FuncType); ok && len(fun.Parms) == len(lit.Parms) {
+	if fun, ok := pat.Type.(*FuncType); ok && len(fun.Parms) == len(lit.Parms) {
 		retPat = pat.withType(fun.Ret)
 		for i := range lit.Parms {
 			litParm := any()
@@ -2124,7 +2124,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 				note.(*_error).setLoc(lit.Parms[i].L)
 				errs = append(errs, note.(Error))
 			}
-			lit.Parms[i].T = subType(bind, patParm.typ)
+			lit.Parms[i].T = subType(bind, patParm.Type)
 		}
 	}
 	for _, p := range lit.Parms {
@@ -2156,7 +2156,7 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 	return lit, errs
 }
 
-func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {
+func checkStrLit(parserLit *parser.StrLit, pat TypePattern) (Expr, []Error) {
 	lit := &StrLit{
 		Text: parserLit.Data,
 		T:    &BasicType{Kind: String, L: parserLit.L},
@@ -2165,7 +2165,7 @@ func checkStrLit(parserLit *parser.StrLit, pat typePattern) (Expr, []Error) {
 	return lit, nil
 }
 
-func checkCharLit(parserLit *parser.CharLit, pat typePattern) (Expr, []Error) {
+func checkCharLit(parserLit *parser.CharLit, pat TypePattern) (Expr, []Error) {
 	parserIntLit := &parser.IntLit{
 		Text: strconv.FormatInt(int64(parserLit.Rune), 10),
 		L:    parserLit.L,
@@ -2173,12 +2173,12 @@ func checkCharLit(parserLit *parser.CharLit, pat typePattern) (Expr, []Error) {
 	return _checkIntLit(parserIntLit, pat, Int32)
 }
 
-func checkIntLit(parserLit *parser.IntLit, pat typePattern) (Expr, []Error) {
+func checkIntLit(parserLit *parser.IntLit, pat TypePattern) (Expr, []Error) {
 	return _checkIntLit(parserLit, pat, Int)
 }
 
-func _checkIntLit(parserLit *parser.IntLit, pat typePattern, kind BasicTypeKind) (expr Expr, errs []Error) {
-	if basic, ok := pat.typ.(*BasicType); ok {
+func _checkIntLit(parserLit *parser.IntLit, pat TypePattern, kind BasicTypeKind) (expr Expr, errs []Error) {
+	if basic, ok := pat.Type.(*BasicType); ok {
 		switch basic.Kind {
 		case Float32, Float64:
 			floatLit := &parser.FloatLit{Text: parserLit.Text, L: parserLit.L}
@@ -2270,13 +2270,13 @@ func checkValueSize(lit *IntLit) Error {
 	return nil
 }
 
-func checkFloatLit(parserLit *parser.FloatLit, pat typePattern) (Expr, []Error) {
+func checkFloatLit(parserLit *parser.FloatLit, pat TypePattern) (Expr, []Error) {
 	var val big.Float
 	if _, _, err := val.Parse(parserLit.Text, 10); err != nil {
 		panic(fmt.Sprintf("malformed float: %s", err))
 	}
 	kind := Float64
-	if basic, ok := pat.typ.(*BasicType); ok {
+	if basic, ok := pat.Type.(*BasicType); ok {
 		switch basic.Kind {
 		case Float32, Float64:
 			kind = basic.Kind

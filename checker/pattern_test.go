@@ -408,7 +408,7 @@ func TestCommonPattern(t *testing.T) {
 			if len(errs) > 0 {
 				t.Fatalf("failed to parse and check: %s", errs[0])
 			}
-			pats := make([]typePattern, len(test.pats))
+			pats := make([]TypePattern, len(test.pats))
 			for i, p := range test.pats {
 				pats[i] = parseTestPattern(t, mod, p)
 			}
@@ -669,14 +669,14 @@ func TestPatternIntersection(t *testing.T) {
 			b := parseTestPattern(t, mod, test.b)
 
 			// Given unique names.
-			for i := range a.parms {
-				a.parms[i].Name = fmt.Sprintf("A%d", i)
+			for i := range a.Parms {
+				a.Parms[i].Name = fmt.Sprintf("A%d", i)
 			}
-			copyTypeParmNamesToVars(a.typ)
-			for i := range b.parms {
-				b.parms[i].Name = fmt.Sprintf("B%d", i)
+			copyTypeParmNamesToVars(a.Type)
+			for i := range b.Parms {
+				b.Parms[i].Name = fmt.Sprintf("B%d", i)
 			}
-			copyTypeParmNamesToVars(b.typ)
+			copyTypeParmNamesToVars(b.Type)
 
 			var bind map[*TypeParm]Type
 			switch isect, note := intersection(a, b, &bind); {
@@ -693,11 +693,11 @@ func TestPatternIntersection(t *testing.T) {
 			case test.want != "" && isect.String() != test.want:
 				t.Fatalf("intersect(%s, %s)=%s, want %s", test.a, test.b, isect, test.want)
 			default:
-				if aPrime := subType(bind, a.typ); !eqType(aPrime, isect.typ) {
-					t.Errorf("sub(bind, %s)=%s, want %s", a.typ, aPrime, isect.typ)
+				if aPrime := subType(bind, a.Type); !eqType(aPrime, isect.Type) {
+					t.Errorf("sub(bind, %s)=%s, want %s", a.Type, aPrime, isect.Type)
 				}
-				if bPrime := subType(bind, b.typ); !eqType(bPrime, isect.typ) {
-					t.Errorf("sub(bind, %s)=%s, want %s", b.typ, bPrime, isect.typ)
+				if bPrime := subType(bind, b.Type); !eqType(bPrime, isect.Type) {
+					t.Errorf("sub(bind, %s)=%s, want %s", b.Type, bPrime, isect.Type)
 				}
 			}
 		})
@@ -730,7 +730,7 @@ func TestPatternIntersectionIgnoreBoundTypeParameters(t *testing.T) {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
 	pat0 := parseTestPattern(t, mod, "? list")
-	pat0.parms = append(pat0.parms,
+	pat0.Parms = append(pat0.Parms,
 		&TypeParm{Name: "U0"},
 		&TypeParm{Name: "U1"},
 		&TypeParm{Name: "U2"})
@@ -744,11 +744,11 @@ func TestPatternIntersectionIgnoreBoundTypeParameters(t *testing.T) {
 	}
 	if bind == nil {
 		t.Fatalf("intersection(%s, %s) got bindings nil, expected a binding to %s",
-			pat0, pat1, pat0.parms[0].Name)
+			pat0, pat1, pat0.Parms[0].Name)
 	}
-	if _, ok := bind[pat0.parms[0]]; !ok || len(bind) != 1 {
+	if _, ok := bind[pat0.Parms[0]]; !ok || len(bind) != 1 {
 		t.Fatalf("intersection(%s, %s) got bindings %v, expected a binding to %s",
-			pat0, pat1, bindAsSlice(bind), pat0.parms[0].Name)
+			pat0, pat1, bindAsSlice(bind), pat0.Parms[0].Name)
 	}
 }
 
@@ -763,21 +763,21 @@ func TestPatternSelfIntersection(t *testing.T) {
 	pat := parseTestPattern(t, mod, "? list")
 
 	var bind map[*TypeParm]Type
-	isect, note := intersection(pat, pattern(pat.typ), &bind)
+	isect, note := intersection(pat, pattern(pat.Type), &bind)
 	if isect == nil {
-		t.Fatalf("intersection(%s, %s) failed %s", pat, pattern(pat.typ), note)
+		t.Fatalf("intersection(%s, %s) failed %s", pat, pattern(pat.Type), note)
 	}
-	if !eqType(isect.typ, pat.typ) || len(isect.parms) != 0 {
-		t.Fatalf("intersection(%s, %s)=%s, wanted %s\n", pat, pattern(pat.typ), isect, pat.typ)
+	if !eqType(isect.Type, pat.Type) || len(isect.Parms) != 0 {
+		t.Fatalf("intersection(%s, %s)=%s, wanted %s\n", pat, pattern(pat.Type), isect, pat.Type)
 	}
 
 	bind = nil
-	isect, note = intersection(pattern(pat.typ), pat, &bind)
+	isect, note = intersection(pattern(pat.Type), pat, &bind)
 	if isect == nil {
-		t.Fatalf("intersection(%s, %s) failed %s", pattern(pat.typ), pat, note)
+		t.Fatalf("intersection(%s, %s) failed %s", pattern(pat.Type), pat, note)
 	}
-	if !eqType(isect.typ, pat.typ) || len(isect.parms) != 0 {
-		t.Fatalf("intersection(%s, %s)=%s, wanted %s\n", pattern(pat.typ), pat, isect, pat.typ)
+	if !eqType(isect.Type, pat.Type) || len(isect.Parms) != 0 {
+		t.Fatalf("intersection(%s, %s)=%s, wanted %s\n", pattern(pat.Type), pat, isect, pat.Type)
 	}
 }
 
@@ -1129,7 +1129,7 @@ func TestPatternUnify(t *testing.T) {
 			} else {
 				if note != nil {
 					t.Errorf("got error %s, want %s", note, test.want)
-				} else if sub := subType(bind, pat.typ); sub.String() != test.want {
+				} else if sub := subType(bind, pat.Type); sub.String() != test.want {
 					t.Errorf("got %s %v, want %s", sub, bindAsSlice(bind), test.want)
 				}
 			}
@@ -1165,7 +1165,7 @@ func (s *typeParmScope) findType(args []Type, name string, l loc.Loc) []Type {
 	return nil
 }
 
-func parseTestPattern(t *testing.T, m *Mod, src string) typePattern {
+func parseTestPattern(t *testing.T, m *Mod, src string) TypePattern {
 	t.Helper()
 	var parms []*TypeParm
 	parmSet := make(map[string]*TypeParm)
@@ -1209,7 +1209,7 @@ func parseTestPattern(t *testing.T, m *Mod, src string) typePattern {
 	if len(errs) > 0 {
 		t.Fatalf("failed to make type: %s", errs[0])
 	}
-	return typePattern{parms: parms, typ: typ}
+	return TypePattern{Parms: parms, Type: typ}
 }
 
 func parseTestType(t *testing.T, m *Mod, src string) Type {

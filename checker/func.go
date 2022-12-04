@@ -29,8 +29,8 @@ next:
 }
 
 func (f *FuncDecl) arity() int                                       { return len(f.Parms) }
-func (f *FuncDecl) ret() typePattern                                 { return pattern(f.Ret) }
-func (f *FuncDecl) parm(i int) typePattern                           { return pattern(f.Parms[i]) }
+func (f *FuncDecl) ret() TypePattern                                 { return pattern(f.Ret) }
+func (f *FuncDecl) parm(i int) TypePattern                           { return pattern(f.Parms[i]) }
 func (f *FuncDecl) sub([]*TypeParm, map[*TypeParm]Type) (Func, note) { return f, nil }
 
 func (f *FuncDecl) eq(other Func) bool {
@@ -48,11 +48,11 @@ func (f *FuncDecl) eq(other Func) bool {
 
 func (f *FuncInst) arity() int { return len(f.T.Parms) }
 
-func (f *FuncInst) ret() typePattern {
+func (f *FuncInst) ret() TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Ret)
 }
 
-func (f *FuncInst) parm(i int) typePattern {
+func (f *FuncInst) parm(i int) TypePattern {
 	if f.T.Parms[i] == nil {
 		// TODO: A function that failed to check should not be a candidate for overload resolution.
 		// Parms[i]==nil indicates that this function failed to check,
@@ -249,8 +249,8 @@ type unifyFuncFailure struct {
 //
 // If srcOrigin is non-nil, it is used to determine whether any arguments
 // or the return type must be reference literals.
-func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePattern) (Func, map[*TypeParm]Type, *unifyFuncFailure) {
-	funcType, ok := valueType(literalType(src.typ)).(*FuncType)
+func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePattern) (Func, map[*TypeParm]Type, *unifyFuncFailure) {
+	funcType, ok := valueType(literalType(src.Type)).(*FuncType)
 	if !ok {
 		return nil, nil, &unifyFuncFailure{
 			note:  newNote("%s: not a function", src).setLoc(dst),
@@ -431,11 +431,11 @@ func (f *FuncInst) eq(other Func) bool {
 
 func (*Select) arity() int { return 1 }
 
-func (f *Select) parm(i int) typePattern {
+func (f *Select) parm(i int) TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Parms[i])
 }
 
-func (f *Select) ret() typePattern {
+func (f *Select) ret() TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Ret)
 }
 
@@ -499,11 +499,11 @@ func (f *Select) eq(other Func) bool {
 
 func (f *Switch) arity() int { return len(f.T.Parms) }
 
-func (f *Switch) parm(i int) typePattern {
+func (f *Switch) parm(i int) TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Parms[i])
 }
 
-func (f *Switch) ret() typePattern {
+func (f *Switch) ret() TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Ret)
 }
 
@@ -657,11 +657,11 @@ func (f *Switch) eq(other Func) bool {
 
 func (f *Builtin) arity() int { return len(f.Parms) }
 
-func (f *Builtin) ret() typePattern {
+func (f *Builtin) ret() TypePattern {
 	return makeTypePattern(f.typeParms, f.Ret)
 }
 
-func (f *Builtin) parm(i int) typePattern {
+func (f *Builtin) parm(i int) TypePattern {
 	return makeTypePattern(f.typeParms, f.Parms[i])
 }
 
@@ -703,8 +703,8 @@ func (f *Builtin) eq(other Func) bool {
 }
 
 func (f *ExprFunc) arity() int                                       { return len(f.FuncType.Parms) }
-func (f *ExprFunc) ret() typePattern                                 { return pattern(f.FuncType.Ret) }
-func (f *ExprFunc) parm(i int) typePattern                           { return pattern(f.FuncType.Parms[i]) }
+func (f *ExprFunc) ret() TypePattern                                 { return pattern(f.FuncType.Ret) }
+func (f *ExprFunc) parm(i int) TypePattern                           { return pattern(f.FuncType.Parms[i]) }
 func (f *ExprFunc) sub([]*TypeParm, map[*TypeParm]Type) (Func, note) { return f, nil }
 
 func (f *ExprFunc) eq(other Func) bool {
@@ -725,8 +725,8 @@ type idFunc struct {
 func (f *idFunc) String() string                                   { return f.id.String() }
 func (f *idFunc) buildString(s *stringBuilder)                     { s.WriteString(f.String()) }
 func (f *idFunc) arity() int                                       { return len(f.funcType.Parms) }
-func (f *idFunc) ret() typePattern                                 { return pattern(f.funcType.Ret) }
-func (f *idFunc) parm(i int) typePattern                           { return pattern(f.funcType.Parms[i]) }
+func (f *idFunc) ret() TypePattern                                 { return pattern(f.funcType.Ret) }
+func (f *idFunc) parm(i int) TypePattern                           { return pattern(f.funcType.Parms[i]) }
 func (f *idFunc) sub([]*TypeParm, map[*TypeParm]Type) (Func, note) { return f, nil }
 
 // eq should never be called; it's used to check equality of FuncInst ifaces.

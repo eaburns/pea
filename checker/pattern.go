@@ -8,129 +8,129 @@ import (
 	"github.com/eaburns/pea/loc"
 )
 
-// A typePattern describes a set of types matching the pattern,
+// A TypePattern describes a set of types matching the pattern,
 // it consists of a set of type parameters, and a type.
 // The type may contain type variables bound to the parameters.
 // The pattern represents all types that are the result of
 // substituting types for the type parameters.
-type typePattern struct {
-	parms []*TypeParm
-	typ   Type
+type TypePattern struct {
+	Parms []*TypeParm
+	Type   Type
 }
 
-func makeTypePattern(parms []*TypeParm, typ Type) typePattern {
-	return typePattern{
-		parms: filterTypeParms(parms, typ),
-		typ:   typ,
+func makeTypePattern(parms []*TypeParm, typ Type) TypePattern {
+	return TypePattern{
+		Parms: filterTypeParms(parms, typ),
+		Type:   typ,
 	}
 }
 
-// any returns a new typePattern with a single, bound type variable.
-func any() typePattern {
+// any returns a new TypePattern with a single, bound type variable.
+func any() TypePattern {
 	n := "_"
 	p := &TypeParm{Name: n}
 	v := &TypeVar{Name: n, Def: p}
-	return typePattern{parms: []*TypeParm{p}, typ: v}
+	return TypePattern{Parms: []*TypeParm{p}, Type: v}
 }
 
 // pattern returns the type pattern for a ground type.
 // pattern panics if typ is nil.
-func pattern(typ Type) typePattern {
+func pattern(typ Type) TypePattern {
 	if typ == nil {
 		panic("impossible")
 	}
-	return typePattern{typ: typ}
+	return TypePattern{Type: typ}
 }
 
 // patternOrAny returns the pattern for a ground type, or if typ is nil, any().
-func patternOrAny(typ Type) typePattern {
+func patternOrAny(typ Type) TypePattern {
 	if typ == nil {
 		return any()
 	}
 	return pattern(typ)
 }
 
-func (pat typePattern) withType(typ Type) typePattern {
+func (pat TypePattern) withType(typ Type) TypePattern {
 	if typ == nil {
 		panic("impossible")
 	}
-	pat.typ = typ
+	pat.Type = typ
 	return pat
 }
 
 // instType returns the type in the definition of a defined type type pattern,
 // substituted with the type arguments of the defined type.
 // instType panics if pat is not a defined type type pattern.
-func (pat typePattern) instType() typePattern {
-	if pat.typ.(*DefType).Inst.Type == nil {
+func (pat TypePattern) instType() TypePattern {
+	if pat.Type.(*DefType).Inst.Type == nil {
 		// There was an error figuring out the DefType's definition type.
 		// Just use the any() pattern, and the error will be reported elsewhere.
 		return any()
 	}
-	return pat.withType(pat.typ.(*DefType).Inst.Type)
+	return pat.withType(pat.Type.(*DefType).Inst.Type)
 }
 
 // typeArg returns the type argument type of a defined type type pattern;
 // panics if pat is not a defined type type pattern.
-func (pat typePattern) typeArg(i int) typePattern {
-	return pat.withType(pat.typ.(*DefType).Args[i])
+func (pat TypePattern) typeArg(i int) TypePattern {
+	return pat.withType(pat.Type.(*DefType).Args[i])
 }
 
 // refElem returns the element type of a literal reference type pattern;
 // panics if pat is not a literal reference type pattern.
-func (pat typePattern) refElem() typePattern {
-	return pat.withType(pat.typ.(*RefType).Type)
+func (pat TypePattern) refElem() TypePattern {
+	return pat.withType(pat.Type.(*RefType).Type)
 }
 
 // arrayElem returns the array element type of a literal array type pattern;
 // panics if pat is not a literal array type pattern.
-func (pat typePattern) arrayElem() typePattern {
-	return pat.withType(pat.typ.(*ArrayType).ElemType)
+func (pat TypePattern) arrayElem() TypePattern {
+	return pat.withType(pat.Type.(*ArrayType).ElemType)
 }
 
 // field returns the ith struct field type of a literal struct type pattern;
 // panics if pat is not a literal struct type pattern.
-func (pat typePattern) field(i int) typePattern {
-	return pat.withType(pat.typ.(*StructType).Fields[i].Type)
+func (pat TypePattern) field(i int) TypePattern {
+	return pat.withType(pat.Type.(*StructType).Fields[i].Type)
 }
 
 // Case returns the ith union case type of a literal union type pattern;
 // panics if pat is not a literal union type pattern.
 // panics if the ith field is untyped.
-func (pat typePattern) Case(i int) typePattern {
-	return pat.withType(pat.typ.(*UnionType).Cases[i].Type)
+func (pat TypePattern) Case(i int) TypePattern {
+	return pat.withType(pat.Type.(*UnionType).Cases[i].Type)
 }
 
 // parm returns the ith function parm type of a literal function type pattern;
 // panics if pat is not a literal function type pattern.
-func (pat typePattern) parm(i int) typePattern {
-	return pat.withType(pat.typ.(*FuncType).Parms[i])
+func (pat TypePattern) parm(i int) TypePattern {
+	return pat.withType(pat.Type.(*FuncType).Parms[i])
 }
 
 // ret returns the return type of a literal function type pattern;
 // panics if pat is not a literal function type pattern.
-func (pat typePattern) ret() typePattern {
-	if pat.typ.(*FuncType).Ret == nil {
+func (pat TypePattern) ret() TypePattern {
+	if pat.Type.(*FuncType).Ret == nil {
 		return any()
 	}
-	return pat.withType(pat.typ.(*FuncType).Ret)
+	return pat.withType(pat.Type.(*FuncType).Ret)
 }
 
 // groundType returns the ground type of the type pattern;
 // it panics if either pat.typ is nil or not grounded.
-func (pat typePattern) groundType() Type {
-	if pat.typ == nil {
+func (pat TypePattern) groundType() Type {
+	if pat.Type == nil {
 		panic("type is nil")
 	}
 	if !pat.isGroundType() {
 		panic(fmt.Sprintf("not grounded: %s", pat))
 	}
-	return pat.typ
+	return pat.Type
 }
 
 // isGroundType returns whether the type pattern is a ground type;
 // whether its type has no referenced type parameters.
-func (pat typePattern) isGroundType() bool {
+func (pat TypePattern) isGroundType() bool {
 	var isGround func(Type) bool
 	isGround = func(t Type) bool {
 		switch t := t.(type) {
@@ -174,12 +174,12 @@ func (pat typePattern) isGroundType() bool {
 		}
 		return true
 	}
-	return isGround(pat.typ)
+	return isGround(pat.Type)
 }
 
-// bound returns whether the type variable is bound to a type parameter of the typePattern.
-func (pat *typePattern) bound(v *TypeVar) bool {
-	for _, p := range pat.parms {
+// bound returns whether the type variable is bound to a type parameter of the TypePattern.
+func (pat *TypePattern) bound(v *TypeVar) bool {
+	for _, p := range pat.Parms {
 		if v.Def == p {
 			return true
 		}
@@ -187,8 +187,8 @@ func (pat *typePattern) bound(v *TypeVar) bool {
 	return false
 }
 
-// common returns a new typePattern that is the most specific simple common pattern of pats.
-func common(pats ...typePattern) typePattern {
+// common returns a new TypePattern that is the most specific simple common pattern of pats.
+func common(pats ...TypePattern) TypePattern {
 	switch len(pats) {
 	case 0:
 		return any()
@@ -197,13 +197,13 @@ func common(pats ...typePattern) typePattern {
 	}
 
 	var nextParm int
-	var pat typePattern
+	var pat TypePattern
 
 	newVar := func() *TypeVar {
 		n := "_" + strconv.Itoa(nextParm)
 		nextParm++
 		p := &TypeParm{Name: n}
-		pat.parms = append(pat.parms, p)
+		pat.Parms = append(pat.Parms, p)
 		return &TypeVar{Name: n, Def: p}
 	}
 
@@ -346,9 +346,9 @@ func common(pats ...typePattern) typePattern {
 
 	ts := make([]Type, len(pats))
 	for i, p := range pats {
-		ts[i] = p.typ
+		ts[i] = p.Type
 	}
-	pat.typ = buildType(ts)
+	pat.Type = buildType(ts)
 	return pat
 }
 
@@ -361,10 +361,10 @@ func common(pats ...typePattern) typePattern {
 //
 // If the intersection is empty returned notes may be non-nil
 // if there is a note to give more information as to why.
-func intersection(a, b typePattern, bind *map[*TypeParm]Type) (*typePattern, note) {
-	if len(a.parms) == 0 && len(b.parms) == 0 {
+func intersection(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, note) {
+	if len(a.Parms) == 0 && len(b.Parms) == 0 {
 		// Fast-path the common case of checking two types.
-		if !eqType(a.typ, b.typ) {
+		if !eqType(a.Type, b.Type) {
 			return nil, nil
 		}
 		return &a, nil
@@ -424,12 +424,12 @@ func intersection(a, b typePattern, bind *map[*TypeParm]Type) (*typePattern, not
 		}
 		(*bind)[parm] = s.bind
 	}
-	isect := &typePattern{parms: parms, typ: subType(*bind, a.typ)}
+	isect := &TypePattern{Parms: parms, Type: subType(*bind, a.Type)}
 	return isect, nil
 }
 
-func findBoundVars(sets *disjointSets, pat typePattern) {
-	switch typ := pat.typ.(type) {
+func findBoundVars(sets *disjointSets, pat TypePattern) {
+	switch typ := pat.Type.(type) {
 	case *DefType:
 		for i := range typ.Args {
 			findBoundVars(sets, pat.typeArg(i))
@@ -440,7 +440,7 @@ func findBoundVars(sets *disjointSets, pat typePattern) {
 		findBoundVars(sets, pat.arrayElem())
 	case *StructType:
 		for i := range typ.Fields {
-			if pat.typ.(*StructType).Fields[i].Type == nil {
+			if pat.Type.(*StructType).Fields[i].Type == nil {
 				continue
 			}
 			findBoundVars(sets, pat.field(i))
@@ -469,9 +469,9 @@ func findBoundVars(sets *disjointSets, pat typePattern) {
 	}
 }
 
-func unionSets(sets *disjointSets, a, b typePattern) bool {
-	aVar, aOk := a.typ.(*TypeVar)
-	bVar, bOk := b.typ.(*TypeVar)
+func unionSets(sets *disjointSets, a, b TypePattern) bool {
+	aVar, aOk := a.Type.(*TypeVar)
+	bVar, bOk := b.Type.(*TypeVar)
 	switch {
 	case aOk && bOk && a.bound(aVar) && b.bound(bVar):
 		sets.union(aVar.Def, bVar.Def)
@@ -481,9 +481,9 @@ func unionSets(sets *disjointSets, a, b typePattern) bool {
 	case bOk && b.bound(bVar):
 		return true
 	}
-	switch bType := b.typ.(type) {
+	switch bType := b.Type.(type) {
 	case *DefType:
-		aType, ok := a.typ.(*DefType)
+		aType, ok := a.Type.(*DefType)
 		if !ok || aType.Def != bType.Def {
 			return false
 		}
@@ -495,21 +495,21 @@ func unionSets(sets *disjointSets, a, b typePattern) bool {
 		return true
 
 	case *RefType:
-		_, ok := a.typ.(*RefType)
+		_, ok := a.Type.(*RefType)
 		return ok && unionSets(sets, a.refElem(), b.refElem())
 
 	case *ArrayType:
-		_, ok := a.typ.(*ArrayType)
+		_, ok := a.Type.(*ArrayType)
 		return ok && unionSets(sets, a.arrayElem(), b.arrayElem())
 
 	case *StructType:
-		aType, ok := a.typ.(*StructType)
+		aType, ok := a.Type.(*StructType)
 		if !ok || len(aType.Fields) != len(bType.Fields) {
 			return false
 		}
 		for i := range aType.Fields {
-			if a.typ.(*StructType).Fields[i].Type == nil ||
-				b.typ.(*StructType).Fields[i].Type == nil {
+			if a.Type.(*StructType).Fields[i].Type == nil ||
+				b.Type.(*StructType).Fields[i].Type == nil {
 				continue
 			}
 			if aType.Fields[i].Name != bType.Fields[i].Name ||
@@ -520,7 +520,7 @@ func unionSets(sets *disjointSets, a, b typePattern) bool {
 		return true
 
 	case *UnionType:
-		aType, ok := a.typ.(*UnionType)
+		aType, ok := a.Type.(*UnionType)
 		if !ok || len(aType.Cases) != len(bType.Cases) {
 			return false
 		}
@@ -536,7 +536,7 @@ func unionSets(sets *disjointSets, a, b typePattern) bool {
 		return true
 
 	case *FuncType:
-		aType, ok := a.typ.(*FuncType)
+		aType, ok := a.Type.(*FuncType)
 		if !ok || len(aType.Parms) != len(bType.Parms) {
 			return false
 		}
@@ -548,10 +548,10 @@ func unionSets(sets *disjointSets, a, b typePattern) bool {
 		return unionSets(sets, a.ret(), b.ret())
 
 	case *BasicType:
-		return eqType(a.typ, bType)
+		return eqType(a.Type, bType)
 
 	case *TypeVar:
-		return eqType(a.typ, bType)
+		return eqType(a.Type, bType)
 
 	default:
 		panic(fmt.Sprintf("impossible Type type: %T", b))
@@ -560,34 +560,34 @@ func unionSets(sets *disjointSets, a, b typePattern) bool {
 
 // bindSets adds bindings for the type of each set.
 // It panics if the types don't align (since it's assumed to be called after findSets).
-func bindSets(sets *disjointSets, a, b typePattern) note {
-	aVar, aOk := a.typ.(*TypeVar)
-	bVar, bOk := b.typ.(*TypeVar)
+func bindSets(sets *disjointSets, a, b TypePattern) note {
+	aVar, aOk := a.Type.(*TypeVar)
+	bVar, bOk := b.Type.(*TypeVar)
 	switch {
 	case aOk && bOk && a.bound(aVar) && b.bound(bVar):
 		return nil
 	case aOk && a.bound(aVar):
 		set := sets.find(aVar.Def)
 		if set.bind == nil {
-			set.bind = b.typ
+			set.bind = b.Type
 			return nil
 		}
-		if !eqType(set.bind, b.typ) {
-			return newNote("%s binds %s and %s", aVar, set.bind, b.typ)
+		if !eqType(set.bind, b.Type) {
+			return newNote("%s binds %s and %s", aVar, set.bind, b.Type)
 		}
 		return nil
 	case bOk && b.bound(bVar):
 		set := sets.find(bVar.Def)
 		if set.bind == nil {
-			set.bind = a.typ
+			set.bind = a.Type
 			return nil
 		}
-		if !eqType(set.bind, a.typ) {
-			return newNote("%s binds %s and %s", bVar, set.bind, a.typ)
+		if !eqType(set.bind, a.Type) {
+			return newNote("%s binds %s and %s", bVar, set.bind, a.Type)
 		}
 		return nil
 	}
-	switch bType := b.typ.(type) {
+	switch bType := b.Type.(type) {
 	case *DefType:
 		for i := range bType.Args {
 			if note := bindSets(sets, a.typeArg(i), b.typeArg(i)); note != nil {
@@ -604,8 +604,8 @@ func bindSets(sets *disjointSets, a, b typePattern) note {
 
 	case *StructType:
 		for i := range bType.Fields {
-			if a.typ.(*StructType).Fields[i].Type == nil ||
-				b.typ.(*StructType).Fields[i].Type == nil {
+			if a.Type.(*StructType).Fields[i].Type == nil ||
+				b.Type.(*StructType).Fields[i].Type == nil {
 				continue
 			}
 			if note := bindSets(sets, a.field(i), b.field(i)); note != nil {
