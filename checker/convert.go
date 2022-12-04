@@ -249,7 +249,7 @@ func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *
 		if cvt == nil {
 			return TypePattern{}, nil, notes
 		}
-		pat.Type = &RefType{Type: pat.Type, L: pat.Type.Loc()}
+		pat.Type = &RefType{Type: pat.Type, L: pat.Loc()}
 		return pat, conversion(cvt, Ref, pat.Type), nil
 	}
 }

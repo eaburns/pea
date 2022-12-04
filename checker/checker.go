@@ -2067,7 +2067,7 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, pat TypePattern) (Expr, 
 			}
 			// Copy the type, because we will later replace the type for the expr case
 			// with the type of the checked expression.
-			lit.Union = copyTypeWithLoc(uni, pat.Type.Loc()).(*UnionType)
+			lit.Union = copyTypeWithLoc(uni, pat.Loc()).(*UnionType)
 		}
 	}
 	if lit.Union == nil {
