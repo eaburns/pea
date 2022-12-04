@@ -2120,7 +2120,8 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat typePattern) (Expr, 
 			bind, note := convertType(litParm, patParm, implicit)
 			if note != nil {
 				// We need to ensure the note has a non-0 Loc before making it an Error.
-				note.setLoc(lit.Parms[i].L)
+				// TODO: make convertType return a more specific error type.
+				note.(*_error).setLoc(lit.Parms[i].L)
 				errs = append(errs, note.(Error))
 			}
 			lit.Parms[i].T = subType(bind, patParm.typ)

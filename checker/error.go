@@ -54,11 +54,10 @@ func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 
 type note interface {
 	add(...note)
-	setLoc(x interface{}) note
 	buildString(c *topScope, mustIdent bool, depth int, s *strings.Builder)
 }
 
-func newNote(f string, vs ...interface{}) note {
+func newNote(f string, vs ...interface{}) *_error {
 	return &_error{msg: fmt.Sprintf(f, vs...)}
 }
 

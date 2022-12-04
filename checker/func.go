@@ -290,7 +290,7 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatte
 		if dst, n = dst.sub(nil, bind); n != nil {
 			n1 := newNote("%s: parameter %d type substitution failed", dst, i)
 			n1.add(n)
-			n.setLoc(dst)
+			n1.setLoc(dst)
 			return nil, nil, &unifyFuncFailure{note: n1, parms: i}
 		}
 	}
@@ -317,7 +317,7 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src typePatte
 	if dst, n = dst.sub(nil, bind); n != nil {
 		n1 := newNote("%s: return type substitution failed", dst)
 		n1.add(n)
-		n.setLoc(dst)
+		n1.setLoc(dst)
 		return nil, nil, &unifyFuncFailure{note: n1, parms: dst.arity()}
 	}
 	return dst, bind, nil
