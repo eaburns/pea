@@ -123,17 +123,21 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 		switch id := id.(type) {
 		case Func:
 			funcs = append(funcs, id)
+			continue
 		case *VarDef:
 			if t := funcType(id.T); t != nil {
 				funcs = append(funcs, &idFunc{id: id, funcType: t, l: l})
+				continue
 			}
 		case *ParmDef:
 			if t := funcType(id.T); t != nil {
 				funcs = append(funcs, &idFunc{id: id, funcType: t, l: l})
+				continue
 			}
 		case *LocalDef:
 			if t := funcType(id.T); t != nil {
 				funcs = append(funcs, &idFunc{id: id, funcType: t, l: l})
+				continue
 			}
 		}
 		note := newNote("%s (%s) is not a function", id, id.Type()).setLoc(id)
