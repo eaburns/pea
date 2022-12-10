@@ -54,7 +54,7 @@ func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 
 type note interface {
 	add(...note)
-	buildString(c *topScope, mustIdent bool, depth int, s *strings.Builder)
+	print(errorPrinter)
 }
 
 func newNote(f string, vs ...interface{}) *_error {
@@ -90,38 +90,18 @@ func (e *_error) setLoc(x interface{}) note {
 }
 
 func (e *_error) done(c *topScope) {
-	var s strings.Builder
-	l := c.importer.Files().Location(e.loc)
-	l.Path = strings.TrimPrefix(l.Path, c.trimErrorPathPrefix)
-	s.WriteString(l.String())
-	s.WriteString(": ")
-	s.WriteString(e.msg)
-	for _, n := range e.notes {
-		s.WriteRune('\n')
-		n.buildString(c, true, 1, &s)
-	}
-	e.msg = s.String()
+	p := makeErrorPrinter(c)
+	p.printf("%s: %s", locOf{e.loc}, e.msg)
+	printNotes(indent(p), e.notes)
+	e.msg = p.String()
 }
 
-func (e *_error) buildString(c *topScope, mustIdent bool, depth int, s *strings.Builder) {
-	s.WriteString(strings.Repeat("\t", depth))
-	s.WriteString(e.msg)
+func (e *_error) print(p errorPrinter) {
+	p.printf(e.msg)
 	if e.loc != (loc.Loc{}) {
-		s.WriteString(" (")
-		l := c.importer.Files().Location(e.loc)
-		l.Path = strings.TrimPrefix(l.Path, c.trimErrorPathPrefix)
-		s.WriteString(l.String())
-		s.WriteRune(')')
+		p.printf(" (%s)", locOf{e.loc})
 	}
-	mustIdent = mustIdent || len(e.notes) > 1
-	for _, n := range e.notes {
-		s.WriteRune('\n')
-		if mustIdent {
-			n.buildString(c, false, depth+1, s)
-		} else {
-			n.buildString(c, true, depth, s)
-		}
-	}
+	printNotes(indent(p), e.notes)
 }
 
 // NotFoundError indicates an identifier whose definition is not found.
@@ -142,11 +122,10 @@ func notFoundTypeVar(x scope, tv parser.TypeVar) *NotFoundError {
 func (err *NotFoundError) Loc() loc.Loc { return err.Ident.L }
 
 func (err *NotFoundError) Error() string {
-	var s strings.Builder
-	writeLoc(err.scope, err.Loc(), &s)
-	s.WriteString(fmt.Sprintf(": %s not found", err.Ident.Name))
-	writeNotes(err.scope, err.notes, &s)
-	return s.String()
+	p := makeErrorPrinter(top(err.scope))
+	p.printf("%s: %s not found", locOf{err.Ident}, err.Ident.Name)
+	printNotes(indent(p), err.notes)
+	return p.String()
 }
 
 type notes []note
@@ -161,24 +140,54 @@ func (notes *notes) add(ns ...note) {
 
 func (notes *notes) done(top *topScope) {}
 
-func writeNotes(x scope, notes notes, s *strings.Builder) {
-	t := top(x)
-	for _, n := range notes {
-		s.WriteRune('\n')
-		n.buildString(t, true, 1, s)
+type errorPrinter struct {
+	prefix              string
+	files               loc.Files
+	trimErrorPathPrefix string
+	w                   *strings.Builder
+}
+
+func makeErrorPrinter(top *topScope) errorPrinter {
+	return errorPrinter{
+		prefix:              "",
+		files:               top.importer.Files(),
+		trimErrorPathPrefix: top.trimErrorPathPrefix,
+		w:                   new(strings.Builder),
 	}
 }
 
-func writeLoc(x scope, l loc.Loc, s *strings.Builder) {
-	t := top(x)
-	if t.importer.Files().Len() == 0 {
-		// This happens in some tests,
-		// where the location info is not correctly tracked
-		// across calls to parseTestPattern and such helpers.
-		// TODO: tests to always have location information.
-		return
+func indent(p errorPrinter) errorPrinter {
+	p.prefix += "\t"
+	return p
+}
+
+func (p *errorPrinter) String() string { return p.w.String() }
+
+// locOf wraps a loc.Locer, and errorPrinter.fmt will format it as the location string.
+type locOf struct{ loc.Locer }
+
+func (p errorPrinter) printf(f string, vs ...interface{}) {
+	for i := range vs {
+		v, ok := vs[i].(locOf)
+		if !ok {
+			continue
+		}
+		if p.files.Len() == 0 {
+			vs[i] = "no location info available"
+			continue
+		}
+		location := p.files.Location(v.Loc())
+		location.Path = strings.TrimPrefix(location.Path, p.trimErrorPathPrefix)
+		vs[i] = location
 	}
-	location := t.importer.Files().Location(l)
-	location.Path = strings.TrimPrefix(location.Path, t.trimErrorPathPrefix)
-	s.WriteString(location.String())
+	s := fmt.Sprintf(f, vs...)
+	s = strings.Replace(s, "\n", "\n"+p.prefix, -1)
+	p.w.WriteString(s)
+}
+
+func printNotes(p errorPrinter, notes notes) {
+	for _, n := range notes {
+		p.printf("\n")
+		n.print(p)
+	}
 }
