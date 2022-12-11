@@ -92,7 +92,7 @@ func (e *_error) setLoc(x interface{}) note {
 func (e *_error) done(c *topScope) {
 	p := makeErrorPrinter(c)
 	p.printf("%s: %s", locOf{e.loc}, e.msg)
-	printNotes(indent(p), e.notes)
+	printNotes(p, e.notes)
 	e.msg = p.String()
 }
 
@@ -101,7 +101,7 @@ func (e *_error) print(p errorPrinter) {
 	if e.loc != (loc.Loc{}) {
 		p.printf(" (%s)", locOf{e.loc})
 	}
-	printNotes(indent(p), e.notes)
+	printNotes(p, e.notes)
 }
 
 // NotFoundError indicates an identifier whose definition is not found.
@@ -124,7 +124,7 @@ func (err *NotFoundError) Loc() loc.Loc { return err.Ident.L }
 func (err *NotFoundError) Error() string {
 	p := makeErrorPrinter(top(err.scope))
 	p.printf("%s: %s not found", locOf{err.Ident}, err.Ident.Name)
-	printNotes(indent(p), err.notes)
+	printNotes(p, err.notes)
 	return p.String()
 }
 
@@ -141,7 +141,8 @@ func (notes *notes) add(ns ...note) {
 func (notes *notes) done(top *topScope) {}
 
 type errorPrinter struct {
-	prefix              string
+	bullet              int
+	indent              string
 	files               loc.Files
 	trimErrorPathPrefix string
 	w                   *strings.Builder
@@ -149,19 +150,27 @@ type errorPrinter struct {
 
 func makeErrorPrinter(top *topScope) errorPrinter {
 	return errorPrinter{
-		prefix:              "",
+		bullet:              0,
+		indent:              "",
 		files:               top.importer.Files(),
 		trimErrorPathPrefix: top.trimErrorPathPrefix,
 		w:                   new(strings.Builder),
 	}
 }
 
-func indent(p errorPrinter) errorPrinter {
-	p.prefix += "\t"
+func (p *errorPrinter) String() string { return p.w.String() }
+
+var bullets = [...]string{"•", "◦", "‣", "⁃"}
+
+func (p errorPrinter) listItem() errorPrinter {
+	p.w.WriteString("\n")
+	p.w.WriteString(p.indent)
+	p.w.WriteString(bullets[p.bullet])
+	p.w.WriteString(" ")
+	p.bullet = (p.bullet + 1) % len(bullets)
+	p.indent += "  "
 	return p
 }
-
-func (p *errorPrinter) String() string { return p.w.String() }
 
 // locOf wraps a loc.Locer, and errorPrinter.fmt will format it as the location string.
 type locOf struct{ loc.Locer }
@@ -181,13 +190,14 @@ func (p errorPrinter) printf(f string, vs ...interface{}) {
 		vs[i] = location
 	}
 	s := fmt.Sprintf(f, vs...)
-	s = strings.Replace(s, "\n", "\n"+p.prefix, -1)
+	if p.indent != "" {
+		s = strings.Replace(s, "\n", "\n"+p.indent, -1)
+	}
 	p.w.WriteString(s)
 }
 
 func printNotes(p errorPrinter, notes notes) {
 	for _, n := range notes {
-		p.printf("\n")
-		n.print(p)
+		n.print(p.listItem())
 	}
 }
