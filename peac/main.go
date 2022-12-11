@@ -411,7 +411,10 @@ func modTime(file string) time.Time {
 }
 
 func fail(errs ...error) {
-	for _, err := range errs {
+	for i, err := range errs {
+		if i > 0 {
+			fmt.Println("")
+		}
 		fmt.Println(err)
 	}
 	os.Exit(1)

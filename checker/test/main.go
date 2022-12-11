@@ -44,7 +44,10 @@ func main() {
 		checker.UseImporter(imp),
 		checker.TrimErrorPathPrefix(p.TrimErrorPathPrefix))
 	if len(errs) > 0 {
-		for _, err := range errs {
+		for i, err := range errs {
+			if i > 0 {
+				fmt.Println("")
+			}
 			fmt.Println(err)
 		}
 		os.Exit(1)
