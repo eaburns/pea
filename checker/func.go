@@ -106,8 +106,9 @@ func instFuncConstraints(x scope, l loc.Loc, fun Func) note {
 		}
 	}
 	if len(notes) > 0 {
-		note := newNote("%s: failed to instantiate interface", fun).setLoc(fun)
+		note := newNote("%s: failed to instantiate interface", fun)
 		note.add(notes...)
+		note.setLoc(fun)
 		return note
 	}
 	return nil
@@ -181,11 +182,13 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 		for _, fail := range unifyFails {
 			notFoundNotes = append(notFoundNotes, fail.note)
 		}
-		note := newNote("%s: not found", constraint).setLoc(constraint.L)
+		note := newNote("%s: not found", constraint)
 		note.add(notFoundNotes...)
+		note.setLoc(constraint.L)
 		return nil, nil, note
 	case len(funcs) > 1:
-		note := newNote("%s: ambiguous", constraint).setLoc(constraint.L)
+		note := newNote("%s: ambiguous", constraint)
+		note.setLoc(constraint.L)
 		for _, f := range funcs {
 			note.add(newNote(f.String()).setLoc(f))
 		}
@@ -271,6 +274,7 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePatte
 	}
 	bind := make(map[*TypeParm]Type)
 	for i := 0; i < dst.arity(); i++ {
+		var n note
 		pat, cvt, n := convertPattern(nil, srcFunPat.parm(i), dst.parm(i), implicit, &bind)
 		if !pat.isGroundType() {
 			cvt = nil
@@ -296,6 +300,7 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePatte
 			return nil, nil, &unifyFuncFailure{note: n1, parms: i}
 		}
 	}
+	var n note
 	pat, cvt, n := convertPattern(nil, dst.ret(), srcFunPat.ret(), implicit, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
@@ -475,7 +480,7 @@ func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 	}
 	copy.T = &FuncType{
 		Parms: []Type{refLiteral(copy.Struct)},
-		Ret: refLiteral(copy.Field.Type),
+		Ret:   refLiteral(copy.Field.Type),
 	}
 	return &copy, nil
 }

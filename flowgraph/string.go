@@ -24,7 +24,7 @@ func (r *Call) String() string       { return r.buildString(new(strings.Builder)
 func (r *If) String() string         { return r.buildString(new(strings.Builder)).String() }
 func (r *Jump) String() string       { return r.buildString(new(strings.Builder)).String() }
 func (r *Return) String() string     { return r.buildString(new(strings.Builder)).String() }
-func (r *Unreach) String() string     { return r.buildString(new(strings.Builder)).String() }
+func (r *Unreach) String() string    { return r.buildString(new(strings.Builder)).String() }
 func (v *Frame) String() string      { return v.buildString(new(strings.Builder)).String() }
 func (v *Alloc) String() string      { return v.buildString(new(strings.Builder)).String() }
 func (v *Load) String() string       { return v.buildString(new(strings.Builder)).String() }

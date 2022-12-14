@@ -25,7 +25,7 @@ type stringBuilder struct {
 	// elideMod is a module name to elide in type names.
 	elideMod string
 
-	builder  strings.Builder
+	builder strings.Builder
 }
 
 func (v *VarDef) String() string   { return v.Name }

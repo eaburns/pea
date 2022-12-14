@@ -92,11 +92,11 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 				}
 			*/
 			imp := &Import{
-				Name: name,
-				Path: cleanImportPath(parserImport.Path),
-				Exp:  parserImport.Exp,
-				L:    parserImport.L,
-				Defs: m.Defs,
+				Name:     name,
+				Path:     cleanImportPath(parserImport.Path),
+				Exp:      parserImport.Exp,
+				L:        parserImport.L,
+				Defs:     m.Defs,
 				topScope: &topScope,
 			}
 			imports = append(imports, imp)

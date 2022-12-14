@@ -500,7 +500,6 @@ func TestPatternIntersection(t *testing.T) {
 		{src: `type (T, U) t int`, a: `(?0, ?0) t`, b: `(string, int) t`, want: ``},
 
 		{a: `T`, b: `T`, want: `T`},
-		{a: `T`, b: `U`, want: `T`},
 		{a: `T`, b: `int`, want: ``},
 		{a: `T`, b: `?`, want: `T`},
 		{a: `?`, b: `T`, want: `T`},
@@ -679,15 +678,17 @@ func TestPatternIntersection(t *testing.T) {
 			copyTypeParmNamesToVars(b.Type)
 
 			var bind map[*TypeParm]Type
-			switch isect, note := intersection(a, b, &bind); {
+			switch isect, err := intersection(a, b, &bind); {
 			case test.want == "" && isect != nil:
 				t.Fatalf("intersect(%s, %s)=%s, want nil", test.a, test.b, isect)
 			case test.want == "":
 				return // OK
 			case test.want != "" && isect == nil:
 				var n string
-				if note != nil {
-					n = " (" + note.(*_error).msg + ")"
+				if err != nil {
+					p := makeErrorPrinter(mod.topScope)
+					err.print(p)
+					n = ", " + p.String() + ""
 				}
 				t.Fatalf("intersect(%s, %s)=nil%s, want %s", test.a, test.b, n, test.want)
 			case test.want != "" && isect.String() != test.want:
@@ -782,7 +783,7 @@ func TestPatternSelfIntersection(t *testing.T) {
 }
 
 func copyTypeParmNamesToVars(t Type) {
-	walkType(t, func(t Type)bool {
+	walkType(t, func(t Type) bool {
 		if tv, ok := t.(*TypeVar); ok && tv.Def != nil {
 			tv.Name = tv.Def.Name
 		}
@@ -1141,10 +1142,14 @@ func (s *typeParmScope) findType(args []Type, name string, l loc.Loc) []Type {
 }
 
 func parseTestPattern(t *testing.T, m *Mod, src string) TypePattern {
+	pat, _ := _parseTestPattern(t, m, 0, src)
+	return pat
+}
+
+func _parseTestPattern(t *testing.T, m *Mod, nextName int, src string) (TypePattern, int) {
 	t.Helper()
 	var parms []*TypeParm
 	parmSet := make(map[string]*TypeParm)
-	nextName := 0
 	src2 := ""
 	var prev rune
 	for len(src) > 0 {
@@ -1184,7 +1189,7 @@ func parseTestPattern(t *testing.T, m *Mod, src string) TypePattern {
 	if len(errs) > 0 {
 		t.Fatalf("failed to make type: %s", errs[0])
 	}
-	return TypePattern{Parms: parms, Type: typ}
+	return TypePattern{Parms: parms, Type: typ}, nextName
 }
 
 func parseTestType(t *testing.T, m *Mod, src string) Type {

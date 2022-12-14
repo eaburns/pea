@@ -128,7 +128,7 @@ func subFunc(bindings bindings, fun Func) Func {
 		return &Switch{
 			N:     fun.N,
 			Names: fun.Names,
-			T: subType(bindings.Types, fun.T).(*FuncType),
+			T:     subType(bindings.Types, fun.T).(*FuncType),
 			Union: unionCopy,
 			Cases: casesCopy,
 		}

@@ -1304,11 +1304,11 @@ func (o Call) shallowCopy() Instruction {
 	o.Args = append([]Value{}, o.Args...)
 	return &o
 }
-func (o If) shallowCopy() Instruction     { return &o }
-func (o Jump) shallowCopy() Instruction   { return &o }
-func (o Return) shallowCopy() Instruction { return &o }
+func (o If) shallowCopy() Instruction      { return &o }
+func (o Jump) shallowCopy() Instruction    { return &o }
+func (o Return) shallowCopy() Instruction  { return &o }
 func (o Unreach) shallowCopy() Instruction { return &o }
-func (o Frame) shallowCopy() Instruction  { return &o }
+func (o Frame) shallowCopy() Instruction   { return &o }
 func (o Alloc) shallowCopy() Instruction {
 	shallowCopyUsedBy(&o.value)
 	return &o

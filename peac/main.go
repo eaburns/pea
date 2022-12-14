@@ -23,7 +23,7 @@ var (
 	libpea       = flag.String("libpea", "", "path to libpea source directory")
 	root         = flag.String("root", "", "module root directory (required)")
 	test         = flag.Bool("test", false, "whether to compile a test binary")
-	printCmds            = flag.Bool("print-commands", false, "print commands executed")
+	printCmds    = flag.Bool("print-commands", false, "print commands executed")
 	lprofiler    = flag.Bool("lprofiler", false, "whether to link with -lprofiler for CPU profiling")
 	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
 	dumpCheck    = flag.Bool("dump-check", false, "whether to dump the checked graph")

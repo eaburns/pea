@@ -169,8 +169,8 @@ func (t *UnionType) eq(other Type) bool {
 }
 
 type FuncType struct {
-	Parms []Type
-	Ret   Type
+	Parms    []Type
+	Ret      Type
 	Terminal bool
 }
 
@@ -393,10 +393,10 @@ func (r *Return) Out() []*BasicBlock { return nil }
 
 type Unreach struct {
 	instruction
-	L     loc.Loc
+	L loc.Loc
 }
 
-func (r *Unreach) Uses() []Value { return nil }
+func (r *Unreach) Uses() []Value      { return nil }
 func (r *Unreach) Loc() loc.Loc       { return r.L }
 func (r *Unreach) Out() []*BasicBlock { return nil }
 

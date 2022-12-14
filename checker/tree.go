@@ -111,6 +111,8 @@ type TypeParm struct {
 	L    loc.Loc
 }
 
+func (p *TypeParm) Loc() loc.Loc { return p.L }
+
 type TypeInst struct {
 	Args []Type
 	Type Type
@@ -355,7 +357,6 @@ type FuncInst struct {
 	Parms  []*ParmDef
 	Locals []*LocalDef
 	Exprs  []Expr
-
 }
 
 func (f *FuncInst) Loc() loc.Loc { return f.Def.L }
@@ -467,10 +468,10 @@ const (
 )
 
 type Builtin struct {
-	N        string
-	Op       Op
-	Parms    []Type
-	Ret      Type
+	N     string
+	Op    Op
+	Parms []Type
+	Ret   Type
 
 	typeParms []*TypeParm
 }

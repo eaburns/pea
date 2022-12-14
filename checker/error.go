@@ -53,7 +53,6 @@ func redef(locer loc.Locer, name string, prev loc.Locer) Error {
 }
 
 type note interface {
-	add(...note)
 	print(errorPrinter)
 }
 
@@ -99,9 +98,14 @@ func (e *_error) done(c *topScope) {
 func (e *_error) print(p errorPrinter) {
 	p.printf(e.msg)
 	if e.loc != (loc.Loc{}) {
-		p.printf(" (%s)", locOf{e.loc})
+		p.printf(" — %s", locOf{e.loc})
 	}
 	printNotes(p, e.notes)
+}
+
+// A Cause is additional information about an error.
+type Cause interface {
+	print(errorPrinter)
 }
 
 // NotFoundError indicates an identifier whose definition is not found.
@@ -126,6 +130,239 @@ func (err *NotFoundError) Error() string {
 	p.printf("%s: %s not found", locOf{err.Ident}, err.Ident.Name)
 	printNotes(p, err.notes)
 	return p.String()
+}
+
+// ConvertError is an error describing
+// failure to convert pattern Src to Dst.
+type ConvertError struct {
+	Src, Dst TypePattern
+	// DefType is non-nil if either Src or Dst is a *DefType,
+	// and this error is propagating a non-nil Casuse
+	// for failure to convert the underlying type.
+	DefType  *DefType
+	Cause    Cause
+	Explicit bool
+}
+
+func (err *ConvertError) print(p errorPrinter) {
+	if err.Explicit {
+		p.printf("cannot convert %s to %s", err.Src, err.Dst)
+	} else {
+		p.printf("cannot implicitly convert %s to %s", err.Src, err.Dst)
+	}
+	if err.Cause != nil {
+		if dt := err.DefType; dt != nil {
+			p.printf("\n%s is defined as %s at %s", dt, dt.Inst.Type, locOf{dt.Def})
+		}
+		p.printf("\n")
+		err.Cause.print(p)
+	}
+}
+
+// DiffTypeKindError implements PatternAlignError;
+// it indicates that two patterns did not align,
+// because their types were not the same kind.
+type DiffTypeKindError struct{ A, B Type }
+
+func (err *DiffTypeKindError) print(p errorPrinter) {
+	p.printf("%s and %s are different kinds of types", err.A, err.B)
+	p.printf("\n%s is %s", err.A, typeKindString(err.A))
+	p.printf("\n%s is %s", err.B, typeKindString(err.B))
+}
+
+func typeKindString(t Type) string {
+	switch t := t.(type) {
+	case *DefType:
+		return "a defined type"
+	case *RefType:
+		return "a reference literal type"
+	case *ArrayType:
+		return "an array literal type"
+	case *StructType:
+		return "a struct literal type"
+	case *UnionType:
+		return "a union literal type"
+	case *FuncType:
+		return "a function type"
+	case *BasicType:
+		return "the built-in " + t.String() + " type"
+	case *TypeVar:
+		return "a type variable"
+	case nil:
+		return "nil"
+	default:
+		panic(fmt.Sprintf("impossible Type type: %T", t))
+	}
+}
+
+// DiffNamedTypeError implements PatternAlignError;
+// it indicates that two patterns didn't align
+// because their types are different named types.
+type DiffNamedTypeError struct {
+	// A and B are the differing types.
+	// A.Type and B.Type are each either
+	// *DefType, *BasicType.
+	A, B Type
+}
+
+func (err *DiffNamedTypeError) print(p errorPrinter) {
+	p.printf("%s and %s are different named types", defName{err.A}, defName{err.B})
+	dtA, _ := err.A.(*DefType)
+	dtB, _ := err.B.(*DefType)
+	if dtA != nil && dtB != nil {
+		p.printf("\n%s is defined at %s", defName{dtA}, locOf{dtA.Def})
+		p.printf("\n%s is defined at %s", defName{dtB}, locOf{dtB.Def})
+	}
+}
+
+// DiffTypeVarError implementsPatternAlignError;
+// it indicates that two patterns didn't align
+// because  their types were both type variables
+// from different definitions.
+type DiffTypeVarError struct{ A, B *TypeVar }
+
+func (err *DiffTypeVarError) print(p errorPrinter) {
+	p.printf("%s and %s are different type variables", err.A, err.B)
+	p.printf("\n%s is defined at %s", err.A, locOf{err.A.Def})
+	p.printf("\n%s is defined at %s", err.B, locOf{err.B.Def})
+}
+
+// DiffFieldsError implements PatternAlignError;
+// it indicates that two patterns didn't align
+// because their typse were struct literal types
+// with differing fields.
+type DiffFieldsError struct {
+	A, B *StructType
+	// If the difference is in the number of fields, Cause is nil.
+	// If the first difference (from left-to-right) is in a field name, Cause is nil.
+	// Cause is non-nil if the first difference is in the type of a field.
+	Cause Cause
+	// Field is the field name with the underlying error if Cause is non-nil.
+	Field string
+}
+
+func (err *DiffFieldsError) print(p errorPrinter) {
+	p.printf("%s and %s have different fields", err.A, err.B)
+	switch {
+	case len(err.A.Fields) != len(err.B.Fields):
+		p.printf("\n%s has %d fields", err.A, len(err.A.Fields))
+		p.printf("\n%s has %d fields", err.B, len(err.B.Fields))
+	case err.Cause != nil:
+		p.printf("\nfield %s: ", err.Field)
+		err.Cause.print(p)
+	}
+}
+
+// DiffCasesError implements PatternAlignError;
+// it indicates that two patterns didn't align
+// because their types were union literals types
+// with different cases.
+type DiffCasesError struct {
+	A, B *UnionType
+	// If the difference is in the number of cases, Cause is nil.
+	// If the first difference (from left-to-right) is in a case name, Cause is nil.
+	// If the first difference is in the typed-ness of a case, Cause is nil.
+	// Cause is non-nil if the first difference is in the type of a case.
+	Cause Cause
+	// Case is the case name with the underlying error if Cause is non-nil.
+	Case string
+}
+
+func (err *DiffCasesError) print(p errorPrinter) {
+	p.printf("%s and %s have different cases", err.A, err.B)
+	switch {
+	case len(err.A.Cases) != len(err.B.Cases):
+		p.printf("\n%s has %d cases", err.A, len(err.A.Cases))
+		p.printf("\n%s has %d cases", err.B, len(err.B.Cases))
+	case err.Cause != nil:
+		p.printf("\ncase %s: ", err.Case)
+		err.Cause.print(p)
+	default:
+		// It must be that there was a mis-match in case typedness.
+		var a, b *CaseDef
+		for i := range err.A.Cases {
+			if err.A.Cases[i].Name == err.Case {
+				a = &err.A.Cases[i]
+				b = &err.B.Cases[i]
+				if b.Name != err.Case {
+					panic("impossible")
+				}
+			}
+			break
+		}
+		switch {
+		default:
+			fallthrough
+		case a == nil || b == nil:
+			panic("impossible")
+		case a.Type == nil:
+			p.printf("\ncase %s: untyped and %s", err.Case, b.Type)
+		case b.Type == nil:
+			p.printf("\ncase %s: %s and untyped", err.Case, a.Type)
+		}
+	}
+}
+
+// DiffFuncError implements PatternAlignError;
+// it indicates that two patterns didn't align
+// because tehir types were function types
+// with different signatures.
+type DiffFuncError struct {
+	A, B *FuncType
+
+	// Cause is nil if the difference is in the arity,
+	// otherwise if the difference is a parameter or return type
+	// then Cause has the undrelying error.
+	Cause Cause
+
+	// Parm is the differing parameter index if a parameter type differs,
+	// -1 if the return value differs, or
+	// 0 if the arity differs, in which case Parm is to be ignored.
+	Parm int
+}
+
+func (err *DiffFuncError) print(p errorPrinter) {
+	switch {
+	case err.Cause == nil:
+		p.printf("%s and %s have different arity", err.A, err.B)
+		p.printf("\n%s has %d parameters", err.A, len(err.A.Parms))
+		p.printf("\n%s has %d parameters", err.B, len(err.B.Parms))
+	case err.Parm >= 0:
+		p.printf("%s and %s have different parameter types", err.A, err.B)
+		p.printf("\nparameter %d: %s and %s", err.Parm,
+			err.A.Parms[err.Parm],
+			err.B.Parms[err.Parm])
+	default:
+		p.printf("%s and %s have different return types", err.A, err.B)
+		p.printf("\nreturn: %s and %s", err.A.Ret, err.B.Ret)
+	}
+}
+
+// PatternBindingError indicates an error binding type variables,
+// because a type variable is bound to two different types.
+type PatternBindingError struct {
+	Parm      *TypeParm
+	Prev, Cur Type
+}
+
+func (err *PatternBindingError) print(p errorPrinter) {
+	p.printf("%s binds %s and %s", err.Parm.Name, err.Prev, err.Cur)
+}
+
+// PatternSubError indicates recursive substitution
+// when substituting a type variable during pattern intersection.
+type PatternSubError struct {
+	Loop []*TypeParm
+}
+
+func (err *PatternSubError) print(p errorPrinter) {
+	p.printf("recursive binding: ")
+	for i, parm := range err.Loop {
+		if i > 0 {
+			p.printf(" -> ")
+		}
+		p.printf("%s", parm.Name)
+	}
 }
 
 type notes []note
@@ -175,19 +412,45 @@ func (p errorPrinter) listItem() errorPrinter {
 // locOf wraps a loc.Locer, and errorPrinter.fmt will format it as the location string.
 type locOf struct{ loc.Locer }
 
+// defName wraps a Type that must be either a *DefType or *BasicType.
+// errorPrinter.printf will format the type name from the definition,
+// which can differ from the DefType.String(), since the definition
+// does not have substituted type parameters.
+type defName struct{ Type }
+
 func (p errorPrinter) printf(f string, vs ...interface{}) {
 	for i := range vs {
-		v, ok := vs[i].(locOf)
-		if !ok {
-			continue
+		switch v := vs[i].(type) {
+		case locOf:
+			if p.files.Len() == 0 {
+				vs[i] = "no location info available"
+				break
+			}
+			location := p.files.Location(v.Loc())
+			location.Path = strings.TrimPrefix(location.Path, p.trimErrorPathPrefix)
+			vs[i] = location
+		case defName:
+			if _, ok := v.Type.(*BasicType); ok {
+				continue
+			}
+			dt := v.Type.(*DefType)
+			var w strings.Builder
+			switch {
+			case len(dt.Def.Parms) == 1:
+				w.WriteString(dt.Def.Parms[0].Name)
+				w.WriteString(" ")
+			case len(dt.Def.Parms) > 1:
+				w.WriteString("(")
+				w.WriteString(dt.Def.Parms[0].Name)
+				for _, parm := range dt.Def.Parms[1:] {
+					w.WriteString(", ")
+					w.WriteString(parm.Name)
+				}
+				w.WriteString(") ")
+			}
+			w.WriteString(dt.Def.Name)
+			vs[i] = w.String()
 		}
-		if p.files.Len() == 0 {
-			vs[i] = "no location info available"
-			continue
-		}
-		location := p.files.Location(v.Loc())
-		location.Path = strings.TrimPrefix(location.Path, p.trimErrorPathPrefix)
-		vs[i] = location
 	}
 	s := fmt.Sprintf(f, vs...)
 	if p.indent != "" {

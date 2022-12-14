@@ -315,6 +315,8 @@ func common(pats ...TypePattern) TypePattern {
 	return pat
 }
 
+type patternIsectError interface{ Cause }
+
 // intersection returns the intersection of two type patterns or nil if there intersection is empty.
 //
 // The bind parameter is a pointer to a map from type parameters to their bound types.
@@ -324,11 +326,11 @@ func common(pats ...TypePattern) TypePattern {
 //
 // If the intersection is empty returned notes may be non-nil
 // if there is a note to give more information as to why.
-func intersection(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, note) {
+func intersection(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternIsectError) {
 	if len(a.Parms) == 0 && len(b.Parms) == 0 {
-		// Fast-path the common case of checking two types.
-		if !eqType(a.Type, b.Type) {
-			return nil, nil
+		// Fast-path the common case of simply checking two types align.
+		if err := alignTypes(nil, a, b); err != nil {
+			return nil, err
 		}
 		return &a, nil
 	}
@@ -338,14 +340,14 @@ func intersection(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, not
 	var sets disjointSets
 	findBoundVars(&sets, a)
 	findBoundVars(&sets, b)
-	if !unionSets(&sets, a, b) {
-		return nil, nil
+	if err := alignTypes(&sets, a, b); err != nil {
+		return nil, err
 	}
 
 	// Find the unique binding for each type parameter set.
 	// If there are multiple bindings, it's an error (note).
-	if note := bindSets(&sets, a, b); note != nil {
-		return nil, note
+	if err := bindSets(&sets, a, b); err != nil {
+		return nil, err
 	}
 	var parms []*TypeParm
 	seen := make(map[string]int)
@@ -373,9 +375,9 @@ func intersection(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, not
 	for _, parm := range sets.setSlice {
 		s := sets.find(parm)
 		if !s.substituted {
-			sub, note := subSets(&sets, make(map[*set]bool), nil, s.bind)
-			if sub == nil {
-				return nil, note
+			sub, err := subSets(&sets, make(map[*set]bool), nil, s.bind)
+			if err != nil {
+				return nil, err
 			}
 			s.bind = sub
 			s.substituted = true
@@ -383,7 +385,7 @@ func intersection(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, not
 		// There may already be a binding if the map was used
 		// on a previous call to intersection().
 		if prev, ok := (*bind)[parm]; ok && !eqType(prev, s.bind) {
-			return nil, newNote("%s binds %s and %s", parm.Name, prev, s.bind)
+			return nil, &PatternBindingError{Parm: parm, Prev: prev, Cur: s.bind}
 		}
 		(*bind)[parm] = s.bind
 	}
@@ -400,89 +402,153 @@ func findBoundVars(sets *disjointSets, pat TypePattern) {
 	})
 }
 
-func unionSets(sets *disjointSets, a, b TypePattern) bool {
+type patternAlignError interface{ Cause }
+
+// alignTypes returns an error if two types do not "align".
+// If sets is non-nil, sets corresponding to
+// aligned, bound type variables are unioned.
+func alignTypes(sets *disjointSets, a, b TypePattern) patternAlignError {
 	aVar, aOk := a.Type.(*TypeVar)
 	bVar, bOk := b.Type.(*TypeVar)
 	switch {
 	case aOk && bOk && a.bound(aVar) && b.bound(bVar):
-		sets.union(aVar.Def, bVar.Def)
-		return true
+		if sets != nil {
+			sets.union(aVar.Def, bVar.Def)
+		}
+		return nil
 	case aOk && a.bound(aVar):
-		return true
+		return nil
 	case bOk && b.bound(bVar):
-		return true
+		return nil
 	}
 	switch bType := b.Type.(type) {
 	case *DefType:
-		aType, ok := a.Type.(*DefType)
-		if !ok || aType.Def != bType.Def {
-			return false
+		switch aDefType, ok := a.Type.(*DefType); {
+		case ok && aDefType.Def != bType.Def:
+			return &DiffNamedTypeError{A: a.Type, B: b.Type}
+		case !ok && isBasicType(a.Type):
+			return &DiffNamedTypeError{A: a.Type, B: b.Type}
+		case !ok:
+			return &DiffTypeKindError{A: a.Type, B: b.Type}
 		}
 		for i := range bType.Args {
-			if !unionSets(sets, a.typeArg(i), b.typeArg(i)) {
-				return false
+			if err := alignTypes(sets, a.typeArg(i), b.typeArg(i)); err != nil {
+				return err
 			}
 		}
-		return true
+		return nil
 
 	case *RefType:
-		_, ok := a.Type.(*RefType)
-		return ok && unionSets(sets, a.refElem(), b.refElem())
+		if _, ok := a.Type.(*RefType); !ok {
+			return &DiffTypeKindError{A: a.Type, B: b.Type}
+		}
+		return alignTypes(sets, a.refElem(), b.refElem())
 
 	case *ArrayType:
-		_, ok := a.Type.(*ArrayType)
-		return ok && unionSets(sets, a.arrayElem(), b.arrayElem())
+		if _, ok := a.Type.(*ArrayType); !ok {
+			return &DiffTypeKindError{A: a.Type, B: b.Type}
+		}
+		return alignTypes(sets, a.arrayElem(), b.arrayElem())
 
 	case *StructType:
-		aType, ok := a.Type.(*StructType)
-		if !ok || len(aType.Fields) != len(bType.Fields) {
-			return false
+		aStructType, ok := a.Type.(*StructType)
+		switch {
+		case !ok:
+			return &DiffTypeKindError{A: a.Type, B: b.Type}
+		case len(aStructType.Fields) != len(bType.Fields):
+			return &DiffFieldsError{A: aStructType, B: bType}
 		}
-		for i := range aType.Fields {
-			if a.Type.(*StructType).Fields[i].Type == nil ||
-				b.Type.(*StructType).Fields[i].Type == nil {
+		for i := range aStructType.Fields {
+			aField := &aStructType.Fields[i]
+			bField := &bType.Fields[i]
+			if aField.Name != bField.Name {
+				return &DiffFieldsError{A: aStructType, B: bType}
+			}
+			if aField.Type == nil || bField.Type == nil {
 				continue
 			}
-			if aType.Fields[i].Name != bType.Fields[i].Name ||
-				!unionSets(sets, a.field(i), b.field(i)) {
-				return false
+			if err := alignTypes(sets, a.field(i), b.field(i)); err != nil {
+				return &DiffFieldsError{
+					A:     aStructType,
+					B:     bType,
+					Cause: err,
+					Field: aField.Name,
+				}
 			}
 		}
-		return true
+		return nil
 
 	case *UnionType:
-		aType, ok := a.Type.(*UnionType)
-		if !ok || len(aType.Cases) != len(bType.Cases) {
-			return false
+		aUnionType, ok := a.Type.(*UnionType)
+		switch {
+		case !ok:
+			return &DiffTypeKindError{A: a.Type, B: b.Type}
+		case len(aUnionType.Cases) != len(bType.Cases):
+			return &DiffCasesError{A: aUnionType, B: bType}
 		}
-		for i := range aType.Cases {
-			aCase := &aType.Cases[i]
+		for i := range aUnionType.Cases {
+			aCase := &aUnionType.Cases[i]
 			bCase := &bType.Cases[i]
-			if aCase.Name != bCase.Name ||
-				(aCase.Type == nil) != (bCase.Type == nil) ||
-				(aCase.Type != nil && !unionSets(sets, a.Case(i), b.Case(i))) {
-				return false
+			if aCase.Name != bCase.Name {
+				return &DiffCasesError{A: aUnionType, B: bType}
+			}
+			if (aCase.Type == nil) != (bCase.Type == nil) {
+				return &DiffCasesError{
+					A:    aUnionType,
+					B:    bType,
+					Case: aCase.Name,
+				}
+			}
+			if aCase.Type != nil {
+				if err := alignTypes(sets, a.Case(i), b.Case(i)); err != nil {
+					return &DiffCasesError{
+						A:     aUnionType,
+						B:     bType,
+						Cause: err,
+						Case:  aCase.Name,
+					}
+				}
 			}
 		}
-		return true
+		return nil
 
 	case *FuncType:
-		aType, ok := a.Type.(*FuncType)
-		if !ok || len(aType.Parms) != len(bType.Parms) {
-			return false
+		aFuncType, ok := a.Type.(*FuncType)
+		switch {
+		case !ok:
+			return &DiffTypeKindError{A: a.Type, B: b.Type}
+		case len(aFuncType.Parms) != len(bType.Parms):
+			return &DiffFuncError{A: aFuncType, B: bType}
 		}
 		for i := range bType.Parms {
-			if !unionSets(sets, a.parm(i), b.parm(i)) {
-				return false
+			if err := alignTypes(sets, a.parm(i), b.parm(i)); err != nil {
+				return &DiffFuncError{A: aFuncType, B: bType, Cause: err, Parm: i}
 			}
 		}
-		return unionSets(sets, a.ret(), b.ret())
+		if err := alignTypes(sets, a.ret(), b.ret()); err != nil {
+			return &DiffFuncError{A: aFuncType, B: bType, Cause: err, Parm: -1}
+		}
+		return nil
 
 	case *BasicType:
-		return eqType(a.Type, bType)
+		if !eqType(a.Type, bType) {
+			switch {
+			case isDefType(a.Type) || isBasicType(a.Type):
+				return &DiffNamedTypeError{A: a.Type, B: b.Type}
+			default:
+				return &DiffTypeKindError{A: a.Type, B: b.Type}
+			}
+		}
+		return nil
 
 	case *TypeVar:
-		return eqType(a.Type, bType)
+		if !eqType(a.Type, bType) {
+			if aType, ok := a.Type.(*TypeVar); ok {
+				return &DiffTypeVarError{A: aType, B: bType}
+			}
+			return &DiffTypeKindError{A: a.Type, B: b.Type}
+		}
+		return nil
 
 	default:
 		panic(fmt.Sprintf("impossible Type type: %T", b))
@@ -490,8 +556,8 @@ func unionSets(sets *disjointSets, a, b TypePattern) bool {
 }
 
 // bindSets adds bindings for the type of each set.
-// It panics if the types don't align (since it's assumed to be called after findSets).
-func bindSets(sets *disjointSets, a, b TypePattern) note {
+// It panics if the types don't align (since it's assumed to be called after alignTypes).
+func bindSets(sets *disjointSets, a, b TypePattern) *PatternBindingError {
 	aVar, aOk := a.Type.(*TypeVar)
 	bVar, bOk := b.Type.(*TypeVar)
 	switch {
@@ -504,7 +570,7 @@ func bindSets(sets *disjointSets, a, b TypePattern) note {
 			return nil
 		}
 		if !eqType(set.bind, b.Type) {
-			return newNote("%s binds %s and %s", aVar, set.bind, b.Type)
+			return &PatternBindingError{Parm: aVar.Def, Prev: set.bind, Cur: b.Type}
 		}
 		return nil
 	case bOk && b.bound(bVar):
@@ -514,7 +580,7 @@ func bindSets(sets *disjointSets, a, b TypePattern) note {
 			return nil
 		}
 		if !eqType(set.bind, a.Type) {
-			return newNote("%s binds %s and %s", bVar, set.bind, a.Type)
+			return &PatternBindingError{Parm: bVar.Def, Prev: set.bind, Cur: a.Type}
 		}
 		return nil
 	}
@@ -575,16 +641,16 @@ func bindSets(sets *disjointSets, a, b TypePattern) note {
 	}
 }
 
-func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Type) (Type, note) {
+func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Type) (Type, *PatternSubError) {
 	switch typ := typ.(type) {
 	case nil:
 		// The type was an error, just ignore it.
 		return nil, nil
 	case *RefType:
 		copy := *typ
-		elem, note := subSets(sets, onPath, path, typ.Type)
-		if elem == nil {
-			return nil, note
+		elem, err := subSets(sets, onPath, path, typ.Type)
+		if err != nil {
+			return nil, err
 		}
 		copy.Type = elem
 		return &copy, nil
@@ -592,18 +658,18 @@ func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Typ
 		copy := *typ
 		copy.Args = nil
 		for _, arg := range typ.Args {
-			argCopy, note := subSets(sets, onPath, path, arg)
-			if argCopy == nil {
-				return nil, note
+			argCopy, err := subSets(sets, onPath, path, arg)
+			if err != nil {
+				return nil, err
 			}
 			copy.Args = append(copy.Args, argCopy)
 		}
 		return instType(&copy), nil
 	case *ArrayType:
 		copy := *typ
-		elem, note := subSets(sets, onPath, path, typ.ElemType)
-		if elem == nil {
-			return nil, note
+		elem, err := subSets(sets, onPath, path, typ.ElemType)
+		if err != nil {
+			return nil, err
 		}
 		copy.ElemType = elem
 		return &copy, nil
@@ -612,9 +678,9 @@ func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Typ
 		copy.Fields = nil
 		for i := range typ.Fields {
 			f := typ.Fields[i]
-			fieldCopy, note := subSets(sets, onPath, path, f.Type)
-			if fieldCopy == nil {
-				return nil, note
+			fieldCopy, err := subSets(sets, onPath, path, f.Type)
+			if err != nil {
+				return nil, err
 			}
 			f.Type = fieldCopy
 			copy.Fields = append(copy.Fields, f)
@@ -626,9 +692,9 @@ func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Typ
 		for i := range typ.Cases {
 			c := typ.Cases[i]
 			if c.Type != nil {
-				typeCopy, note := subSets(sets, onPath, path, c.Type)
-				if typeCopy == nil {
-					return nil, note
+				typeCopy, err := subSets(sets, onPath, path, c.Type)
+				if err != nil {
+					return nil, err
 				}
 				c.Type = typeCopy
 			}
@@ -639,15 +705,15 @@ func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Typ
 		copy := *typ
 		copy.Parms = nil
 		for _, p := range typ.Parms {
-			parmCopy, note := subSets(sets, onPath, path, p)
-			if parmCopy == nil {
-				return nil, note
+			parmCopy, err := subSets(sets, onPath, path, p)
+			if err != nil {
+				return nil, err
 			}
 			copy.Parms = append(copy.Parms, parmCopy)
 		}
-		retCopy, note := subSets(sets, onPath, path, typ.Ret)
-		if retCopy == nil {
-			return nil, note
+		retCopy, err := subSets(sets, onPath, path, typ.Ret)
+		if err != nil {
+			return nil, err
 		}
 		copy.Ret = retCopy
 		return &copy, nil
@@ -664,15 +730,7 @@ func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Typ
 			return &copy, nil
 		}
 		if onPath[set] {
-			var pathStr string
-			for i, elem := range path {
-				if i > 0 {
-					pathStr += " -> "
-				}
-				pathStr += elem.Name
-			}
-			pathStr += " = " + path[0].Name
-			return nil, newNote("recursive intersection: %s", pathStr)
+			return nil, &PatternSubError{Loop: append(path, typ.Def)}
 		}
 		if set.substituted {
 			// set.bind was already successfully substituted.
@@ -682,9 +740,9 @@ func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Typ
 		onPath[set] = true
 		defer func() { onPath[set] = false }()
 		path = append(path, typ.Def)
-		copy, note := subSets(sets, onPath, path, set.bind)
-		if copy == nil {
-			return nil, note
+		copy, err := subSets(sets, onPath, path, set.bind)
+		if err != nil {
+			return nil, err
 		}
 		set.bind = copy
 		set.substituted = true

@@ -16,6 +16,11 @@ func isEmptyStruct(typ Type) bool {
 	return ok && len(s.Fields) == 0
 }
 
+func isTypeVar(typ Type) bool {
+	_, ok := typ.(*TypeVar)
+	return ok
+}
+
 func refLiteral(typ Type) Type {
 	if typ == nil {
 		return nil
@@ -68,6 +73,11 @@ func literalType(typ Type) Type {
 	default:
 		return nil
 	}
+}
+
+func isDefType(typ Type) bool {
+	_, ok := typ.(*DefType)
+	return ok
 }
 
 func isVisibleDefinedType(typ Type) bool {
@@ -204,6 +214,11 @@ func isBasicNum(typ Type) bool {
 	}
 }
 
+func isBasicType(typ Type) bool {
+	_, ok := typ.(*BasicType)
+	return ok
+}
+
 func basicKind(typ Type) BasicTypeKind {
 	switch typ := typ.(type) {
 	case nil:
@@ -319,7 +334,7 @@ func eqType(a, b Type) bool {
 		if !ok {
 			return false
 		}
-		return ok && (a.Def == nil && b.Def == nil && a.Name == b.Name || a.Def == b.Def)
+		return ok && (a.Def == nil && b.Def == nil && a.Name == b.Name || a.Def != nil && a.Def == b.Def)
 	default:
 		panic(fmt.Sprintf("impossible Type type: %T", a))
 	}

@@ -1,5 +1,7 @@
 package checker
 
+import "fmt"
+
 // convertType converts src to dst and returns the map of any bound type parameters.
 // The second return is a non-nil note on error or nil on success.
 // We use a note here instead of an Error to allow the src type to lack a location;
@@ -9,7 +11,12 @@ func convertType(src, dst TypePattern, mode convertMode) (map[*TypeParm]Type, no
 	pat, cvt, n := convertPattern(nil, src, dst, mode, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
-		n = newNote("cannot infer type %s", pat)
+		n = &ConvertError{
+			Src:      src,
+			Dst:      dst,
+			Cause:    newNote("cannot infer type %s", pat),
+			Explicit: mode == explicit,
+		}
 	}
 	if cvt == nil {
 		n1 := newNote("cannot convert %s to %s", src, dst)
@@ -27,6 +34,7 @@ func convertExpr(expr Expr, dst TypePattern, mode convertMode) (Expr, map[*TypeP
 		return expr, nil, nil
 	}
 	var bind map[*TypeParm]Type
+	var n note
 	pat, cvt, n := convertPattern(nil, pattern(expr.Type()), dst, mode, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
@@ -178,6 +186,17 @@ const (
 	implicit
 )
 
+func (m convertMode) String() string {
+	switch m {
+	case implicit:
+		return "implicit"
+	case explicit:
+		return "explicit"
+	default:
+		panic(fmt.Sprintf("bad mode: %d", m))
+	}
+}
+
 // convertPattern returns the resulting TypePattern and a chain of *Convert nodes
 // giving the steps to convert from items of the src pattern to the dst pattern.
 //
@@ -194,18 +213,20 @@ const (
 // On input, the pointed-to map may be a nil map (the pointer itself must not be nil).
 // In this case, convert will lazily allocate a new map if needed.
 // If the conversion results in any parameter bindings they are added to *bind.
-func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *map[*TypeParm]Type) (TypePattern, *Convert, note) {
-	isect, isectNote := intersection(src, dst, bind)
+func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *map[*TypeParm]Type) (TypePattern, *Convert, *ConvertError) {
+	isect, err := intersection(src, dst, bind)
 	if isect != nil {
 		return *isect, conversion(cvt, Noop, isect.Type), nil
 	}
 	switch {
 	default:
 		// If nothing below matched, return the note from the intersection error.
-		if isectNote == nil {
-			return TypePattern{}, nil, nil
+		return TypePattern{}, nil, &ConvertError{
+			Src:      src,
+			Dst:      dst,
+			Cause:    err,
+			Explicit: mode == explicit,
 		}
-		return TypePattern{}, nil, isectNote
 
 	case isEmptyStruct(dst.Type):
 		return dst, conversion(cvt, Drop, _empty), nil
@@ -224,12 +245,28 @@ func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *
 
 	case (mode == explicit || isLiteralType(dst.Type)) && isVisibleDefinedType(src.Type):
 		cvt = conversion(cvt, Noop, src.instType().Type)
-		return convertPattern(cvt, src.instType(), dst, mode, bind)
+		pat, cvt, err := convertPattern(cvt, src.instType(), dst, mode, bind)
+		if err != nil {
+			return TypePattern{}, nil, &ConvertError{
+				Src:      src,
+				Dst:      dst,
+				DefType:  src.Type.(*DefType),
+				Cause:    err,
+				Explicit: mode == explicit,
+			}
+		}
+		return pat, cvt, err
 
 	case (mode == explicit || isLiteralType(src.Type)) && isVisibleDefinedType(dst.Type):
-		pat, cvt, notes := convertPattern(cvt, src, dst.instType(), mode, bind)
-		if cvt == nil {
-			return TypePattern{}, nil, notes
+		pat, cvt, err := convertPattern(cvt, src, dst.instType(), mode, bind)
+		if err != nil {
+			return TypePattern{}, nil, &ConvertError{
+				Src:      src,
+				Dst:      dst,
+				DefType:  dst.Type.(*DefType),
+				Cause:    err,
+				Explicit: mode == explicit,
+			}
 		}
 		pat.Type = subType(*bind, dst.Type)
 		return pat, conversion(cvt, Noop, pat.Type), nil
@@ -242,12 +279,26 @@ func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *
 
 	case isRefLiteral(src.Type):
 		cvt = conversion(cvt, Deref, src.refElem().Type)
-		return convertPattern(cvt, src.refElem(), dst, mode, bind)
+		pat, cvt, err := convertPattern(cvt, src.refElem(), dst, mode, bind)
+		if err != nil {
+			return pat, cvt, &ConvertError{
+				Src:      src,
+				Dst:      dst,
+				Cause:    err,
+				Explicit: mode == explicit,
+			}
+		}
+		return pat, cvt, err
 
 	case isRefLiteral(dst.Type):
-		pat, cvt, notes := convertPattern(cvt, src, dst.refElem(), mode, bind)
-		if cvt == nil {
-			return TypePattern{}, nil, notes
+		pat, cvt, err := convertPattern(cvt, src, dst.refElem(), mode, bind)
+		if err != nil {
+			return TypePattern{}, nil, &ConvertError{
+				Src:      src,
+				Dst:      dst,
+				Cause:    err,
+				Explicit: mode == explicit,
+			}
 		}
 		pat.Type = &RefType{Type: pat.Type, L: pat.Loc()}
 		return pat, conversion(cvt, Ref, pat.Type), nil

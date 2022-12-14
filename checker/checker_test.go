@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
 	"sort"
@@ -98,7 +99,11 @@ func check(path string, files []string, mods []testMod) (*Mod, []error) {
 		}
 	}
 	imp := newTestImporter(mods, p.Files)
-	mod, _, errs := Check(path, p.Files, UseImporter(imp))
+	opts := []Option{UseImporter(imp)}
+	if dir, err := os.Getwd(); err == nil {
+		opts = append(opts, TrimErrorPathPrefix(dir+"/"))
+	}
+	mod, _, errs := Check(path, p.Files, opts...)
 	return mod, errs
 }
 
