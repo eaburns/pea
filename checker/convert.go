@@ -6,23 +6,19 @@ import "fmt"
 // The second return is a non-nil note on error or nil on success.
 // We use a note here instead of an Error to allow the src type to lack a location;
 // Errors must have a location, but notes needn't.
-func convertType(src, dst TypePattern, mode convertMode) (map[*TypeParm]Type, note) {
+func convertType(src, dst TypePattern, mode convertMode) (map[*TypeParm]Type, *ConvertError) {
 	var bind map[*TypeParm]Type
-	pat, cvt, n := convertPattern(nil, src, dst, mode, &bind)
+	pat, _, err := convertPattern(nil, src, dst, mode, &bind)
+	if err != nil {
+		return nil, err
+	}
 	if !pat.isGroundType() {
-		cvt = nil
-		n = &ConvertError{
+		return nil, &ConvertError{
 			Src:      src,
 			Dst:      dst,
 			Cause:    newNote("cannot infer type %s", pat),
 			Explicit: mode == explicit,
 		}
-	}
-	if cvt == nil {
-		n1 := newNote("cannot convert %s to %s", src, dst)
-		n1.setLoc(src)
-		n1.add(n)
-		return nil, n1
 	}
 	return bind, nil
 }

@@ -28,10 +28,10 @@ next:
 	return cs
 }
 
-func (f *FuncDecl) arity() int                                       { return len(f.Parms) }
-func (f *FuncDecl) ret() TypePattern                                 { return pattern(f.Ret) }
-func (f *FuncDecl) parm(i int) TypePattern                           { return pattern(f.Parms[i]) }
-func (f *FuncDecl) sub([]*TypeParm, map[*TypeParm]Type) (Func, note) { return f, nil }
+func (f *FuncDecl) arity() int                                                  { return len(f.Parms) }
+func (f *FuncDecl) ret() TypePattern                                            { return pattern(f.Ret) }
+func (f *FuncDecl) parm(i int) TypePattern                                      { return pattern(f.Parms[i]) }
+func (f *FuncDecl) sub([]*TypeParm, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
 func (f *FuncDecl) eq(other Func) bool {
 	o, ok := other.(*FuncDecl)
@@ -62,7 +62,7 @@ func (f *FuncInst) parm(i int) TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Parms[i])
 }
 
-func (f *FuncInst) sub(parms []*TypeParm, sub map[*TypeParm]Type) (Func, note) {
+func (f *FuncInst) sub(parms []*TypeParm, sub map[*TypeParm]Type) (Func, *CandidateError) {
 	copy := *f
 	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
 	copy.TypeArgs = subTypes(sub, copy.TypeArgs)
@@ -77,22 +77,27 @@ func (f *FuncInst) sub(parms []*TypeParm, sub map[*TypeParm]Type) (Func, note) {
 	return &copy, nil
 }
 
-func instFuncConstraints(x scope, l loc.Loc, fun Func) note {
+func instFuncConstraints(x scope, l loc.Loc, fun Func) *CandidateError {
 	f, ok := fun.(*FuncInst)
 	if !ok {
 		return nil
 	}
 	if recursiveIfaceDepth(x, f.Def) >= 10 || seenIfaceInst(x, f) {
-		return newNote("%s: is excluded from the scope", f.Def).setLoc(f.Def)
+		return &CandidateError{
+			Candidate: f,
+			Msg:       fmt.Sprintf("%s: is excluded from the scope", f.Def),
+		}
 	}
 	x = &ifaceLookup{parent: x, def: f.Def, inst: f}
-	var notes []note
 	for i := range f.IfaceArgs {
 		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
-		bind, fun, note := findConstraintFunc(x, l, f, i)
-		if note != nil {
-			notes = append(notes, note)
-			continue
+		bind, fun, err := findConstraintFunc(x, l, f, i)
+		if err != nil {
+			return &CandidateError{
+				Candidate: f,
+				Msg:       "failed to instantiate interface",
+				Cause:     err,
+			}
 		}
 		f.IfaceArgs[i] = fun
 
@@ -105,21 +110,15 @@ func instFuncConstraints(x scope, l loc.Loc, fun Func) note {
 			f.IfaceArgs[j] = subFuncDecl(bind, f.IfaceArgs[j].(*FuncDecl))
 		}
 	}
-	if len(notes) > 0 {
-		note := newNote("%s: failed to instantiate interface", fun)
-		note.add(notes...)
-		note.setLoc(fun)
-		return note
-	}
 	return nil
 }
 
 // findConstraintFunc returns a function that satisfies funInst.Def.Iface[i] if any,
 // along with any type parameter bindings needed to instantiate that function.
-func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*TypeParm]Type, Func, note) {
+func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*TypeParm]Type, Func, Error) {
 	constraint := funInst.IfaceArgs[i].(*FuncDecl)
 	var funcs []Func
-	var notFoundNotes []note
+	var candidateErrs []CandidateError
 	for _, id := range findIDs(x, constraint.Name) {
 		switch id := id.(type) {
 		case Func:
@@ -141,28 +140,28 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 				continue
 			}
 		}
-		note := newNote("%s (%s) is not a function", id, id.Type()).setLoc(id)
-		notFoundNotes = append(notFoundNotes, note)
+		candidateErrs = append(candidateErrs, CandidateError{
+			Candidate: id,
+			Msg:       fmt.Sprintf("type %s: not a function", id.Type()),
+		})
 		continue
 	}
-	fs, ns := ifaceADLookup(x, constraint)
+	fs, ces := ifaceADLookup(x, constraint)
+	candidateErrs = append(candidateErrs, ces...)
 	funcs = append(funcs, fs...)
-	notFoundNotes = append(notFoundNotes, ns...)
 
 	var n int
-	var unifyFails []*unifyFuncFailure
 	binds := make([]map[*TypeParm]Type, len(funcs))
 	declPat := makeTypePattern(funInst.typeParms, constraint.Type())
 	for _, f := range funcs {
 		funType := funInst.Def.Iface[i].Type().(*FuncType)
-		f2, bind, fail := _unifyFunc(x, l, f, funType, declPat)
-		if fail != nil {
-			unifyFails = append(unifyFails, fail)
+		f2, bind, err := _unifyFunc(x, l, f, funType, declPat)
+		if err != nil {
+			candidateErrs = append(candidateErrs, *err)
 			continue
 		}
-		if note := instFuncConstraints(x, l, f2); note != nil {
-			fail := &unifyFuncFailure{note: note, parms: f2.arity()}
-			unifyFails = append(unifyFails, fail)
+		if err := instFuncConstraints(x, l, f2); err != nil {
+			candidateErrs = append(candidateErrs, *err)
 			continue
 		}
 		funcs[n] = f2
@@ -173,26 +172,21 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 	binds = binds[:n]
 	switch {
 	case len(funcs) == 0:
-		maxParms := -1
-		for _, fail := range unifyFails {
-			if fail.parms > maxParms {
-				maxParms = fail.parms
-			}
+		return nil, nil, &NotFoundError{
+			Item:       constraint,
+			Candidates: candidateErrs,
+			scope:      x,
 		}
-		for _, fail := range unifyFails {
-			notFoundNotes = append(notFoundNotes, fail.note)
-		}
-		note := newNote("%s: not found", constraint)
-		note.add(notFoundNotes...)
-		note.setLoc(constraint.L)
-		return nil, nil, note
 	case len(funcs) > 1:
-		note := newNote("%s: ambiguous", constraint)
-		note.setLoc(constraint.L)
-		for _, f := range funcs {
-			note.add(newNote(f.String()).setLoc(f))
+		candidates := make([]fmt.Stringer, len(funcs))
+		for i, f := range funcs {
+			candidates[i] = f
 		}
-		return nil, nil, note
+		return nil, nil, &AmbiguousError{
+			Item:       constraint,
+			Candidates: candidates,
+			scope:      x,
+		}
 	default:
 		fun := useFunc(x, l, funcs[0])
 		if builtin, ok := fun.(*Builtin); ok && builtin.Op == Return {
@@ -204,7 +198,7 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 	}
 }
 
-func ifaceADLookup(x scope, decl *FuncDecl) ([]Func, []note) {
+func ifaceADLookup(x scope, decl *FuncDecl) ([]Func, []CandidateError) {
 	file := file(x)
 	imports := make(map[string]*Import)
 	for _, imp := range file.Imports {
@@ -214,7 +208,7 @@ func ifaceADLookup(x scope, decl *FuncDecl) ([]Func, []note) {
 	}
 
 	var funcs []Func
-	var notes []note
+	var errs []CandidateError
 	seen := make(map[*Import]bool)
 	for _, typ := range append(decl.Parms, decl.Ret) {
 		defType, ok := typ.(*DefType)
@@ -227,24 +221,11 @@ func ifaceADLookup(x scope, decl *FuncDecl) ([]Func, []note) {
 		}
 		seen[imp] = true
 		ids := findIDs(imp, decl.Name)
-		fs, ns := filterToFuncs(ids, decl.L)
+		fs, ces := filterToFuncs(ids, decl.L)
+		errs = append(errs, ces...)
 		funcs = append(funcs, fs...)
-		notes = append(notes, ns...)
 	}
-
-	return funcs, notes
-}
-
-type unifyFuncFailure struct {
-	note note
-	// parms is the number of parameters that successfully unified.
-	// -1 means none attempted (arity is wrong)
-	// len(Parms) means that all parameters succeeded, but the return failed.
-	//
-	// This is used to implement non-verbose note truncation.
-	// When unifying multiple funcs, notes are only reported
-	// for the failures with the max params value.
-	parms int
+	return funcs, errs
 }
 
 // unifyFunc determines whether dst can be called in place of a function of type src.
@@ -256,76 +237,71 @@ type unifyFuncFailure struct {
 //
 // If srcOrigin is non-nil, it is used to determine whether any arguments
 // or the return type must be reference literals.
-func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePattern) (Func, map[*TypeParm]Type, *unifyFuncFailure) {
+func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePattern) (Func, map[*TypeParm]Type, *CandidateError) {
 	funcType, ok := valueType(literalType(src.Type)).(*FuncType)
 	if !ok {
-		return nil, nil, &unifyFuncFailure{
-			note:  newNote("%s: not a function", src).setLoc(dst),
-			parms: -1,
+		return nil, nil, &CandidateError{
+			Candidate: dst,
+			Msg:       "not a function",
 		}
 	}
 	srcFunPat := src.withType(funcType)
 	if dst.arity() != len(funcType.Parms) {
-		return nil, nil, &unifyFuncFailure{
-			note: newNote("%s: arity mismatch: got %d expected %d",
-				dst, dst.arity(), len(funcType.Parms)).setLoc(dst),
-			parms: -1,
+		return nil, nil, &CandidateError{
+			Candidate: dst,
+			Msg: fmt.Sprintf("arity mismatch: got %d expected %d",
+				dst.arity(), len(funcType.Parms)),
 		}
 	}
 	bind := make(map[*TypeParm]Type)
 	for i := 0; i < dst.arity(); i++ {
-		var n note
-		pat, cvt, n := convertPattern(nil, srcFunPat.parm(i), dst.parm(i), implicit, &bind)
+		pat, cvt, err := convertPattern(nil, srcFunPat.parm(i), dst.parm(i), implicit, &bind)
 		if !pat.isGroundType() {
-			cvt = nil
-			n = newNote("cannot infer type %s", pat)
+			return nil, nil, &CandidateError{
+				Candidate: dst,
+				Msg:       fmt.Sprintf("parameter %d: cannot infer type %s", i, pat),
+			}
 		}
-		if cvt == nil {
-			n1 := newNote("%s: cannot convert parameter %d %s to %s",
-				dst, i, srcFunPat.parm(i), dst.parm(i))
-			n1.add(n)
-			n1.setLoc(dst)
-			return nil, nil, &unifyFuncFailure{note: n1, parms: i}
+		if err != nil {
+			return nil, nil, &CandidateError{
+				Candidate: dst,
+				Msg:       fmt.Sprintf("parameter %d", i),
+				Cause:     err,
+			}
 		}
 		if srcOrigin != nil && isRefLiteral(srcOrigin.Parms[i]) && cvt.Kind == Deref {
-			n := newNote("%s: parameter %d has type %s, but expected a reference literal %s",
-				dst, i, dst.parm(i), srcFunPat.parm(i))
-			n.setLoc(dst)
-			return nil, nil, &unifyFuncFailure{note: n, parms: i}
+			return nil, nil, &CandidateError{
+				Candidate: dst,
+				Msg:       fmt.Sprintf("parameter %d: has type %s, but expected a reference literal %s", i, dst.parm(i), srcFunPat.parm(i)),
+			}
 		}
-		if dst, n = dst.sub(nil, bind); n != nil {
-			n1 := newNote("%s: parameter %d type substitution failed", dst, i)
-			n1.add(n)
-			n1.setLoc(dst)
-			return nil, nil, &unifyFuncFailure{note: n1, parms: i}
+		var subErr *CandidateError
+		if dst, subErr = dst.sub(nil, bind); subErr != nil {
+			return nil, nil, subErr
 		}
 	}
-	var n note
-	pat, cvt, n := convertPattern(nil, dst.ret(), srcFunPat.ret(), implicit, &bind)
+	pat, cvt, err := convertPattern(nil, dst.ret(), srcFunPat.ret(), implicit, &bind)
 	if !pat.isGroundType() {
-		cvt = nil
-		n = newNote("cannot infer type %s", pat)
+		return nil, nil, &CandidateError{
+			Candidate: dst,
+			Msg:       fmt.Sprintf("return value: cannot infer type %s", pat),
+		}
 	}
-	if cvt == nil {
-		n1 := newNote("%s: cannot convert returned %s to %s",
-			dst, dst.ret(), srcFunPat.ret())
-		n1.add(n)
-		n1.setLoc(dst)
-		return nil, nil, &unifyFuncFailure{note: n1, parms: dst.arity()}
+	if err != nil {
+		return nil, nil, &CandidateError{
+			Candidate: dst,
+			Msg:       "return value",
+			Cause:     err,
+		}
 	}
 	if srcOrigin != nil && isRefLiteral(srcOrigin.Ret) && cvt.Kind == Ref {
-		n := newNote("%s: return has type %s, but expected a reference literal %s",
-			dst, dst.ret(), srcFunPat.ret())
-		n.setLoc(dst)
-		return nil, nil, &unifyFuncFailure{note: n, parms: dst.arity()}
+		return nil, nil, &CandidateError{
+			Candidate: dst,
+			Msg:       fmt.Sprintf("return value: has type %s, but expected a reference literal %s", dst.ret(), srcFunPat.ret()),
+		}
 	}
-	if dst, n = dst.sub(nil, bind); n != nil {
-		n1 := newNote("%s: return type substitution failed", dst)
-		n1.add(n)
-		n1.setLoc(dst)
-		return nil, nil, &unifyFuncFailure{note: n1, parms: dst.arity()}
-	}
-	return dst, bind, nil
+	dst, subErr := dst.sub(nil, bind)
+	return dst, bind, subErr
 }
 
 // captureExprIfaceArgs returns the memoized FuncInst
@@ -444,7 +420,7 @@ func (f *Select) ret() TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Ret)
 }
 
-func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
+func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *CandidateError) {
 	copy := *f
 	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
 	if copy.Struct != nil {
@@ -464,7 +440,10 @@ func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 	}
 
 	if copy.Struct, ok = valueType(literalType(typ)).(*StructType); !ok {
-		return f, newNote("%s: argument 0 (%s) is not a struct type", &copy, typ).setLoc(typ)
+		return f, &CandidateError{
+			Candidate: f,
+			Msg:       fmt.Sprintf("parameter 0: %s is not a struct type", typ),
+		}
 	}
 	for i := range copy.Struct.Fields {
 		if copy.Struct.Fields[i].Name == copy.N {
@@ -473,7 +452,10 @@ func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 		}
 	}
 	if copy.Field == nil {
-		return f, newNote("%s: %s has no field %s", &copy, typ, copy.N).setLoc(typ)
+		return f, &CandidateError{
+			Candidate: f,
+			Msg:       fmt.Sprintf("%s has no field %s", typ, copy.N),
+		}
 	}
 	if copy.Field.Type == nil {
 		panic(fmt.Sprintf("impossible nil field type: %s\n", copy.N))
@@ -500,7 +482,7 @@ func (f *Switch) ret() TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Ret)
 }
 
-func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
+func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *CandidateError) {
 	copy := *f
 	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
 
@@ -516,7 +498,10 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 	}
 
 	if copy.Union, ok = valueType(literalType(typ)).(*UnionType); !ok {
-		return f, newNote("%s: argument 0 (%s) is not a union type", &copy, typ).setLoc(typ)
+		return f, &CandidateError{
+			Candidate: f,
+			Msg:       fmt.Sprintf("parameter 0: %s is not a union type", typ),
+		}
 	}
 	copy.T.Parms[0] = refLiteral(copy.Union)
 	seen := make(map[*CaseDef]bool)
@@ -530,13 +515,17 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 		}
 		c := findCase(name, copy.Union)
 		if c == nil {
-			// TODO: should use the location of the case keyword.
-			return f, newNote("%s: %s has no case %s", &copy, typ, name).setLoc(typ)
+			return f, &CandidateError{
+				Candidate: f,
+				Msg:       fmt.Sprintf("%s has no case %s", typ, name),
+			}
 		}
 		if seen[c] {
 			// Switch functions only exist for non-duplicated cases.
-			// TODO: should use the location of the case keyword.
-			return f, newNote("%s: duplicate case %s", &copy, name).setLoc(typ)
+			return f, &CandidateError{
+				Candidate: f,
+				Msg:       fmt.Sprintf("duplicate case %s", name),
+			}
 		}
 		seen[c] = true
 		copy.Cases = append(copy.Cases, c)
@@ -588,13 +577,12 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
 			// It has already ben substituted, so we need to check it converts.
 			srcPat := makeTypePattern(copy.typeParms, copy.T.Parms[1+i])
 			dstPat := makeTypePattern(copy.typeParms, parmType)
-			if _, cn := convertType(srcPat, dstPat, implicit); cn != nil {
-				// Set the parm type here so the error message reads correctly.
-				copy.T.Parms[1+i] = parmType
-				n := newNote("%s: cannot convert argument %d (%s) to %s", &copy, i, srcPat, dstPat)
-				n.setLoc(copy.T.Parms[1+i])
-				n.add(cn)
-				return f, n
+			if _, err := convertType(srcPat, dstPat, implicit); err != nil {
+				return f, &CandidateError{
+					Candidate: f,
+					Msg:       fmt.Sprintf("parameter %d", i),
+					Cause:     err,
+				}
 			}
 		}
 		copy.T.Parms[1+i] = parmType
@@ -650,7 +638,7 @@ func (f *Builtin) parm(i int) TypePattern {
 var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64}
 var numTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64}
 
-func (f *Builtin) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, note) {
+func (f *Builtin) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *CandidateError) {
 	copy := *f
 	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
 	copy.Parms = subTypes(bind, copy.Parms)
@@ -671,10 +659,10 @@ func (f *Builtin) eq(other Func) bool {
 	return eqType(f.Ret, o.Ret)
 }
 
-func (f *ExprFunc) arity() int                                       { return len(f.FuncType.Parms) }
-func (f *ExprFunc) ret() TypePattern                                 { return pattern(f.FuncType.Ret) }
-func (f *ExprFunc) parm(i int) TypePattern                           { return pattern(f.FuncType.Parms[i]) }
-func (f *ExprFunc) sub([]*TypeParm, map[*TypeParm]Type) (Func, note) { return f, nil }
+func (f *ExprFunc) arity() int                                                  { return len(f.FuncType.Parms) }
+func (f *ExprFunc) ret() TypePattern                                            { return pattern(f.FuncType.Ret) }
+func (f *ExprFunc) parm(i int) TypePattern                                      { return pattern(f.FuncType.Parms[i]) }
+func (f *ExprFunc) sub([]*TypeParm, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
 func (f *ExprFunc) eq(other Func) bool {
 	o, ok := other.(*ExprFunc)
@@ -691,12 +679,12 @@ type idFunc struct {
 	l        loc.Loc
 }
 
-func (f *idFunc) String() string                                   { return f.id.String() }
-func (f *idFunc) buildString(s *stringBuilder)                     { s.WriteString(f.String()) }
-func (f *idFunc) arity() int                                       { return len(f.funcType.Parms) }
-func (f *idFunc) ret() TypePattern                                 { return pattern(f.funcType.Ret) }
-func (f *idFunc) parm(i int) TypePattern                           { return pattern(f.funcType.Parms[i]) }
-func (f *idFunc) sub([]*TypeParm, map[*TypeParm]Type) (Func, note) { return f, nil }
+func (f *idFunc) String() string                                              { return f.id.String() }
+func (f *idFunc) buildString(s *stringBuilder)                                { s.WriteString(f.String()) }
+func (f *idFunc) arity() int                                                  { return len(f.funcType.Parms) }
+func (f *idFunc) ret() TypePattern                                            { return pattern(f.funcType.Ret) }
+func (f *idFunc) parm(i int) TypePattern                                      { return pattern(f.funcType.Parms[i]) }
+func (f *idFunc) sub([]*TypeParm, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
 // eq should never be called; it's used to check equality of FuncInst ifaces.
 // FuncInst ifaces should never have an idFunc, since it is a temporary,

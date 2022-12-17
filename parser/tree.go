@@ -247,9 +247,13 @@ type TypeVar struct {
 	L    loc.Loc
 }
 
+func (tv TypeVar) Loc() loc.Loc   { return tv.L }
+func (tv TypeVar) String() string { return tv.Name }
+
 type Ident struct {
 	Name string
 	L    loc.Loc
 }
 
-func (i Ident) Loc() loc.Loc { return i.L }
+func (i Ident) Loc() loc.Loc   { return i.L }
+func (i Ident) String() string { return i.Name }

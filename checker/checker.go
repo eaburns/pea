@@ -452,7 +452,10 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 		if parserType.Mod != nil {
 			imp := findImport(x, parserType.Mod.Name)
 			if imp == nil {
-				errs = append(errs, notFound(x, *parserType.Mod))
+				errs = append(errs, &NotFoundError{
+					Item:  parserType.Mod,
+					scope: x,
+				})
 				return nil, errs
 			}
 			x = imp
@@ -475,9 +478,20 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 			}
 			fallthrough
 		case len(types) == 0:
-			errs = append(errs, notFound(x, parserType.Name))
+			errs = append(errs, &NotFoundError{
+				Item:  parserType.Name,
+				scope: x,
+			})
 		case len(types) > 1:
-			errs = append(errs, ambigType(name, parserType.L, types))
+			candidates := make([]fmt.Stringer, len(types))
+			for i, t := range types {
+				candidates[i] = t
+			}
+			errs = append(errs, &AmbiguousError{
+				Item:       parserType.Name,
+				Candidates: candidates,
+				scope:      x,
+			})
 		default:
 			typ = types[0]
 		}
@@ -536,10 +550,21 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 			if allowUnboundForTest {
 				typ = &TypeVar{Name: name, L: parserType.L}
 			} else {
-				errs = append(errs, notFoundTypeVar(x, parserType))
+				errs = append(errs, &NotFoundError{
+					Item:  parserType,
+					scope: x,
+				})
 			}
 		case len(types) > 1:
-			errs = append(errs, ambigType(name, parserType.L, types))
+			candidates := make([]fmt.Stringer, len(types))
+			for i, t := range types {
+				candidates[i] = t
+			}
+			errs = append(errs, &AmbiguousError{
+				Item:       parserType,
+				Candidates: candidates,
+				scope:      x,
+			})
 		default:
 			typ = types[0]
 		}
@@ -862,7 +887,10 @@ func newIfaceInst(x scope, parserType *parser.NamedType, args []Type) (*IfaceIns
 	if parserType.Mod != nil {
 		imp := findImport(x, parserType.Mod.Name)
 		if imp == nil {
-			return nil, notFound(x, *parserType.Mod)
+			return nil, &NotFoundError{
+				Item:  *parserType.Mod,
+				scope: x,
+			}
 		}
 		x = imp
 	}
@@ -870,9 +898,20 @@ func newIfaceInst(x scope, parserType *parser.NamedType, args []Type) (*IfaceIns
 	l := parserType.L
 	switch defs := findIfaceDef(x, len(parserType.Args), name, l); {
 	case len(defs) == 0:
-		return nil, notFound(x, parserType.Name)
+		return nil, &NotFoundError{
+			Item:  parserType.Name,
+			scope: x,
+		}
 	case len(defs) > 1:
-		return nil, ambigIface(name, l, defs)
+		candidates := make([]fmt.Stringer, len(defs))
+		for i, d := range defs {
+			candidates[i] = d
+		}
+		return nil, &AmbiguousError{
+			Item:       parserType.Name,
+			Candidates: candidates,
+			scope:      x,
+		}
 	case defs[0].File.Mod.Imported && defs[0].Opaque:
 		modName := parserType.Mod.Name
 		return nil, newError(l, "interface %s#%s is opaque", modName, name)
@@ -1118,9 +1157,17 @@ func _checkExpr(x scope, parserExpr parser.Expr, pat TypePattern, mode convertMo
 		*parser.StrLit, *parser.CharLit, *parser.IntLit, *parser.FloatLit:
 		return checkLit(x, parserExpr, pat)
 	case *parser.ModSel:
-		return checkModSel(x, parserExpr, pat)
+		expr, err := checkModSel(x, parserExpr, pat)
+		if err != nil {
+			return expr, []Error{err}
+		}
+		return expr, nil
 	case parser.Ident:
-		return checkID(x, parserExpr, false, pat)
+		expr, err := checkID(x, parserExpr, false, pat)
+		if err != nil {
+			return expr, []Error{err}
+		}
+		return expr, nil
 	default:
 		panic(fmt.Sprintf("impossible expr type: %T", parserExpr))
 	}
@@ -1265,7 +1312,10 @@ func checkCall(x scope, parserCall *parser.Call, pat TypePattern, mode convertMo
 	case *parser.ModSel:
 		imp := findImport(x, fun.Mod.Name)
 		if imp == nil {
-			return nil, []Error{notFound(x, fun.Mod)}
+			return nil, []Error{&NotFoundError{
+				Item:  fun.Mod,
+				scope: x,
+			}}
 		}
 		var addMod *Import
 		if !imp.Exp {
@@ -1286,9 +1336,9 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		}
 	}
 
-	funcs, notes := filterToFuncs(ids, parserID.L)
-	funcs, ns := filterByArity(funcs, len(parserCall.Args))
-	notes = append(notes, ns...)
+	funcs, candidateErrs := filterToFuncs(ids, parserID.L)
+	funcs, ces := filterByArity(funcs, len(parserCall.Args))
+	candidateErrs = append(candidateErrs, ces...)
 
 	var args []Expr
 	var firstArgConvertError Error
@@ -1304,7 +1354,10 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		// If this is the LHS of an assignment to an Ident,
 		// don't mark it as "used" if it is a local variable.
 		if lhs, ok := parserArg.(parser.Ident); ok && i == 0 && parserID.Name == ":=" {
-			arg, errs = checkID(x, lhs, true, parmPat)
+			var err Error
+			if arg, err = checkID(x, lhs, true, parmPat); err != nil {
+				errs = []Error{err}
+			}
 		} else {
 			arg, errs = checkExpr(x, parserArg, parmPat)
 		}
@@ -1312,15 +1365,15 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 			errs = append(errs, checkArgsFallback(x, parserCall.Args[i+1:])...)
 			return &Call{L: parserCall.L}, errs
 		}
-		funcs, ns = filterByArg(funcs, i, arg)
-		notes = append(notes, ns...)
+		funcs, ces = filterByArg(funcs, i, arg)
+		candidateErrs = append(candidateErrs, ces...)
 		args = append(args, arg)
 
 		if mod == nil {
 			// Do argument-dependent lookup if the call is not tagged with a module.
-			fs, ns := adLookup(x, parserID, len(parserCall.Args), args, pat)
+			fs, ces := adLookup(x, parserID, len(parserCall.Args), args, pat)
+			candidateErrs = append(candidateErrs, ces...)
 			funcs = append(funcs, fs...)
-			notes = append(notes, ns...)
 		}
 
 		if len(funcs) == 0 && firstArgConvertError == nil {
@@ -1354,19 +1407,29 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		return &Call{L: parserCall.L}, []Error{firstArgConvertError}
 	}
 
-	funcs, ns = filterByReturnType(funcs, pat, mode)
-	notes = append(notes, ns...)
+	funcs, ces = filterByReturnType(funcs, pat, mode)
+	candidateErrs = append(candidateErrs, ces...)
 
-	funcs, ns = filterIfaceConstraints(x, parserCall.L, funcs)
-	notes = append(notes, ns...)
+	funcs, ces = filterIfaceConstraints(x, parserCall.L, funcs)
+	candidateErrs = append(candidateErrs, ces...)
 
 	switch {
 	case len(funcs) == 0:
-		err := notFound(x, parserID)
-		err.add(notes...)
-		return &Call{Args: args, L: parserCall.L}, []Error{err}
+		return &Call{Args: args, L: parserCall.L}, []Error{&NotFoundError{
+			Item:       parserID,
+			Candidates: candidateErrs,
+			scope:      x,
+		}}
 	case len(funcs) > 1:
-		err := ambiguousCall(parserID.Name, funcs, parserID.L)
+		candidates := make([]fmt.Stringer, len(funcs))
+		for i, f := range funcs {
+			candidates[i] = f
+		}
+		err := &AmbiguousError{
+			Item:       parserID,
+			Candidates: candidates,
+			scope:      x,
+		}
 		return &Call{Args: args, L: parserCall.L}, []Error{err}
 	}
 
@@ -1387,9 +1450,9 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	return expr, nil
 }
 
-func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
+func filterToFuncs(ids []id, l loc.Loc) ([]Func, []CandidateError) {
 	var funcs []Func
-	var notes []note
+	var errs []CandidateError
 	for _, id := range ids {
 		var fun Func
 		switch id := id.(type) {
@@ -1414,30 +1477,35 @@ func filterToFuncs(ids []id, l loc.Loc) ([]Func, []note) {
 			panic(fmt.Sprintf("impossible id type: %T", id))
 		}
 		if fun == nil {
-			note := newNote("%s (%s) is not a function", id, id.Type()).setLoc(id)
-			notes = append(notes, note)
+			errs = append(errs, CandidateError{
+				Candidate: id,
+				Msg:       fmt.Sprintf("type %s: not a function", id.Type()),
+			})
 			continue
 		}
 		funcs = append(funcs, fun)
 	}
-	return funcs, notes
+	return funcs, errs
 }
 
-func filterByArity(funcs []Func, arity int) ([]Func, []note) {
-	var notes []note
+func filterByArity(funcs []Func, arity int) ([]Func, []CandidateError) {
 	var n int
+	var errs []CandidateError
 	for _, f := range funcs {
 		if f.arity() == arity {
 			funcs[n] = f
 			n++
 			continue
 		}
-		notes = append(notes, newNote("%s: expects %d arguments, got %d", f, f.arity(), arity).setLoc(f))
+		errs = append(errs, CandidateError{
+			Candidate: f,
+			Msg:       fmt.Sprintf("arity mismatch: want %d, got %d", f.arity(), arity),
+		})
 	}
-	return funcs[:n], notes
+	return funcs[:n], errs
 }
 
-func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, pat TypePattern) ([]Func, []note) {
+func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, pat TypePattern) ([]Func, []CandidateError) {
 	// Only called after args have been added, so args cannot be empty.
 	defType, ok := args[len(args)-1].Type().(*DefType)
 	if !ok {
@@ -1457,16 +1525,14 @@ func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, pat TypePa
 	}
 
 	ids := adModuleIDs(x, defType.Def.Mod, parserID.Name)
-	funcs, notes := filterToFuncs(ids, parserID.L)
-	var ns []note
-	funcs, ns = filterByArity(funcs, arity)
-	notes = append(notes, ns...)
-
+	funcs, candidateErrors := filterToFuncs(ids, parserID.L)
+	funcs, ces := filterByArity(funcs, arity)
+	candidateErrors = append(candidateErrors, ces...)
 	for i, arg := range args {
-		funcs, ns = filterByArg(funcs, i, arg)
-		notes = append(notes, ns...)
+		funcs, ces = filterByArg(funcs, i, arg)
+		candidateErrors = append(candidateErrors, ces...)
 	}
-	return funcs, notes
+	return funcs, candidateErrors
 }
 
 // adModuleIDs returns IDs from a module for argument-dependent lookup.
@@ -1503,7 +1569,7 @@ func checkArgsFallback(x scope, parserArgs []parser.Expr) []Error {
 	return errs
 }
 
-func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
+func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []CandidateError) {
 	if arg.Type() == nil {
 		// There was an error checking the argument.
 		// Just silently filter out all functions.
@@ -1511,26 +1577,29 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []note) {
 	}
 
 	var n int
-	var notes []note
+	var errs []CandidateError
 	for _, f := range funcs {
-		_, bind, err := convertExpr(arg, f.parm(i), implicit)
-		if err != nil {
-			notes = append(notes, err.(note))
+		_, bind, convertError := convertExpr(arg, f.parm(i), implicit)
+		if convertError != nil {
+			errs = append(errs, CandidateError{
+				Candidate: f,
+				Msg:       fmt.Sprintf("parameter %d", i),
+				Cause:     convertError,
+			})
 			continue
 		}
-		var note note
-		if f, note = f.sub(nil, bind); note != nil {
-			notes = append(notes, note)
+		f, subErr := f.sub(nil, bind)
+		if subErr != nil {
+			errs = append(errs, *subErr)
 			continue
 		}
 		funcs[n] = f
 		n++
 	}
-	return funcs[:n], notes
+	return funcs[:n], errs
 }
 
-func filterByReturnType(funcs []Func, pat TypePattern, mode convertMode) ([]Func, []note) {
-	var notes []note
+func filterByReturnType(funcs []Func, pat TypePattern, mode convertMode) ([]Func, []CandidateError) {
 	if len(funcs) == 1 {
 		f := funcs[0]
 		// Just try to substitute it, ignoring conversion errors.
@@ -1538,52 +1607,61 @@ func filterByReturnType(funcs []Func, pat TypePattern, mode convertMode) ([]Func
 		// with more information that we would report here,
 		// because it will use convertExpr which has the expression
 		// printed in the error message, but here we just have the type.
-		bind, convertNote := convertType(f.ret(), pat, mode)
-		var note note
-		if f, note = f.sub(nil, bind); note != nil {
-			return nil, append(notes, note)
+		bind, convertErr := convertType(f.ret(), pat, mode)
+		f, subErr := f.sub(nil, bind)
+		if subErr != nil {
+			return nil, []CandidateError{*subErr}
 		}
 		if !f.ret().isGroundType() {
 			// If the ret is not grounded, it means bind was nil;
 			// the conversion failed and we could not infer the return type.
-			if convertNote == nil {
-				convertNote = newNote("%s: cannot infer return type %s", f, f.ret())
+			err := CandidateError{Candidate: f}
+			if convertErr == nil {
+				err.Msg = fmt.Sprintf("return value: cannot infer return type %s", f.ret())
+			} else {
+				err.Msg = "return value"
+				err.Cause = convertErr
 			}
-			notes = append(notes, convertNote)
-			return nil, notes
+			return nil, []CandidateError{err}
 		}
 		return []Func{f}, nil
 	}
 
 	var n int
+	var errs []CandidateError
 	for _, f := range funcs {
-		bind, note := convertType(f.ret(), pat, mode)
-		if note != nil {
-			notes = append(notes, note)
+		bind, convertErr := convertType(f.ret(), pat, mode)
+		if convertErr != nil {
+			errs = append(errs, CandidateError{
+				Candidate: f,
+				Msg:       "return value",
+				Cause:     convertErr,
+			})
 			continue
 		}
-		if f, note = f.sub(nil, bind); note != nil {
-			notes = append(notes, note)
+		f, subErr := f.sub(nil, bind)
+		if subErr != nil {
+			errs = append(errs, *subErr)
 			continue
 		}
 		funcs[n] = f
 		n++
 	}
-	return funcs[:n], notes
+	return funcs[:n], errs
 }
 
-func filterIfaceConstraints(x scope, l loc.Loc, funcs []Func) ([]Func, []note) {
+func filterIfaceConstraints(x scope, l loc.Loc, funcs []Func) ([]Func, []CandidateError) {
 	var n int
-	var notes []note
+	var errs []CandidateError
 	for _, f := range funcs {
-		if note := instFuncConstraints(x, l, f); note != nil {
-			notes = append(notes, note)
+		if err := instFuncConstraints(x, l, f); err != nil {
+			errs = append(errs, *err)
 			continue
 		}
 		funcs[n] = f
 		n++
 	}
-	return funcs[:n], notes
+	return funcs[:n], errs
 }
 
 func useFunc(x scope, l loc.Loc, fun Func) Func {
@@ -1599,14 +1677,6 @@ func useFunc(x scope, l loc.Loc, fun Func) Func {
 	default:
 		return fun
 	}
-}
-
-func ambiguousCall(name string, funcs []Func, l loc.Loc) Error {
-	err := newError(l, "%s: ambiguous call", name)
-	for _, f := range funcs {
-		err.add(newNote("%s", f).setLoc(f))
-	}
-	return err
 }
 
 func checkExprCall(x scope, parserCall *parser.Call, pat TypePattern) (Expr, []Error) {
@@ -1656,17 +1726,17 @@ func checkExprCall(x scope, parserCall *parser.Call, pat TypePattern) (Expr, []E
 	return expr, errs
 }
 
-func checkModSel(x scope, parserSel *parser.ModSel, pat TypePattern) (Expr, []Error) {
+func checkModSel(x scope, parserSel *parser.ModSel, pat TypePattern) (Expr, Error) {
 	imp := findImport(x, parserSel.Mod.Name)
 	if imp == nil {
-		return nil, []Error{notFound(x, parserSel.Mod)}
+		return nil, &NotFoundError{Item: parserSel.Mod, scope: x}
 	}
 	parserID := parserSel.Name
 	ids := findIDs(imp, parserID.Name)
 	return resolveID(x, parserID, false, pat, ids)
 }
 
-func checkID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern) (Expr, []Error) {
+func checkID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern) (Expr, Error) {
 	ids := findIDs(x, parserID.Name)
 	// If the pattern wants a FuncType, expand the set of IDs to consider
 	// to include those from the pattern's param and return type modules too.
@@ -1688,9 +1758,9 @@ func checkID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern) (E
 	return resolveID(x, parserID, assignLHS, pat, ids)
 }
 
-func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, ids []id) (Expr, []Error) {
+func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, ids []id) (Expr, Error) {
 	var n int
-	var notFoundNotes []note
+	var candidateErrs []CandidateError
 	for _, i := range ids {
 		fun, ok := i.(Func)
 		if !ok {
@@ -1700,19 +1770,21 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, 
 		}
 		if !isGround(i) {
 			if !pat.isGroundType() {
-				n := newNote("cannot ground %s", i).setLoc(i)
-				notFoundNotes = append(notFoundNotes, n)
+				candidateErrs = append(candidateErrs, CandidateError{
+					Candidate: fun,
+					Msg:       fmt.Sprintf("cannot ground %s", i),
+				})
 				continue
 			}
-			fun2, _, fail := _unifyFunc(x, parserID.L, fun, nil, pat)
-			if fail != nil {
-				notFoundNotes = append(notFoundNotes, fail.note)
+			fun2, _, err := _unifyFunc(x, parserID.L, fun, nil, pat)
+			if err != nil {
+				candidateErrs = append(candidateErrs, *err)
 				continue
 			}
 			fun = fun2
 		}
-		if note := instFuncConstraints(x, parserID.L, fun); note != nil {
-			notFoundNotes = append(notFoundNotes, note)
+		if err := instFuncConstraints(x, parserID.L, fun); err != nil {
+			candidateErrs = append(candidateErrs, *err)
 			continue
 		}
 		ids[n] = fun.(id)
@@ -1728,39 +1800,38 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, 
 	// If we filtered here, the explicit conversion
 	// would get a "not found" instead of
 	// the convertible expression.
-	var ambigNotes []note
 	if len(ids) > 1 && pat.isGroundType() {
 		var n int
 		for _, id := range ids {
-			if _, n0 := convertType(pattern(id.Type()), pat, implicit); n0 != nil {
-				n := newNote("cannot convert %s (%s) to %s", id, id.Type(), pat)
-				n.setLoc(id.Type().Loc())
-				n.add(n0)
-				notFoundNotes = append(notFoundNotes, n)
+			if _, err := convertType(pattern(id.Type()), pat, implicit); err != nil {
+				candidateErrs = append(candidateErrs, CandidateError{
+					Candidate: id,
+					Cause:     err,
+				})
 				continue
 			}
-			ambigNotes = append(ambigNotes, newNote(id.String()).setLoc(id))
 			ids[n] = id
 			n++
 		}
 		ids = ids[:n]
 	}
-	if len(ids) > 1 && !pat.isGroundType() {
-		for _, id := range ids {
-			note := newNote(id.String()).setLoc(id)
-			ambigNotes = append(ambigNotes, note)
-		}
-	}
-
 	switch {
 	case len(ids) == 0:
-		err := notFound(x, parserID)
-		err.add(notFoundNotes...)
-		return nil, []Error{err}
+		return nil, &NotFoundError{
+			Item:       parserID,
+			Candidates: candidateErrs,
+			scope:      x,
+		}
 	case len(ids) > 1:
-		err := newError(parserID.L, "%s is ambiguous for pattern %s", parserID.Name, pat)
-		err.add(ambigNotes...)
-		return nil, []Error{err}
+		candidates := make([]fmt.Stringer, len(ids))
+		for i, id := range ids {
+			candidates[i] = id
+		}
+		return nil, &AmbiguousError{
+			Item:       parserID,
+			Candidates: candidates,
+			scope:      x,
+		}
 	default:
 		return useID(x, parserID.L, assignLHS, ids[0]), nil
 	}
@@ -2117,12 +2188,15 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat TypePattern) (Expr, 
 				litParm = pattern(lit.Parms[i].T)
 			}
 			patParm := pat.withType(fun.Parms[i])
-			bind, note := convertType(litParm, patParm, implicit)
-			if note != nil {
+			bind, err := convertType(litParm, patParm, implicit)
+			if err != nil {
 				// We need to ensure the note has a non-0 Loc before making it an Error.
-				// TODO: make convertType return a more specific error type.
-				note.(*_error).setLoc(lit.Parms[i].L)
-				errs = append(errs, note.(Error))
+				// TODO: wrap in a different error type.
+				p := makeErrorPrinter(top(x))
+				err.print(p)
+				e := newNote(p.String())
+				e.setLoc(lit.Parms[i].L)
+				errs = append(errs, e)
 			}
 			lit.Parms[i].T = subType(bind, patParm.Type)
 		}

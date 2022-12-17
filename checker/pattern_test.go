@@ -1097,14 +1097,16 @@ func TestPatternUnify(t *testing.T) {
 			}
 			pat := parseTestPattern(t, mod, test.pat)
 			typ := parseTestType(t, mod, test.typ)
-			bind, note := convertType(pattern(typ), pat, implicit)
+			bind, err := convertType(pattern(typ), pat, implicit)
 			if test.want == "" {
-				if note == nil {
+				if err == nil {
 					t.Errorf("got %s %v, want error", subType(bind, typ), bindAsSlice(bind))
 				}
 			} else {
-				if note != nil {
-					t.Errorf("got error %s, want %s", note, test.want)
+				if err != nil {
+					p := makeErrorPrinter(mod.topScope)
+					err.print(p)
+					t.Errorf("got error %s, want %s", p.String(), test.want)
 				} else if sub := subType(bind, pat.Type); sub.String() != test.want {
 					t.Errorf("got %s %v, want %s", sub, bindAsSlice(bind), test.want)
 				}

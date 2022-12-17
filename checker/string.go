@@ -44,6 +44,12 @@ func (b *BlockCap) String() string {
 	}
 }
 
+func (d *IfaceDef) String() string {
+	var w stringBuilder
+	d.buildString(&w)
+	return w.builder.String()
+}
+
 func (p TypePattern) String() string {
 	var w stringBuilder
 	p.buildString(&w)
@@ -219,6 +225,30 @@ func (pat TypePattern) buildString(w *stringBuilder) {
 	defer func() { w.typeParms = orig }()
 	w.typeParms = appendTypeParmsToCopy(orig, pat.Parms)
 	pat.Type.buildString(w)
+}
+
+func (d *IfaceDef) buildString(w *stringBuilder) {
+	switch len(d.Parms) {
+	case 0:
+		break
+	case 1:
+		w.WriteString(d.Parms[0].Name)
+		w.WriteString(" ")
+	default:
+		w.WriteString("(")
+		for i, p := range d.Parms {
+			if i > 0 {
+				w.WriteString(", ")
+			}
+			w.WriteString(p.Name)
+		}
+		w.WriteString(") ")
+	}
+	if d.File.Mod.Imported && d.Mod != w.elideMod {
+		w.WriteString(d.Mod)
+		w.WriteRune('#')
+	}
+	w.WriteString(d.Name)
 }
 
 func (r *RefType) buildString(w *stringBuilder) {

@@ -338,7 +338,7 @@ type Func interface {
 	// If the substitution would not cause
 	// any observable changes to the Func,
 	// the original Func may be returned.
-	sub([]*TypeParm, map[*TypeParm]Type) (Func, note)
+	sub([]*TypeParm, map[*TypeParm]Type) (Func, *CandidateError)
 }
 
 type FuncInst struct {

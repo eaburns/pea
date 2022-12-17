@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/eaburns/pea/loc"
-	"github.com/eaburns/pea/parser"
 )
 
 type Error interface {
 	error
 	loc.Locer
+	Cause
 
 	add(...note)
 	done(*topScope)
@@ -26,22 +26,6 @@ func newError(locer loc.Locer, f string, vs ...interface{}) Error {
 		panic("impossible no location")
 	}
 	return &_error{msg: fmt.Sprintf(f, vs...), loc: l}
-}
-
-func ambigType(name string, locer loc.Locer, types []Type) Error {
-	err := newError(locer, "type %s is ambiguous", name)
-	for _, t := range types {
-		err.add(newNote(t.String()).setLoc(t))
-	}
-	return err
-}
-
-func ambigIface(name string, locer loc.Locer, ifaces []*IfaceDef) Error {
-	err := newError(locer, "interface %s is ambiguous", name)
-	for _, iface := range ifaces {
-		err.add(newNote(iface.Name).setLoc(iface))
-	}
-	return err
 }
 
 func redef(locer loc.Locer, name string, prev loc.Locer) Error {
@@ -110,26 +94,102 @@ type Cause interface {
 
 // NotFoundError indicates an identifier whose definition is not found.
 type NotFoundError struct {
-	Ident parser.Ident
-	scope scope
+	Item interface {
+		String() string
+		Loc() loc.Loc
+	}
+	Candidates []CandidateError
+	scope      scope
+
+	// TODO: remove NotFoundError.notes once unused.
 	notes
 }
 
-func notFound(x scope, ident parser.Ident) *NotFoundError {
-	return &NotFoundError{Ident: ident, scope: x}
-}
-
-func notFoundTypeVar(x scope, tv parser.TypeVar) *NotFoundError {
-	return &NotFoundError{Ident: parser.Ident(tv), scope: x}
-}
-
-func (err *NotFoundError) Loc() loc.Loc { return err.Ident.L }
+func (err *NotFoundError) Loc() loc.Loc { return err.Item.Loc() }
 
 func (err *NotFoundError) Error() string {
 	p := makeErrorPrinter(top(err.scope))
-	p.printf("%s: %s not found", locOf{err.Ident}, err.Ident.Name)
-	printNotes(p, err.notes)
+	p.printf("%s: ", locOf{err.Item})
+	err.print(p)
 	return p.String()
+}
+
+func (err *NotFoundError) print(p errorPrinter) {
+	p.printf("%s not found", err.Item)
+	for _, ce := range err.Candidates {
+		ce.print(p.listItem())
+	}
+	printNotes(p, err.notes)
+}
+
+// A CandidateError is a candidate for ID resolution
+// combined with an error message and cause
+// for why that candidate was not, ultimately selected.
+type CandidateError struct {
+	// Both Func and id satisfy this.
+	// If Candidate is also a loc.Locer,
+	// its location is printed following
+	// Candidate.String() + " – ".
+	Candidate fmt.Stringer
+	Msg       string
+	// Possibly nil. If non-nil:
+	// 	- if Msg is non-empty, Cause is printed after Msg + ": ".
+	// 	- if Msg is empty, Cause is printed on its own.
+	Cause Cause
+}
+
+func (err *CandidateError) print(p errorPrinter) {
+	p.printf("%s", err.Candidate)
+	if l, ok := err.Candidate.(loc.Locer); ok {
+		p.printf(" — %s", locOf{l})
+	}
+	if err.Msg != "" {
+		p.printf("\n%s", err.Msg)
+	}
+	if err.Cause != nil {
+		if err.Msg != "" {
+			p.printf(": ")
+		}
+		err.Cause.print(p)
+	}
+}
+
+// AmbiguousError is an error indicating that an identifier was ambiguous.
+type AmbiguousError struct {
+	Item interface {
+		String() string
+		Loc() loc.Loc
+	}
+	// Both Func and id satisfy this.
+	// If Candidate is also a loc.Locer,
+	// its location is printed following
+	// Candidate.String() + " – ".
+	Candidates []fmt.Stringer
+
+	scope scope
+
+	// TODO: remove NotFoundError.notes once unused.
+	notes
+}
+
+func (err *AmbiguousError) Loc() loc.Loc { return err.Item.Loc() }
+
+func (err *AmbiguousError) Error() string {
+	p := makeErrorPrinter(top(err.scope))
+	p.printf("%s: ", locOf{err.Item})
+	err.print(p)
+	return p.String()
+}
+
+func (err *AmbiguousError) print(p errorPrinter) {
+	p.printf("%s is ambiguous", err.Item)
+	for _, c := range err.Candidates {
+		if l, ok := c.(loc.Locer); ok {
+			p.listItem().printf("%s — %s", c, locOf{l})
+		} else {
+			p.listItem().printf("%s", c)
+		}
+	}
 }
 
 // ConvertError is an error describing

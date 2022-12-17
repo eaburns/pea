@@ -945,7 +945,7 @@ func TestCheckFuncScope(t *testing.T) {
 					x("hello")
 				}
 			`,
-			err: "x \\(int\\) is not a function",
+			err: "type int: not a function",
 		},
 		{
 			name: "local shadows module-level function",
@@ -956,7 +956,7 @@ func TestCheckFuncScope(t *testing.T) {
 					x("hello")
 				}
 			`,
-			err: "x \\(int\\) is not a function",
+			err: "type int: not a function",
 		},
 		{
 			name: "param shadows module-level var",
@@ -1640,7 +1640,7 @@ func TestTypeResolution(t *testing.T) {
 				{path: "foo", src: "Type bar [.x int]"},
 				{path: "baz", src: "Type bar [.y string]"},
 			},
-			err: "type bar is ambiguous",
+			err: "bar is ambiguous",
 		},
 		{
 			name: "upper-case Imported types no-conflict with mod name 1",
@@ -2774,7 +2774,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 				func bar(_ Y)
 				func target_function(_ int) : bar(Y)
 			`,
-			err: `cannot convert parameter 0 \? to \?(.|\n)*cannot infer type \?`,
+			err: `parameter 0: cannot infer type \?`,
 		},
 		{
 			name: "iface parameter int accepts int",
@@ -3203,7 +3203,7 @@ func TestOverloadResolution(t *testing.T) {
 			src:  "var x int",
 			ret:  "int",
 			call: "x()",
-			err:  "x \\(int\\) is not a function",
+			err:  "type int: not a function",
 		},
 		{
 			name: "no functions found",
@@ -3260,7 +3260,7 @@ func TestOverloadResolution(t *testing.T) {
 			`,
 			call: "string :: x()",
 			ret:  "string",
-			err:  "ambiguous call",
+			err:  "x is ambiguous",
 		},
 		{
 			name: "multiple explicit converts on return, but resolved by iface constraint",
@@ -4213,7 +4213,7 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in op ambiguity",
 			src:  "func +(_ int, _ int)int",
 			call: "1 + 2",
-			err:  "ambiguous call",
+			err:  "\\+ is ambiguous",
 		},
 		{
 			name: "built-in array index, no expected type",
@@ -4338,7 +4338,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().length",
-			err:  `built-in .length: argument 0 \(other#_foo\) is not a struct type`,
+			err:  `built-in .length(.|\n)*other#_foo is not a struct type`,
 		},
 		{
 			name: "built-in .length, other mod opaque array fails",
@@ -4353,7 +4353,7 @@ func TestOverloadResolution(t *testing.T) {
 				`,
 			},
 			call: "make_foo().length",
-			err:  `built-in .length: argument 0 \(other#foo\) is not a struct type`,
+			err:  `built-in .length(.|\n)*other#foo is not a struct type`,
 		},
 		{
 			name: "built-in panic",
@@ -4522,7 +4522,7 @@ func TestOverloadResolution(t *testing.T) {
 					Func bar(_ int)float64
 				`,
 			},
-			err: "bar: ambiguous call",
+			err: "bar is ambiguous",
 		},
 		{
 			name: "don't crash on error func arg type",
@@ -4758,7 +4758,7 @@ func TestOverloadResolution(t *testing.T) {
 			},
 			// Verify that foo#bar(int) is considered,
 			// but its type is wrong, so it still errors.
-			err: `foo#bar\(int\): cannot convert returned \[\.\] to string`,
+			err: `foo#bar\(int\)(.|\n)*return value: cannot implicitly convert \[\.\] to string`,
 		},
 		{
 			name: "infer struct field type",
@@ -5930,7 +5930,7 @@ func TestBlockLiteralInference(t *testing.T) {
 		{pat: `(int){}`, expr: `(_ int, _ string){}`, err: `cannot convert`},
 		{pat: `(int){}`, expr: `(_ int){5}`, want: `(int){}`},
 		{pat: `(int){}`, expr: `(_ int){panic("")}`, want: `(int){}`},
-		{pat: `(int){}`, expr: `(_ string){5}`, err: `cannot convert string to int`},
+		{pat: `(int){}`, expr: `(_ string){5}`, err: `cannot implicitly convert string to int`},
 
 		{pat: `(int, string){}`, expr: `(){}`, err: `cannot convert`},
 		{pat: `(int, string){}`, expr: `(){5}`, err: `cannot convert`},
