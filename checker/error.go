@@ -210,7 +210,7 @@ func (err *ConvertError) print(p errorPrinter) {
 	} else {
 		p.printf("cannot implicitly convert %s to %s", err.Src, err.Dst)
 	}
-	if err.Cause != nil {
+	if p.verbose && err.Cause != nil {
 		if dt := err.DefType; dt != nil {
 			p.printf("\n%s is defined as %s at %s", dt, dt.Inst.Type, locOf{dt.Def})
 		}
@@ -441,6 +441,7 @@ type errorPrinter struct {
 	bullet              int
 	indent              string
 	files               loc.Files
+	verbose             bool
 	trimErrorPathPrefix string
 	w                   *strings.Builder
 }
@@ -450,6 +451,7 @@ func makeErrorPrinter(top *topScope) errorPrinter {
 		bullet:              0,
 		indent:              "",
 		files:               top.importer.Files(),
+		verbose:             top.verbose,
 		trimErrorPathPrefix: top.trimErrorPathPrefix,
 		w:                   new(strings.Builder),
 	}

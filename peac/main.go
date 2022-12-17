@@ -23,6 +23,7 @@ var (
 	libpea       = flag.String("libpea", "", "path to libpea source directory")
 	root         = flag.String("root", "", "module root directory (required)")
 	test         = flag.Bool("test", false, "whether to compile a test binary")
+	verbose      = flag.Bool("v", false, "use verbose error messages")
 	printCmds    = flag.Bool("print-commands", false, "print commands executed")
 	lprofiler    = flag.Bool("lprofiler", false, "whether to link with -lprofiler for CPU profiling")
 	dumpFG       = flag.Bool("dump-fg", false, "whether to dump the flowgraph")
@@ -349,6 +350,7 @@ func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs 
 	imp := checker.NewImporter(m.Root, p.Files, p.TrimErrorPathPrefix)
 	checkOpts := []checker.Option{
 		checker.UseImporter(imp),
+		checker.Verbose(*verbose),
 		checker.TrimErrorPathPrefix(p.TrimErrorPathPrefix),
 	}
 	checkMod, locs, errs := checker.Check(m.Path, p.Files, checkOpts...)

@@ -29,6 +29,11 @@ func TrimErrorPathPrefix(p string) Option {
 	return func(c *topScope) { c.trimErrorPathPrefix = p }
 }
 
+// Verbose returns an option that enable/disables verbose error messages.
+func Verbose(b bool) Option {
+	return func(c *topScope) { c.verbose = b }
+}
+
 // Check does semantic checking, and returns a *Mod on success.
 func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.Files, []error) {
 	topScope := topScope{}

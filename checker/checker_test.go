@@ -99,7 +99,10 @@ func check(path string, files []string, mods []testMod) (*Mod, []error) {
 		}
 	}
 	imp := newTestImporter(mods, p.Files)
-	opts := []Option{UseImporter(imp)}
+	opts := []Option{
+		UseImporter(imp),
+		Verbose(true),
+	}
 	if dir, err := os.Getwd(); err == nil {
 		opts = append(opts, TrimErrorPathPrefix(dir+"/"))
 	}

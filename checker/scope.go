@@ -14,6 +14,7 @@ type scope interface {
 
 type topScope struct {
 	importer            Importer
+	verbose             bool
 	trimErrorPathPrefix string
 }
 

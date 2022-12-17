@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	dump = flag.Bool("d", false, "dump the check tree")
-	root = flag.String("root", ".", "module root directory")
+	dump    = flag.Bool("d", false, "dump the check tree")
+	root    = flag.String("root", ".", "module root directory")
+	verbose = flag.Bool("v", true, "use verbose error messages")
 )
 
 func main() {
@@ -20,7 +21,7 @@ func main() {
 
 	in := os.Stdin
 	path := "<stdin>"
-	if len(flag.Args()) == 1 {
+	if flag.NArg() == 1 {
 		path = flag.Arg(0)
 		f, err := os.Open(path)
 		if err != nil {
@@ -42,6 +43,7 @@ func main() {
 	imp := checker.NewImporter(r, p.Files, "")
 	m, fs, errs := checker.Check("main", p.Files,
 		checker.UseImporter(imp),
+		checker.Verbose(*verbose),
 		checker.TrimErrorPathPrefix(p.TrimErrorPathPrefix))
 	if len(errs) > 0 {
 		for i, err := range errs {
