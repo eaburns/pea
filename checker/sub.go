@@ -188,7 +188,6 @@ func (c *Call) subExpr(bindings bindings) Expr {
 	fun := subFunc(bindings, c.Func)
 	args := subExprs(bindings, c.Args)
 	for i := range args {
-		var err Error
 		// Here we explicit=true to allow re-converting
 		// an explicit convert argument
 		// into the type of the iface function parameter
@@ -209,10 +208,7 @@ func (c *Call) subExpr(bindings bindings) Expr {
 		// coming out of an explicit convert.
 		// We need to be able to convert it back to &string
 		// to pass to bar(&string).
-		args[i], _, err = convertExpr(args[i], fun.parm(i), explicit)
-		if err != nil {
-			panic(fmt.Sprintf("bad arg convert in Call.subExpr: %s", err))
-		}
+		args[i] = mustConvertExpr(args[i], fun.parm(i), explicit)
 	}
 	call := &Call{
 		Func: fun,
@@ -220,11 +216,7 @@ func (c *Call) subExpr(bindings bindings) Expr {
 		T:    refLiteral(fun.ret().groundType()),
 		L:    c.L,
 	}
-	ret, _, err := convertExpr(call, pattern(subType(bindings.Types, c.T)), implicit)
-	if err != nil {
-		panic(fmt.Sprintf("bad return convert in Call.subExpr: %s", err))
-	}
-	return ret
+	return mustConvertExpr(call, pattern(subType(bindings.Types, c.T)), implicit)
 }
 
 func (c *Convert) subExpr(bindings bindings) Expr {

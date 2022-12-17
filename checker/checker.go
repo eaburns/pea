@@ -1183,7 +1183,7 @@ func checkAndConvertExpr(x scope, parserExpr parser.Expr, pat TypePattern) (Expr
 	if expr == nil || !pat.isGroundType() {
 		return expr, errs
 	}
-	expr, _, err := convertExpr(expr, pat, implicit)
+	expr, _, err := convertExpr(x, expr, pat, implicit)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -1215,8 +1215,8 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat TypePatt
 		if i == len(parserExprs)-1 && pat.isGroundType() && !isEmptyStruct(pat.groundType()) {
 			expr, es = checkExpr(x, parserExpr, pat)
 			if expr != nil && !neverReturns(expr) {
-				var err Error
-				if expr, _, err = convertExpr(expr, pat, implicit); err != nil {
+				var err *ConvertExprError
+				if expr, _, err = convertExpr(x, expr, pat, implicit); err != nil {
 					es = append(es, err)
 				}
 			}
@@ -1346,7 +1346,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	candidateErrs = append(candidateErrs, ces...)
 
 	var args []Expr
-	var firstArgConvertError Error
+	var firstArgConvertError *ConvertExprError
 	for i, parserArg := range parserCall.Args {
 		parmPats := make([]TypePattern, 0, len(funcs))
 		for _, f := range funcs {
@@ -1370,7 +1370,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 			errs = append(errs, checkArgsFallback(x, parserCall.Args[i+1:])...)
 			return &Call{L: parserCall.L}, errs
 		}
-		funcs, ces = filterByArg(funcs, i, arg)
+		funcs, ces = filterByArg(x, funcs, i, arg)
 		candidateErrs = append(candidateErrs, ces...)
 		args = append(args, arg)
 
@@ -1400,7 +1400,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 				}
 			}
 			if samePat {
-				_, _, firstArgConvertError = convertExpr(arg, parmPat, implicit)
+				_, _, firstArgConvertError = convertExpr(x, arg, parmPat, implicit)
 			}
 		}
 	}
@@ -1441,7 +1441,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 	fun := useFunc(x, parserCall.L, funcs[0])
 	ret := fun.ret().groundType()
 	for i, arg := range args {
-		args[i], _, _ = convertExpr(arg, fun.parm(i), implicit)
+		args[i], _, _ = convertExpr(x, arg, fun.parm(i), implicit)
 	}
 	var expr Expr = &Call{
 		Func: fun,
@@ -1534,7 +1534,7 @@ func adLookup(x scope, parserID parser.Ident, arity int, args []Expr, pat TypePa
 	funcs, ces := filterByArity(funcs, arity)
 	candidateErrors = append(candidateErrors, ces...)
 	for i, arg := range args {
-		funcs, ces = filterByArg(funcs, i, arg)
+		funcs, ces = filterByArg(x, funcs, i, arg)
 		candidateErrors = append(candidateErrors, ces...)
 	}
 	return funcs, candidateErrors
@@ -1574,7 +1574,7 @@ func checkArgsFallback(x scope, parserArgs []parser.Expr) []Error {
 	return errs
 }
 
-func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []CandidateError) {
+func filterByArg(x scope, funcs []Func, i int, arg Expr) ([]Func, []CandidateError) {
 	if arg.Type() == nil {
 		// There was an error checking the argument.
 		// Just silently filter out all functions.
@@ -1584,7 +1584,7 @@ func filterByArg(funcs []Func, i int, arg Expr) ([]Func, []CandidateError) {
 	var n int
 	var errs []CandidateError
 	for _, f := range funcs {
-		_, bind, convertError := convertExpr(arg, f.parm(i), implicit)
+		_, bind, convertError := convertExpr(x, arg, f.parm(i), implicit)
 		if convertError != nil {
 			errs = append(errs, CandidateError{
 				Candidate: f,
@@ -1673,7 +1673,7 @@ func useFunc(x scope, l loc.Loc, fun Func) Func {
 	switch fun := fun.(type) {
 	case *FuncInst:
 		useFuncInst(x, l, fun.Def, nil, nil)
-		return captureExprIfaceArgs(fun)
+		return captureExprIfaceArgs(x, fun)
 	case *idFunc:
 		return &ExprFunc{
 			Expr:     useID(x, l, false, fun.id),
@@ -1887,14 +1887,14 @@ func useID(x scope, l loc.Loc, assignLHS bool, id id) Expr {
 		return deref(&Cap{Def: id, T: refLiteral(id.T), L: l})
 	case *FuncInst:
 		useFuncInst(x, l, id.Def, nil, nil)
-		switch f := captureExprIfaceArgs(id).(type) {
+		switch f := captureExprIfaceArgs(x, id).(type) {
 		case *ExprFunc:
 			return f.Expr
 		default:
-			return wrapCallInBlock(id, id.ret().groundType(), l)
+			return wrapCallInBlock(x, id, id.ret().groundType(), l)
 		}
 	case Func:
-		return wrapCallInBlock(id, id.ret().groundType(), l)
+		return wrapCallInBlock(x, id, id.ret().groundType(), l)
 	default:
 		panic(fmt.Sprintf("impossible id type: %T", id))
 	}
@@ -1913,12 +1913,12 @@ func useID(x scope, l loc.Loc, assignLHS bool, id id) Expr {
 // This reference feature is needed by iface call substitution,
 // where the return of an iface function may need to have
 // up to one additional reference added to it.
-func wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) *BlockLit {
-	block, _ := _wrapCallInBlock(fun, wantRet, l)
+func wrapCallInBlock(x scope, fun Func, wantRet Type, l loc.Loc) *BlockLit {
+	block, _ := _wrapCallInBlock(x, fun, wantRet, l)
 	return block
 }
 
-func _wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) (*BlockLit, *Call) {
+func _wrapCallInBlock(x scope, fun Func, wantRet Type, l loc.Loc) (*BlockLit, *Call) {
 	var parms []Type
 	for i := 0; i < fun.arity(); i++ {
 		p := fun.parm(i).groundType()
@@ -1950,7 +1950,7 @@ func _wrapCallInBlock(fun Func, wantRet Type, l loc.Loc) (*BlockLit, *Call) {
 		L: l,
 	}
 	local := deref(&Local{Def: localDef, T: refLiteral(localDef.T), L: l})
-	result, _, err := convertExpr(local, pattern(wantRet), implicit)
+	result, _, err := convertExpr(x, local, pattern(wantRet), implicit)
 	if err != nil {
 		panic(fmt.Sprintf("impossible: %s", err))
 	}
@@ -1987,7 +1987,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	if typ == nil {
 		return expr, errs
 	}
-	expr, _, err := convertExpr(expr, pattern(typ), explicit)
+	expr, _, err := convertExpr(x, expr, pattern(typ), explicit)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -1999,7 +1999,7 @@ func checkLit(x scope, parserExpr parser.Expr, pat TypePattern) (Expr, []Error) 
 	if len(errs) > 0 {
 		return expr, errs
 	}
-	switch expr, _, err := convertExpr(expr, pat, explicit); {
+	switch expr, _, err := convertExpr(x, expr, pat, explicit); {
 	case err != nil:
 		return expr, []Error{err}
 	case !pat.withType(expr.Type()).isGroundType():

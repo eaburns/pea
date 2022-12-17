@@ -192,6 +192,53 @@ func (err *AmbiguousError) print(p errorPrinter) {
 	}
 }
 
+// ConvertExprError is an error indicating
+// that an expression's type cannot be converted
+// to the necessary pattern.
+type ConvertExprError struct {
+	Expr  Expr
+	Dst   TypePattern
+	Cause Cause
+	Explicit bool
+	scope scope
+	// TODO: remove ConvertExprError.notes.
+	notes
+}
+
+func (err *ConvertExprError) Loc() loc.Loc { return err.Expr.Loc() }
+
+func (err *ConvertExprError) Error() string {
+	p := makeErrorPrinter(top(err.scope))
+	p.printf("%s: ", locOf{err.Expr})
+	err.print(p)
+	return p.String()
+}
+
+func (err *ConvertExprError) print(p errorPrinter) {
+	var cause Cause
+	if ce, ok := err.Cause.(*ConvertError); ok {
+		// If verbose is false, ConvertError would not print its Cause,
+		// and since this is supposed to behave similar to ConvertError,
+		// it should also not print the ConvertError.Cause.
+		if p.verbose {
+			cause = ce.Cause
+		}
+	} else {
+		cause = err.Cause
+	}
+	if err.Explicit {
+		p.printf("cannot convert ")
+	} else {
+		p.printf("cannot implicitly convert ")
+	}
+	p.printf("%s (type %s) to %s", err.Expr, err.Expr.Type(), err.Dst)
+	if cause != nil {
+		p.printf("\n")
+		cause.print(p)
+	}
+	printNotes(p, err.notes)
+}
+
 // ConvertError is an error describing
 // failure to convert pattern Src to Dst.
 type ConvertError struct {

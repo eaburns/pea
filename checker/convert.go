@@ -23,18 +23,31 @@ func convertType(src, dst TypePattern, mode convertMode) (map[*TypeParm]Type, *C
 	return bind, nil
 }
 
-// convertExpr returns the expression resulting from converting expr to the given type pattern.
-func convertExpr(expr Expr, dst TypePattern, mode convertMode) (Expr, map[*TypeParm]Type, Error) {
+// mustConvertExpr is like convertExpr, but it panics on error.
+func mustConvertExpr(expr Expr, dst TypePattern, mode convertMode) Expr {
+	expr, _, err := convertExpr(nil, expr, dst, mode)
+	if err != nil {
+		panic(fmt.Sprintf("cannot convert %s to %s: %s", expr, dst, err))
+	}
+	return expr
+}
+
+// convertExpr returns the expression resulting
+// from converting expr to the given type pattern.
+func convertExpr(x scope, expr Expr, dst TypePattern, mode convertMode) (Expr, map[*TypeParm]Type, *ConvertExprError) {
 	// TODO: expr should not be nil.
 	if expr == nil || expr.Type() == nil {
 		return expr, nil, nil
 	}
+	var cause Cause
 	var bind map[*TypeParm]Type
-	var n note
-	pat, cvt, n := convertPattern(nil, pattern(expr.Type()), dst, mode, &bind)
+	pat, cvt, err := convertPattern(nil, pattern(expr.Type()), dst, mode, &bind)
 	if !pat.isGroundType() {
 		cvt = nil
-		n = newNote("cannot infer type %s", pat)
+		cause = newNote("cannot infer type %s", pat)
+	}
+	if err != nil {
+		cause = err
 	}
 	if cvt == nil {
 		goto fail
@@ -43,29 +56,33 @@ func convertExpr(expr Expr, dst TypePattern, mode convertMode) (Expr, map[*TypeP
 		// If the src expression is an explicit convert,
 		// and this is an implicit convert,
 		// it is an error if the types are not equal.
-		n = newNote("cannot implicitly convert an explicit conversion")
+		cause = newNote("cannot implicitly convert an explicit conversion")
 		goto fail
 	}
 	for p := cvt; p != nil; p, _ = p.Expr.(*Convert) {
 		p.L = expr.Loc()
 		p.Explicit = mode == explicit
 	}
-	return doConvertExpr(expr, cvt), bind, nil
+	return doConvertExpr(x, expr, cvt), bind, nil
 fail:
-	err := newError(expr, "cannot convert %s (%s) to %s", expr, expr.Type(), dst)
-	err.add(n)
-	return expr, nil, err
+	return expr, nil, &ConvertExprError{
+		Expr:  expr,
+		Dst:   dst,
+		Cause: cause,
+		Explicit: mode == explicit,
+		scope: x,
+	}
 }
 
 // doConvertExpr returns an Expr that is expr converted as-per cvt,
 // which is a chain of *Convert nodes as returned by convert().
 // The returned Expression may use the cvt *Convert nodes.
-func doConvertExpr(expr Expr, cvt *Convert) Expr {
+func doConvertExpr(x scope, expr Expr, cvt *Convert) Expr {
 	if cvt == nil {
 		return expr
 	}
 	next, _ := cvt.Expr.(*Convert)
-	cvt.Expr = doConvertExpr(expr, next)
+	cvt.Expr = doConvertExpr(x, expr, next)
 	switch {
 	case cvt.Kind == Ref:
 		// Ref conversions that convert an identifier
@@ -122,7 +139,7 @@ func doConvertExpr(expr Expr, cvt *Convert) Expr {
 			Expr:     deref(&Cap{Def: capDef, T: capDef.T, L: cvt.Expr.Loc()}),
 			FuncType: expr.Type().(*FuncType),
 		}
-		blk := wrapCallInBlock(fun, dstFunc.Ret, cvt.Expr.Loc())
+		blk := wrapCallInBlock(x, fun, dstFunc.Ret, cvt.Expr.Loc())
 		blk.Caps = []*BlockCap{capDef}
 		return blk
 	case cvt.Kind == Noop && !cvt.Explicit && eqType(cvt.Expr.Type(), cvt.Type()):

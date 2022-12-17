@@ -191,7 +191,7 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 		fun := useFunc(x, l, funcs[0])
 		if builtin, ok := fun.(*Builtin); ok && builtin.Op == Return {
 			// We need to wrap the return in a block, since it's not a static function.
-			block := wrapCallInBlock(fun, _end, l)
+			block := wrapCallInBlock(x, fun, _end, l)
 			fun = &ExprFunc{Expr: block, FuncType: block.Func}
 		}
 		return binds[0], fun, nil
@@ -308,7 +308,7 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePatte
 // or an ExprFunc wrapping a call to the FuncInst
 // with non-static IfaceArgs converted to parameters of the FuncInst,
 // passed as block captures.
-func captureExprIfaceArgs(f *FuncInst) Func {
+func captureExprIfaceArgs(x scope, f *FuncInst) Func {
 	caps := captureIfaceArgs(f)
 	f = memoizeFuncInst(f)
 	if len(caps) == 0 {
@@ -319,7 +319,7 @@ func captureExprIfaceArgs(f *FuncInst) Func {
 	// add captures to the block literal for the IfaceArg expressions,
 	// and patch the call inside the block literal to pass the captures
 	// as tailing arguments to the function.
-	block, call := _wrapCallInBlock(f, f.T.Ret, f.T.L)
+	block, call := _wrapCallInBlock(x, f, f.T.Ret, f.T.L)
 	block.Caps = caps
 	for i := 0; i < len(caps); i++ {
 		call.Args[len(call.Args)-len(caps)+i] = deref(&Cap{
