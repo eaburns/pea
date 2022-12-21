@@ -1366,7 +1366,13 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		} else {
 			arg, errs = checkExpr(x, parserArg, parmPat)
 		}
-		if len(errs) > 0 {
+		// If the arg.Type() is nil, there was an error elsewhere.
+		// We don't want to report a "not found" error for this call
+		// due to an unrelated error elsewhere.
+		// This happens, for example, if the argument is an identifier
+		// to a parameter or variable that has a nil type
+		// due to an error determining its type at the definition.
+		if len(errs) > 0 || arg.Type() == nil {
 			errs = append(errs, checkArgsFallback(x, parserCall.Args[i+1:])...)
 			return &Call{L: parserCall.L}, errs
 		}
@@ -2188,11 +2194,15 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat TypePattern) (Expr, 
 	if fun, ok := pat.Type.(*FuncType); ok && len(fun.Parms) == len(lit.Parms) {
 		retPat = pat.withType(fun.Ret)
 		for i := range lit.Parms {
-			litParm := any()
-			if lit.Parms[i].T != nil {
-				litParm = pattern(lit.Parms[i].T)
-			}
 			patParm := pat.withType(fun.Parms[i])
+			if lit.Parms[i].T == nil && !patParm.isGroundType() {
+				p := lit.Parms[i]
+				err := newError(p.L, "cannot infer type of parameter %s", p.Name)
+				errs = append(errs, err)
+				lit.Func.Parms = append(lit.Func.Parms, nil)
+				continue
+			}
+			litParm := patternOrAny(lit.Parms[i].T)
 			bind, err := convertType(litParm, patParm, implicit)
 			if err != nil {
 				// We need to ensure the note has a non-0 Loc before making it an Error.
@@ -2204,15 +2214,19 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat TypePattern) (Expr, 
 				errs = append(errs, e)
 			}
 			lit.Parms[i].T = subType(bind, patParm.Type)
+			lit.Func.Parms = append(lit.Func.Parms, lit.Parms[i].T)
 		}
-	}
-	for _, p := range lit.Parms {
-		if p.T == nil || !pat.withType(p.T).isGroundType() {
-			err := newError(p.L, "cannot infer type of parameter %s", p.Name)
-			errs = append(errs, err)
-			continue
+	} else {
+		for i, p := range lit.Parms {
+			if p.T == nil || !pat.withType(p.T).isGroundType() {
+				err := newError(p.L, "cannot infer type of parameter %s", p.Name)
+				errs = append(errs, err)
+				lit.Parms[i].T = nil
+				p.T = nil
+				continue
+			}
+			lit.Func.Parms = append(lit.Func.Parms, p.T)
 		}
-		lit.Func.Parms = append(lit.Func.Parms, p.T)
 	}
 	var es []Error
 	x = &blockLitScope{parent: x, BlockLit: lit}
