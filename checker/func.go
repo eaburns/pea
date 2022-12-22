@@ -156,12 +156,7 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 	declPat := makeTypePattern(funInst.typeParms, constraint.Type())
 	for _, f := range funcs {
 		funType := funInst.Def.Iface[i].Type().(*FuncType)
-		f2, bind, err := _unifyFunc(x, l, f, funType, declPat)
-		if err != nil {
-			candidateErrs = append(candidateErrs, *err)
-			continue
-		}
-		f2, err = instFuncConstraints(x, l, f2)
+		f2, bind, err := unifyFunc(x, l, f, funType, declPat)
 		if err != nil {
 			candidateErrs = append(candidateErrs, *err)
 			continue
@@ -239,7 +234,7 @@ func ifaceADLookup(x scope, decl *FuncDecl) ([]Func, []CandidateError) {
 //
 // If srcOrigin is non-nil, it is used to determine whether any arguments
 // or the return type must be reference literals.
-func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePattern) (Func, map[*TypeParm]Type, *CandidateError) {
+func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePattern) (Func, map[*TypeParm]Type, *CandidateError) {
 	funcType, ok := valueType(literalType(src.Type)).(*FuncType)
 	if !ok {
 		return nil, nil, &CandidateError{
@@ -303,7 +298,11 @@ func _unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePatte
 		}
 	}
 	dst, subErr := dst.sub(nil, bind)
-	return dst, bind, subErr
+	if subErr != nil {
+		return dst, bind, subErr
+	}
+	dst, instErr := instFuncConstraints(x, l, dst)
+	return dst, bind, instErr
 }
 
 // captureExprIfaceArgs returns the memoized FuncInst

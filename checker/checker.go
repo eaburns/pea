@@ -1780,6 +1780,7 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, 
 			n++
 			continue
 		}
+		var err *CandidateError
 		if !isGround(i) {
 			if !pat.isGroundType() {
 				candidateErrs = append(candidateErrs, CandidateError{
@@ -1788,17 +1789,15 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, 
 				})
 				continue
 			}
-			fun2, _, err := _unifyFunc(x, parserID.L, fun, nil, pat)
-			if err != nil {
+			if fun, _, err = unifyFunc(x, parserID.L, fun, nil, pat); err != nil {
 				candidateErrs = append(candidateErrs, *err)
 				continue
 			}
-			fun = fun2
-		}
-		fun, err := instFuncConstraints(x, parserID.L, fun)
-		if err != nil {
-			candidateErrs = append(candidateErrs, *err)
-			continue
+		} else {
+			if fun, err = instFuncConstraints(x, parserID.L, fun); err != nil {
+				candidateErrs = append(candidateErrs, *err)
+				continue
+			}
 		}
 		ids[n] = fun.(id)
 		n++
