@@ -806,11 +806,17 @@ func makeFuncDecl(x scope, parserDecl *parser.FuncDecl) (*FuncDecl, []Error) {
 		ret = &StructType{L: parserDecl.L}
 	}
 	decl := &FuncDecl{
-		Name:  parserDecl.Name.Name,
-		Parms: parms,
-		Ret:   ret,
-		L:     parserDecl.L,
+		Name:   parserDecl.Name.Name,
+		Parms:  parms,
+		Ret:    ret,
+		// +1 to cover the return value.
+		RefLit: make([]bool, len(parms)+1),
+		L:      parserDecl.L,
 	}
+	for i, p := range decl.Parms {
+		decl.RefLit[i] = isRefLiteral(p)
+	}
+	decl.RefLit[len(decl.RefLit)-1] = isRefLiteral(decl.Ret)
 	return decl, errs
 }
 

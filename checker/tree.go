@@ -302,7 +302,16 @@ type FuncDecl struct {
 	Name  string
 	Parms []Type
 	Ret   Type
-	L     loc.Loc
+	// RefLit has length len(Parms)+1.
+	// It indicates whether Parms[i] or Ret (RefLit[len(RefLit)-1])
+	// is defined such that it must be a reference literal.
+	//
+	//It can be that Parms[i]/Ret is a ref literal
+	// but the corresponding RefLit value is false.
+	// This happens if the original definition was a type variable
+	// that was later substituted with a reference literal type.
+	RefLit []bool
+	L      loc.Loc
 }
 
 func (f *FuncDecl) Loc() loc.Loc { return f.L }

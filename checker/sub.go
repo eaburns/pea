@@ -73,10 +73,11 @@ func subFunc(bindings bindings, fun Func) Func {
 		b, ok := bindings.Funcs[fun]
 		if !ok {
 			return &FuncDecl{
-				Name:  fun.Name,
-				Parms: subTypes(bindings.Types, fun.Parms),
-				Ret:   subType(bindings.Types, fun.Ret),
-				L:     fun.L,
+				Name:   fun.Name,
+				Parms:  subTypes(bindings.Types, fun.Parms),
+				RefLit: fun.RefLit,
+				Ret:    subType(bindings.Types, fun.Ret),
+				L:      fun.L,
 			}
 		}
 		return b

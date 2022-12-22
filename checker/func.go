@@ -93,7 +93,9 @@ func instFuncConstraints(x scope, l loc.Loc, fun Func) (Func, *CandidateError) {
 	copy.IfaceArgs = append([]Func{}, funInst.IfaceArgs...)
 	x = &ifaceLookup{parent: x, def: funInst.Def, inst: funInst}
 	for i := range copy.IfaceArgs {
-		bind, fun, err := findConstraintFunc(x, l, &copy, i)
+		// Since the constraint is not yet instantiated, it must be a *FuncDecl.
+		constraint := copy.IfaceArgs[i].(*FuncDecl)
+		bind, fun, err := findConstraintFunc(x, l, copy.typeParms, constraint)
 		if err != nil {
 			return &copy, &CandidateError{
 				Candidate: &copy,
@@ -116,11 +118,10 @@ func instFuncConstraints(x scope, l loc.Loc, fun Func) (Func, *CandidateError) {
 
 // findConstraintFunc returns a function that satisfies funInst.Def.Iface[i] if any,
 // along with any type parameter bindings needed to instantiate that function.
-func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*TypeParm]Type, Func, Error) {
-	constraint := funInst.IfaceArgs[i].(*FuncDecl)
+func findConstraintFunc(x scope, l loc.Loc, typeParms []*TypeParm, decl *FuncDecl) (map[*TypeParm]Type, Func, Error) {
 	var funcs []Func
 	var candidateErrs []CandidateError
-	for _, id := range findIDs(x, constraint.Name) {
+	for _, id := range findIDs(x, decl.Name) {
 		switch id := id.(type) {
 		case Func:
 			funcs = append(funcs, id)
@@ -147,16 +148,15 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 		})
 		continue
 	}
-	fs, ces := ifaceADLookup(x, constraint)
+	fs, ces := ifaceADLookup(x, decl)
 	candidateErrs = append(candidateErrs, ces...)
 	funcs = append(funcs, fs...)
 
 	var n int
 	binds := make([]map[*TypeParm]Type, len(funcs))
-	declPat := makeTypePattern(funInst.typeParms, constraint.Type())
+	declPat := makeTypePattern(typeParms, decl.Type())
 	for _, f := range funcs {
-		funType := funInst.Def.Iface[i].Type().(*FuncType)
-		f2, bind, err := unifyFunc(x, l, f, funType, declPat)
+		f2, bind, err := unifyFunc(x, l, f, decl.RefLit, declPat)
 		if err != nil {
 			candidateErrs = append(candidateErrs, *err)
 			continue
@@ -170,7 +170,7 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 	switch {
 	case len(funcs) == 0:
 		return nil, nil, &NotFoundError{
-			Item:       constraint,
+			Item:       decl,
 			Candidates: candidateErrs,
 			scope:      x,
 		}
@@ -180,7 +180,7 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 			candidates[i] = f
 		}
 		return nil, nil, &AmbiguousError{
-			Item:       constraint,
+			Item:       decl,
 			Candidates: candidates,
 			scope:      x,
 		}
@@ -232,9 +232,11 @@ func ifaceADLookup(x scope, decl *FuncDecl) ([]Func, []CandidateError) {
 // The returned map is non-nil on success; it contains all TypeParam bindings
 // in both dst and src when converting types.
 //
-// If srcOrigin is non-nil, it is used to determine whether any arguments
-// or the return type must be reference literals.
-func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePattern) (Func, map[*TypeParm]Type, *CandidateError) {
+// If refLit is either empty or the length of src's arity+1.
+// If it is non-empty it indicates for each parameter
+// or for the return type (refLit[len(refLit)-1])
+// whether it must be a reference literal.
+func unifyFunc(x scope, l loc.Loc, dst Func, refLit []bool, src TypePattern) (Func, map[*TypeParm]Type, *CandidateError) {
 	funcType, ok := valueType(literalType(src.Type)).(*FuncType)
 	if !ok {
 		return nil, nil, &CandidateError{
@@ -266,7 +268,7 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePatter
 				Cause:     err,
 			}
 		}
-		if srcOrigin != nil && isRefLiteral(srcOrigin.Parms[i]) && cvt.Kind == Deref {
+		if len(refLit) != 0 && refLit[i] && cvt.Kind == Deref {
 			return nil, nil, &CandidateError{
 				Candidate: dst,
 				Msg:       fmt.Sprintf("parameter %d: has type %s, but expected a reference literal %s", i, dst.parm(i), srcFunPat.parm(i)),
@@ -291,7 +293,7 @@ func unifyFunc(x scope, l loc.Loc, dst Func, srcOrigin *FuncType, src TypePatter
 			Cause:     err,
 		}
 	}
-	if srcOrigin != nil && isRefLiteral(srcOrigin.Ret) && cvt.Kind == Ref {
+	if len(refLit) != 0 && refLit[len(refLit)-1] && cvt.Kind == Ref {
 		return nil, nil, &CandidateError{
 			Candidate: dst,
 			Msg:       fmt.Sprintf("return value: has type %s, but expected a reference literal %s", dst.ret(), srcFunPat.ret()),

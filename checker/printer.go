@@ -340,6 +340,7 @@ func (f FuncDecl) print(pc *config) {
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
 	pc.field("Parms", f.Parms)
+	pc.field("RefLit", f.RefLit)
 	pc.field("Ret", f.Ret)
 	pc.p("\n}")
 }

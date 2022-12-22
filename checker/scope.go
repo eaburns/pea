@@ -880,10 +880,11 @@ func subFuncDecl(sub map[*TypeParm]Type, decl *FuncDecl) *FuncDecl {
 		parms = append(parms, subType(sub, p))
 	}
 	return &FuncDecl{
-		Name:  decl.Name,
-		Parms: parms,
-		Ret:   subType(sub, decl.Ret),
-		L:     decl.L,
+		Name:   decl.Name,
+		Parms:  parms,
+		RefLit: decl.RefLit,
+		Ret:    subType(sub, decl.Ret),
+		L:      decl.L,
 	}
 }
 
