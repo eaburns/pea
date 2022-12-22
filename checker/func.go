@@ -77,40 +77,41 @@ func (f *FuncInst) sub(parms []*TypeParm, sub map[*TypeParm]Type) (Func, *Candid
 	return &copy, nil
 }
 
-func instFuncConstraints(x scope, l loc.Loc, fun Func) *CandidateError {
-	f, ok := fun.(*FuncInst)
+func instFuncConstraints(x scope, l loc.Loc, fun Func) (Func, *CandidateError) {
+	funInst, ok := fun.(*FuncInst)
 	if !ok {
-		return nil
+		return fun, nil
 	}
-	if recursiveIfaceDepth(x, f.Def) >= 10 || seenIfaceInst(x, f) {
-		return &CandidateError{
-			Candidate: f,
-			Msg:       fmt.Sprintf("%s: is excluded from the scope", f.Def),
+	if recursiveIfaceDepth(x, funInst.Def) >= 10 || seenIfaceInst(x, funInst) {
+		return fun, &CandidateError{
+			Candidate: funInst,
+			Msg:       fmt.Sprintf("%s: is excluded from the scope", funInst.Def),
 		}
 	}
-	x = &ifaceLookup{parent: x, def: f.Def, inst: f}
-	for i := range f.IfaceArgs {
-		// Since the function is not yet instantiated, ifaceargs must be *FuncDecl.
-		bind, fun, err := findConstraintFunc(x, l, f, i)
+	copy := *funInst
+	copy.TypeArgs = append([]Type{}, funInst.TypeArgs...)
+	copy.IfaceArgs = append([]Func{}, funInst.IfaceArgs...)
+	x = &ifaceLookup{parent: x, def: funInst.Def, inst: funInst}
+	for i := range copy.IfaceArgs {
+		bind, fun, err := findConstraintFunc(x, l, &copy, i)
 		if err != nil {
-			return &CandidateError{
-				Candidate: f,
+			return &copy, &CandidateError{
+				Candidate: &copy,
 				Msg:       "failed to instantiate interface",
 				Cause:     err,
 			}
 		}
-		f.IfaceArgs[i] = fun
-
-		for i := range f.TypeArgs {
-			f.TypeArgs[i] = subType(bind, f.TypeArgs[i])
+		copy.IfaceArgs[i] = fun
+		for i := range copy.TypeArgs {
+			copy.TypeArgs[i] = subType(bind, copy.TypeArgs[i])
 		}
 		// Substitute type variables in the following iface arguments,
 		// with bindings determined by matching this argument.
-		for j := i + 1; j < len(f.IfaceArgs); j++ {
-			f.IfaceArgs[j] = subFuncDecl(bind, f.IfaceArgs[j].(*FuncDecl))
+		for j := i + 1; j < len(copy.IfaceArgs); j++ {
+			copy.IfaceArgs[j] = subFuncDecl(bind, copy.IfaceArgs[j].(*FuncDecl))
 		}
 	}
-	return nil
+	return &copy, nil
 }
 
 // findConstraintFunc returns a function that satisfies funInst.Def.Iface[i] if any,
@@ -160,7 +161,8 @@ func findConstraintFunc(x scope, l loc.Loc, funInst *FuncInst, i int) (map[*Type
 			candidateErrs = append(candidateErrs, *err)
 			continue
 		}
-		if err := instFuncConstraints(x, l, f2); err != nil {
+		f2, err = instFuncConstraints(x, l, f2)
+		if err != nil {
 			candidateErrs = append(candidateErrs, *err)
 			continue
 		}

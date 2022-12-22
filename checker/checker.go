@@ -1665,7 +1665,8 @@ func filterIfaceConstraints(x scope, l loc.Loc, funcs []Func) ([]Func, []Candida
 	var n int
 	var errs []CandidateError
 	for _, f := range funcs {
-		if err := instFuncConstraints(x, l, f); err != nil {
+		f, err := instFuncConstraints(x, l, f)
+		if err != nil {
 			errs = append(errs, *err)
 			continue
 		}
@@ -1794,7 +1795,8 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, 
 			}
 			fun = fun2
 		}
-		if err := instFuncConstraints(x, parserID.L, fun); err != nil {
+		fun, err := instFuncConstraints(x, parserID.L, fun)
+		if err != nil {
 			candidateErrs = append(candidateErrs, *err)
 			continue
 		}
