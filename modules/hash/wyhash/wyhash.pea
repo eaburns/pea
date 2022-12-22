@@ -30,11 +30,11 @@ const salt := [uint64] :: [
 	0x1d8e4e27c47d124f,
 ]
 
-Func hash(seed uint64, data T) uint64 :
+Func hash(seed uint64, data T) uint64 : {
 	[](T, int) uint8,
 	[](T, int, int)T,
 	.length(T) int,
-{
+} {
 	len0 := uint64 :: data.length,
 	state := seed ^ salt[0],
 	if: data.length > 64 then: {
@@ -119,11 +119,11 @@ func load64(data T) uint64 : [](T, int) uint8 {
 		(uint64 :: data[7]) << 56
 }
 
-func consume64(data &T) uint64 :
+func consume64(data &T) uint64 : {
 	[](T, int) uint8,
 	[](T, int, int)T,
 	.length(T) int,
-{
+} {
 	u := load64(data),
 	data := data[8, data.length],
 	return: u

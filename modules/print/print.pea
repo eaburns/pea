@@ -21,7 +21,7 @@ Import "basic"
 
 // Returns a new printer containing the concatenation
 // of the string representation of t then u.
-Func ++(t T, u U)printer : ++(printer, T)printer, ++(printer, U)printer {
+Func ++(t T, u U)printer : { ++(printer, T)printer, ++(printer, U)printer } {
 	return: (printer :: new()) ++ t ++ u
 }
 

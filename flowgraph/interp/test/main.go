@@ -34,13 +34,18 @@ func main() {
 		in = f
 	}
 	p := parser.New()
+	if wd, err := os.Getwd(); err == nil {
+		p.TrimErrorPathPrefix = wd + "/"
+	}
 	if err := p.Parse(path, in); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	r := mod.NewRoot(*root)
 	imp := checker.NewImporter(r, p.Files, "")
-	m, _, errs := checker.Check("main", p.Files, checker.UseImporter(imp))
+	m, _, errs := checker.Check("main", p.Files,
+		checker.UseImporter(imp),
+		checker.TrimErrorPathPrefix(p.TrimErrorPathPrefix))
 	if len(errs) > 0 {
 		for _, err := range errs {
 			fmt.Println(err)

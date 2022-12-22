@@ -110,18 +110,24 @@ type FuncDef struct {
 	Name  Ident
 	Parms []FuncParm
 	Ret   Type // nil if no return
-	// Iface is the defintition of any interface constraints.
+	// Constraints is an interface constraint to satisfy
+	// after the return type is determined.
 	// Each element is either a *FuncDecl
 	// or a *NamedType naming an interface.
-	Iface []interface{}
-	Exprs []Expr // nil if unspecified, non-nil, len()==0 if empty
-	L     loc.Loc
+	Constraints []interface{}
+	Exprs       []Expr // nil if unspecified, non-nil, len()==0 if empty
+	L           loc.Loc
 }
 
 type FuncParm struct {
 	Name Ident
 	Type Type
-	L    loc.Loc
+	// Constraints is an interface constraint to satisfy
+	// after this parameter type is determined.
+	// Each element is either a *FuncDecl
+	// or a *NamedType naming an interface.
+	Constraints []interface{}
+	L           loc.Loc
 }
 
 type FuncDecl struct {

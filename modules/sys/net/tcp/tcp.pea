@@ -125,7 +125,7 @@ test listener_empty {
 }
 
 // TODO: move assert:one_of: to the assert module.
-func assert:one_of:(t T, ts [T]) : =(T, T)bool, ++(print#printer, T)print#printer {
+func assert:one_of:(t T, ts [T]) : { =(T, T)bool, ++(print#printer, T)print#printer } {
 	for: ts each: (u){
 		if: t = u then: {
 			return()

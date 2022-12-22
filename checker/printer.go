@@ -281,7 +281,7 @@ func (f *FuncDef) print(pc *config) {
 	pc.field("TypeParms", f.TypeParms)
 	pc.field("Parms", f.Parms)
 	pc.field("Ret", f.Ret)
-	pc.field("Iface", f.Iface)
+	pc.field("Constraints", f.Constraints)
 	pc.field("Locals", f.Locals)
 	if len(f.usedVars) > 0 {
 		pc.n++
@@ -324,6 +324,7 @@ func (f ParmDef) print(pc *config) {
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
 	pc.field("Type", f.T)
+	pc.field("Constraints", f.Constraints)
 	pc.p("\n}")
 }
 
@@ -357,7 +358,7 @@ func (f *FuncInst) print(pc *config) {
 
 	save := pc.printInstBody
 	pc.printInstBody = false
-	pc.field("IfaceArgs", f.IfaceArgs)
+	pc.field("ConstraintArgs", f.ConstraintArgs)
 	pc.printInstBody = save
 
 	pc.field("Type", f.T)
@@ -603,7 +604,12 @@ func (pc *config) slice(s interface{}) {
 			pc.p("nil")
 			continue
 		}
-		elem.Interface().(printer).print(pc)
+		switch elem := elem.Interface().(type) {
+		case printer:
+			elem.(printer).print(pc)
+		case bool:
+			pc.p("%v", elem)
+		}
 		pc.p(",")
 	}
 	pc.n--

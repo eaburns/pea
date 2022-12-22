@@ -2,7 +2,7 @@ Import "basic"
 import "print"
 
 // Panics of a is not equal to b by the = function.
-Func assert:equals:(a T, b T) : =(T, T) bool, ++(print#printer, T)print#printer {
+Func assert:equals:(a T, b T) : { =(T, T) bool, ++(print#printer, T)print#printer } {
 	if: !(a = b) then: {
 		panic(print#string(a ++ " != " ++ b ++ " expected equal"))
 	}
@@ -18,10 +18,10 @@ Func assert_none:(o T option) : ++(print#printer, T)print#printer {
 // Panics of o is the none? case
 // or if the some? case value of o
 // is not equal to b.
-Func assert:some:(o T option, b T) :
+Func assert:some:(o T option, b T) : {
 	++(print#printer, T)print#printer,
 	=(T, T) bool,
-{
+} {
 	if: o some: (a T) {
 		if: !(a = b) then: {
 			panic(print#string(o ++ " != some(" ++ b ++ ")"))
@@ -53,10 +53,10 @@ Func assert_ok:(o T or_error) {
 }
 
 // Panics if o is the error? case.
-Func assert:ok:(o T or_error, want T) :
+Func assert:ok:(o T or_error, want T) : {
 	=(T, T)bool,
 	++(print#printer, T)print#printer,
-{
+} {
 	if: o ok: (got) {
 		if: !(got = want) then: {
 			panic(print#string("got " ++ got ++ " ++ wanted " ++ want)),
@@ -128,11 +128,11 @@ func array(c C, _ [T]) [T] : for:each:(C, (T){}) {
 // Panics if the the number of elements in c is not want.length,
 // or if for any i, the ith element in the order of for:each:
 // is not equal to the ith element of want.
-Func assert:elements:(c C, want [T]) :
+Func assert:elements:(c C, want [T]) : {
 	for:each:(C, (T){}),
 	=(T,T)bool,
 	++(print#printer, T)print#printer,
-{
+} {
 	got := array(c, want),
 	if: got != want then: {
 		panic(print#string("got " ++ got ++ " ++ wanted " ++ want))
@@ -140,11 +140,11 @@ Func assert:elements:(c C, want [T]) :
 }
 
 // Panics if the elements in c are not a permutation of the elements in want.
-Func assert:unordered_elements:(c C, want [T]) :
+Func assert:unordered_elements:(c C, want [T]) : {
 	for:each:(C, (T){}),
 	=(T,T)bool,
 	++(print#printer, T)print#printer,
-{
+} {
 	got := array(c, want),
 	unmatch := quadratic_unmatched(got, want),
 	if: unmatch.left.length = 0 && unmatch.right.length = 0 then: {

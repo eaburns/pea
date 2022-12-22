@@ -399,7 +399,7 @@ func TestRecursiveInstOK(t *testing.T) {
 func TestRecursiveInstTooDeep(t *testing.T) {
 	const src = `
 		func string(_ int) string
-		func string(a [T]) string : string(T) string {return: string(a[0])}
+		func string(a [T]) string : string(T)string {return: string(a[0])}
 		func main() {
 			// 11-nested array.
 			string([[[[[[[[[[[5]]]]]]]]]]])
@@ -417,12 +417,12 @@ func TestRecursiveInstTooDeep(t *testing.T) {
 
 func TestTooMuchSubstitution(t *testing.T) {
 	const src = `
-		func next1(t T) T : +(T, T)T, one()T { return: next2(t) }
-		func next2(t T) T : +(T, T)T, one() T { return: next3(t) }
-		func next3(t T) T : +(T, T)T, one() T { return: next4(t) }
-		func next4(t T) T : +(T, T)T, one() T { return: next5(t) }
-		func next5(t T) T : +(T, T)T, one() T { return: next6(t) }
-		func next6(t T) T : +(T, T)T, one() T { return: t + one() }
+		func next1(t T) T : { +(T, T)T, one()T } { return: next2(t) }
+		func next2(t T) T : { +(T, T)T, one() T } { return: next3(t) }
+		func next3(t T) T : { +(T, T)T, one() T } { return: next4(t) }
+		func next4(t T) T : { +(T, T)T, one() T } { return: next5(t) }
+		func next5(t T) T : { +(T, T)T, one() T } { return: next6(t) }
+		func next6(t T) T : { +(T, T)T, one() T } { return: t + one() }
 		func one()int { return: 1 }
 		var i := int :: next1(1)
 	`
@@ -460,8 +460,8 @@ func TestSubFuncInst(t *testing.T) {
 	if diff := cmp.Diff([]Type{intType}, inst.TypeArgs, diffOpts...); diff != "" {
 		t.Errorf("inst.TypeArgs: %s", diff)
 	}
-	if len(inst.IfaceArgs) != 1 || inst.IfaceArgs[0] != findFuncDef(t, "string", mod).Insts[0] {
-		t.Errorf("inst.IfaceArgs are wrong")
+	if len(inst.ConstraintArgs) != 1 || inst.ConstraintArgs[0] != findFuncDef(t, "string", mod).Insts[0] {
+		t.Errorf("inst.ConstraintArgs are wrong")
 	}
 	if diff := cmp.Diff(&FuncType{Parms: []Type{intType}, Ret: intType}, inst.T, diffOpts...); diff != "" {
 		t.Errorf("inst.T: %s", diff)
@@ -2342,9 +2342,47 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 			},
 		},
 		{
+			name: "one func parm constraint",
+			src: `
+				func f(_ int : one(int)[false?, true?])
+			`,
+			wantFuncs: []string{
+				"one(int)[false?, true?]",
+			},
+		},
+		{
+			name: "one func parm 2 constraint",
+			src: `
+				func f(_ string, _ int : one(int)[false?, true?])
+			`,
+			wantFuncs: []string{
+				"one(int)[false?, true?]",
+			},
+		},
+		{
 			name: "one iface",
 			src: `
 				func f() : one
+				iface one { one(int)[false?, true?] }
+			`,
+			wantFuncs: []string{
+				"one(int)[false?, true?]",
+			},
+		},
+		{
+			name: "one iface parm constraint",
+			src: `
+				func f(_ int : one)
+				iface one { one(int)[false?, true?] }
+			`,
+			wantFuncs: []string{
+				"one(int)[false?, true?]",
+			},
+		},
+		{
+			name: "one iface parm 2 constraint",
+			src: `
+				func f(_ string, _ int : one)
 				iface one { one(int)[false?, true?] }
 			`,
 			wantFuncs: []string{
@@ -2363,9 +2401,60 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 			},
 		},
 		{
+			name: "one iface alias parm constraint",
+			src: `
+				func f(_ int : one_prime)
+				iface one_prime := one
+				iface one { one() }
+			`,
+			wantFuncs: []string{
+				"one()",
+			},
+		},
+		{
+			name: "one iface alias parm 2 constraint",
+			src: `
+				func f(_ string, _ int : one_prime)
+				iface one_prime := one
+				iface one { one() }
+			`,
+			wantFuncs: []string{
+				"one()",
+			},
+		},
+		{
+			name: "multiple functions",
+			src: `
+				func f(_ int : one(), _ string : two()) : three()
+			`,
+			wantFuncs: []string{
+				"one()",
+				"two()",
+				"three()",
+			},
+		},
+		{
 			name: "duplicate func",
 			src: `
-				func f() : one(), one()
+				func f() : { one(), one() }
+			`,
+			wantFuncs: []string{
+				"one()",
+			},
+		},
+		{
+			name: "duplicate func parm constraint",
+			src: `
+				func f(_ int : { one(), one() })
+			`,
+			wantFuncs: []string{
+				"one()",
+			},
+		},
+		{
+			name: "duplicate func across multiple parms and retutrn",
+			src: `
+				func f(_ string : one(), _ int : one() ) : { one(), one() }
 			`,
 			wantFuncs: []string{
 				"one()",
@@ -2374,7 +2463,17 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 		{
 			name: "duplicate func via iface",
 			src: `
-				func f() : one(), one
+				func f() : { one(), one }
+				iface one { one() }
+			`,
+			wantFuncs: []string{
+				"one()",
+			},
+		},
+		{
+			name: "duplicate func via iface parm constraint",
+			src: `
+				func f(_ int : { one(), one })
 				iface one { one() }
 			`,
 			wantFuncs: []string{
@@ -2385,6 +2484,16 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 			name: "inst iface",
 			src: `
 				func f() : [uint8] hasher
+				iface H hasher { hash(H)uint64 }
+			`,
+			wantFuncs: []string{
+				"hash([uint8])uint64",
+			},
+		},
+		{
+			name: "inst iface parm constraint",
+			src: `
+				func f(_ uint8 : [uint8] hasher)
 				iface H hasher { hash(H)uint64 }
 			`,
 			wantFuncs: []string{
@@ -2403,10 +2512,40 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 			},
 		},
 		{
+			name: "inst iface alias parm constraint",
+			src: `
+				func f(_ int : ([int], string) int_map)
+				iface (M, K, V) map { find(M, K) V }
+				iface (M, V) int_map := (M, int, V) map
+			`,
+			wantFuncs: []string{
+				"find([int], int)string",
+			},
+		},
+		{
 			name: "other module iface",
 			src: `
 				import "two"
-				func f() : one(), two#two
+				func f() : { one(), two#two }
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						Iface two { two() }
+					`,
+				},
+			},
+			wantFuncs: []string{
+				"one()",
+				"two()",
+			},
+		},
+		{
+			name: "other module iface parm constraint",
+			src: `
+				import "two"
+				func f(_ int : { one(), two#two })
 			`,
 			otherMods: []testMod{
 				{
@@ -2424,7 +2563,14 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 		{
 			name: "module not found",
 			src: `
-				func f() : one(), unknown#two
+				func f() : { one(), unknown#two }
+			`,
+			err: "not found",
+		},
+		{
+			name: "module not found parm constraint",
+			src: `
+				func f(_ int : { one(), unknown#two })
 			`,
 			err: "not found",
 		},
@@ -2432,7 +2578,23 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 			name: "other module iface not found",
 			src: `
 				import "two"
-				func f() : one(), two#two
+				func f() : { one(), two#two }
+			`,
+			otherMods: []testMod{
+				{
+					path: "two",
+					src: `
+						iface not_two { two() }
+					`,
+				},
+			},
+			err: "not found",
+		},
+		{
+			name: "other module iface not found parm constraint",
+			src: `
+				import "two"
+				func f(_ int : { one(), two#two })
 			`,
 			otherMods: []testMod{
 				{
@@ -2448,7 +2610,7 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 			name: "other module iface not found: unexported",
 			src: `
 				import "two"
-				func f() : one(), two#two
+				func f() : { one(), two#two }
 			`,
 			otherMods: []testMod{
 				{
@@ -2464,7 +2626,7 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 			name: "other module iface opaque",
 			src: `
 				import "two"
-				func f() : one(), two#two
+				func f() : { one(), two#two }
 			`,
 			otherMods: []testMod{
 				{
@@ -2480,7 +2642,7 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 			name: "other module other module iface",
 			src: `
 				import "two"
-				func f(): one(), two#two
+				func f() : { one(), two#two }
 			`,
 			otherMods: []testMod{
 				{
@@ -2516,8 +2678,14 @@ func TestIfaceConstraintFuncs(t *testing.T) {
 			mod, errs := check("test", []string{test.src}, test.otherMods)
 			switch {
 			case test.err == "" && len(errs) == 0:
+				f := findFuncDef(t, "f", mod)
+				var constraints []FuncDecl
+				for _, p := range f.Parms {
+					constraints = append(constraints, p.Constraints...)
+				}
+				constraints = append(constraints, f.Constraints...)
 				var got []string
-				for _, f := range findFuncDef(t, "f", mod).Iface {
+				for _, f := range constraints {
 					got = append(got, f.String())
 				}
 				sort.Strings(got)
@@ -2554,10 +2722,45 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar(int)",
 		},
 		{
+			name: "simple match parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar(_ int)
+				func target_function(_ X : bar(X))
+			`,
+			want: "bar(int)",
+		},
+		{
+			name: "simple match parm 2 constraint",
+			src: `
+				func main() { target_function("hello", 5) }
+				func bar(_ int)
+				func target_function(_ string, _ X : bar(X))
+			`,
+			want: "bar(int)",
+		},
+		{
+			name: "simple match parm 2 constraint bound from parm 1",
+			src: `
+				func main() { target_function("hello", 5) }
+				func bar(_ string)
+				func target_function(_ X, _ int : bar(X))
+			`,
+			want: "bar(string)",
+		},
+		{
 			name: "no match",
 			src: `
 				func main() { target_function(5) }
 				func target_function(_ X) : bar(X)
+			`,
+			err: "failed to instantiate",
+		},
+		{
+			name: "no match parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X : bar(X))
 			`,
 			err: "failed to instantiate",
 		},
@@ -2570,11 +2773,36 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "built-in *(int, int)int",
 		},
 		{
+			name: "match built-in operator parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X : *(X, X)X)
+			`,
+			want: "built-in *(int, int)int",
+		},
+		{
+			name: "match built-in operator parm 2 constraint",
+			src: `
+				func main() { target_function("hello", 5) }
+				func target_function(_ string, _ X : *(X, X)X)
+			`,
+			want: "built-in *(int, int)int",
+		},
+		{
 			name: "match built-in selector",
 			src: `
 				type point [.x int, .y int]
 				func main() { target_function(point :: [.x 4, .y 8]) }
-				func target_function(_ X) : .x(X)int, .y(X)int
+				func target_function(_ X) : { .x(X)int, .y(X)int }
+			`,
+			want: "built-in .x(&[.x int, .y int])&int",
+		},
+		{
+			name: "match built-in selector parm constraint",
+			src: `
+				type point [.x int, .y int]
+				func main() { target_function(point :: [.x 4, .y 8]) }
+				func target_function(_ X : { .x(X)int, .y(X)int })
 			`,
 			want: "built-in .x(&[.x int, .y int])&int",
 		},
@@ -2588,11 +2816,29 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "built-in a?b?(&[a?, b?], (){}, (){})",
 		},
 		{
+			name: "match built-in switch with no values parm constraint",
+			src: `
+				type a_or_b [a?, b?]
+				func main() { target_function(a_or_b :: [a?]) }
+				func target_function(_ X : a?b?(X, (){}, (){}))
+			`,
+			want: "built-in a?b?(&[a?, b?], (){}, (){})",
+		},
+		{
 			name: "match built-in switch with values",
 			src: `
 				type a_or_b [a? int, b? string]
 				func main() { target_function(a_or_b :: [a? 2]) }
 				func target_function(_ X) : a?b?(X, (int){}, (T){})
+			`,
+			want: "built-in a?b?(&[a? int, b? string], (int){}, (string){})",
+		},
+		{
+			name: "match built-in switch with values parm constraint",
+			src: `
+				type a_or_b [a? int, b? string]
+				func main() { target_function(a_or_b :: [a? 2]) }
+				func target_function(_ X : a?b?(X, (int){}, (T){}))
 			`,
 			want: "built-in a?b?(&[a? int, b? string], (int){}, (string){})",
 		},
@@ -2605,10 +2851,26 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "built-in []([int], int)&int",
 		},
 		{
+			name: "built-in index parm constraint",
+			src: `
+				func main() { target_function([5]) }
+				func target_function(_ X : [](X, int)&int)
+			`,
+			want: "built-in []([int], int)&int",
+		},
+		{
 			name: "built-in index works for iface with value return",
 			src: `
 				func main() { target_function([5]) }
 				func target_function(_ X) : [](X, int)int
+			`,
+			want: "built-in []([int], int)&int",
+		},
+		{
+			name: "built-in index works for iface with value return parm constraint",
+			src: `
+				func main() { target_function([5]) }
+				func target_function(_ X : [](X, int)int)
 			`,
 			want: "built-in []([int], int)&int",
 		},
@@ -2622,10 +2884,27 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "built-in []([int], int)&int",
 		},
 		{
+			name: "built-in index works for named array type parm constraint",
+			src: `
+				type my_array [int]
+				func main() { target_function(my_array :: [5]) }
+				func target_function(_ X : [](X, int)&int)
+			`,
+			want: "built-in []([int], int)&int",
+		},
+		{
 			name: "built-in slice",
 			src: `
 				func main() { target_function([5]) }
 				func target_function(_ X) : [](X, int, int)X
+			`,
+			want: "built-in []([int], int, int)[int]",
+		},
+		{
+			name: "built-in slice parm constraint",
+			src: `
+				func main() { target_function([5]) }
+				func target_function(_ X : [](X, int, int)X)
 			`,
 			want: "built-in []([int], int, int)[int]",
 		},
@@ -2635,6 +2914,15 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 				type my_array [int]
 				func main() { target_function(my_array :: [5]) }
 				func target_function(_ X) : [](X, int, int)X
+			`,
+			want: "built-in []([int], int, int)[int]",
+		},
+		{
+			name: "built-in slice works for named array type parm constraint",
+			src: `
+				type my_array [int]
+				func main() { target_function(my_array :: [5]) }
+				func target_function(_ X : [](X, int, int)X)
 			`,
 			want: "built-in []([int], int, int)[int]",
 		},
@@ -2649,10 +2937,31 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "return[0]",
 		},
 		{
+			name: "match return parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X : return()!)
+			`,
+			// return[0] is the name of the inserted parameter
+			// to hold the return constraint function expression.
+			want: "return[0]",
+		},
+		{
 			name: "match var",
 			src: `
 				func main() { target_function(5) }
 				func target_function(_ X) : x()string
+				var x := (){string} :: (){"hello"}
+			`,
+			// x[0] is the name of the inserted parameter
+			// to hold the x constraint function expression.
+			want: "x[0]",
+		},
+		{
+			name: "match var parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X : x()string)
 				var x := (){string} :: (){"hello"}
 			`,
 			// x[0] is the name of the inserted parameter
@@ -2671,10 +2980,31 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "x[0]",
 		},
 		{
+			name: "match local parm constraint",
+			src: `
+				func main() { x := (){"hello"}, target_function(5), use(x) }
+				func target_function(_ X : x()string)
+				func use(_ T)
+			`,
+			// x[0] is the name of the inserted parameter
+			// to hold the x constraint function expression.
+			want: "x[0]",
+		},
+		{
 			name: "match parm",
 			src: `
 				func main(x (){string}) { target_function(5) }
 				func target_function(_ X) : x()string
+			`,
+			// x[0] is the name of the inserted parameter
+			// to hold the x constraint function expression.
+			want: "x[0]",
+		},
+		{
+			name: "match parm parm constraint",
+			src: `
+				func main(x (){string}) { target_function(5) }
+				func target_function(_ X : x()string)
 			`,
 			// x[0] is the name of the inserted parameter
 			// to hold the x constraint function expression.
@@ -2691,11 +3021,30 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar(int)",
 		},
 		{
+			name: "match with recursive inst parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func baz(_ int)
+				func bar(_ X) : baz(X)
+				func target_function(_ X : bar(X))
+			`,
+			want: "bar(int)",
+		},
+		{
 			name: "no match because recursive inst",
 			src: `
 				func main() { target_function(5) }
 				func bar(_ X) : baz(X)
 				func target_function(_ X) : bar(X)
+			`,
+			err: "failed to instantiate",
+		},
+		{
+			name: "no match because recursive inst parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar(_ X) : baz(X)
+				func target_function(_ X : bar(X))
 			`,
 			err: "failed to instantiate",
 		},
@@ -2709,6 +3058,15 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar(int, float64)",
 		},
 		{
+			name: "two-way binding on parm from parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar(_ int, _ Y)
+				func target_function(_ X : bar(X, float64))
+			`,
+			want: "bar(int, float64)",
+		},
+		{
 			name: "two-way binding on parm 2",
 			src: `
 				func main() { target_function(5) }
@@ -2718,11 +3076,29 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar(int, int)",
 		},
 		{
+			name: "two-way binding on parm 2 parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar(_ int, _ Y)
+				func target_function(_ X : bar(X, X))
+			`,
+			want: "bar(int, int)",
+		},
+		{
 			name: "two-way binding on ret",
 			src: `
 				func main() { target_function(5) }
 				func bar(_ int) Y
 				func target_function(_ X) : bar(X) float64
+			`,
+			want: "bar(int)float64",
+		},
+		{
+			name: "two-way binding on ret parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar(_ int) Y
+				func target_function(_ X : bar(X) float64)
 			`,
 			want: "bar(int)float64",
 		},
@@ -2766,7 +3142,10 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			name: "sort with element typeparm introduced in iface",
 			src: `
 				func main() { target_function([1, 2, 3]) }
-				func target_function(x X) : [](X, int)&U, <=>(U, U)[less?, equal?, greater?]
+				func target_function(x X) : {
+					[](X, int)&U,
+					<=>(U, U)[less?, equal?, greater?]
+				}
 			`,
 			want: "built-in []([int], int)&int",
 		},
@@ -2780,10 +3159,28 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			err: `parameter 0: cannot infer type \?`,
 		},
 		{
+			name: "unbound variable parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar(_ Y)
+				func target_function(_ int : bar(Y))
+			`,
+			err: `parameter 0: cannot infer type \?`,
+		},
+		{
 			name: "iface parameter int accepts int",
 			src: `
 				func main() { target_function() }
 				func target_function() : bar(int)
+				func bar(_ int)
+			`,
+			want: "bar(int)",
+		},
+		{
+			name: "iface parameter int accepts int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar(int))
 				func bar(_ int)
 			`,
 			want: "bar(int)",
@@ -2798,10 +3195,28 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar(&int)",
 		},
 		{
+			name: "iface parameter int accepts &int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar(int))
+				func bar(_ &int)
+			`,
+			want: "bar(&int)",
+		},
+		{
 			name: "iface parameter &int rejects int",
 			src: `
 				func main() { target_function() }
 				func target_function() : bar(&int)
+				func bar(_ int)
+			`,
+			err: "expected a reference literal",
+		},
+		{
+			name: "iface parameter &int rejects int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar(&int))
 				func bar(_ int)
 			`,
 			err: "expected a reference literal",
@@ -2816,10 +3231,28 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar(&int)",
 		},
 		{
+			name: "iface parameter &int accepts &int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar(&int))
+				func bar(_ &int)
+			`,
+			want: "bar(&int)",
+		},
+		{
 			name: "iface parameter T=int accepts &int",
 			src: `
 				func main() { target_function(5) }
 				func target_function(_ X) : bar(X)
+				func bar(_ &int)
+			`,
+			want: "bar(&int)",
+		},
+		{
+			name: "iface parameter T=int accepts &int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X : bar(X))
 				func bar(_ &int)
 			`,
 			want: "bar(&int)",
@@ -2834,6 +3267,15 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			err: "expected a reference literal &int",
 		},
 		{
+			name: "iface parameter &T=&int rejects int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar(_ int)
+				func target_function(_ X : bar(&X))
+			`,
+			err: "expected a reference literal &int",
+		},
+		{
 			name: "iface parameter &T=&int accepts &int",
 			src: `
 				func main() { target_function(5) }
@@ -2843,10 +3285,28 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar(&int)",
 		},
 		{
+			name: "iface parameter &T=&int accepts &int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar(_ &int)
+				func target_function(_ X : bar(&X))
+			`,
+			want: "bar(&int)",
+		},
+		{
 			name: "iface parameter T=&int accepts int",
 			src: `
 				func main() { target_function(&int :: 5) }
 				func target_function(_ X) : bar(X)
+				func bar(_ int)
+			`,
+			want: "bar(int)",
+		},
+		{
+			name: "iface parameter T=&int accepts int parm constraint",
+			src: `
+				func main() { target_function(&int :: 5) }
+				func target_function(_ X : bar(X))
 				func bar(_ int)
 			`,
 			want: "bar(int)",
@@ -2861,10 +3321,28 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar(&int)",
 		},
 		{
+			name: "iface parameter T=&int accepts &int parm constraint",
+			src: `
+				func main() { target_function(&int :: 5) }
+				func target_function(_ X : bar(X))
+				func bar(_ &int)
+			`,
+			want: "bar(&int)",
+		},
+		{
 			name: "iface parameter one T=&int accepts int, two &T rejects &int",
 			src: `
 				func main() { target_function(&int :: 5) }
 				func target_function(_ X) : bar(X, &X)
+				func bar(_ int, _ &int)
+			`,
+			err: "but expected a reference literal",
+		},
+		{
+			name: "iface parameter one T=&int accepts int, two &T rejects &int parm constraint",
+			src: `
+				func main() { target_function(&int :: 5) }
+				func target_function(_ X : bar(X, &X))
 				func bar(_ int, _ &int)
 			`,
 			err: "but expected a reference literal",
@@ -2879,10 +3357,28 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar(int)",
 		},
 		{
+			name: "iface new parameter T binds int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar(X))
+				func bar(_ int)
+			`,
+			want: "bar(int)",
+		},
+		{
 			name: "iface new parameter T binds &int",
 			src: `
 				func main() { target_function() }
 				func target_function() : bar(X)
+				func bar(_ &int)
+			`,
+			want: "bar(&int)",
+		},
+		{
+			name: "iface new parameter T binds &int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar(X))
 				func bar(_ &int)
 			`,
 			want: "bar(&int)",
@@ -2897,10 +3393,28 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar()int",
 		},
 		{
+			name: "iface return int accepts int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar()int)
+				func bar() int
+			`,
+			want: "bar()int",
+		},
+		{
 			name: "iface return int accepts &int",
 			src: `
 				func main() { target_function() }
 				func target_function() : bar()int
+				func bar() &int
+			`,
+			want: "bar()&int",
+		},
+		{
+			name: "iface return int accepts &int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar()int)
 				func bar() &int
 			`,
 			want: "bar()&int",
@@ -2915,10 +3429,28 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			err: "expected a reference literal",
 		},
 		{
+			name: "iface return &int rejects int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar()&int)
+				func bar() int
+			`,
+			err: "expected a reference literal",
+		},
+		{
 			name: "iface return &int accepts &int",
 			src: `
 				func main() { target_function() }
 				func target_function() : bar()&int
+				func bar() &int
+			`,
+			want: "bar()&int",
+		},
+		{
+			name: "iface return &int accepts &int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ int : bar()&int)
 				func bar() &int
 			`,
 			want: "bar()&int",
@@ -2933,10 +3465,28 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar()int",
 		},
 		{
+			name: "iface return T=int accepts int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X : bar()X)
+				func bar() int
+			`,
+			want: "bar()int",
+		},
+		{
 			name: "iface return T=int accepts &int",
 			src: `
 				func main() { target_function(5) }
 				func target_function(_ X) : bar()X
+				func bar() &int
+			`,
+			want: "bar()&int",
+		},
+		{
+			name: "iface return T=int accepts &int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X : bar()X)
 				func bar() &int
 			`,
 			want: "bar()&int",
@@ -2951,11 +3501,29 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			err: "expected a reference literal",
 		},
 		{
+			name: "iface return &T=&int rejects int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar()int
+				func target_function(_ X : bar()&X)
+			`,
+			err: "expected a reference literal",
+		},
+		{
 			name: "iface return &T=int accepts &int",
 			src: `
 				func main() { target_function(5) }
 				func bar()&int
 				func target_function(_ X) : bar()&X
+			`,
+			want: "bar()&int",
+		},
+		{
+			name: "iface return &T=int accepts &int parm constraint",
+			src: `
+				func main() { target_function(5) }
+				func bar()&int
+				func target_function(_ X : bar()&X)
 			`,
 			want: "bar()&int",
 		},
@@ -2969,6 +3537,15 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar()int",
 		},
 		{
+			name: "iface return T=&int accepts int parm constraint",
+			src: `
+				func main() { target_function(&int :: 5) }
+				func bar()int
+				func target_function(_ X : bar()X)
+			`,
+			want: "bar()int",
+		},
+		{
 			name: "iface return T=&int accepts &int",
 			src: `
 				func main() { target_function(&int :: 5) }
@@ -2978,17 +3555,51 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "bar()&int",
 		},
 		{
+			name: "iface return T=&int accepts &int parm constraint",
+			src: `
+				func main() { target_function(&int :: 5) }
+				func bar()&int
+				func target_function(_ X : bar()X)
+			`,
+			want: "bar()&int",
+		},
+		/*
+		// TODO: Passing &T to an iface instantiation should require a ref parm.
+		{
 			// You cannot sort a string, since it is immutable.
 			// This should be rejected because the [] function
 			// does not return a &uint8, but a uint8.
 			name: "sorting a string",
 			src: `
 				func main() { sort("Hello, World") }
-				func sort(span S) :
-					[](S, int)&T,	// string does not satisfy this &T.
-					[](S, int, int) S,
+				iface (S, T) span {
 					.length(S)int,
+					[](S, int)T,
+					[](S, int, int) S,
+				}
+				// string does not satisfy this &T.
+				func sort(span S : { (S, &T) span, <(T, T)[false?, true?] }) {
+				}
+				func <(_, _ uint8)[false?, true?]
+			`,
+			err: `expected a reference literal &\?`,
+		},
+		*/
+		{
+			// You cannot sort a string, since it is immutable.
+			// This should be rejected because the [] function
+			// does not return a &uint8, but a uint8.
+			name: "sorting a string",
+			src: `
+				func main() { sort("Hello, World") }
+				// string does not satisfy this &T.
+				func sort(span S : {
+					.length(S)int,
+					[](S, int)&T,
+					[](S, int, int)S,
 					<(T, T)[false?, true?],
+				}) {}
+				func <(_, _ uint8)[false?, true?]
 			`,
 			err: `expected a reference literal &\?`,
 		},
@@ -2997,11 +3608,12 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			name: "sorting an array",
 			src: `
 				func main() { target_function([1, 2, 3, 4, 5]) }
-				func target_function(span S) :
+				func target_function(span S : {
 					[](S, int)&T,	// [int] does satisfy this &T.
 					[](S, int, int) S,
 					.length(S)int,
 					<=>(T, T)[less?, equal?, greater?],
+				})
 			`,
 			want: "built-in []([int], int)&int",
 		},
@@ -3061,6 +3673,27 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 				// target_function is not capital Imported,
 				// but we get foo#+ still with ADL.
 				func target_function(a T) : +(T, T, T)T
+				func main() { target_function(foo#t()) }
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t int
+						Func t() t { return: t :: 0 }
+						Func +(a t, b t, c t) t { return: t :: (int :: a) + (int :: b) + (int :: c) }
+					`,
+				},
+			},
+			want: "foo#+(foo#t, foo#t, foo#t)foo#t",
+		},
+		{
+			name: "argument-dependent lookup parm constraint",
+			src: `
+				import "foo"
+				// target_function is not capital Imported,
+				// but we get foo#+ still with ADL.
+				func target_function(a T : +(T, T, T)T)
 				func main() { target_function(foo#t()) }
 			`,
 			otherMods: []testMod{
@@ -3145,7 +3778,7 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 				target_function := findFuncDef(t, "target_function", mod)
 				var w stringBuilder
 				w.fullString = true
-				target_function.Insts[0].IfaceArgs[0].buildString(&w)
+				target_function.Insts[0].ConstraintArgs[0].buildString(&w)
 				got := w.builder.String()
 				if got != test.want {
 					t.Errorf("got %s, want %s", got, test.want)
@@ -3187,6 +3820,36 @@ func TestIDIfaceConstraintInst(t *testing.T) {
 	ret5 := findFuncDef(t, "return5", mod)
 	if len(ret5.Insts) != 1 {
 		t.Errorf("%d instances, but expected 1", len(ret5.Insts))
+	}
+}
+
+// TestIDIfaceParmConstraintInst is the same as TestIDIfaceConstraintInst,
+// but the iface constraint is on a parameter, not the return.
+func TestIDIfaceParmConstraintInst(t *testing.T) {
+	const src = `
+		func foo1() int {
+			bar(return_n_plus1)
+		}
+		func foo2() int {
+			bar(return_n_plus1)
+		}
+		func bar(f (int){!})! {
+			f(2),
+		}
+		func return_n_plus1(n int : return:(int)!)! {
+			return: n+1
+		}
+	`
+	mod, errs := check("test", []string{src}, nil)
+	if len(errs) > 0 {
+		t.Errorf("failed to check: %s", errs[0])
+	}
+	// There should only be one inst of ret_n_plus_2
+	// even though it is used twice with different
+	// iface arg expressions.
+	ret_n_plus_2 := findFuncDef(t, "return_n_plus1", mod)
+	if len(ret_n_plus_2.Insts) != 1 {
+		t.Errorf("%d instances, but expected 1", len(ret_n_plus_2.Insts))
 	}
 }
 
@@ -4453,6 +5116,26 @@ func TestOverloadResolution(t *testing.T) {
 			want: "=([int], [int])[false?, true?]",
 		},
 		{
+			name: "disambiguate on parm constraint",
+			src:  `
+				// float64 does not have bitwise &.
+				func a(i I : &(I, I)I, b int)
+				func a(f float64, b int)
+			`,
+			call: "a(3.14, 2)",
+			want: "a(float64, int)",
+		},
+		{
+			name: "disambiguate on parm2 constraint",
+			src:  `
+				// float64 does not have bitwise &.
+				func a(a string, i I : &(I, I)I, b int)
+				func a(a string, f float64, b int)
+			`,
+			call: "a(\"hello\", 3.14, 2)",
+			want: "a(string, float64, int)",
+		},
+		{
 			name: "call other module function",
 			src: `
 				import "foo"
@@ -4840,8 +5523,7 @@ func findCall(e Expr) *Call {
 	case *Convert:
 		return findCall(e.Expr)
 	default:
-		fmt.Printf("%T unimplemented", e)
-		return nil
+		panic(fmt.Sprintf("%T unimplemented", e))
 	}
 }
 

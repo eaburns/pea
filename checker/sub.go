@@ -12,7 +12,7 @@ type bindings struct {
 	Funcs  map[*FuncDecl]Func
 }
 
-func subFuncInst(inst *FuncInst) {
+func subFuncInstExprs(inst *FuncInst) {
 	bindings := bindings{
 		Parms:  make(map[*ParmDef]*ParmDef),
 		Locals: make(map[*LocalDef]*LocalDef),
@@ -38,19 +38,46 @@ func subFuncInst(inst *FuncInst) {
 		bindings.Parms[parm] = instParm
 		inst.Parms = append(inst.Parms, instParm)
 	}
-	for i := range inst.IfaceArgs {
-		arg := inst.IfaceArgs[i]
-		decl := &inst.Def.Iface[i]
+
+	var argI int
+	for i := range inst.Def.Parms {
+		p := &inst.Def.Parms[i]
+		for i := range p.Constraints {
+			decl := &p.Constraints[i]
+			arg := inst.ConstraintArgs[argI]
+			if arg == nil {
+				panic("bad nil constraint arg")
+			}
+			if _, ok := arg.(*FuncDecl); ok {
+				panic(fmt.Sprintf("%s bad decl mapping %s => %s", inst, decl, arg))
+			}
+			argI++
+			bindings.Funcs[decl] = arg
+			// If the ConstraintArg is a parameter access,
+			// then we need to add the parameter's def
+			// to the Parms slice now.
+			if exprFunc, ok := arg.(*ExprFunc); ok {
+				if cvt, ok := exprFunc.Expr.(*Convert); ok {
+					inst.Parms = append(inst.Parms, cvt.Expr.(*Parm).Def)
+				}
+			}
+		}
+	}
+	for i := range inst.Def.Constraints {
+		decl := &inst.Def.Constraints[i]
+		arg := inst.ConstraintArgs[argI]
+		if _, ok := arg.(*FuncDecl); ok {
+			panic(fmt.Sprintf("%s bad decl mapping %s => %s", inst, decl, arg))
+		}
+		argI++
 		bindings.Funcs[decl] = arg
-		// If the IfaceArg is an parameter access,
-		// then we need to add the parameter's def
-		// to the Parms slice now.
 		if exprFunc, ok := arg.(*ExprFunc); ok {
 			if cvt, ok := exprFunc.Expr.(*Convert); ok {
 				inst.Parms = append(inst.Parms, cvt.Expr.(*Parm).Def)
 			}
 		}
 	}
+
 	inst.Locals = make([]*LocalDef, 0, len(inst.Def.Locals))
 	for _, local := range inst.Def.Locals {
 		instLocal := &LocalDef{
@@ -72,13 +99,7 @@ func subFunc(bindings bindings, fun Func) Func {
 	case *FuncDecl:
 		b, ok := bindings.Funcs[fun]
 		if !ok {
-			return &FuncDecl{
-				Name:   fun.Name,
-				Parms:  subTypes(bindings.Types, fun.Parms),
-				RefLit: fun.RefLit,
-				Ret:    subType(bindings.Types, fun.Ret),
-				L:      fun.L,
-			}
+			panic(fmt.Sprintf("failed to find a binding for %s (%p)", fun, fun))
 		}
 		return b
 	case *FuncInst:
@@ -89,10 +110,10 @@ func subFunc(bindings bindings, fun Func) Func {
 		// it will be added to the Mod.toSub list
 		// and its Exprs will be substituted on the next round.
 		copy := &FuncInst{
-			TypeArgs:  subTypes(bindings.Types, fun.TypeArgs),
-			IfaceArgs: subFuncs(bindings, fun.IfaceArgs),
-			Def:       fun.Def,
-			T:         subType(bindings.Types, fun.T).(*FuncType),
+			TypeArgs:       subTypes(bindings.Types, fun.TypeArgs),
+			ConstraintArgs: subFuncs(bindings, fun.ConstraintArgs),
+			Def:            fun.Def,
+			T:              subType(bindings.Types, fun.T).(*FuncType),
 		}
 		// Here we memoize the function instance,
 		// to get the memoized version

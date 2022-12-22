@@ -6,12 +6,12 @@ import "unicode/utf8"
 const rk_base := uint32 :: 16777619
 
 // Returns the index of the first occurrence of n in h.
-Func index(h S, n S) int option :
+Func index(h S, n S) int option : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int) S,
 	=(S, S)bool
-{
+} {
 	// Rabin-Karp based on https://medium.com/swlh/rabin-karp-algorithm-using-polynomial-hashing-and-modular-arithmetic-437627b37db6,
 	// using rk_base as the base (prime number from Go implementation),
 	// and using max_uint32 as Q (just rely on overflow).
@@ -75,12 +75,12 @@ test index {
 }
 
 // Returns whether h contains n as a substring.
-Func contains(h S, n S) bool :
+Func contains(h S, n S) bool : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int) S,
 	=(S, S)bool
-{
+} {
 	return: index(h, n) some? (_){true} none? {false}
 }
 
@@ -113,12 +113,12 @@ test contains {
 // Returns the number of non-overlapping occurrences of sub in s.
 // If sub is the empty string, count returns
 // the number of unicode code points in s plus 1.
-Func count(s S, sub S) int :
+Func count(s S, sub S) int : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int) S,
 	=(S, S)bool
-{
+} {
 	n := 0,
 	if: sub.length = 0 then: {
 		while: {utf8#consume(s)} some: (_) {
@@ -170,12 +170,12 @@ test count {
 // Returns an array of slices of s for all substrings split by occurrences of delim.
 // If delim is empty, then the return is an array of each unicode code point in s.
 // If s does not contain delim, then the return has one element containing s.
-Func split(s S, delim S) [S] :
+Func split(s S, delim S) [S] : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int) S,
 	=(S, S)bool
-{
+} {
 	n := 0,
 	if: delim.length = 0 then: {
 		fields := [S] :: new(count(s, delim)-1, s[0, 0]),

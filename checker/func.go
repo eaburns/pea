@@ -63,62 +63,66 @@ func (f *FuncInst) parm(i int) TypePattern {
 }
 
 func (f *FuncInst) sub(parms []*TypeParm, sub map[*TypeParm]Type) (Func, *CandidateError) {
+	return subFuncInst(f, parms, sub), nil
+}
+
+func subFuncInst(f *FuncInst, parms []*TypeParm, sub map[*TypeParm]Type) *FuncInst {
 	copy := *f
 	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
 	copy.TypeArgs = subTypes(sub, copy.TypeArgs)
-	copy.IfaceArgs = nil
-	for _, decl := range f.IfaceArgs {
-		// FuncInst.sub is only called before instIface,
-		// so IfaceArgs must be still *FuncDecls.
-		funcDecl := subFuncDecl(sub, decl.(*FuncDecl))
-		copy.IfaceArgs = append(copy.IfaceArgs, funcDecl)
+	copy.ConstraintParms = make([]FuncDecl, len(f.ConstraintParms))
+	for i, c := range f.ConstraintParms {
+		copy.ConstraintParms[i] = *subFuncDecl(sub, &c)
 	}
+	copy.ConstraintArgs = append([]Func{}, f.ConstraintArgs...)
 	copy.T = subType(sub, copy.T).(*FuncType)
-	return &copy, nil
+	return &copy
 }
 
-func instFuncConstraints(x scope, l loc.Loc, fun Func) (Func, *CandidateError) {
-	funInst, ok := fun.(*FuncInst)
-	if !ok {
-		return fun, nil
+func instParmConstraints(x scope, funcInst *FuncInst, i int) (*FuncInst, *CandidateError) {
+	var s int
+	for _, p := range funcInst.Def.Parms[0:i] {
+		s += len(p.Constraints)
 	}
-	if recursiveIfaceDepth(x, funInst.Def) >= 10 || seenIfaceInst(x, funInst) {
-		return fun, &CandidateError{
-			Candidate: funInst,
-			Msg:       fmt.Sprintf("%s: is excluded from the scope", funInst.Def),
+	return instConstraints(x, funcInst, s, s+len(funcInst.Def.Parms[i].Constraints))
+}
+
+func instRetConstraints(x scope, funcInst *FuncInst) (*FuncInst, *CandidateError) {
+	var s int
+	for _, p := range funcInst.Def.Parms {
+		s += len(p.Constraints)
+	}
+	return instConstraints(x, funcInst, s, s+len(funcInst.Def.Constraints))
+}
+
+func instConstraints(x scope, funcInst *FuncInst, start, end int) (*FuncInst, *CandidateError) {
+	if recursiveIfaceDepth(x, funcInst.Def) >= 10 || seenIfaceInst(x, funcInst) {
+		return funcInst, &CandidateError{
+			Candidate: funcInst,
+			Msg:       fmt.Sprintf("%s: is excluded from the scope", funcInst.Def),
 		}
 	}
-	copy := *funInst
-	copy.TypeArgs = append([]Type{}, funInst.TypeArgs...)
-	copy.IfaceArgs = append([]Func{}, funInst.IfaceArgs...)
-	x = &ifaceLookup{parent: x, def: funInst.Def, inst: funInst}
-	for i := range copy.IfaceArgs {
-		// Since the constraint is not yet instantiated, it must be a *FuncDecl.
-		constraint := copy.IfaceArgs[i].(*FuncDecl)
-		bind, fun, err := findConstraintFunc(x, l, copy.typeParms, constraint)
+	x = &ifaceLookup{parent: x, def: funcInst.Def, inst: funcInst}
+
+	for i := start; i < end; i++ {
+		c := funcInst.ConstraintParms[i]
+		bind, fun, err := findConstraintFunc(x, funcInst.typeParms, &c)
 		if err != nil {
-			return &copy, &CandidateError{
-				Candidate: &copy,
+			return funcInst, &CandidateError{
+				Candidate: funcInst,
 				Msg:       "failed to instantiate interface",
 				Cause:     err,
 			}
 		}
-		copy.IfaceArgs[i] = fun
-		for i := range copy.TypeArgs {
-			copy.TypeArgs[i] = subType(bind, copy.TypeArgs[i])
-		}
-		// Substitute type variables in the following iface arguments,
-		// with bindings determined by matching this argument.
-		for j := i + 1; j < len(copy.IfaceArgs); j++ {
-			copy.IfaceArgs[j] = subFuncDecl(bind, copy.IfaceArgs[j].(*FuncDecl))
-		}
+		funcInst = subFuncInst(funcInst, nil, bind)
+		funcInst.ConstraintArgs[i] = fun
 	}
-	return &copy, nil
+	return funcInst, nil
 }
 
 // findConstraintFunc returns a function that satisfies funInst.Def.Iface[i] if any,
 // along with any type parameter bindings needed to instantiate that function.
-func findConstraintFunc(x scope, l loc.Loc, typeParms []*TypeParm, decl *FuncDecl) (map[*TypeParm]Type, Func, Error) {
+func findConstraintFunc(x scope, typeParms []*TypeParm, decl *FuncDecl) (map[*TypeParm]Type, Func, Error) {
 	var funcs []Func
 	var candidateErrs []CandidateError
 	for _, id := range findIDs(x, decl.Name) {
@@ -128,17 +132,17 @@ func findConstraintFunc(x scope, l loc.Loc, typeParms []*TypeParm, decl *FuncDec
 			continue
 		case *VarDef:
 			if t := funcType(id.T); t != nil {
-				funcs = append(funcs, &idFunc{id: id, funcType: t, l: l})
+				funcs = append(funcs, &idFunc{id: id, funcType: t, l: id.L})
 				continue
 			}
 		case *ParmDef:
 			if t := funcType(id.T); t != nil {
-				funcs = append(funcs, &idFunc{id: id, funcType: t, l: l})
+				funcs = append(funcs, &idFunc{id: id, funcType: t, l: id.L})
 				continue
 			}
 		case *LocalDef:
 			if t := funcType(id.T); t != nil {
-				funcs = append(funcs, &idFunc{id: id, funcType: t, l: l})
+				funcs = append(funcs, &idFunc{id: id, funcType: t, l: id.L})
 				continue
 			}
 		}
@@ -156,7 +160,7 @@ func findConstraintFunc(x scope, l loc.Loc, typeParms []*TypeParm, decl *FuncDec
 	binds := make([]map[*TypeParm]Type, len(funcs))
 	declPat := makeTypePattern(typeParms, decl.Type())
 	for _, f := range funcs {
-		f2, bind, err := unifyFunc(x, l, f, decl.RefLit, declPat)
+		f2, bind, err := unifyFunc(x, decl.L, f, decl.RefLit, declPat)
 		if err != nil {
 			candidateErrs = append(candidateErrs, *err)
 			continue
@@ -185,10 +189,10 @@ func findConstraintFunc(x scope, l loc.Loc, typeParms []*TypeParm, decl *FuncDec
 			scope:      x,
 		}
 	default:
-		fun := useFunc(x, l, funcs[0])
+		fun := useFunc(x, decl.L, funcs[0])
 		if builtin, ok := fun.(*Builtin); ok && builtin.Op == Return {
 			// We need to wrap the return in a block, since it's not a static function.
-			block := wrapCallInBlock(x, fun, _end, l)
+			block := wrapCallInBlock(x, fun, _end, decl.L)
 			fun = &ExprFunc{Expr: block, FuncType: block.Func}
 		}
 		return binds[0], fun, nil
@@ -278,6 +282,12 @@ func unifyFunc(x scope, l loc.Loc, dst Func, refLit []bool, src TypePattern) (Fu
 		if dst, subErr = dst.sub(nil, bind); subErr != nil {
 			return nil, nil, subErr
 		}
+		if funcInst, ok := dst.(*FuncInst); ok {
+			var instErr *CandidateError
+			if dst, instErr = instParmConstraints(x, funcInst, i); instErr != nil {
+				return dst, bind, instErr
+			}
+		}
 	}
 	pat, cvt, err := convertPattern(nil, dst.ret(), srcFunPat.ret(), implicit, &bind)
 	if !pat.isGroundType() {
@@ -299,20 +309,25 @@ func unifyFunc(x scope, l loc.Loc, dst Func, refLit []bool, src TypePattern) (Fu
 			Msg:       fmt.Sprintf("return value: has type %s, but expected a reference literal %s", dst.ret(), srcFunPat.ret()),
 		}
 	}
-	dst, subErr := dst.sub(nil, bind)
-	if subErr != nil {
+	var subErr *CandidateError
+	if dst, subErr = dst.sub(nil, bind); subErr != nil {
 		return dst, bind, subErr
 	}
-	dst, instErr := instFuncConstraints(x, l, dst)
-	return dst, bind, instErr
+	if funcInst, ok := dst.(*FuncInst); ok {
+		var instErr *CandidateError
+		if dst, instErr = instRetConstraints(x, funcInst); instErr != nil {
+			return dst, bind, instErr
+		}
+	}
+	return dst, bind, nil
 }
 
-// captureExprIfaceArgs returns the memoized FuncInst
+// captureExprConstraintArgs returns the memoized FuncInst
 // or an ExprFunc wrapping a call to the FuncInst
-// with non-static IfaceArgs converted to parameters of the FuncInst,
+// with non-static ConstraintArgs converted to parameters of the FuncInst,
 // passed as block captures.
-func captureExprIfaceArgs(x scope, f *FuncInst) Func {
-	caps := captureIfaceArgs(f)
+func captureExprConstraintArgs(x scope, f *FuncInst) Func {
+	caps := captureConstraintArgs(f)
 	f = memoizeFuncInst(f)
 	if len(caps) == 0 {
 		return f
@@ -340,8 +355,6 @@ func captureExprIfaceArgs(x scope, f *FuncInst) Func {
 }
 
 func memoizeFuncInst(f *FuncInst) *FuncInst {
-	// Only bother canonicalizing function instances that have non-variable types,
-	// since only instances with non-variable types will be needed to emit code.
 	for _, arg := range f.TypeArgs {
 		if hasTypeVariable(arg) {
 			return f
@@ -357,22 +370,22 @@ func memoizeFuncInst(f *FuncInst) *FuncInst {
 	return f
 }
 
-// captureIfaceArgs adds a parameter to the function
-// for every IfaceArg that is not a static function,
-// replaces the IfaceArg's expression with a load of that parameter,
+// captureConstraintArgs adds a parameter to the function
+// for every ConstraintArg that is not a static function,
+// replaces the ConstraintArg's expression with a load of that parameter,
 // and returns a slice of *BlockCaps capturing the replaced expressions.
-func captureIfaceArgs(f *FuncInst) []*BlockCap {
+func captureConstraintArgs(f *FuncInst) []*BlockCap {
 	var caps []*BlockCap
 	// FuncInst may already have the f.T.Parms expr IfaceArg parms.
 	// This happens when canonicaling a FuncInst during substitution.
 	// We don't want to double-up on the args here, so chomp off the old ones.
 	f.T.Parms = f.T.Parms[:len(f.Def.Parms)]
-	for i := range f.IfaceArgs {
-		exprFunc, ok := f.IfaceArgs[i].(*ExprFunc)
+	for i := range f.ConstraintArgs {
+		exprFunc, ok := f.ConstraintArgs[i].(*ExprFunc)
 		if !ok {
 			continue
 		}
-		decl := &f.Def.Iface[i]
+		decl := funcDeclByIndex(f.Def, i)
 		// This ParmDef is later added to f.Parms by subFuncInst.
 		p := &ParmDef{
 			Name: fmt.Sprintf("%s[%d]", decl.Name, i),
@@ -395,6 +408,25 @@ func captureIfaceArgs(f *FuncInst) []*BlockCap {
 	return caps
 }
 
+func funcDeclByIndex(def *FuncDef, i int) *FuncDecl {
+	var n int
+	for _, p := range def.Parms {
+		for j := range p.Constraints {
+			if n == i {
+				return &p.Constraints[j]
+			}
+			n++
+		}
+	}
+	for j := range def.Constraints {
+		if n == i {
+			return &def.Constraints[j]
+		}
+		n++
+	}
+	panic(fmt.Sprintf("constraint index %d out of bounds (n=%d)", i, n))
+}
+
 func (f *FuncInst) eq(other Func) bool {
 	o, ok := other.(*FuncInst)
 	if !ok || f.Def != o.Def {
@@ -405,8 +437,14 @@ func (f *FuncInst) eq(other Func) bool {
 			return false
 		}
 	}
-	for i := range f.IfaceArgs {
-		if !f.IfaceArgs[i].eq(o.IfaceArgs[i]) {
+	for i := range f.ConstraintArgs {
+		switch {
+		case f.ConstraintArgs[i] == nil && o.ConstraintArgs[i] == nil:
+			break
+		case f.ConstraintArgs[i] != nil && o.ConstraintArgs[i] != nil &&
+			f.ConstraintArgs[i].eq(o.ConstraintArgs[i]):
+			break
+		default:
 			return false
 		}
 	}

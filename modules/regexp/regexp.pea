@@ -372,11 +372,11 @@ Type read_result [
 ]
 
 // Implements read for byte-indexable, slicable types.
-Func read(s &S) read_result :
+Func read(s &S) read_result : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int)S
-{
+} {
 	return: utf8#consume(s) some? (rw){
 		read_result :: [rune? rw]
 	} none? {
@@ -385,11 +385,11 @@ Func read(s &S) read_result :
 }
 
 // Implements read for rune-indexable, slicable types.
-Func read(s &S) read_result :
+Func read(s &S) read_result : {
 	.length(S)int,
 	[](S, int)rune,
 	[](S, int, int)S
-{
+} {
 	if: s.length = 0 then: {
 		return: [end?]
 	},

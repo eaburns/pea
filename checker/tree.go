@@ -259,18 +259,18 @@ type TestDef struct {
 func (d *TestDef) Loc() loc.Loc { return d.L }
 
 type FuncDef struct {
-	File      *File
-	Mod       string
-	Name      string
-	TypeParms []TypeParm
-	Parms     []ParmDef
-	Locals    []*LocalDef
-	Ret       Type
-	Iface     []FuncDecl
-	Exprs     []Expr // nil if unspecified, non-nil, len()==0 if empty
-	Exp       bool
-	Insts     []*FuncInst
-	L         loc.Loc
+	File        *File
+	Mod         string
+	Name        string
+	TypeParms   []TypeParm
+	Parms       []ParmDef
+	Locals      []*LocalDef
+	Ret         Type
+	Constraints []FuncDecl
+	Exprs       []Expr // nil if unspecified, non-nil, len()==0 if empty
+	Exp         bool
+	Insts       []*FuncInst
+	L           loc.Loc
 
 	usedVars  []varUse
 	usedFuncs []funcUse
@@ -279,9 +279,10 @@ type FuncDef struct {
 func (f *FuncDef) Loc() loc.Loc { return f.L }
 
 type ParmDef struct {
-	Name string
-	T    Type
-	L    loc.Loc
+	Name        string
+	T           Type
+	Constraints []FuncDecl
+	L           loc.Loc
 }
 
 func (f *ParmDef) Type() Type   { return f.T }
@@ -351,10 +352,21 @@ type Func interface {
 }
 
 type FuncInst struct {
-	TypeArgs  []Type
-	IfaceArgs []Func
-	Def       *FuncDef
-	T         *FuncType
+	Def            *FuncDef
+	TypeArgs       []Type
+
+	// ConstraintParms are the FuncDecl parameters.
+	// It is the concatenation of the parameter constraints
+	// followed by the return constraints.
+	ConstraintParms []FuncDecl
+
+	// ConstraintArgs contains the functions fulfilling constraints;
+	// it is the concatenation of the parameter constraint args
+	// followed by the return constraint args.
+	// ConstraintArgs[i] is nil until instantiated.
+	ConstraintArgs []Func
+
+	T              *FuncType
 
 	// typeParms contains all bound type parameters in this inst.
 	// The entries here are not the same *TypeParms

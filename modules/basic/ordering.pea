@@ -51,22 +51,22 @@ test ordering_spaceship {
 }
 
 // Returns whether a is less than b for any type T implementing <=>.
-Func <(a, b T) bool : <=>(T, T)O, less?_?(O, (){bool}, (){bool})bool {
+Func <(a, b T) bool : { <=>(T, T)O, less?_?(O, (){bool}, (){bool})bool } {
 	return: a <=> b less? { true } _? { false }
 }
 
 // Returns whether a is less than or equal to b for any type T implementing <=>.
-Func <=(a, b T) bool : <=>(T, T)O, less?equal?_?(O, (){bool}, (){bool}, (){bool})bool {
+Func <=(a, b T) bool : { <=>(T, T)O, less?equal?_?(O, (){bool}, (){bool}, (){bool})bool } {
 	return: a <=> b less? { true } equal? { true } _? { false }
 }
 
 // Returns whether a is greater than b for any type T implementing <=>.
-Func >(a, b T) bool : <=>(T, T)O, greater?_?(O, (){bool}, (){bool})bool {
+Func >(a, b T) bool : { <=>(T, T)O, greater?_?(O, (){bool}, (){bool})bool } {
 	return: a <=> b greater? { true } _? { false }
 }
 
 // Returns whether a is greater than or equal to b for any type T implementing <=>.
-Func >=(a, b T) bool : <=>(T, T)O, greater?equal?_?(O, (){bool}, (){bool}, (){bool})bool {
+Func >=(a, b T) bool : { <=>(T, T)O, greater?equal?_?(O, (){bool}, (){bool}, (){bool})bool } {
 	return: a <=> b greater? { true } equal? { true } _? { false }
 }
 

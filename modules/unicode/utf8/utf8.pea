@@ -25,11 +25,11 @@ test width {
 }
 
 // Consumes and returns the first rune from s or none() if s is empty.
-Func consume(s &S) [.rune rune, .width int] option :
+Func consume(s &S) [.rune rune, .width int] option : {
 	 .length(S)int,
 	 [](S, int)uint8,
 	 [](S, int, int)S
-{
+} {
 	return: decode(s) some? (rw) {
 		s := s[rw.width, s.length],
 		some(rw)
@@ -39,7 +39,7 @@ Func consume(s &S) [.rune rune, .width int] option :
 }
 
 // Calls f for each rune and rune width decoded starting at the beginning of s.
-Func for:runes:(s S, f (rune, int){}) : .length(S)int, [](S, int)uint8, [](S, int, int)S {
+Func for:runes:(s S, f (rune, int){}) : { .length(S)int, [](S, int)uint8, [](S, int, int)S } {
 	while: {decode(s)} some: (rw) {
 		s := s[rw.width, s.length],
 		f(rw.rune, rw.width)
@@ -73,7 +73,7 @@ test for_runes_width{
 }
 
 // Calls f for each rune decoded starting at the beginning of s.
-Func for:runes:(s S, f (rune){}) : .length(S)int, [](S, int)uint8, [](S, int, int)S {
+Func for:runes:(s S, f (rune){}) : { .length(S)int, [](S, int)uint8, [](S, int, int)S } {
 	while: {decode(s)} some: (rw) {
 		s := s[rw.width, s.length],
 		f(rw.rune)
@@ -125,7 +125,7 @@ test for_runes {
 // Returns the first rune in the string and its byte width.
 // If the string is empty, none() is returned.
 // If there is any other error, the replacement character is returned and width 1.
-Func decode(s S) [.rune rune, .width int] option : .length(S)int, [](S, int)uint8 {
+Func decode(s S) [.rune rune, .width int] option : { .length(S)int, [](S, int)uint8 } {
 	if: s.length < 1 then: {
 		return: none()
 	},

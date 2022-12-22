@@ -196,11 +196,11 @@ func (err *AmbiguousError) print(p errorPrinter) {
 // that an expression's type cannot be converted
 // to the necessary pattern.
 type ConvertExprError struct {
-	Expr  Expr
-	Dst   TypePattern
-	Cause Cause
+	Expr     Expr
+	Dst      TypePattern
+	Cause    Cause
 	Explicit bool
-	scope scope
+	scope    scope
 	// TODO: remove ConvertExprError.notes.
 	notes
 }

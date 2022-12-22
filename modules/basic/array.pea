@@ -133,12 +133,12 @@ test array_greater {
 }
 
 // Returns whether an array is < or = to another.
-Func <=(a [T], b [T]) bool : <(T,T)bool, =(T, T)bool {
+Func <=(a [T], b [T]) bool : { <(T,T)bool, =(T, T)bool } {
 	return: a < b || {a = b}
 }
 
 // Returns whether an array is > or = to another.
-Func >=(a [T], b [T]) bool : >(T,T)bool, =(T, T)bool {
+Func >=(a [T], b [T]) bool : { >(T,T)bool, =(T, T)bool } {
 	return: a > b || {a = b}
 }
 

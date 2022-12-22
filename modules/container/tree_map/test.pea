@@ -174,17 +174,17 @@ test for_each {
 	],
 }
 
-func print(p print#printer, a [.key K, .val V])print#printer :
+func print(p print#printer, a [.key K, .val V])print#printer : {
 	++(print#printer, K)print#printer,
 	++(print#printer, V)print#printer,
-{
+} {
 	return: p ++ "[.key " ++ a.key ++ ", .val " ++ a.val ++ "]"
 }
 
-func =(a [.key K, .val V], b [.key K, .val V])bool :
+func =(a [.key K, .val V], b [.key K, .val V])bool : {
 	=(K, K)bool,
 	=(V, V)bool,
-{
+} {
 	return: a.key = b.key && a.val = b.val
 }
 
@@ -333,10 +333,10 @@ test merge {
 	}
 }
 
-func check_invariants(m (K, V) tree_map) :
+func check_invariants(m (K, V) tree_map) : {
 	++(print#printer, K)print#printer,
 	++(print#printer, V)print#printer
-{
+} {
 	check_invariants(m, m.root, true, K option :: none(), K option :: none()),
 	c := count(m.root),
 	if: c != m.n then: {
@@ -344,10 +344,10 @@ func check_invariants(m (K, V) tree_map) :
 	}
 }
 
-func check_invariants(m (K, V) tree_map, n (K, V) node, root bool, min K option, max K option) int :
+func check_invariants(m (K, V) tree_map, n (K, V) node, root bool, min K option, max K option) int : {
 	++(print#printer, K)print#printer,
 	++(print#printer, V)print#printer
-{
+} {
 	if: !root && n.n < m.min_keys then: {
 		print_tree(m),
 		panic(print#string("node has too few keys: " ++ n.n ++ " < " ++ m.min_keys)),
@@ -408,18 +408,18 @@ func count(n (K, V) node) int {
 	return: num,
 }
 
-func print_tree(m (K, V) tree_map) :
+func print_tree(m (K, V) tree_map) : {
 	++(print#printer, K)print#printer,
 	++(print#printer, V)print#printer,
-{
+} {
 	print#print("size=" ++ m.n ++ "\n"),
 	print_node(m.root, 0),
 }
 
-func print_node(n (K, V) node, depth int) :
+func print_node(n (K, V) node, depth int) : {
 	++(print#printer, K)print#printer,
 	++(print#printer, V)print#printer,
-{
+} {
 	indent := {
 		for: 0 to: depth-1 do: (_) {
 			print("      "),
@@ -444,16 +444,16 @@ func print_node(n (K, V) node, depth int) :
 	print("\n")
 }
 
-func =(a (K, V) node, b (K, V) node)bool : =(K, K)bool, =(V, V)bool {
+func =(a (K, V) node, b (K, V) node)bool : { =(K, K)bool, =(V, V)bool } {
 	return: a.n = b.n &&
 		a.keys[0, a.n] = b.keys[0, b.n] &&
 		(a.kids.length = 0 || { a.kids[0, a.n+1] = b.kids[0, b.n+1] })
 }
 
-func =(a [.k K, .v V], b [.k K, .v V]) bool : =(K, K)bool, =(V, V)bool {
+func =(a [.k K, .v V], b [.k K, .v V]) bool : { =(K, K)bool, =(V, V)bool } {
 	return: a.k = b.k && a.v = b.v
 }
 
-func print(p print#printer, a [.k K, .v V]) print#printer : ++(print#printer, K)print#printer, ++(print#printer, V)print#printer {
+func print(p print#printer, a [.k K, .v V]) print#printer : { ++(print#printer, K)print#printer, ++(print#printer, V)print#printer } {
 	return: p ++ "[.k " ++ a.k ++ ", .v " ++ a.v ++ "]"
 }

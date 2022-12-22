@@ -25,7 +25,11 @@ func convertType(src, dst TypePattern, mode convertMode) (map[*TypeParm]Type, *C
 
 // mustConvertExpr is like convertExpr, but it panics on error.
 func mustConvertExpr(expr Expr, dst TypePattern, mode convertMode) Expr {
-	expr, _, err := convertExpr(nil, expr, dst, mode)
+	// This is a hack so we can print a better panic message.
+	// Pass a fake top-scope with an empty importer,
+	// thus no location infromation, but nothing will nil-pointer panic.
+	x := &topScope{importer: &defaultImporter{}, verbose: true}
+	expr, _, err := convertExpr(x, expr, dst, mode)
 	if err != nil {
 		panic(fmt.Sprintf("cannot convert %s to %s: %s", expr, dst, err))
 	}
@@ -66,11 +70,11 @@ func convertExpr(x scope, expr Expr, dst TypePattern, mode convertMode) (Expr, m
 	return doConvertExpr(x, expr, cvt), bind, nil
 fail:
 	return expr, nil, &ConvertExprError{
-		Expr:  expr,
-		Dst:   dst,
-		Cause: cause,
+		Expr:     expr,
+		Dst:      dst,
+		Cause:    cause,
 		Explicit: mode == explicit,
-		scope: x,
+		scope:    x,
 	}
 }
 

@@ -22,7 +22,7 @@ type (K, V) node &[
 ]
 
 // Returns a new, empty tree_map.
-Func new() (K, V) tree_map : <(K, K)bool, =(K, K)bool {
+Func new() (K, V) tree_map : { <(K, K)bool, =(K, K)bool } {
 	empty := (K, V) node :: [.n 0, .keys [], .kids []],
 	return: [
 		.n 0,

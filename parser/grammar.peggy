@@ -175,7 +175,7 @@ IfaceName <- (args:TypeArgs)? names:ModTypeName+ {
 	return namedType(args, names, l(parser, start, end)).(*NamedType)
 }
 
-FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" iface:Iface)? es:FuncBody? {
+FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" r:Type? (_ ":" c:Constraint)? es:FuncBody? {
 	var parms []FuncParm; if ps != nil { parms = *ps }
 	var ret Type; if r != nil { ret = *r }
 	var exprs []Expr; if es != nil { exprs = *es }
@@ -184,7 +184,7 @@ FuncDef <- _ reserved:("func" / "Func") name:FuncName _ "(" ps:FuncParms? _ ")" 
 		Name: name,
 		Parms: parms,
 		Ret: ret,
-		Iface: iface,
+		Constraints: c,
 		Exprs: exprs,
 		L: l(parser, start, end),
 	})
@@ -210,9 +210,22 @@ FuncParmName <- name:Id {
 	return FuncParm{Name: name, L: l(parser, start, end)}
 }
 
-FuncParmNameType <- name:Id typ:Type {
-	return FuncParm{Name: name, Type: typ, L: l(parser, start, end)}
+FuncParmNameType <- name:Id typ:Type (_ ":" c:Constraint)? {
+	return FuncParm{
+		Name: name,
+		Type: typ,
+		Constraints: c,
+		L: l(parser, start, end),
+	}
 }
+
+Constraint <-
+	iface:IfaceElem {
+		return []interface{}{iface}
+	} /
+	_ "{" iface:Iface _ "}" {
+		return []interface{}(iface)
+	}
 
 FuncDecl <- name:FuncName _ "(" ps:Types? _ ")" r:Type? {
 	var parms []Type; if ps != nil { parms = *ps }

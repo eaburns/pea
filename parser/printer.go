@@ -178,7 +178,7 @@ func (f *FuncDef) print(pc *config) {
 	pc.field("Name", f.Name)
 	pc.field("Parms", f.Parms)
 	pc.field("Ret", f.Ret)
-	pc.field("Iface", f.Iface)
+	pc.field("Constraints", f.Constraints)
 	pc.field("Exprs", f.Exprs)
 	pc.p("\n}")
 }
@@ -188,6 +188,7 @@ func (f FuncParm) print(pc *config) {
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
 	pc.field("Type", f.Type)
+	pc.field("Constraints", f.Constraints)
 	pc.p("\n}")
 }
 

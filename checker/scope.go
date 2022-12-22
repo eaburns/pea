@@ -742,24 +742,19 @@ func (f *FuncDef) findIDs(name string) []id {
 		}
 	}
 	ids := findIDs(f.File, name)
-nextIface:
-	for i := range f.Iface {
-		iface := &f.Iface[i]
-		if iface.Name != name {
-			continue
-		}
-
-		// If there was an error checking this interface, don't return it.
-		if iface.Ret == nil {
-			continue
-		}
-		for _, p := range iface.Parms {
-			if p == nil {
-				continue nextIface
+	for i := range f.Parms {
+		for j := range f.Parms[i].Constraints {
+			f := &f.Parms[i].Constraints[j]
+			if f.Name == name && !funcDeclHasError(f) {
+				ids = append(ids, f)
 			}
 		}
-
-		ids = append(ids, iface)
+	}
+	for i := range f.Constraints {
+		f := &f.Constraints[i]
+		if f.Name == name && !funcDeclHasError(f) {
+			ids = append(ids, f)
+		}
 	}
 	if name == "return:" {
 		ids = append(ids, &Builtin{
@@ -775,6 +770,15 @@ nextIface:
 		})
 	}
 	return ids
+}
+
+func funcDeclHasError(f *FuncDecl) bool {
+	for _, p := range f.Parms {
+		if p == nil {
+			return true
+		}
+	}
+	return f.Ret == nil
 }
 
 func (b *blockLitScope) findIDs(name string) []id {
@@ -859,17 +863,25 @@ func newFuncInst(def *FuncDef, l loc.Loc) *FuncInst {
 		parms = append(parms, subType(sub, p.T))
 	}
 	ret := subType(sub, def.Ret)
-	var ifaceArgs []Func
-	for i := range def.Iface {
-		ifaceArgs = append(ifaceArgs, subFuncDecl(sub, &def.Iface[i]))
+	var constraintParms []FuncDecl
+	for i := range def.Parms {
+		for j := range def.Parms[i].Constraints {
+			decl := subFuncDecl(sub, &def.Parms[i].Constraints[j])
+			constraintParms = append(constraintParms, *decl)
+		}
+	}
+	for i := range def.Constraints {
+		decl := subFuncDecl(sub, &def.Constraints[i])
+		constraintParms = append(constraintParms, *decl)
 	}
 	typ := &FuncType{Parms: parms, Ret: ret, L: l}
 	inst := &FuncInst{
-		TypeArgs:  typeArgs,
-		IfaceArgs: ifaceArgs,
-		T:         typ,
-		Def:       def,
-		typeParms: typeParms,
+		TypeArgs:       typeArgs,
+		ConstraintParms: constraintParms,
+		ConstraintArgs: make([]Func, len(constraintParms)),
+		T:              typ,
+		Def:            def,
+		typeParms:      typeParms,
 	}
 	return inst
 }

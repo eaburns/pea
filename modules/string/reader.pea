@@ -9,7 +9,7 @@ Type S reader := S _reader
 type S _reader &[.str S]
 
 // Returns a new reader, reading from s.
-Func reader(s S)S reader : .length(S)int, [](S, int)uint8 {
+Func reader(s S)S reader : { .length(S)int, [](S, int)uint8 } {
 	return: [.str s]
 }
 
@@ -17,11 +17,11 @@ Func reader(s S)S reader : .length(S)int, [](S, int)uint8 {
 // This function never returns the error? case.
 // This function never returns short reads,
 // unless there are insufficient bytes remaining in the string.
-Func read(r S reader, d [uint8])io#read_result :
+Func read(r S reader, d [uint8])io#read_result : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int)S,
-{
+} {
 	if: r.str.length = 0 then: {
 		return: [end?]
 	},

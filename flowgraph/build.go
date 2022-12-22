@@ -465,14 +465,14 @@ func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *funcBuilder {
 	}
 	fb := mb.newFuncBuilder(inst.Def.Mod, inst.Def.Name, inst.Parms, inst.T.Ret, inst.Loc())
 	fb.Exp = inst.Def.Exp
-	fb.Inst = len(inst.TypeArgs) > 0 || len(inst.IfaceArgs) > 0
+	fb.Inst = len(inst.TypeArgs) > 0 || len(inst.ConstraintArgs) > 0
 
 	var sourceName strings.Builder
 	sourceName.WriteString(inst.String())
-	if len(inst.IfaceArgs) > 0 {
+	if len(inst.ConstraintArgs) > 0 {
 		sourceName.WriteString(" : ")
 	}
-	for i, d := range inst.IfaceArgs {
+	for i, d := range inst.ConstraintArgs {
 		if i > 0 {
 			sourceName.WriteString(", ")
 		}
@@ -842,6 +842,7 @@ func (bb *blockBuilder) expr(expr checker.Expr) (*blockBuilder, Value) {
 		a, ok := bb.fun.parmAlloc[bb.fun.parmDef[expr.Def]]
 		if !ok {
 			if !bb.buildType(expr.Def.Type()).isEmpty() {
+				fmt.Printf("%s has no parm %s\n", bb.fun.FuncDef, expr.Def.Name)
 				panic("no parm")
 			}
 			return bb, nil
@@ -912,7 +913,7 @@ func (bb *blockBuilder) Call(call *checker.Call) (*blockBuilder, Value) {
 			panic(fmt.Sprintf("bad checker.Op: %d", fun.Op))
 		}
 	default:
-		panic(fmt.Sprintf("bad checker.Func type: %T", call.Func))
+		panic(fmt.Sprintf("bad checker.Func type: %T\ndef:\n%s", call.Func, bb.fun.FuncDef))
 	}
 }
 

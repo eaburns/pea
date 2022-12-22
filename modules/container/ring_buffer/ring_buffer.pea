@@ -189,7 +189,7 @@ test push_back {
 // This function performs the same as calling push_back:
 // on each individual element of ts,
 // however it may save on the number of grow operations.
-Func append:(r T ring_buffer, ts C) : .length(C)int, [](C, int)T {
+Func append:(r T ring_buffer, ts C) : { .length(C)int, [](C, int)T } {
 	if: ts.length = 0 then: {
 		return()
 	},

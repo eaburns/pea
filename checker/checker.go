@@ -240,28 +240,9 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 					funDef.Ret = &StructType{L: parserDef.L}
 				}
 
-				for _, elem := range parserDef.Iface {
-					switch elem := elem.(type) {
-					case *parser.FuncDecl:
-						decl, es := makeFuncDecl(funDef, elem)
-						errs = append(errs, es...)
-						funDef.Iface = appendFuncDecl(funDef.Iface, decl)
-					case *parser.NamedType:
-						args, es := makeTypes(funDef, elem.Args)
-						errs = append(errs, es...)
-						inst, err := newIfaceInst(funDef, elem, args)
-						if err != nil {
-							errs = append(errs, err)
-							break
-						}
-						inst = canonicalIfaceInst(inst.Def, inst.Args)
-						for i := range inst.Funcs {
-							funDef.Iface = appendFuncDecl(funDef.Iface, &inst.Funcs[i])
-						}
-					default:
-						panic(fmt.Sprintf("bad iface element type: %T", elem))
-					}
-				}
+				funDef.Constraints, es = makeFuncDecls(funDef, parserDef.Constraints)
+				errs = append(errs, es...)
+				dedupFuncDefConstraints(funDef)
 				defs[parserDef] = funDef
 				if len(errs) == origErrorCount {
 					// Only add to the mod defs list used for scope lookup
@@ -350,16 +331,14 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 			imp.toSub = nil
 		}
 		for _, inst := range toSub {
-			subFuncInst(inst)
+			subFuncInstExprs(inst)
 		}
 	}
 	if len(mod.toSub) > 0 {
 		// TODO: improve too much substitution error message
 		return nil, nil, []error{errors.New("too much substitution")}
 	}
-
 	mod.Deps = topScope.importer.Deps()
-
 	return mod, topScope.importer.Files(), nil
 }
 
@@ -640,24 +619,13 @@ func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
 	typeVars := make(map[string]loc.Loc)
 	for _, parserFuncParm := range parserFuncDef.Parms {
 		findTypeVars(parserFuncParm.Type, typeVars)
+		for _, parserConstraint := range parserFuncParm.Constraints {
+			findConstraintTypeVars(parserConstraint, typeVars)
+		}
 	}
 	findTypeVars(parserFuncDef.Ret, typeVars)
-	for _, elem := range parserFuncDef.Iface {
-		switch elem := elem.(type) {
-		case *parser.FuncDecl:
-			for _, parserIfaceParm := range elem.Parms {
-				findTypeVars(parserIfaceParm, typeVars)
-			}
-			if elem.Ret != nil {
-				findTypeVars(elem.Ret, typeVars)
-			}
-		case *parser.NamedType:
-			for _, parserTypeArg := range elem.Args {
-				findTypeVars(parserTypeArg, typeVars)
-			}
-		default:
-			panic(fmt.Sprintf("bad iface elem type: %T", elem))
-		}
+	for _, parserConstraint := range parserFuncDef.Constraints {
+		findConstraintTypeVars(parserConstraint, typeVars)
 	}
 	var typeParms []TypeParm
 	for name, l := range typeVars {
@@ -675,6 +643,24 @@ func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
 		return li[0] < lj[0]
 	})
 	return typeParms
+}
+
+func findConstraintTypeVars(c interface{}, typeVars map[string]loc.Loc) {
+	switch c := c.(type) {
+	case *parser.FuncDecl:
+		for _, parserIfaceParm := range c.Parms {
+			findTypeVars(parserIfaceParm, typeVars)
+		}
+		if c.Ret != nil {
+			findTypeVars(c.Ret, typeVars)
+		}
+	case *parser.NamedType:
+		for _, parserTypeArg := range c.Args {
+			findTypeVars(parserTypeArg, typeVars)
+		}
+	default:
+		panic(fmt.Sprintf("bad constraint type: %T", c))
+	}
 }
 
 func findTypeVars(parserType parser.Type, typeVars map[string]loc.Loc) {
@@ -723,13 +709,19 @@ func makeFuncParms(x scope, parserParms []parser.FuncParm) ([]ParmDef, []Error) 
 			seen[name] = parserParm.L
 		}
 		var t Type
-		var fs []Error
+		var es []Error
 		if parserParm.Type != nil {
-			if t, fs = makeType(x, parserParm.Type); len(fs) > 0 {
-				errs = append(errs, fs...)
-			}
+			t, es = makeType(x, parserParm.Type)
+			errs = append(errs, es...)
 		}
-		parms = append(parms, ParmDef{Name: name, T: t, L: parserParm.L})
+		decls, es := makeFuncDecls(x, parserParm.Constraints)
+		errs = append(errs, es...)
+		parms = append(parms, ParmDef{
+			Name:        name,
+			T:           t,
+			Constraints: decls,
+			L:           parserParm.L,
+		})
 	}
 	return parms, errs
 }
@@ -798,6 +790,34 @@ func checkIfaceDefHead(def *IfaceDef, parserDef *parser.IfaceDef) []Error {
 	return errs
 }
 
+func makeFuncDecls(x scope, parserConstraints []interface{}) ([]FuncDecl, []Error) {
+	var errs []Error
+	var decls []FuncDecl
+	for _, elem := range parserConstraints {
+		switch elem := elem.(type) {
+		case *parser.FuncDecl:
+			decl, es := makeFuncDecl(x, elem)
+			errs = append(errs, es...)
+			decls = appendFuncDecl(decls, decl)
+		case *parser.NamedType:
+			args, es := makeTypes(x, elem.Args)
+			errs = append(errs, es...)
+			inst, err := newIfaceInst(x, elem, args)
+			if err != nil {
+				errs = append(errs, err)
+				break
+			}
+			inst = canonicalIfaceInst(inst.Def, inst.Args)
+			for i := range inst.Funcs {
+				decls = appendFuncDecl(decls, &inst.Funcs[i])
+			}
+		default:
+			panic(fmt.Sprintf("bad constraint type: %T", elem))
+		}
+	}
+	return decls, errs
+}
+
 func makeFuncDecl(x scope, parserDecl *parser.FuncDecl) (*FuncDecl, []Error) {
 	parms, errs := makeTypes(x, parserDecl.Parms)
 	ret, es := makeType(x, parserDecl.Ret)
@@ -806,9 +826,9 @@ func makeFuncDecl(x scope, parserDecl *parser.FuncDecl) (*FuncDecl, []Error) {
 		ret = &StructType{L: parserDecl.L}
 	}
 	decl := &FuncDecl{
-		Name:   parserDecl.Name.Name,
-		Parms:  parms,
-		Ret:    ret,
+		Name:  parserDecl.Name.Name,
+		Parms: parms,
+		Ret:   ret,
 		// +1 to cover the return value.
 		RefLit: make([]bool, len(parms)+1),
 		L:      parserDecl.L,
@@ -880,6 +900,47 @@ func appendFuncDecl(funcs []FuncDecl, decl *FuncDecl) []FuncDecl {
 		}
 	}
 	return append(funcs, *decl)
+}
+
+// dedupFuncDefConstraints deduplicates constrains
+// across parameters and the return type.
+func dedupFuncDefConstraints(def *FuncDef) {
+	var prev []FuncDecl
+	for i := range def.Parms {
+		p := &def.Parms[i]
+		var n int
+		for _, c := range p.Constraints {
+			found := false
+			for j := range prev {
+				if eqFuncDecl(&c, &prev[j]) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				prev = append(prev, c)
+				p.Constraints[n] = c
+				n++
+			}
+		}
+		p.Constraints = p.Constraints[0:n]
+	}
+	var n int
+	for _, c := range def.Constraints {
+		found := false
+		for j := range prev {
+			if eqFuncDecl(&c, &prev[j]) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			prev = append(prev, c)
+			def.Constraints[n] = c
+			n++
+		}
+	}
+	def.Constraints = def.Constraints[0:n]
 }
 
 func eqFuncDecl(a, b *FuncDecl) bool {
@@ -1116,7 +1177,11 @@ func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 			errs = append(errs, newError(l, "%s unused", l.Name))
 		}
 	}
-	if len(def.TypeParms) == 0 && len(def.Iface) == 0 {
+	nConstraints := len(def.Constraints)
+	for i := range def.Parms {
+		nConstraints += len(def.Parms[i].Constraints)
+	}
+	if len(def.TypeParms) == 0 && nConstraints == 0 {
 		// This is a not-parameterized function.
 		// Make sure we add it to the Insts memo table,
 		// so its Exprs get built.
@@ -1424,10 +1489,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		return &Call{L: parserCall.L}, []Error{firstArgConvertError}
 	}
 
-	funcs, ces = filterByReturnType(funcs, pat, mode)
-	candidateErrs = append(candidateErrs, ces...)
-
-	funcs, ces = filterIfaceConstraints(x, parserCall.L, funcs)
+	funcs, ces = filterByReturnType(x, funcs, pat, mode)
 	candidateErrs = append(candidateErrs, ces...)
 
 	switch {
@@ -1610,13 +1672,20 @@ func filterByArg(x scope, funcs []Func, i int, arg Expr) ([]Func, []CandidateErr
 			errs = append(errs, *subErr)
 			continue
 		}
+		if funcInst, ok := f.(*FuncInst); ok {
+			var err *CandidateError
+			if f, err = instParmConstraints(x, funcInst, i); err != nil {
+				errs = append(errs, *err)
+				continue
+			}
+		}
 		funcs[n] = f
 		n++
 	}
 	return funcs[:n], errs
 }
 
-func filterByReturnType(funcs []Func, pat TypePattern, mode convertMode) ([]Func, []CandidateError) {
+func filterByReturnType(x scope, funcs []Func, pat TypePattern, mode convertMode) ([]Func, []CandidateError) {
 	if len(funcs) == 1 {
 		f := funcs[0]
 		// Just try to substitute it, ignoring conversion errors.
@@ -1641,6 +1710,12 @@ func filterByReturnType(funcs []Func, pat TypePattern, mode convertMode) ([]Func
 			}
 			return nil, []CandidateError{err}
 		}
+		if funcInst, ok := f.(*FuncInst); ok {
+			var instErr *CandidateError
+			if f, instErr = instRetConstraints(x, funcInst); instErr != nil {
+				return nil, []CandidateError{*instErr}
+			}
+		}
 		return []Func{f}, nil
 	}
 
@@ -1661,20 +1736,12 @@ func filterByReturnType(funcs []Func, pat TypePattern, mode convertMode) ([]Func
 			errs = append(errs, *subErr)
 			continue
 		}
-		funcs[n] = f
-		n++
-	}
-	return funcs[:n], errs
-}
-
-func filterIfaceConstraints(x scope, l loc.Loc, funcs []Func) ([]Func, []CandidateError) {
-	var n int
-	var errs []CandidateError
-	for _, f := range funcs {
-		f, err := instFuncConstraints(x, l, f)
-		if err != nil {
-			errs = append(errs, *err)
-			continue
+		if funcInst, ok := f.(*FuncInst); ok {
+			var instErr *CandidateError
+			if f, instErr = instRetConstraints(x, funcInst); instErr != nil {
+				errs = append(errs, *instErr)
+				continue
+			}
 		}
 		funcs[n] = f
 		n++
@@ -1686,7 +1753,7 @@ func useFunc(x scope, l loc.Loc, fun Func) Func {
 	switch fun := fun.(type) {
 	case *FuncInst:
 		useFuncInst(x, l, fun.Def, nil, nil)
-		return captureExprIfaceArgs(x, fun)
+		return captureExprConstraintArgs(x, fun)
 	case *idFunc:
 		return &ExprFunc{
 			Expr:     useID(x, l, false, fun.id),
@@ -1779,8 +1846,9 @@ func checkID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern) (E
 func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, ids []id) (Expr, Error) {
 	var n int
 	var candidateErrs []CandidateError
+nextID:
 	for _, i := range ids {
-		fun, ok := i.(Func)
+		f, ok := i.(Func)
 		if !ok {
 			ids[n] = i
 			n++
@@ -1790,22 +1858,37 @@ func resolveID(x scope, parserID parser.Ident, assignLHS bool, pat TypePattern, 
 		if !isGround(i) {
 			if !pat.isGroundType() {
 				candidateErrs = append(candidateErrs, CandidateError{
-					Candidate: fun,
+					Candidate: f,
 					Msg:       fmt.Sprintf("cannot ground %s", i),
 				})
 				continue
 			}
-			if fun, _, err = unifyFunc(x, parserID.L, fun, nil, pat); err != nil {
+			if f, _, err = unifyFunc(x, parserID.L, f, nil, pat); err != nil {
 				candidateErrs = append(candidateErrs, *err)
 				continue
 			}
-		} else {
-			if fun, err = instFuncConstraints(x, parserID.L, fun); err != nil {
+		} else if _, ok := f.(*FuncInst); ok {
+			// Iterate over f.Def.Parms, since f.Parms is not populated
+			// until after substituting the expressions,
+			// which has not happened yet.
+			for i := range f.(*FuncInst).Def.Parms {
+				if f, err = instParmConstraints(x, f.(*FuncInst), i); err != nil {
+					candidateErrs = append(candidateErrs, *err)
+					goto nextID
+				}
+			}
+			if f, err = instRetConstraints(x, f.(*FuncInst)); err != nil {
 				candidateErrs = append(candidateErrs, *err)
 				continue
+			}
+			for i, a := range f.(*FuncInst).ConstraintArgs {
+				if a == nil {
+					panic(fmt.Sprintf("constraint[%d] (%s) is nil", i,
+						&f.(*FuncInst).ConstraintParms[i]))
+				}
 			}
 		}
-		ids[n] = fun.(id)
+		ids[n] = f.(id)
 		n++
 	}
 	ids = ids[:n]
@@ -1900,7 +1983,7 @@ func useID(x scope, l loc.Loc, assignLHS bool, id id) Expr {
 		return deref(&Cap{Def: id, T: refLiteral(id.T), L: l})
 	case *FuncInst:
 		useFuncInst(x, l, id.Def, nil, nil)
-		switch f := captureExprIfaceArgs(x, id).(type) {
+		switch f := captureExprConstraintArgs(x, id).(type) {
 		case *ExprFunc:
 			return f.Expr
 		default:
