@@ -15,6 +15,10 @@ func PrintLocs(files loc.Files) PrintOpt {
 	return func(pc *config) { pc.files = files }
 }
 
+func TrimPathPrefix(p string) PrintOpt {
+	return func(pc *config) { pc.trimPrefix = p }
+}
+
 func (m *Mod) Print(w io.Writer, opts ...PrintOpt) error {
 	return print(w, m, opts...)
 }
@@ -22,6 +26,7 @@ func (m *Mod) Print(w io.Writer, opts ...PrintOpt) error {
 type config struct {
 	w             io.Writer
 	files         loc.Files
+	trimPrefix    string
 	n             int
 	ident         string
 	printInstBody bool
@@ -231,7 +236,8 @@ func (t TypeVar) print(pc *config) {
 	pc.loc(t.L)
 	pc.field("Name", t.Name)
 	if t.Def != nil {
-		pc.field("Def", pc.files.Location(t.Def.L))
+		pc.p("\n  Def: ")
+		pc.loc(t.Def.L)
 	}
 	pc.p("\n}")
 }
@@ -551,7 +557,8 @@ func (pc *config) loc(l loc.Loc) {
 	if pc.files == nil || (l == loc.Loc{}) {
 		return
 	}
-	pc.p("\t(%s)", pc.files.Location(l))
+	s := strings.TrimPrefix(pc.files.Location(l).String(), pc.trimPrefix)
+	pc.p("\t(%s)", s)
 }
 
 func (pc *config) field(name string, val interface{}) {

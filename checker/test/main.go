@@ -55,6 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 	if *dump {
-		m.Print(os.Stdout, checker.PrintLocs(fs))
+		m.Print(os.Stdout, checker.PrintLocs(fs),
+			checker.TrimPathPrefix(p.TrimErrorPathPrefix))
 	}
 }
