@@ -608,6 +608,7 @@ type Float struct {
 	value
 	Text string
 	T    FloatType
+	Val  big.Float
 	L    loc.Loc
 }
 

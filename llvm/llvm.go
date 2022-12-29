@@ -3,6 +3,7 @@ package llvm
 import (
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 
@@ -946,9 +947,22 @@ func (g *gen) writeValue(v flowgraph.Value) {
 	case *flowgraph.Int:
 		g.write(v.Val.String())
 	case *flowgraph.Float:
-		g.write(v.Text)
-		if !strings.ContainsRune(v.Text, '.') {
-			g.writeString(".0")
+		switch v.T.Size {
+		case 32:
+			f, _ := v.Val.Float32()
+			// For reasons I don't understand,
+			// llvm represents 32-bit floats as doubles,
+			// but the precision must be small enough to fit in 32 bits.
+			// So we need to convert the float here to a 64-bit,
+			// and write the binary representation for that,
+			// not the 32-bit binary representation directly.
+			f2 := float64(f)
+			g.write(fmt.Sprintf("0x%016x", math.Float64bits(f2)))
+		case 64:
+			f, _ := v.Val.Float64()
+			g.write(fmt.Sprintf("0x%016x", math.Float64bits(f)))
+		default:
+			panic("bad floating point size")
 		}
 	case *flowgraph.Null:
 		g.write("null")

@@ -868,7 +868,7 @@ func (bb *blockBuilder) expr(expr checker.Expr) (*blockBuilder, Value) {
 	case *checker.IntLit:
 		return bb, bb.checkerIntLit(expr, bb.buildType(expr.T))
 	case *checker.FloatLit:
-		return bb, bb.floatLit(expr.Text, bb.buildType(expr.T))
+		return bb, bb.floatLit(expr, bb.buildType(expr.T))
 	default:
 		panic(fmt.Sprintf("bad checker.Expr type: %T", expr))
 	}
@@ -2679,12 +2679,12 @@ func (bb *blockBuilder) checkerIntLit(lit *checker.IntLit, typ Type) *Int {
 	return v
 }
 
-func (bb *blockBuilder) floatLit(text string, typ Type) *Float {
+func (bb *blockBuilder) floatLit(lit *checker.FloatLit, typ Type) *Float {
 	t, ok := typ.(*FloatType)
 	if !ok {
 		panic(fmt.Sprintf("got %s, want FloatType", typ))
 	}
-	v := &Float{Text: text, T: *t, L: bb.L}
+	v := &Float{Text: lit.Text, T: *t, Val: lit.Val, L: bb.L}
 	bb.addValue(v)
 	return v
 }
