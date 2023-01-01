@@ -3563,8 +3563,6 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			`,
 			want: "bar()&int",
 		},
-		/*
-		// TODO: Passing &T to an iface instantiation should require a ref parm.
 		{
 			// You cannot sort a string, since it is immutable.
 			// This should be rejected because the [] function
@@ -3578,13 +3576,26 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 					[](S, int, int) S,
 				}
 				// string does not satisfy this &T.
-				func sort(span S : { (S, &T) span, <(T, T)[false?, true?] }) {
-				}
+				func sort(span S : { (S, &T) span, <(T, T)[false?, true?] })
 				func <(_, _ uint8)[false?, true?]
 			`,
 			err: `expected a reference literal &\?`,
 		},
-		*/
+		{
+			// You can sort an array, since its elements are &T.
+			name: "sorting an array",
+			src: `
+				func main() { target_function([2, 3, 4]) }
+				iface (S, T) span {
+					[](S, int)T,
+					.length(S)int,
+					[](S, int, int) S,
+				}
+				func target_function(span S : { (S, &T) span, <(T, T)[false?, true?] })
+				func <(_, _ int)[false?, true?]
+			`,
+			want: `built-in []([int], int)&int`,
+		},
 		{
 			// You cannot sort a string, since it is immutable.
 			// This should be rejected because the [] function

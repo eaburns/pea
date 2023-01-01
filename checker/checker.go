@@ -1013,7 +1013,25 @@ nextInst:
 
 	var funcs []FuncDecl
 	for i := range def.Funcs {
-		funcs = append(funcs, *subFuncDecl(bind, &def.Funcs[i]))
+		decl := *subFuncDecl(bind, &def.Funcs[i])
+		// Recompute whether each decl parameter or return is a ref literal.
+		// This is becasue the interface may have been instantiated with a ref literal.
+		// For example,
+		//	Iface (S, T) span {
+		// 		.length(S)int,
+		// 		[](S, int)T
+		// 	}
+		// Can be instantiated as:
+		// 	(S, T) span
+		// in which case [](S, int)T needn't have a ref-literal T,
+		// but it can also be instantiated as:
+		// 	(S, &T) span
+		// which should require [](S, int)&T to be a ref-literal.
+		for i, p := range decl.Parms {
+			decl.RefLit[i] = isRefLiteral(p)
+		}
+		decl.RefLit[len(decl.RefLit)-1] = isRefLiteral(decl.Ret)
+		funcs = append(funcs, decl)
 	}
 	inst := &IfaceInst{Def: def, Args: args, Funcs: funcs}
 	for _, arg := range args {
