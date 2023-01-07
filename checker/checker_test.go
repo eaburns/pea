@@ -1086,9 +1086,10 @@ func TestArgumentConversions(t *testing.T) {
 
 func TestConversions(t *testing.T) {
 	tests := []struct {
-		name string
-		src  string
-		err  string
+		name      string
+		src       string
+		err       string
+		otherMods []testMod
 	}{
 		{
 			name: "implicit conversion to empty struct",
@@ -1544,6 +1545,137 @@ func TestConversions(t *testing.T) {
 				func f(x foo) &bar {return: &bar :: x}
 			`,
 		},
+		{
+			name: "user-defined conversion",
+			src: `
+				func f(x int) string {return: string :: x}
+				func ::(_ int) string
+			`,
+		},
+		{
+			name: "arg adl user-defined convert",
+			src: `
+				import "foo"
+				func f(x foo#t) string {return: string :: x}
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t int
+						Func t() t { return: t :: 0 }
+						Func ::(_ t) string
+					`,
+				},
+			},
+		},
+		{
+			name: "ret adl user-defined convert",
+			src: `
+				import "foo"
+				func f(x string) foo#t {return: foo#t :: x}
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t int
+						Func t() t { return: t :: 0 }
+						Func ::(_ string) t
+					`,
+				},
+			},
+		},
+		{
+			name: "arg and ret adl user-defined convert",
+			src: `
+				import "foo"
+				func f(x foo#t) foo#u {return: foo#u :: x}
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t (int)
+						Func t() t { return: t :: 0 }
+						Type u (int)
+						Func u() u { return: u :: 0 }
+						Func ::(_ t) u
+					`,
+				},
+			},
+		},
+		{
+			name: "user-defined conversion and conversion call return value",
+			src: `
+				func f() string {return: string :: x()}
+				func x() &int
+				func ::(_ int) string
+			`,
+		},
+		{
+			name: "user-defined conversion implicitly converts the arg",
+			src: `
+				func f(x point) string {return: string :: x}
+				type point [.x int, .y int]
+				func ::(_ [.x int, .y int]) string
+			`,
+		},
+		{
+			name: "user-defined conversion implicitly converts the retutrn",
+			src: `
+				func f(x int) point {return: point :: x}
+				type point [.x int, .y int]
+				func ::(_ int) [.x int, .y int]
+			`,
+		},
+		{
+			name: "user-defined conversion implicitly converts the arg and retutrn",
+			src: `
+				func f(x [.x int, .y int]) point {return: point :: x}
+				type point [.x int, .y int]
+				func ::(_ point) [.x int, .y int]
+			`,
+		},
+		{
+			name: "user-defined conversion overrides built-in",
+			src: `
+				func f(x string) string {return: string :: x}
+				func ::(_ string) string
+			`,
+			// We don't test here that it actually _overrides_.
+			// That is tested in the flowgraph/testdata instead,
+			// but here we at least check it's not a checker error.
+		},
+		{
+			name: "ambiguous user-defined conversion",
+			src: `
+				func f(x int) string {return: string :: x}
+				func ::(_ int) string
+				func ::(_ int) string
+			`,
+			err: "ambiguous",
+		},
+		{
+			name: "ambiguous user-defined conversion because implicit arg convert",
+			src: `
+				func f(x point) string {return: string :: x}
+				type point [.x int, .y int]
+				func ::(_ point) string
+				func ::(_ [.x int, .y int]) string
+			`,
+			err: "ambiguous",
+		},
+		{
+			name: "ambiguous user-defined conversion because implicit ret convert",
+			src: `
+				func f(x int) point {return: point :: x}
+				type point [.x int, .y int]
+				func ::(_ int) point
+				func ::(_ int) [.x int, .y int]
+			`,
+			err: "ambiguous",
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -1552,7 +1684,7 @@ func TestConversions(t *testing.T) {
 			name = test.src
 		}
 		t.Run(name, func(t *testing.T) {
-			switch _, errs := check("test", []string{test.src}, nil); {
+			switch _, errs := check("test", []string{test.src}, test.otherMods); {
 			case test.err == "" && len(errs) == 0:
 				break
 			case test.err == "" && len(errs) > 0:
@@ -2945,6 +3077,92 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			// return[0] is the name of the inserted parameter
 			// to hold the return constraint function expression.
 			want: "return[0]",
+		},
+		{
+			name: "match built-in convert",
+			src: `
+				func main() { target_function(5) }
+				func target_function(_ X) : ::(X)int32
+			`,
+			// Built-in conversions are wrapped in a block.
+			want: "(x int){…}",
+		},
+		{
+			name: "match user-defined convert",
+			src: `
+				func main() { target_function("string") }
+				func target_function(_ X) : ::(X)int32
+				func ::(_ string)int32
+			`,
+			want: "::(string)int32",
+		},
+		{
+			name: "match user-defined convert over a built-in convert",
+			src: `
+				func main() { target_function("string") }
+				func target_function(_ X) : ::(X)string
+				func ::(_ string)string
+			`,
+			want: "::(string)string",
+		},
+		{
+			name: "match arg adl convert",
+			src: `
+				import "foo"
+				func main() { target_function(foo#t()) }
+				func target_function(_ X) : ::(X)string
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t int
+						Func t() t { return: t :: 0 }
+						Func ::(_ t) string
+					`,
+				},
+			},
+			want: "foo#::(foo#t)string",
+		},
+		{
+			name: "match ret adl convert",
+			src: `
+				import "foo"
+				func main() { target_function(foo#t()) }
+				func target_function(_ X) : ::(string)X
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t int
+						Func t() t { return: t :: 0 }
+						Func ::(_ string) t
+					`,
+				},
+			},
+			want: "foo#::(string)foo#t",
+		},
+		{
+			name: "match arg and ret adl convert",
+			src: `
+				import "foo"
+				func main() { target_function(foo#t(), foo#u()) }
+				func target_function(_ X, _ Y) : ::(X)Y
+			`,
+			otherMods: []testMod{
+				{
+					path: "foo",
+					src: `
+						Type t (int)
+						Type u (int)
+						Func t() t { return: t :: 0 }
+						Func u() u { return: u :: 0 }
+						Func ::(_ t) u
+					`,
+				},
+			},
+			want: "foo#::(foo#t)foo#u",
 		},
 		{
 			name: "match var",
@@ -5128,7 +5346,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "disambiguate on parm constraint",
-			src:  `
+			src: `
 				// float64 does not have bitwise &.
 				func a(i I : &(I, I)I, b int)
 				func a(f float64, b int)
@@ -5138,7 +5356,7 @@ func TestOverloadResolution(t *testing.T) {
 		},
 		{
 			name: "disambiguate on parm2 constraint",
-			src:  `
+			src: `
 				// float64 does not have bitwise &.
 				func a(a string, i I : &(I, I)I, b int)
 				func a(a string, f float64, b int)

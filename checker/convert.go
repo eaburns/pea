@@ -1,6 +1,143 @@
 package checker
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/eaburns/pea/loc"
+)
+
+type stringer string
+
+func (s stringer) String() string { return string(s) }
+
+type stringerLoc struct {
+	s string
+	l loc.Loc
+}
+
+func (sl stringerLoc) String() string { return sl.s }
+func (sl stringerLoc) Loc() loc.Loc   { return sl.l }
+
+// convertWithScope returns whether src is convertible to dst.
+// If the conversion is explicit, the scope is used to look for :: functions.
+//
+// When mode==explicit, any returned Cause implements the Error interface.
+func convertWithScope(x scope, src, dst TypePattern, mode convertMode, l loc.Loc) (map[*TypeParm]Type, Func, Cause) {
+	if mode == implicit {
+		bind, convertErr := convertType(src, dst, implicit)
+		if convertErr != nil {
+			return nil, nil, convertErr
+		}
+		return bind, nil, nil
+	}
+
+	ids := findIDs(x, "::")
+	var srcMod string
+	if defType, ok := src.Type.(*DefType); ok {
+		srcMod = defType.Def.Mod
+		ids = append(ids, adModuleIDs(x, srcMod, "::")...)
+	}
+	if defType, ok := dst.Type.(*DefType); ok && defType.Def.Mod != srcMod {
+		ids = append(ids, adModuleIDs(x, defType.Def.Mod, "::")...)
+	}
+
+	var candidateErrs []CandidateError
+	funcs, ces := filterToFuncs(ids, l)
+	candidateErrs = append(candidateErrs, ces...)
+
+	funcs, ces = filterByArity(funcs, 1)
+	candidateErrs = append(candidateErrs, ces...)
+
+	var n int
+	var binds []map[*TypeParm]Type
+	for _, f := range funcs {
+		var bind map[*TypeParm]Type
+		pat, _, err := convertPattern(nil, src, f.parm(0), implicit, &bind)
+		if err != nil {
+			candidateErrs = append(candidateErrs, CandidateError{
+				Candidate: f,
+				Msg:       "parameter 0",
+				Cause:     err,
+			})
+			continue
+		}
+		if bind != nil {
+			var err *CandidateError
+			if f, err = f.sub(pat.Parms, bind); err != nil {
+				candidateErrs = append(candidateErrs, *err)
+				continue
+			}
+		}
+		if funcInst, ok := f.(*FuncInst); ok {
+			var err *CandidateError
+			if f, err = instParmConstraints(x, funcInst, 0); err != nil {
+				candidateErrs = append(candidateErrs, *err)
+				continue
+			}
+		}
+
+		var unused map[*TypeParm]Type
+		if pat, _, err = convertPattern(nil, f.ret(), dst, implicit, &unused); err != nil {
+			candidateErrs = append(candidateErrs, CandidateError{
+				Candidate: f,
+				Msg:       "return value",
+				Cause:     err,
+			})
+			continue
+		}
+		if bind != nil {
+			var err *CandidateError
+			if f, err = f.sub(pat.Parms, bind); err != nil {
+				candidateErrs = append(candidateErrs, *err)
+				continue
+			}
+		}
+		if funcInst, ok := f.(*FuncInst); ok {
+			var err *CandidateError
+			if f, err = instRetConstraints(x, funcInst); err != nil {
+				candidateErrs = append(candidateErrs, *err)
+				continue
+			}
+		}
+		funcs[n] = f
+		binds = append(binds, bind)
+		n++
+	}
+	funcs = funcs[:n]
+
+	convertFun := stringerLoc{s: fmt.Sprintf("::(%s)%s", src, dst), l: l}
+	switch {
+	case len(funcs) == 1:
+		return binds[0], useFunc(x, l, funcs[0]), nil
+
+	case len(funcs) == 0:
+		bind, err := convertType(src, dst, explicit)
+		if err == nil {
+			return bind, nil, nil
+		}
+		builtInCandidate := stringer("built-in " + convertFun.s)
+		candidateErrs = append(candidateErrs, CandidateError{
+			Candidate: builtInCandidate,
+			Cause:     err,
+		})
+		return nil, nil, &NotFoundError{
+			Item:       convertFun,
+			Candidates: candidateErrs,
+			scope:      x,
+		}
+
+	default:
+		var candidates []fmt.Stringer
+		for _, f := range funcs {
+			candidates = append(candidates, f)
+		}
+		return nil, nil, &AmbiguousError{
+			Item:       convertFun,
+			Candidates: candidates,
+			scope:      x,
+		}
+	}
+}
 
 // convertType converts src to dst and returns the map of any bound type parameters.
 // The second return is a non-nil note on error or nil on success.

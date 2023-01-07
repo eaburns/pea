@@ -141,10 +141,12 @@ type CandidateError struct {
 func (err *CandidateError) print(p errorPrinter) {
 	p.printf("%s", err.Candidate)
 	if l, ok := err.Candidate.(loc.Locer); ok {
-		p.printf(" — %s", locOf{l})
+		p.printf(" — %s\n", locOf{l})
+	} else {
+		p.printf("\n")
 	}
 	if err.Msg != "" {
-		p.printf("\n%s", err.Msg)
+		p.printf("%s", err.Msg)
 	}
 	if err.Cause != nil {
 		if err.Msg != "" {

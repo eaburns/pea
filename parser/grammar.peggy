@@ -398,7 +398,11 @@ ModTag <- ids:ModId+ {
 	return Ident(modTag(ids))
 }
 
-FuncName <- FieldId / IdxOp / Op / Kwds / Cases / Id
+FuncName <- FieldId / ConvertOp / IdxOp / Op / Kwds / Cases / Id
+
+ConvertOp "conversion operator" <- _ "::" {
+	return Ident{Name: "::", L: l(parser, start, end)}
+}
 
 IdxOp "index operator" <- _ "[" _ "]" {
 	return Ident{Name: "[]", L: l(parser, start, end)}

@@ -58,7 +58,9 @@ func subFuncInstExprs(inst *FuncInst) {
 			// to the Parms slice now.
 			if exprFunc, ok := arg.(*ExprFunc); ok {
 				if cvt, ok := exprFunc.Expr.(*Convert); ok {
-					inst.Parms = append(inst.Parms, cvt.Expr.(*Parm).Def)
+					if p, ok := cvt.Expr.(*Parm); ok {
+						inst.Parms = append(inst.Parms, p.Def)
+					}
 				}
 			}
 		}

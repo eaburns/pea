@@ -1,0 +1,44 @@
+// 5
+func main() {
+	print(string :: 5)
+}
+
+Func ::(i int) string {
+	return: string(i < 0, uint64 :: abs(i))
+}
+
+const digits := [uint8] :: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
+
+Func string(neg bool, u uint64) string {
+	buf := [uint8] :: new(20, uint8 :: 0),
+	i := buf.length - 1,
+	while: { u >= 10 } true: {
+		u_next := u / 10,
+		buf[i] := digits[int :: u - u_next*10],
+		u := u_next,
+		i := i - 1,
+	},
+	buf[i] := digits[int :: u],
+	if: neg true: {
+		i := i - 1,
+		buf[i] := '-'
+	},
+	return: string :: buf[i, buf.length],
+}
+
+type bool := [false?, true?]
+const false := bool :: [false?]
+const true := bool :: [true?]
+
+func <(a, b int) bool { return: a <=> b less? { true } _? { false } }
+func <(a, b uint64) bool { return: a <=> b less? { true } _? { false } }
+func >=(a, b uint64)bool { return: a <=> b greater? { true } equal? { true } _? { false } }
+
+func abs(i int) int { return: i < 0 true? { -i } false? { i } }
+
+func while:true:(c (){bool}, f (){}) {
+	if: c() true: {
+		f(),
+		while: c true: f
+	}
+}

@@ -788,6 +788,7 @@ func (b *BlockLit) buildString(s *stringBuilder) {
 		}
 		s.WriteString(p.Name)
 		if p.T != nil {
+			s.WriteString(" ")
 			p.T.buildString(s)
 		}
 	}

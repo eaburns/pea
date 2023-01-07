@@ -685,6 +685,18 @@ func TestExpr(t *testing.T) {
 				},
 			},
 		},
+		{
+			"(::)(1, 2)",
+			&Call{
+				Fun: &SubExpr{
+					Expr: Ident{Name: "::"},
+				},
+				Args: []Expr{
+					&IntLit{Text: "1"},
+					&IntLit{Text: "2"},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -853,6 +865,106 @@ func TestDistributeFuncParmType(t *testing.T) {
 				t.Error(diff)
 			}
 		})
+	}
+}
+
+func TestConvertDef(t *testing.T) {
+	const src = `
+		func ::(_ int) string
+	`
+	want := &FuncDef{
+		Name: Ident{Name: "::"},
+		Parms: []FuncParm{
+			{
+				Name: Ident{Name: "_"},
+				Type: &NamedType{Name: Ident{Name: "int"}},
+			},
+		},
+		Ret: &NamedType{Name: Ident{Name: "string"}},
+	}
+	p := New()
+	if err := p.Parse("", strings.NewReader(src)); err != nil {
+		t.Fatalf("got error: %s", err)
+	}
+	got := p.Files[0].Defs[0]
+	opts := []cmp.Option{
+		cmp.FilterPath(isLoc, cmp.Ignore()),
+	}
+	diff := cmp.Diff(want, got, opts...)
+	if diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestConvertConstraint(t *testing.T) {
+	const src = `
+		func ++(t &T) : ::(int)T
+	`
+	want := &FuncDef{
+		Name: Ident{Name: "++"},
+		Parms: []FuncParm{
+			{
+				Name: Ident{Name: "t"},
+				Type: &RefType{Type: TypeVar{Name: "T"}},
+			},
+		},
+		Constraints: []interface{}{
+			&FuncDecl{
+				Name: Ident{Name: "::"},
+				Parms: []Type{
+					&NamedType{Name: Ident{Name: "int"}},
+				},
+				Ret: TypeVar{Name: "T"},
+			},
+		},
+	}
+	p := New()
+	if err := p.Parse("", strings.NewReader(src)); err != nil {
+		t.Fatalf("got error: %s", err)
+	}
+	got := p.Files[0].Defs[0]
+	opts := []cmp.Option{
+		cmp.FilterPath(isLoc, cmp.Ignore()),
+	}
+	diff := cmp.Diff(want, got, opts...)
+	if diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestConvertConstraintArg(t *testing.T) {
+	const src = `
+		func ++(t &T : ::(int)T)
+	`
+	want := &FuncDef{
+		Name: Ident{Name: "++"},
+		Parms: []FuncParm{
+			{
+				Name: Ident{Name: "t"},
+				Type: &RefType{Type: TypeVar{Name: "T"}},
+				Constraints: []interface{}{
+					&FuncDecl{
+						Name: Ident{Name: "::"},
+						Parms: []Type{
+							&NamedType{Name: Ident{Name: "int"}},
+						},
+						Ret: TypeVar{Name: "T"},
+					},
+				},
+			},
+		},
+	}
+	p := New()
+	if err := p.Parse("", strings.NewReader(src)); err != nil {
+		t.Fatalf("got error: %s", err)
+	}
+	got := p.Files[0].Defs[0]
+	opts := []cmp.Option{
+		cmp.FilterPath(isLoc, cmp.Ignore()),
+	}
+	diff := cmp.Diff(want, got, opts...)
+	if diff != "" {
+		t.Error(diff)
 	}
 }
 

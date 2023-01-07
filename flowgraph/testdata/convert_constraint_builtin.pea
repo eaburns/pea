@@ -1,0 +1,10 @@
+// 6
+func main() {
+	i := 5,
+	++i,
+	print_int(i),
+}
+
+Func ++(t &T : { ::(int)T, +(T, T)T }) { t := t + (T :: 1) }
+
+func print_int(_ int)

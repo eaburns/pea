@@ -83,60 +83,61 @@ const (
 	_ModSel                     int = 77
 	_ModTag                     int = 78
 	_FuncName                   int = 79
-	_IdxOp                      int = 80
-	_Cases                      int = 81
-	_Kwds                       int = 82
-	_ArrayLit                   int = 83
-	_StructLit                  int = 84
-	_FieldVals                  int = 85
-	_FieldVal                   int = 86
-	_FieldId                    int = 87
-	_UnionLit                   int = 88
-	_CaseVal                    int = 89
-	_BlkLit                     int = 90
-	_FuncParmNames              int = 91
-	_CharLit                    int = 92
-	_StrLit                     int = 93
-	_InterpStr                  int = 94
-	_Esc                        int = 95
-	_RawStr                     int = 96
-	_NumLit                     int = 97
-	_DecLit                     int = 98
-	_HexLit                     int = 99
-	_FloatLit                   int = 100
-	_TypeVar                    int = 101
-	_Kwd                        int = 102
-	_CaseId                     int = 103
-	_ModId                      int = 104
-	_Id                         int = 105
-	_NAME                       int = 106
-	_RESERVED                   int = 107
-	_D                          int = 108
-	_X                          int = 109
-	_L                          int = 110
-	_O                          int = 111
-	__                          int = 112
-	_SPACE                      int = 113
-	_LINE_COMMENT               int = 114
-	_BLOCK_COMMENT              int = 115
-	_EOF                        int = 116
-	_Bin__AsgnOp__AsgnArg       int = 117
-	_NameArg__Kwd__KwArg        int = 118
-	_NameArg__Kwd__KwArg1       int = 119
-	_NameArg__CaseId__SwitchArg int = 120
-	_Bin__Bin5Op__Bin5Arg       int = 121
-	_Bin__Bin4Op__Bin4Arg       int = 122
-	_Bin__Bin3Op__Bin3Arg       int = 123
-	_Bin__Bin2Op__Bin2Arg       int = 124
-	_Bin__Bin1Op__Bin1Arg       int = 125
-	_BinTail__AsgnOp__AsgnArg   int = 126
-	_BinTail__Bin5Op__Bin5Arg   int = 127
-	_BinTail__Bin4Op__Bin4Arg   int = 128
-	_BinTail__Bin3Op__Bin3Arg   int = 129
-	_BinTail__Bin2Op__Bin2Arg   int = 130
-	_BinTail__Bin1Op__Bin1Arg   int = 131
+	_ConvertOp                  int = 80
+	_IdxOp                      int = 81
+	_Cases                      int = 82
+	_Kwds                       int = 83
+	_ArrayLit                   int = 84
+	_StructLit                  int = 85
+	_FieldVals                  int = 86
+	_FieldVal                   int = 87
+	_FieldId                    int = 88
+	_UnionLit                   int = 89
+	_CaseVal                    int = 90
+	_BlkLit                     int = 91
+	_FuncParmNames              int = 92
+	_CharLit                    int = 93
+	_StrLit                     int = 94
+	_InterpStr                  int = 95
+	_Esc                        int = 96
+	_RawStr                     int = 97
+	_NumLit                     int = 98
+	_DecLit                     int = 99
+	_HexLit                     int = 100
+	_FloatLit                   int = 101
+	_TypeVar                    int = 102
+	_Kwd                        int = 103
+	_CaseId                     int = 104
+	_ModId                      int = 105
+	_Id                         int = 106
+	_NAME                       int = 107
+	_RESERVED                   int = 108
+	_D                          int = 109
+	_X                          int = 110
+	_L                          int = 111
+	_O                          int = 112
+	__                          int = 113
+	_SPACE                      int = 114
+	_LINE_COMMENT               int = 115
+	_BLOCK_COMMENT              int = 116
+	_EOF                        int = 117
+	_Bin__AsgnOp__AsgnArg       int = 118
+	_NameArg__Kwd__KwArg        int = 119
+	_NameArg__Kwd__KwArg1       int = 120
+	_NameArg__CaseId__SwitchArg int = 121
+	_Bin__Bin5Op__Bin5Arg       int = 122
+	_Bin__Bin4Op__Bin4Arg       int = 123
+	_Bin__Bin3Op__Bin3Arg       int = 124
+	_Bin__Bin2Op__Bin2Arg       int = 125
+	_Bin__Bin1Op__Bin1Arg       int = 126
+	_BinTail__AsgnOp__AsgnArg   int = 127
+	_BinTail__Bin5Op__Bin5Arg   int = 128
+	_BinTail__Bin4Op__Bin4Arg   int = 129
+	_BinTail__Bin3Op__Bin3Arg   int = 130
+	_BinTail__Bin2Op__Bin2Arg   int = 131
+	_BinTail__Bin1Op__Bin1Arg   int = 132
 
-	_N int = 132
+	_N int = 133
 )
 
 type _Parser struct {
@@ -17039,7 +17040,7 @@ func _FuncNameAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		return dp, de
 	}
 	pos, perr := start, -1
-	// FieldId/IdxOp/Op/Kwds/Cases/Id
+	// FieldId/ConvertOp/IdxOp/Op/Kwds/Cases/Id
 	{
 		pos3 := pos
 		// FieldId
@@ -17049,40 +17050,47 @@ func _FuncNameAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 		goto ok0
 	fail4:
 		pos = pos3
-		// IdxOp
-		if !_accept(parser, _IdxOpAccepts, &pos, &perr) {
+		// ConvertOp
+		if !_accept(parser, _ConvertOpAccepts, &pos, &perr) {
 			goto fail5
 		}
 		goto ok0
 	fail5:
 		pos = pos3
-		// Op
-		if !_accept(parser, _OpAccepts, &pos, &perr) {
+		// IdxOp
+		if !_accept(parser, _IdxOpAccepts, &pos, &perr) {
 			goto fail6
 		}
 		goto ok0
 	fail6:
 		pos = pos3
-		// Kwds
-		if !_accept(parser, _KwdsAccepts, &pos, &perr) {
+		// Op
+		if !_accept(parser, _OpAccepts, &pos, &perr) {
 			goto fail7
 		}
 		goto ok0
 	fail7:
 		pos = pos3
-		// Cases
-		if !_accept(parser, _CasesAccepts, &pos, &perr) {
+		// Kwds
+		if !_accept(parser, _KwdsAccepts, &pos, &perr) {
 			goto fail8
 		}
 		goto ok0
 	fail8:
 		pos = pos3
-		// Id
-		if !_accept(parser, _IdAccepts, &pos, &perr) {
+		// Cases
+		if !_accept(parser, _CasesAccepts, &pos, &perr) {
 			goto fail9
 		}
 		goto ok0
 	fail9:
+		pos = pos3
+		// Id
+		if !_accept(parser, _IdAccepts, &pos, &perr) {
+			goto fail10
+		}
+		goto ok0
+	fail10:
 		pos = pos3
 		goto fail
 	ok0:
@@ -17102,7 +17110,7 @@ func _FuncNameFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		Pos:  int(start),
 	}
 	key := _key{start: start, rule: _FuncName}
-	// FieldId/IdxOp/Op/Kwds/Cases/Id
+	// FieldId/ConvertOp/IdxOp/Op/Kwds/Cases/Id
 	{
 		pos3 := pos
 		// FieldId
@@ -17112,40 +17120,47 @@ func _FuncNameFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 		goto ok0
 	fail4:
 		pos = pos3
-		// IdxOp
-		if !_fail(parser, _IdxOpFail, errPos, failure, &pos) {
+		// ConvertOp
+		if !_fail(parser, _ConvertOpFail, errPos, failure, &pos) {
 			goto fail5
 		}
 		goto ok0
 	fail5:
 		pos = pos3
-		// Op
-		if !_fail(parser, _OpFail, errPos, failure, &pos) {
+		// IdxOp
+		if !_fail(parser, _IdxOpFail, errPos, failure, &pos) {
 			goto fail6
 		}
 		goto ok0
 	fail6:
 		pos = pos3
-		// Kwds
-		if !_fail(parser, _KwdsFail, errPos, failure, &pos) {
+		// Op
+		if !_fail(parser, _OpFail, errPos, failure, &pos) {
 			goto fail7
 		}
 		goto ok0
 	fail7:
 		pos = pos3
-		// Cases
-		if !_fail(parser, _CasesFail, errPos, failure, &pos) {
+		// Kwds
+		if !_fail(parser, _KwdsFail, errPos, failure, &pos) {
 			goto fail8
 		}
 		goto ok0
 	fail8:
 		pos = pos3
-		// Id
-		if !_fail(parser, _IdFail, errPos, failure, &pos) {
+		// Cases
+		if !_fail(parser, _CasesFail, errPos, failure, &pos) {
 			goto fail9
 		}
 		goto ok0
 	fail9:
+		pos = pos3
+		// Id
+		if !_fail(parser, _IdFail, errPos, failure, &pos) {
+			goto fail10
+		}
+		goto ok0
+	fail10:
 		pos = pos3
 		goto fail
 	ok0:
@@ -17170,7 +17185,7 @@ func _FuncNameAction(parser *_Parser, start int) (int, *Ident) {
 	}
 	var node Ident
 	pos := start
-	// FieldId/IdxOp/Op/Kwds/Cases/Id
+	// FieldId/ConvertOp/IdxOp/Op/Kwds/Cases/Id
 	{
 		pos3 := pos
 		var node2 Ident
@@ -17185,8 +17200,8 @@ func _FuncNameAction(parser *_Parser, start int) (int, *Ident) {
 	fail4:
 		node = node2
 		pos = pos3
-		// IdxOp
-		if p, n := _IdxOpAction(parser, pos); n == nil {
+		// ConvertOp
+		if p, n := _ConvertOpAction(parser, pos); n == nil {
 			goto fail5
 		} else {
 			node = *n
@@ -17196,8 +17211,8 @@ func _FuncNameAction(parser *_Parser, start int) (int, *Ident) {
 	fail5:
 		node = node2
 		pos = pos3
-		// Op
-		if p, n := _OpAction(parser, pos); n == nil {
+		// IdxOp
+		if p, n := _IdxOpAction(parser, pos); n == nil {
 			goto fail6
 		} else {
 			node = *n
@@ -17207,8 +17222,8 @@ func _FuncNameAction(parser *_Parser, start int) (int, *Ident) {
 	fail6:
 		node = node2
 		pos = pos3
-		// Kwds
-		if p, n := _KwdsAction(parser, pos); n == nil {
+		// Op
+		if p, n := _OpAction(parser, pos); n == nil {
 			goto fail7
 		} else {
 			node = *n
@@ -17218,8 +17233,8 @@ func _FuncNameAction(parser *_Parser, start int) (int, *Ident) {
 	fail7:
 		node = node2
 		pos = pos3
-		// Cases
-		if p, n := _CasesAction(parser, pos); n == nil {
+		// Kwds
+		if p, n := _KwdsAction(parser, pos); n == nil {
 			goto fail8
 		} else {
 			node = *n
@@ -17229,8 +17244,8 @@ func _FuncNameAction(parser *_Parser, start int) (int, *Ident) {
 	fail8:
 		node = node2
 		pos = pos3
-		// Id
-		if p, n := _IdAction(parser, pos); n == nil {
+		// Cases
+		if p, n := _CasesAction(parser, pos); n == nil {
 			goto fail9
 		} else {
 			node = *n
@@ -17240,8 +17255,119 @@ func _FuncNameAction(parser *_Parser, start int) (int, *Ident) {
 	fail9:
 		node = node2
 		pos = pos3
+		// Id
+		if p, n := _IdAction(parser, pos); n == nil {
+			goto fail10
+		} else {
+			node = *n
+			pos = p
+		}
+		goto ok0
+	fail10:
+		node = node2
+		pos = pos3
 		goto fail
 	ok0:
+	}
+	parser.act[key] = node
+	return pos, &node
+fail:
+	return -1, nil
+}
+
+func _ConvertOpAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
+	if dp, de, ok := _memo(parser, _ConvertOp, start); ok {
+		return dp, de
+	}
+	pos, perr := start, -1
+	// action
+	// _ "::"
+	// _
+	if !_accept(parser, __Accepts, &pos, &perr) {
+		goto fail
+	}
+	// "::"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "::" {
+		perr = _max(perr, pos)
+		goto fail
+	}
+	pos += 2
+	perr = start
+	return _memoize(parser, _ConvertOp, start, pos, perr)
+fail:
+	return _memoize(parser, _ConvertOp, start, -1, perr)
+}
+
+func _ConvertOpFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
+	pos, failure := _failMemo(parser, _ConvertOp, start, errPos)
+	if failure != nil {
+		return pos, failure
+	}
+	failure = &peg.Fail{
+		Name: "ConvertOp",
+		Pos:  int(start),
+	}
+	key := _key{start: start, rule: _ConvertOp}
+	// action
+	// _ "::"
+	// _
+	if !_fail(parser, __Fail, errPos, failure, &pos) {
+		goto fail
+	}
+	// "::"
+	if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "::" {
+		if pos >= errPos {
+			failure.Kids = append(failure.Kids, &peg.Fail{
+				Pos:  int(pos),
+				Want: "\"::\"",
+			})
+		}
+		goto fail
+	}
+	pos += 2
+	failure.Kids = nil
+	parser.fail[key] = failure
+	return pos, failure
+fail:
+	failure.Kids = nil
+	failure.Want = "conversion operator"
+	parser.fail[key] = failure
+	return -1, failure
+}
+
+func _ConvertOpAction(parser *_Parser, start int) (int, *Ident) {
+	dp := parser.deltaPos[start][_ConvertOp]
+	if dp < 0 {
+		return -1, nil
+	}
+	key := _key{start: start, rule: _ConvertOp}
+	n := parser.act[key]
+	if n != nil {
+		n := n.(Ident)
+		return start + int(dp-1), &n
+	}
+	var node Ident
+	pos := start
+	// action
+	{
+		start0 := pos
+		// _ "::"
+		// _
+		if p, n := __Action(parser, pos); n == nil {
+			goto fail
+		} else {
+			pos = p
+		}
+		// "::"
+		if len(parser.text[pos:]) < 2 || parser.text[pos:pos+2] != "::" {
+			goto fail
+		}
+		pos += 2
+		node = func(
+			start, end int) Ident {
+			return Ident{Name: "::", L: l(parser, start, end)}
+		}(
+			start0, pos)
 	}
 	parser.act[key] = node
 	return pos, &node

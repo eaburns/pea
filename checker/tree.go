@@ -352,8 +352,8 @@ type Func interface {
 }
 
 type FuncInst struct {
-	Def            *FuncDef
-	TypeArgs       []Type
+	Def      *FuncDef
+	TypeArgs []Type
 
 	// ConstraintParms are the FuncDecl parameters.
 	// It is the concatenation of the parameter constraints
@@ -366,7 +366,7 @@ type FuncInst struct {
 	// ConstraintArgs[i] is nil until instantiated.
 	ConstraintArgs []Func
 
-	T              *FuncType
+	T *FuncType
 
 	// typeParms contains all bound type parameters in this inst.
 	// The entries here are not the same *TypeParms
@@ -502,6 +502,29 @@ func (b *Builtin) Type() Type { return &FuncType{Parms: b.Parms, Ret: b.Ret} }
 type ExprFunc struct {
 	Expr
 	FuncType *FuncType
+
+	// NoCaptureConstraintArg indicates that this ExprFunc
+	// does not need to be converted to a parameter
+	// when passed as an IfaceArg.
+	//
+	// There are two cases:
+	//
+	// If false, when passed as an IfaceArg,
+	// this is an expression capturing data from the caller
+	// of a function with IfaceArgs.
+	// The called function needs a secret parameter introduced
+	// to pass the captured data, and it needs to be wrapped in a block
+	// with fewer parameters, but a capture block
+	// so that the signature arity matches the expected signature.
+	//
+	// If true, when passed as an IfaceArg,
+	// this expression does not capture any data from the caller;
+	// it just is a normal expression that could be inlined
+	// into the called function's body, but since this is an IfaceArg,
+	// the body expects to call something.
+	// This is just wrapping that thing in a callable block.
+	// No need to add parameters or capture anything.
+	NoCaptureConstraintArg bool
 }
 
 type Expr interface {

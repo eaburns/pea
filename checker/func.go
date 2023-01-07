@@ -123,6 +123,46 @@ func instConstraints(x scope, funcInst *FuncInst, start, end int) (*FuncInst, *C
 // findConstraintFunc returns a function that satisfies funInst.Def.Iface[i] if any,
 // along with any type parameter bindings needed to instantiate that function.
 func findConstraintFunc(x scope, typeParms []*TypeParm, decl *FuncDecl) (map[*TypeParm]Type, Func, Error) {
+	if decl.Name == "::" && len(decl.Parms) == 1 {
+		src := pattern(decl.Parms[0])
+		dst := pattern(decl.Ret)
+		bind, fun, cause := convertWithScope(x, src, dst, explicit, decl.L)
+		if cause != nil {
+			// This will always succeed, because convertWithScope
+			// always returns an Error when mode==explicit.
+			return nil, nil, cause.(Error)
+		}
+		if fun != nil {
+			return bind, fun, nil
+		}
+		// This is a built-in conversion.
+		// We need to wrap the conversion in a BlockLit:
+		// 	(x S){ D :: x }
+		// so that it can implement the Func interface.
+		parms := []ParmDef{{Name: "x", T: src.Type}}
+		parm := &Parm{Def: &parms[0], T: refLiteral(src.Type), L: decl.L}
+		expr, _, err := convertExpr(x, parm, dst, explicit)
+		if err != nil {
+			// Cannot happen. convertWithScope
+			// returned nil for Func and Cause,
+			// so a built-in conversion must succeed.
+			panic(fmt.Sprintf("impossible error: %s", err))
+		}
+		t := &FuncType{Parms: []Type{src.Type}, Ret: dst.Type, L: decl.L}
+		fun = &ExprFunc{
+			Expr: &BlockLit{
+				Parms: parms,
+				Ret:   dst.Type,
+				Exprs: []Expr{expr},
+				Func:  t,
+				T:     t,
+			},
+			FuncType:          t,
+			NoCaptureConstraintArg: true,
+		}
+		return bind, fun, nil
+	}
+
 	var funcs []Func
 	var candidateErrs []CandidateError
 	for _, id := range findIDs(x, decl.Name) {
@@ -382,7 +422,7 @@ func captureConstraintArgs(f *FuncInst) []*BlockCap {
 	f.T.Parms = f.T.Parms[:len(f.Def.Parms)]
 	for i := range f.ConstraintArgs {
 		exprFunc, ok := f.ConstraintArgs[i].(*ExprFunc)
-		if !ok {
+		if !ok || exprFunc.NoCaptureConstraintArg{
 			continue
 		}
 		decl := funcDeclByIndex(f.Def, i)

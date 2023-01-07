@@ -1,0 +1,75 @@
+// hello1
+func main() {
+	s := "hello",
+	++s,
+	print(s),
+}
+
+Func ++(t &T : { ::(int)T, +(T, T)T }) { t := t + (T :: 1) }
+
+const digits := [uint8] :: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
+
+Func ::(i int) string {
+	return: string(i < 0, uint64 :: abs(i))
+}
+
+Func string(neg bool, u uint64) string {
+	buf := [uint8] :: new(20, uint8 :: 0),
+	i := buf.length - 1,
+	while: { u >= 10 } true: {
+		u_next := u / 10,
+		buf[i] := digits[int :: u - u_next*10],
+		u := u_next,
+		i := i - 1,
+	},
+	buf[i] := digits[int :: u],
+	if: neg true: {
+		i := i - 1,
+		buf[i] := '-'
+	},
+	return: string :: buf[i, buf.length],
+}
+
+type bool := [false?, true?]
+const false := bool :: [false?]
+const true := bool :: [true?]
+
+func <(a, b int) bool { return: a <=> b less? { true } _? { false } }
+func <=(a, b int) bool { return: a <=> b less? { true } equal? { true } _? { false } }
+func <(a, b uint64) bool { return: a <=> b less? { true } _? { false } }
+func >=(a, b uint64)bool { return: a <=> b greater? { true } equal? { true } _? { false } }
+
+func abs(i int) int { return: i < 0 true? { -i } false? { i } }
+
+func while:true:(c (){bool}, f (){}) {
+	if: c() true: {
+		f(),
+		while: c true: f
+	}
+}
+
+Func for:to:do:(start int, end int, f (int){}) {
+	if: start <= end true: {
+		f(start),
+		for: start + 1 to: end do: f
+	}
+}
+
+Func +(a string, b string) string {
+	if: a.length = 0 true: {
+		return: b
+	},
+	if: b.length = 0 true: {
+		return: a
+	},
+	c := [uint8] :: new(a.length + b.length, uint8 :: 0),
+	for: 0 to: a.length - 1 do: (i) {
+		c[i] := a[i],
+	},
+	j := a.length,
+	for: 0 to: b.length - 1 do: (i) {
+		c[j] := b[i],
+		j := j + 1,
+	},
+	return: string :: c
+}

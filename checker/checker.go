@@ -1507,7 +1507,7 @@ func resolveIDCall(x scope, mod *Import, parserID parser.Ident, parserCall *pars
 		return &Call{L: parserCall.L}, []Error{firstArgConvertError}
 	}
 
-	funcs, ces = filterByReturnType(x, funcs, pat, mode)
+	funcs, ces = filterByReturnType(x, funcs, pat, mode, parserID.L)
 	candidateErrs = append(candidateErrs, ces...)
 
 	switch {
@@ -1703,15 +1703,17 @@ func filterByArg(x scope, funcs []Func, i int, arg Expr) ([]Func, []CandidateErr
 	return funcs[:n], errs
 }
 
-func filterByReturnType(x scope, funcs []Func, pat TypePattern, mode convertMode) ([]Func, []CandidateError) {
+func filterByReturnType(x scope, funcs []Func, pat TypePattern, mode convertMode, l loc.Loc) ([]Func, []CandidateError) {
 	if len(funcs) == 1 {
-		f := funcs[0]
-		// Just try to substitute it, ignoring conversion errors.
-		// If it fails to convert the parent expression will report the error,
+		// There is only one function. We don't need to disambiguate anything here.
+		// Instead, we just want to try to figure out any return pattern substitution.
+		// We try to do the return conversion to get the bind map, but ignore errors.
+		// If it fails to convert the parent expression will report the error
 		// with more information that we would report here,
 		// because it will use convertExpr which has the expression
 		// printed in the error message, but here we just have the type.
-		bind, convertErr := convertType(f.ret(), pat, mode)
+		f := funcs[0]
+		bind, _, cause := convertWithScope(x, f.ret(), pat, mode, l)
 		f, subErr := f.sub(nil, bind)
 		if subErr != nil {
 			return nil, []CandidateError{*subErr}
@@ -1720,11 +1722,11 @@ func filterByReturnType(x scope, funcs []Func, pat TypePattern, mode convertMode
 			// If the ret is not grounded, it means bind was nil;
 			// the conversion failed and we could not infer the return type.
 			err := CandidateError{Candidate: f}
-			if convertErr == nil {
+			if cause == nil {
 				err.Msg = fmt.Sprintf("return value: cannot infer return type %s", f.ret())
 			} else {
 				err.Msg = "return value"
-				err.Cause = convertErr
+				err.Cause = cause
 			}
 			return nil, []CandidateError{err}
 		}
@@ -1740,17 +1742,17 @@ func filterByReturnType(x scope, funcs []Func, pat TypePattern, mode convertMode
 	var n int
 	var errs []CandidateError
 	for _, f := range funcs {
-		bind, convertErr := convertType(f.ret(), pat, mode)
-		if convertErr != nil {
+		bind, _, cause := convertWithScope(x, f.ret(), pat, mode, l)
+		if cause != nil {
 			errs = append(errs, CandidateError{
 				Candidate: f,
 				Msg:       "return value",
-				Cause:     convertErr,
+				Cause:     cause,
 			})
 			continue
 		}
-		f, subErr := f.sub(nil, bind)
-		if subErr != nil {
+		var subErr *CandidateError
+		if f, subErr = f.sub(nil, bind); subErr != nil {
 			errs = append(errs, *subErr)
 			continue
 		}
@@ -2095,17 +2097,51 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	typ, errs := makeType(x, parserConvert.Type)
 	// typ may be nil if there was an error in the type, so use patternOrAny.
 	expr, es := _checkExpr(x, parserConvert.Expr, patternOrAny(typ), explicit)
-	if len(es) > 0 {
-		errs = append(errs, es...)
-	}
-	if typ == nil {
+	errs = append(errs, es...)
+	if typ == nil || expr.Type() == nil {
 		return expr, errs
 	}
-	expr, _, err := convertExpr(x, expr, pattern(typ), explicit)
-	if err != nil {
-		errs = append(errs, err)
+
+	src := pattern(expr.Type())
+	dst := pattern(typ)
+	switch _, f, err := convertWithScope(x, src, dst, explicit, parserConvert.L); {
+	case err != nil:
+		return expr, []Error{
+			&ConvertExprError{
+				Expr:     expr,
+				Dst:      dst,
+				Cause:    err,
+				Explicit: true,
+				scope:    x,
+			},
+		}
+
+	case f != nil:
+		ret := f.ret().groundType()
+		arg, _, err := convertExpr(x, expr, f.parm(0), implicit)
+		if err != nil {
+			panic(fmt.Sprintf("impossible error: %s", err))
+		}
+		call := &Call{
+			Func: f,
+			Args: []Expr{arg},
+			T:    &RefType{Type: ret, L: ret.Loc()},
+			L:    parserConvert.L,
+		}
+		expr, _, err = convertExpr(x, call, dst, implicit)
+		if err != nil {
+			panic(fmt.Sprintf("impossible error: %s", err))
+		}
+		return expr, nil
+
+	default:
+		// A built-in conversion.
+		expr, _, err := convertExpr(x, expr, dst, explicit)
+		if err != nil {
+			panic(fmt.Sprintf("impossible error: %s", err))
+		}
+		return expr, nil
 	}
-	return expr, errs
 }
 
 func checkLit(x scope, parserExpr parser.Expr, pat TypePattern) (Expr, []Error) {
