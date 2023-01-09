@@ -1,0 +1,100 @@
+import "print"
+
+// Panics if t = u is false.
+Func assert:eq:(t T : { T print#printable, =(T, T)bool }, u T) {
+	if: t = u false: {
+		print#panic("got " ++ t ++ ", wanted " ++ u)
+	}
+}
+
+// Panics if t != u is false.
+Func assert:ne:(t T : { T print#printable, !=(T, T)bool }, u T) {
+	if: t != u false: {
+		print#panic("got " ++ t ++ ", wanted a value not equal to " ++ u)
+	}
+}
+
+// Panics if t <=> u is not equal to o.
+Func assert:cmp:is:(t T : { T print#printable, <=>(T, T)O, O print#printable, =(O, O)bool }, u T, o O) {
+	p := t <=> u,
+	if: p = o false: {
+		print#panic(t ++ " <=> " ++ u ++ " is " ++ p ++ ", wanted " ++ o)
+	}
+}
+
+// Panics if c does not contain the same elements as ts in the same order.
+Func assert:ordered:(c C : { for:each:(C, (T){}), T print#printable, =(T, T)bool }, ts [T]) {
+	i := 0,
+	diffb := print#buffer(),
+	elemb := print#buffer(),
+	elemb ++ "[",
+	for: c each: (t){
+		if: i > 0 true: {
+			elemb ++ ", "
+		},
+		elemb ++ t,
+		if: i < ts.length && { ts[i] != t } true: {
+			diffb ++ "\nelement " ++ i ++ " is " ++ t ++ ", wanted " ++ ts[i]
+		},
+		++i
+	},
+	elemb ++ "]",
+	lenb := print#buffer(),
+	if: i = ts.length false: {
+		lenb ++ "\ngot " ++ i ++ " elements, wanted " ++ ts.length
+	},
+
+	if: lenb.length > 0 || { diffb.length > 0 } true: {
+		print#panic("got " ++ reset(elemb) ++
+			", wanted ordered elements " ++ ts ++
+			reset(lenb) ++ reset(diffb))
+	}
+}
+
+// Panics if c does not contain the same elements as ts in some order.
+Func assert:unordered:(c C : { for:each:(C, (T){}), T print#printable, =(T, T)bool }, ts [T]) {
+	i := 0,
+	mismatch := false,
+	diffb := print#buffer(),
+	elemb := print#buffer(),
+	elemb ++ "[",
+	f := [bool] :: new(ts.length, false),
+	for: c each: (t){
+		if: i > 0 true: {
+			elemb ++ ", "
+		},
+		elemb ++ t,
+
+		j := 0,
+		found := false,
+		while: { j < ts.length && { !found } } true: {
+			if: !f[j] && { ts[j] = t } true: {
+				f[j] := true,
+				found := true
+			},
+			++j
+		},
+		if: found false: {
+			mismatch := true,
+			diffb ++ "\n" ++ t ++ " is not expected"
+		},
+		++i
+	},
+	elemb ++ "]",
+	for: 0 to: ts.length - 1 do: (i){
+		if: f[i] false: {
+			mismatch := true,
+			diffb ++ "\n" ++ "nothing matches " ++ ts[i] ++ " at element " ++ i
+		}
+	},
+	lenb := print#buffer(),
+	if: i = ts.length false: {
+		mismatch := true,
+		lenb ++ "\ngot " ++ i ++ " elements, wanted " ++ ts.length
+	},
+	if: mismatch true: {
+		print#panic("got " ++ reset(elemb) ++
+			", wanted unordered elements " ++ ts ++
+			reset(lenb) ++ reset(diffb))
+	}
+}

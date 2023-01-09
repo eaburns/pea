@@ -1,0 +1,99 @@
+import "print"
+
+// Assigns t + 1 to t.
+Func ++(t &T : { ::(int)T, +(T, T)T }) { t := t + (T :: 1) }
+
+test plus_plus {
+	i := 0,
+	assert: i eq: 0,
+	++i,
+	assert: i eq: 1,
+	++i,
+	assert: i eq: 2
+}
+
+// Assigns t - 1 to t.
+Func --(t &T : { ::(int)T, -(T, T)T }) { t := t - (T :: 1) }
+
+test minus_minus {
+	i := 2,
+	assert: i eq: 2,
+	--i,
+	assert: i eq: 1,
+	--i,
+	assert: i eq: 0
+}
+
+// Assigns l + r to l for any type implementing +.
+Func +=(l &T : { +(T, T)T }, r T) {
+	l := l + r
+}
+
+test plus_equal {
+	i := 0,
+	assert: i eq: 0,
+	i += 3,
+	assert: i eq: 3,
+	i += 5,
+	assert: i eq: 8
+}
+
+// Assigns l - r to l for any type implementing -.
+Func -=(l &T : { -(T, T)T }, r T) {
+	l := l - r
+}
+
+test minus_equal {
+	i := 8,
+	assert: i eq: 8,
+	i -= 3,
+	assert: i eq: 5,
+	i -= 5,
+	assert: i eq: 0
+}
+
+// Assigns l * r to l for any type implementing *.
+Func *=(l &T : { *(T, T)T }, r T) {
+	l := l*r
+}
+
+test times_equal {
+	i := 8,
+	assert: i eq: 8,
+	i *= 3,
+	assert: i eq: 24,
+	i *= 2,
+	assert: i eq: 48
+}
+
+// Assigns l / r to l for any type implementing /.
+Func /=(l &T : { /(T, T)T }, r T) {
+	l := l/r
+}
+
+test divide_equal {
+	i := 8,
+	assert: i eq: 8,
+	i /= 2,
+	assert: i eq: 4,
+	i /= 1,
+	assert: i eq: 4,
+	i /= 2,
+	assert: i eq: 2
+}
+
+// Assigns l % r to l for any type implementing %.
+Func %=(l &T : { %(T, T)T }, r T) {
+	l := l%r
+}
+
+test mod_equal {
+	i := 8,
+	assert: i eq: 8,
+	i %= 5,
+	assert: i eq: 3,
+	i %= 2,
+	assert: i eq: 1,
+	i %= 5,
+	assert: i eq: 1
+}

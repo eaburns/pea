@@ -1,0 +1,609 @@
+import "print"
+
+// An alias to the [false?, true?] union literal type.
+Type bool := [false?, true?]
+
+// The bool value [true?].
+Const true := bool :: [true?]
+
+// The bool value [false?].
+Const false := bool :: [false?]
+
+test bool_true_false {
+	if: true false: { panic("fail") },
+	if: false true: { panic("fail") }
+}
+
+// Returns the logical negation of a bool.
+Func !(b bool) bool {
+	return: b true? { false } false? { true }
+}
+
+test bool_not {
+	assert: !true eq: false,
+	assert: !false eq: true
+}
+
+// Returns whether two bools are equal.
+Func =(a, b bool) bool {
+	return: a true? { b } false? { !b }
+}
+
+test bool_equal {
+	if: false = false false: { panic("fail") },
+	if: false = true true: { panic("fail") },
+	if: true = false true: { panic("fail") },
+	if: true = true false: { panic("fail") }
+}
+
+// Returns whether two values of type T are not equal
+// for types implementing =.
+Func !=(a T : { =(T, T)bool }, b T) bool {
+	return: !(a = b)
+}
+
+test inequality {
+	assert: true != true eq: false,
+	assert: true != false eq: true,
+	assert: "hello" != "hello" eq: false,
+	assert: "hello" != "good-bye" eq: true,
+	assert: [1, 2] != [1, 2] eq: false,
+	assert: [1, 2] != [2, 1] eq: true
+}
+
+// Returns whether a is less than, equal to, or greater than b.
+// The ordering is such that false is less than true.
+Func <=>(a, b bool) ordering {
+	return: a true? {
+		b true? { equal } false? { greater }
+	} false? {
+		b true? { less } false? { equal }
+	}
+}
+
+test bool_compare {
+	assert: false cmp: false is: equal,
+	assert: false cmp: true is: less,
+	assert: true cmp: false is: greater,
+	assert: true cmp: true is: equal
+}
+
+// Returns the logical OR of two bools.
+// The second bool is the result of evaluating the function b;
+// it is only evaluated if the first argument is false.
+Func ||(a bool, b (){bool}) bool {
+	return: a true? { true } false? b
+}
+
+test bool_or {
+	assert: false || { false } eq: false,
+	assert: false || { true } eq: true,
+	assert: true || { false } eq: true,
+	assert: true || { true } eq: true,
+	assert: true || { panic("fail") } eq: true
+}
+
+// Returns the logical AND of two bools.
+// The second bool is the result of evaluating the function b;
+// it is only evaluated if the first argument is false.
+Func &&(a bool, b (){bool}) bool {
+	return: a true? b false? { false }
+}
+
+test bool_and {
+	assert: false && { false } eq: false,
+	assert: false && { true } eq: false,
+	assert: true && { false } eq: false,
+	assert: true && { true } eq: true,
+	assert: false && { panic("fail") } eq: false
+}
+
+// Repeatedly calls c until it returns false,
+// and after each time c returns true, it calls f.
+Func while:true:(c (){bool}, f (){}) {
+	if: c() true: {
+		f(),
+		while: c true: f
+	}
+}
+
+// Calls f, and then repeatedly calls c until it returns false,
+// and after each time c returns true, it calls f.
+Func do:while:(f (){}, c (){bool}) {
+	f(),
+	while: c true: f
+}
+
+// The following were generated as the output of this Go program;
+/*
+	package main
+
+	import "fmt"
+
+	func main() {
+		for i := 2; i < 20; i++ {
+			make(i)
+		}
+	}
+	func make(n int) {
+		name := "if:true:"
+		args := "c0 bool, d0 (){}"
+		body := "	if: c0 true: { d0(), return() },\n"
+		for i := 1; i < n; i++ {
+			name += "else:true:"
+			args += fmt.Sprintf(", c%d (){bool}, d%d (){}", i, i)
+			body += fmt.Sprintf("	if: c%d() true: { d%d(), return() },\n", i, i)
+		}
+		fmt.Printf("Func %s(%s) {\n%s}\n", name, args, body)
+		fmt.Printf("Func %selse:(%s, e (){}) {\n%s	e(),\n}\n", name, args, body)
+	}
+
+*/
+Func if:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() }
+}
+Func if:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	e()
+}
+Func if:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() }
+}
+Func if:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}, c15 (){bool}, d15 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() },
+	if: c15() true: { d15(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}, c15 (){bool}, d15 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() },
+	if: c15() true: { d15(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}, c15 (){bool}, d15 (){}, c16 (){bool}, d16 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() },
+	if: c15() true: { d15(), return() },
+	if: c16() true: { d16(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}, c15 (){bool}, d15 (){}, c16 (){bool}, d16 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() },
+	if: c15() true: { d15(), return() },
+	if: c16() true: { d16(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}, c15 (){bool}, d15 (){}, c16 (){bool}, d16 (){}, c17 (){bool}, d17 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() },
+	if: c15() true: { d15(), return() },
+	if: c16() true: { d16(), return() },
+	if: c17() true: { d17(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}, c15 (){bool}, d15 (){}, c16 (){bool}, d16 (){}, c17 (){bool}, d17 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() },
+	if: c15() true: { d15(), return() },
+	if: c16() true: { d16(), return() },
+	if: c17() true: { d17(), return() },
+	e()
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}, c15 (){bool}, d15 (){}, c16 (){bool}, d16 (){}, c17 (){bool}, d17 (){}, c18 (){bool}, d18 (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() },
+	if: c15() true: { d15(), return() },
+	if: c16() true: { d16(), return() },
+	if: c17() true: { d17(), return() },
+	if: c18() true: { d18(), return() }
+}
+Func if:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:true:else:(c0 bool, d0 (){}, c1 (){bool}, d1 (){}, c2 (){bool}, d2 (){}, c3 (){bool}, d3 (){}, c4 (){bool}, d4 (){}, c5 (){bool}, d5 (){}, c6 (){bool}, d6 (){}, c7 (){bool}, d7 (){}, c8 (){bool}, d8 (){}, c9 (){bool}, d9 (){}, c10 (){bool}, d10 (){}, c11 (){bool}, d11 (){}, c12 (){bool}, d12 (){}, c13 (){bool}, d13 (){}, c14 (){bool}, d14 (){}, c15 (){bool}, d15 (){}, c16 (){bool}, d16 (){}, c17 (){bool}, d17 (){}, c18 (){bool}, d18 (){}, e (){}) {
+	if: c0 true: { d0(), return() },
+	if: c1() true: { d1(), return() },
+	if: c2() true: { d2(), return() },
+	if: c3() true: { d3(), return() },
+	if: c4() true: { d4(), return() },
+	if: c5() true: { d5(), return() },
+	if: c6() true: { d6(), return() },
+	if: c7() true: { d7(), return() },
+	if: c8() true: { d8(), return() },
+	if: c9() true: { d9(), return() },
+	if: c10() true: { d10(), return() },
+	if: c11() true: { d11(), return() },
+	if: c12() true: { d12(), return() },
+	if: c13() true: { d13(), return() },
+	if: c14() true: { d14(), return() },
+	if: c15() true: { d15(), return() },
+	if: c16() true: { d16(), return() },
+	if: c17() true: { d17(), return() },
+	if: c18() true: { d18(), return() },
+	e()
+}

@@ -1,0 +1,28 @@
+import "print"
+
+// The 64-bit floating point infinity constant.
+Const Inf64 := float64 :: 1.0/0.0
+
+// The 64-bit floating point not-a-number constant.
+Const NaN64 := float64 :: 0.0/0.0
+
+// The 32-bit floating point infinity constant.
+Const Inf32 := float64 :: 1.0/0.0
+
+// The 32-bit floating point not-a-number constant.
+Const NaN32 := float64 :: 0.0/0.0
+
+// Returns whether the argument is NaN32.
+Func is_nan(f float32) bool { return: f != f }
+
+// Returns whether the argument is NaN64.
+Func is_nan(f float64) bool { return: f != f }
+
+test is_nan {
+	assert: is_nan(NaN32) eq: true,
+	assert: is_nan(float32 :: 1.0) eq: false,
+	assert: is_nan(Inf32) eq: false,
+	assert: is_nan(NaN64) eq: true,
+	assert: is_nan(float64 :: 1.0) eq: false,
+	assert: is_nan(Inf64) eq: false
+}

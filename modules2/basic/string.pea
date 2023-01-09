@@ -1,0 +1,86 @@
+import "print"
+
+// Returns whether a and b are the same string.
+Func =(a, b string) bool {
+	if: a.length = b.length false: {
+		return: false
+	},
+	for: 0 to: a.length - 1 do: (i){
+		if: a[i] = b[i] false: {
+			return: false
+		}
+	},
+	return: true
+}
+
+test string_equal {
+	assert: "" eq: "",
+	assert: "a" eq: "a",
+	assert: "abc" eq: "abc",
+	assert: "こんにちは皆さん" eq: "こんにちは皆さん",
+
+	assert: "" ne: "a",
+	assert: "a" ne: "",
+	assert: "a" ne: "aa",
+	assert: "hello, World" ne: "こんにちは皆さん"
+}
+
+// Returns whether a is lexically less than, equal to, or greater than b.
+Func <=>(a, b string) ordering {
+	for: 0 to: a.length - 1 do: (i){
+		if: i < b.length false: {
+			return: greater
+		},
+		if: a[i] != b[i] true: {
+			return: a[i] <=> b[i]
+		}
+	},
+	return: a.length <=> b.length
+}
+
+test string_compare {
+	assert: "" cmp: "" is: equal,
+	assert: "" cmp: "a" is: less,
+	assert: "a" cmp: "" is: greater,
+	assert: "bb" cmp: "bc" is: less,
+	assert: "bb" cmp: "bb" is: equal,
+	assert: "bb" cmp: "ac" is: greater,
+	assert: "bc" cmp: "bb" is: greater,
+	assert: "bb" cmp: "bb" is: equal,
+	assert: "ac" cmp: "bb" is: less,
+	assert: "aa" cmp: "a" is: greater,
+	assert: "a" cmp: "aa" is: less,
+	assert: "A" cmp: "a" is: less,
+	assert: "a" cmp: "A" is: greater,
+	assert: "あ" cmp: "え" is: less,
+	assert: "あ" cmp: "あ" is: equal,
+	assert: "え" cmp: "あ" is: greater
+}
+
+// Calls f for each byte of s.
+Func for:each:(s string, f (uint8){}) {
+	for: 0 to: s.length - 1 do: (i){
+		f(s[i])
+	}
+}
+
+test string_for_each_empty {
+	for: "" each: (c){ print#panic("fail: " ++ c) }
+}
+
+test string_for_each {
+	i := 0,
+	for: "abc" each: (c){
+		if: i = 0 true: {
+			assert: c eq: 'a'
+		} else: { i = 1 } true: {
+			assert: c eq: 'b'
+		} else: { i = 2 } true: {
+			assert: c eq: 'c'
+		} else: {
+			print#panic("fail: " ++ c)
+		},
+		++i
+	},
+	assert: i eq: 3
+}

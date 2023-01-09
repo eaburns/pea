@@ -1,0 +1,327 @@
+import "print"
+
+// An alias to the [less?, equal?, greater?] union literal type.
+Type ordering [less?, equal?, greater?]
+
+// The ordering value [less?].
+Const less := ordering :: [less?]
+
+// The ordering value [equal?].
+Const equal := ordering :: [equal?]
+
+// The ordering value [greater?].
+Const greater := ordering :: [greater?]
+
+test less_equal_greater {
+	less less? {} _? { panic("fail") },
+	equal equal? {} _? { panic("fail") },
+	greater greater? {} _? { panic("fail") }
+}
+
+// Returns whether two orderings are equal.
+Func =(a, b ordering) bool {
+	return: a less? {
+		b less? { true } _? { false }
+	} equal? {
+		b equal? { true } _? { false }
+	} greater? {
+		b greater? { true } _? { false }
+	}
+}
+
+test ordering_equal {
+	assert: less = less eq: true,
+	assert: less = equal eq: false,
+	assert: less = greater eq: false,
+	assert: equal = less eq: false,
+	assert: equal = equal eq: true,
+	assert: equal = greater eq: false,
+	assert: greater = less eq: false,
+	assert: greater = equal eq: false,
+	assert: greater = greater eq: true
+}
+
+// Returns the ordering of two orderings.
+// Orderings have the following total ordering: less < equal < greater.
+Func <=>(a, b ordering) ordering {
+	return: a less? {
+		b less? { equal } _? { less }
+	} equal? {
+		b less? { greater } equal? { equal } greater? { less }
+	} greater? {
+		b greater? { equal } _? { greater }
+	}
+}
+
+test ordering_compare {
+	assert: less cmp: less is: equal,
+	assert: less cmp: equal is: less,
+	assert: less cmp: greater is: less,
+	assert: equal cmp: less is: greater,
+	assert: equal cmp: equal is: equal,
+	assert: equal cmp: greater is: less,
+	assert: greater cmp: less is: greater,
+	assert: greater cmp: equal is: greater,
+	assert: greater cmp: greater is: equal
+}
+
+// An alias to the [less?, equal?, greater?, none?] union literal type.
+Type partial_ordering [less?, equal?, greater?, none?]
+
+// The partial_ordering value [less?].
+Const partial_less := partial_ordering :: [less?]
+
+// The partial_ordering value [equal?].
+Const partial_equal := partial_ordering :: [equal?]
+
+// The partial_ordering value [greater?].
+Const partial_greater := partial_ordering :: [greater?]
+
+// The partial_ordering value [none?].
+Const partial_none := partial_ordering :: [none?]
+
+test less_equal_greater_none {
+	partial_less less? {} _? { panic("fail") },
+	partial_equal equal? {} _? { panic("fail") },
+	partial_greater greater? {} _? { panic("fail") },
+	partial_none none? {} _? { panic("fail") }
+}
+
+// Returns whether two partial_ordering are equal.
+// If either a or b is [none?], = returns false.
+Func =(a, b partial_ordering) bool {
+	return: a less? {
+		b less? { true } _? { false }
+	} equal? {
+		b equal? { true } _? { false }
+	} greater? {
+		b greater? { true } _? { false }
+	} none? {
+		false
+	}
+}
+
+test partial_ordering_equal {
+	assert: partial_less = partial_less eq: true,
+	assert: partial_less = partial_equal eq: false,
+	assert: partial_less = partial_greater eq: false,
+	assert: partial_less = partial_none eq: false,
+	assert: partial_equal = partial_less eq: false,
+	assert: partial_equal = partial_equal eq: true,
+	assert: partial_equal = partial_greater eq: false,
+	assert: partial_equal = partial_none eq: false,
+	assert: partial_greater = partial_less eq: false,
+	assert: partial_greater = partial_equal eq: false,
+	assert: partial_greater = partial_greater eq: true,
+	assert: partial_greater = partial_none eq: false,
+	assert: partial_none = partial_less eq: false,
+	assert: partial_none = partial_equal eq: false,
+	assert: partial_none = partial_greater eq: false,
+	assert: partial_none = partial_none eq: false
+}
+
+// Returns whether p is [none?].
+Func is_none(p partial_ordering) bool {
+	return: p != p
+}
+
+// Returns the ordering of two orderings.
+// Partial_orderings have the following partial ordering: less < equal < greater.
+// The value partial_none is not ordered,
+// and if either partial_ordering is the value partial_none,
+// <=> returns partial_none.
+Func <=>(a, b partial_ordering) partial_ordering {
+	return: a less? {
+		b less? { partial_equal } _? { partial_less } none? { partial_none }
+	} equal? {
+		b less? { partial_greater } equal? { partial_equal } greater? { partial_less } none? { partial_none }
+	} greater? {
+		b greater? { partial_equal } _? { partial_greater } none? { partial_none }
+	} none? {
+		partial_none
+	}
+}
+
+test partial_ordering_compare {
+	assert: partial_less cmp: partial_less is: partial_equal,
+	assert: partial_less cmp: partial_equal is: partial_less,
+	assert: partial_less cmp: partial_greater is: partial_less,
+	assert: is_none(partial_less <=> partial_none) eq: true,
+	assert: partial_equal cmp: partial_less is: partial_greater,
+	assert: partial_equal cmp: partial_equal is: partial_equal,
+	assert: partial_equal cmp: partial_greater is: partial_less,
+	assert: is_none(partial_equal <=> partial_none) eq: true,
+	assert: partial_greater cmp: partial_less is: partial_greater,
+	assert: partial_greater cmp: partial_equal is: partial_greater,
+	assert: partial_greater cmp: partial_greater is: partial_equal,
+	assert: is_none(partial_greater <=> partial_none) eq: true,
+	assert: is_none(partial_none <=> partial_less) eq: true,
+	assert: is_none(partial_none <=> partial_equal) eq: true,
+	assert: is_none(partial_none <=> partial_greater) eq: true,
+	assert: is_none(partial_none <=> partial_none) eq: true
+}
+
+// A common interface implemented by ordering and partial_ordering.
+// It includes functions for testing for
+// 	- less than,
+// 	- less than or equal to,
+// 	- equal, greater than, and
+// 	- greater than or equal to.
+// All functions have a trailing _? case
+// which allows the possibility of partial_none
+// in the case of a partial_ordering.
+Iface O ordering {
+	less?_?(O, (){bool}, (){bool})bool,
+	less?equal?_?(O, (){bool}, (){bool}, (){bool})bool,
+	equal?_?(O, (){bool}, (){bool})bool,
+	greater?_?(O, (){bool}, (){bool})bool,
+	greater?equal?_?(O, (){bool}, (){bool}, (){bool})bool,
+}
+
+// Returns whether the first argument is less than the second
+// for any type T implementing <=>.
+Func <(a, b T : { <=>(T, T)O, O ordering }) bool {
+	return: a <=> b less? { true } _? { false }
+}
+
+test less_than {
+	assert: 0 < -1 eq: false,
+	assert: 0 < 0 eq: false,
+	assert: 0 < 1 eq: true,
+	assert: "b" < "a" eq: false,
+	assert: "b" < "b" eq: false,
+	assert: "b" < "c" eq: true,
+	assert: 1.0 < NaN64 eq: false,
+	assert: NaN64 < 1.0 eq: false,
+	assert: 1.0 < Inf64 eq: true,
+	assert: Inf64 < 1.0 eq: false,
+	assert: 1.0 < -Inf64 eq: false,
+	assert: -Inf64 < 1.0 eq: true,
+	assert: NaN64 < NaN64 eq: false,
+	assert: -Inf64 < Inf64 eq: true,
+	assert: Inf64 < Inf64 eq: false,
+	assert: Inf64 < -Inf64 eq: false
+}
+
+// Returns whether the first argument is less than or equal to the second
+// for any type T implementing <=>.
+Func <=(a, b T : { <=>(T, T)O, O ordering }) bool {
+	return: a <=> b less? { true } equal? { true } _? { false }
+}
+
+test less_than_or_equal_to {
+	assert: 0 <= -1 eq: false,
+	assert: 0 <= 0 eq: true,
+	assert: 0 <= 1 eq: true,
+	assert: "b" <= "a" eq: false,
+	assert: "b" <= "b" eq: true,
+	assert: "b" <= "c" eq: true,
+	assert: 1.0 <= NaN64 eq: false,
+	assert: NaN64 <= 1.0 eq: false,
+	assert: 1.0 <= Inf64 eq: true,
+	assert: Inf64 <= 1.0 eq: false,
+	assert: 1.0 <= -Inf64 eq: false,
+	assert: -Inf64 <= 1.0 eq: true,
+	assert: NaN64 <= NaN64 eq: false,
+	assert: -Inf64 <= Inf64 eq: true,
+	assert: Inf64 <= Inf64 eq: true,
+	assert: Inf64 <= -Inf64 eq: false
+}
+
+// Returns whether the first argument is greater than the second
+// for any type T implementing <=>.
+Func >(a, b T : { <=>(T, T)O, O ordering }) bool {
+	return: a <=> b greater? { true } _? { false }
+}
+
+test greater_than {
+	assert: 0 > -1 eq: true,
+	assert: 0 > 0 eq: false,
+	assert: 0 > 1 eq: false,
+	assert: "b" > "a" eq: true,
+	assert: "b" > "b" eq: false,
+	assert: "b" > "c" eq: false,
+	assert: 1.0 > NaN64 eq: false,
+	assert: NaN64 > 1.0 eq: false,
+	assert: 1.0 > Inf64 eq: false,
+	assert: Inf64 > 1.0 eq: true,
+	assert: 1.0 > -Inf64 eq: true,
+	assert: -Inf64 > 1.0 eq: false,
+	assert: NaN64 > NaN64 eq: false,
+	assert: -Inf64 > Inf64 eq: false,
+	assert: Inf64 > Inf64 eq: false,
+	assert: Inf64 > -Inf64 eq: true
+}
+
+// Returns whether the first argument is greater than or equal to the second
+// for any type T implementing <=>.
+Func >=(a, b T : { <=>(T, T)O, O ordering }) bool {
+	return: a <=> b greater? { true } equal? { true } _? { false }
+}
+
+test greater_than_or_equal_to {
+	assert: 0 >= -1 eq: true,
+	assert: 0 >= 0 eq: true,
+	assert: 0 >= 1 eq: false,
+	assert: "b" >= "a" eq: true,
+	assert: "b" >= "b" eq: true,
+	assert: "b" >= "c" eq: false,
+	assert: 1.0 >= NaN64 eq: false,
+	assert: NaN64 >= 1.0 eq: false,
+	assert: 1.0 >= Inf64 eq: false,
+	assert: Inf64 >= 1.0 eq: true,
+	assert: 1.0 >= -Inf64 eq: true,
+	assert: -Inf64 >= 1.0 eq: false,
+	assert: NaN64 >= NaN64 eq: false,
+	assert: -Inf64 >= Inf64 eq: false,
+	assert: Inf64 >= Inf64 eq: true,
+	assert: Inf64 >= -Inf64 eq: true
+}
+
+// Returns a if a < b, otherwise b.
+Func min(a T : { <(T, T)bool }, b T) T {
+	return: a < b true? { a } false? { b }
+}
+
+test min {
+	assert: min(1, 2) eq: 1,
+	assert: min(2, 1) eq: 1,
+	assert: min(1, 1) eq: 1,
+	assert: min("abc", "ABC") eq: "ABC",
+	assert: is_nan(min(NaN64, NaN64)) eq: true,
+
+	// aref and bref refer to two different variables that have the same value.
+	// min will return the second, and not the first.
+	a := 1,
+	b := 1,
+	aref := &int :: a,
+	bref := &int :: b,
+	assert: aref eq: bref,
+	assert: (uintref :: aref) ne: (uintref :: bref),
+	assert: uintref :: (&int :: min(aref, bref)) eq: uintref :: bref,
+	assert: uintref :: (&int :: min(aref, bref)) ne: uintref :: aref
+}
+
+// Returns a if a > b, otherwise b.
+Func max(a T : { >(T, T)bool }, b T) T {
+	return: a > b true? { a } false? { b }
+}
+
+test max {
+	assert: max(1, 2) eq: 2,
+	assert: max(2, 1) eq: 2,
+	assert: max(1, 1) eq: 1,
+	assert: max("abc", "ABC") eq: "abc",
+	assert: is_nan(max(NaN64, NaN64)) eq: true,
+
+	// aref and bref refer to two different variables that have the same value.
+	// max will return the second, and not the first.
+	a := 1,
+	b := 1,
+	aref := &int :: a,
+	bref := &int :: b,
+	assert: aref eq: bref,
+	assert: (uintref :: aref) ne: (uintref :: bref),
+	assert: uintref :: (&int :: max(aref, bref)) eq: uintref :: bref,
+	assert: uintref :: (&int :: max(aref, bref)) ne: uintref :: aref
+}

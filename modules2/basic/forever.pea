@@ -1,0 +1,5 @@
+// Continually calls f.
+Func forever:(f (){}) ! {
+	f(),
+	return: (forever: f)
+}

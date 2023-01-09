@@ -1,0 +1,41 @@
+import "print"
+
+// Calls f with each integer in increasing order between s and e, inclusive.
+// If s is greater than e, f is never called.
+Func for:to:do:(s, e int, f (int){}) {
+	if: s <= e true: {
+		f(s),
+		for: s + 1 to: e do: f
+	}
+}
+
+test for_to_do_reverse_is_empty {
+	for: 5 to: 3 do: (i){ print#panic("fail: " ++ i) }
+}
+
+test for_to_do_single {
+	i := 0,
+	for: 0 to: 0 do: (j){
+		assert: j eq: 0,
+		i := i + 1
+	},
+	assert: i eq: 1
+}
+
+test for_to_do {
+	i := 0,
+	for: 1 to: 3 do: (j){
+		assert: j eq: i + 1,
+		i := i + 1
+	},
+	assert: i eq: 3
+}
+
+test for_to_do_negative_to_positive {
+	i := 0,
+	for: -1 to: 1 do: (j){
+		assert: j eq: i - 1,
+		i := i + 1
+	},
+	assert: i eq: 3
+}
