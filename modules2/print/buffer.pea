@@ -1,0 +1,622 @@
+// An appendable buffer for printing strings.
+Type buffer (&[
+	.n int,
+	.data [uint8],
+	// A pre-allocated buffer big enough to hold
+	// the decimal representation of any 64-bit int.
+	.scratch [uint8],
+])
+
+const min_len := int :: 32
+
+// Returns a new, empty buffer.
+Func buffer() buffer {
+	return: [
+		.n 0,
+		.data new(min_len, uint8 :: 0),
+		.scratch new(64, uint8 :: 0),
+	]
+}
+
+// Returns the number of bytes in a buffer.
+Func .length(buf buffer) int { return: buf.n }
+
+test buffer_new_length {
+	assert: buffer().length eq: 0
+}
+
+func grow:(buf buffer, delta int) {
+	min := buf.n + delta,
+	len := buf.data.length + 1,
+	while: { len < min } true: {
+		len *= 2
+	},
+	data := [uint8] :: new(len, uint8 :: 0),
+	for: 0 to: buf.n - 1 do: (i){
+		data[i] := buf.data[i]
+	},
+	buf.data := data
+}
+
+// Adds the byte to the end of a buffer.
+// This differs from add:(buffer, uint8)
+// which adds the integer representation of the byte.
+Func add_byte:(buf buffer, b uint8) {
+	if: buf.n + 1 >= buf.data.length true: {
+		buf grow: 1
+	},
+	buf.data[buf.n] := b,
+	buf.n := buf.n + 1
+}
+
+test buffer_add_byte {
+	b := buffer(),
+	assert: reset(b) string: "",
+	assert: b.length eq: 0,
+
+	b add_byte: 'a',
+	assert: b.length eq: 1,
+	assert: reset(b) string: "a",
+
+	b add_byte: 'a',
+	b add_byte: 'b',
+	assert: b.length eq: 2,
+	assert: reset(b) string: "ab"
+}
+
+test buffer_add_byte_grow {
+	b := buffer(),
+	bs := [uint8] :: new(min_len*2, uint8 :: 'a'),
+	for: 0 to: bs.length - 1 do: (i){
+		b add_byte: bs[i]
+	},
+	assert: b.length eq: bs.length,
+	assert: reset(b) string: (string :: bs)
+}
+
+// Adds an array of bytes to the end of a buffer.
+// This differs from add:(buffer, [uint8])
+// which adds an array representation
+// of the byte array to a buffer.
+Func add_bytes:(buf buffer, bs [uint8]) {
+	if: buf.n + bs.length >= buf.data.length true: {
+		buf grow: bs.length
+	},
+	d := buf.data[buf.n, buf.n + bs.length],
+	for: 0 to: bs.length - 1 do: (i){
+		d[i] := bs[i]
+	},
+	buf.n += bs.length
+}
+
+test buffer_add_bytes {
+	b := buffer(),
+	b add_bytes: ['a', 'b', 'c'],
+	assert: b.length eq: 3,
+	assert: reset(b) string: "abc"
+}
+
+test buffer_add_bytes_grow {
+	b := buffer(),
+	bs := [uint8] :: new(min_len*2, uint8 :: 'a'),
+	b add_bytes: bs,
+	assert: b.length eq: bs.length,
+	assert: reset(b) string: (string :: bs)
+}
+
+// Returns the string of a buffer's contents and resets the buffer to empty.
+Func reset(buf buffer) string {
+	b := buf.data[0, buf.n],
+	buf.n := 0,
+	buf.data := new(min_len, uint8 :: 0),
+	return: string :: b
+}
+
+test reset_string {
+	b := buffer(),
+	b add_bytes: ['a', 'b', 'c'],
+	got := reset(b),
+	assert: b.length eq: 0,
+	assert: got.length eq: 3,
+	assert: got[0] eq: 'a',
+	assert: got[1] eq: 'b',
+	assert: got[2] eq: 'c'
+}
+
+// Adds a string to the end of a buffer.
+Func add:(buf buffer, str string) {
+	if: buf.n + str.length >= buf.data.length true: {
+		buf grow: str.length
+	},
+	d := buf.data[buf.n, buf.n + str.length],
+	for: 0 to: str.length - 1 do: (i){
+		d[i] := str[i]
+	},
+	buf.n += str.length
+}
+
+test buffer_add_string {
+	assert: "" string: "",
+	assert: "a" string: "a",
+	assert: "abc" string: "abc",
+	assert: "こんにちは皆さん" string: "こんにちは皆さん"
+}
+
+// Adds a bool to the end of a buffer.
+Func add:(buf buffer, b bool) {
+	buf add: b true? { "true" } false? { "false" }
+}
+
+test buffer_add_bool {
+	assert: true string: "true",
+	assert: false string: "false"
+}
+
+// Adds an ordering to the end of a buffer.
+Func add:(buf buffer, o ordering) {
+	buf add: o less? { "less" } equal? { "equal" } greater? { "greater" }
+}
+
+test buffer_add_ordering {
+	assert: ordering :: [less?] string: "less",
+	assert: ordering :: [equal?] string: "equal",
+	assert: ordering :: [greater?] string: "greater"
+}
+
+// Adds a partial_ordering to the end of a buffer.
+Func add:(buf buffer, o partial_ordering) {
+	buf add: o less? { "less" } equal? { "equal" } greater? { "greater" } none? { "none" }
+}
+
+test buffer_add_partial_ordering {
+	assert: partial_ordering :: [less?] string: "less",
+	assert: partial_ordering :: [equal?] string: "equal",
+	assert: partial_ordering :: [greater?] string: "greater",
+	assert: partial_ordering :: [none?] string: "none"
+}
+
+// Adds the decimal numeric representation of a uint to the end of a buffer.
+Func add:(buf buffer, u uint) { buf add: uint64 :: u }
+
+test buffer_add_uint {
+	assert: uint :: 0 string: "0",
+	assert: uint :: 1 string: "1",
+	assert: uint :: 100 string: "100",
+	assert: uint :: 12345 string: "12345"
+}
+
+// Adds the decimal, numeric representation of a uint8 to the end of a buffer.
+// Note that this differs from add_byte: which adds the byte directly.
+Func add:(buf buffer, u uint8) { buf add: uint64 :: u }
+
+test buffer_add_uint8 {
+	assert: uint8 :: 0 string: "0",
+	assert: uint8 :: 1 string: "1",
+	assert: uint8 :: 100 string: "100",
+	assert: uint8 :: 255 string: "255"
+}
+
+// Adds the decimal numeric representation of a uint16 to the end of a buffer.
+Func add:(buf buffer, u uint16) { buf add: uint64 :: u }
+
+test buffer_add_uint16 {
+	assert: uint16 :: 0 string: "0",
+	assert: uint16 :: 1 string: "1",
+	assert: uint16 :: 100 string: "100",
+	assert: uint16 :: 65535 string: "65535"
+}
+
+// Adds the decimal numeric representation of a uint32 to the end of a buffer.
+Func add:(buf buffer, u uint32) { buf add: uint64 :: u }
+
+test buffer_add_uint32 {
+	assert: uint32 :: 0 string: "0",
+	assert: uint32 :: 1 string: "1",
+	assert: uint32 :: 100 string: "100",
+	assert: uint32 :: 4294967295 string: "4294967295"
+}
+
+// Adds the decimal numeric representation of a uint64 to the end of a buffer.
+Func add:(buf buffer, u uint64) {
+	buf add: u base: 10
+}
+
+test buffer_add_uint64 {
+	assert: uint64 :: 0 string: "0",
+	assert: uint64 :: 1 string: "1",
+	assert: uint64 :: 100 string: "100",
+	assert: uint64 :: 18446744073709551615 string: "18446744073709551615"
+}
+
+// Adds 0x followed by the hexidecimal numeric representation
+// of a uintref to the end of a buffer.
+Func add:(buf buffer, ur uintref) {
+	buf add: "0x",
+	buf add: (uint64 :: ur) base: 16
+}
+
+test buffer_add_uintref {
+	assert: uintref :: 0 string: "0x0",
+	assert: uintref :: 1 string: "0x1",
+	assert: uintref :: 10 string: "0xA",
+	assert: uintref :: 11 string: "0xB",
+	assert: uintref :: 12 string: "0xC",
+	assert: uintref :: 13 string: "0xD",
+	assert: uintref :: 14 string: "0xE",
+	assert: uintref :: 15 string: "0xF",
+	assert: uintref :: 100 string: "0x64",
+	assert: uintref :: 4294967295 string: "0xFFFFFFFF"
+}
+
+const digits := [uint8] :: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
+
+// Adds the numeric representation of a uint64 in base base to the end of a buffer.
+// It panics if base is not in the range 2 ≤ base ≤ 16.
+// Digits beyond 9 are written as capital letters, A-F.
+Func add:base:(buf buffer, u uint64, base int) {
+	if: base < 2 true: { panic("bad base") },
+	if: base > 16 true: { panic("bad base") },
+	b := uint64 :: base,
+	i := buf.scratch.length - 1,
+	while: { u >= b } true: {
+		u_next := u/b,
+		buf.scratch[i] := digits[int :: u - u_next*b],
+		u := u_next,
+		i := i - 1
+	},
+	buf.scratch[i] := digits[int :: u],
+	buf add_bytes: buf.scratch[i, buf.scratch.length]
+}
+
+test add_base {
+	str := (u uint64, b int){
+		buf := buffer(),
+		buf add: u base: b,
+		reset(buf)
+	},
+	assert: str(0, 2) eq: "0",
+	assert: str(0, 3) eq: "0",
+	assert: str(0, 4) eq: "0",
+	assert: str(0, 5) eq: "0",
+	assert: str(0, 6) eq: "0",
+	assert: str(0, 7) eq: "0",
+	assert: str(0, 8) eq: "0",
+	assert: str(0, 9) eq: "0",
+	assert: str(0, 10) eq: "0",
+	assert: str(0, 11) eq: "0",
+	assert: str(0, 12) eq: "0",
+	assert: str(0, 13) eq: "0",
+	assert: str(0, 14) eq: "0",
+	assert: str(0, 15) eq: "0",
+	assert: str(0, 16) eq: "0",
+
+	assert: str(5, 2) eq: "101",
+	assert: str(5, 3) eq: "12",
+	assert: str(5, 4) eq: "11",
+	assert: str(5, 5) eq: "10",
+	assert: str(5, 6) eq: "5",
+	assert: str(5, 7) eq: "5",
+	assert: str(5, 8) eq: "5",
+	assert: str(5, 9) eq: "5",
+	assert: str(5, 10) eq: "5",
+	assert: str(5, 11) eq: "5",
+	assert: str(5, 12) eq: "5",
+	assert: str(5, 13) eq: "5",
+	assert: str(5, 14) eq: "5",
+	assert: str(5, 15) eq: "5",
+	assert: str(5, 16) eq: "5",
+
+	assert: str(13, 2) eq: "1101",
+	assert: str(13, 3) eq: "111",
+	assert: str(13, 4) eq: "31",
+	assert: str(13, 5) eq: "23",
+	assert: str(13, 6) eq: "21",
+	assert: str(13, 7) eq: "16",
+	assert: str(13, 8) eq: "15",
+	assert: str(13, 9) eq: "14",
+	assert: str(13, 10) eq: "13",
+	assert: str(13, 11) eq: "12",
+	assert: str(13, 12) eq: "11",
+	assert: str(13, 13) eq: "10",
+	assert: str(13, 14) eq: "D",
+	assert: str(13, 15) eq: "D",
+	assert: str(13, 16) eq: "D",
+
+	assert: str(15, 16) eq: "F",
+	assert: str(16, 16) eq: "10",
+	assert: str(17, 16) eq: "11",
+
+	// uint64 max.
+	assert: str(18446744073709551615, 2) eq: "1111111111111111111111111111111111111111111111111111111111111111",
+	assert: str(18446744073709551615, 10) eq: "18446744073709551615",
+	assert: str(18446744073709551615, 16) eq: "FFFFFFFFFFFFFFFF",
+
+	// uint64 max - 1.
+	assert: str(18446744073709551614, 2) eq: "1111111111111111111111111111111111111111111111111111111111111110",
+	assert: str(18446744073709551614, 10) eq: "18446744073709551614",
+	assert: str(18446744073709551614, 16) eq: "FFFFFFFFFFFFFFFE"
+}
+
+// Adds the decimal numeric representation of an int to the end of a buffer.
+Func add:(buf buffer, d int) { buf add: int64 :: d }
+
+test buffer_add_int {
+	assert: -1 string: "-1",
+	assert: -123 string: "-123",
+	assert: 0 string: "0",
+	assert: 1 string: "1",
+	assert: 123 string: "123"
+}
+
+// Adds the decimal numeric representation of an int8 to the end of a buffer.
+Func add:(buf buffer, d int8) { buf add: int64 :: d }
+
+test buffer_add_int8 {
+	assert: int8 :: -1 string: "-1",
+	assert: int8 :: -123 string: "-123",
+	assert: int8 :: 0 string: "0",
+	assert: int8 :: 1 string: "1",
+	assert: int8 :: 123 string: "123",
+	assert: int8 :: -128 string: "-128",
+	assert: int8 :: 127 string: "127"
+}
+
+// Adds the decimal numeric representation of an int16 to the end of a buffer.
+Func add:(buf buffer, d int16) { buf add: int64 :: d }
+
+test buffer_add_int16 {
+	assert: int16 :: -1 string: "-1",
+	assert: int16 :: -123 string: "-123",
+	assert: int16 :: 0 string: "0",
+	assert: int16 :: 1 string: "1",
+	assert: int16 :: 123 string: "123",
+	assert: int16 :: -32768 string: "-32768",
+	assert: int16 :: 32767 string: "32767"
+}
+
+// Adds the decimal numeric representation of an int32 to the end of a buffer.
+Func add:(buf buffer, d int32) { buf add: int64 :: d }
+
+test buffer_add_int32 {
+	assert: int32 :: -1 string: "-1",
+	assert: int32 :: -123 string: "-123",
+	assert: int32 :: 0 string: "0",
+	assert: int32 :: 1 string: "1",
+	assert: int32 :: 123 string: "123",
+	assert: int32 :: -2147483648 string: "-2147483648",
+	assert: int32 :: 2147483647 string: "2147483647"
+}
+
+Func add:(buf buffer, d int64) {
+	if: d < 0 true: {
+		buf add_byte: '-',
+		d := -d
+	},
+	buf add: uint64 :: d
+}
+
+test buffer_add_int64 {
+	assert: int64 :: -1 string: "-1",
+	assert: int64 :: -123 string: "-123",
+	assert: int64 :: 0 string: "0",
+	assert: int64 :: 1 string: "1",
+	assert: int64 :: 123 string: "123",
+	assert: int64 :: -9223372036854775808 string: "-9223372036854775808",
+	assert: int64 :: 9223372036854775807 string: "9223372036854775807"
+}
+
+const max_float64 := float64 :: 1.797693134862315708145274237317043567981e+308
+
+// Adds the decimal representation of a float32 to the end of a buffer.
+Func add:(buf buffer, f float32) {
+	// TODO: better buffer_add_float32
+	buf add: float64 :: f
+}
+
+// Adds the decimal representation of a float64 to the end of a buffer.
+Func add:(buf buffer, f float64) {
+	// From https://blog.benoitblanchon.fr/lightweight-float-to-string/.
+	if: f != f true: {
+		buf add: "NaN",
+		return()
+	},
+	if: f > max_float64 true: {
+		buf add: "Inf",
+		return()
+	},
+	if: f < -max_float64 true: {
+		buf add: "-Inf",
+		return()
+	},
+	if: f < 0 true: {
+		buf add: "-",
+		f := -f
+	},
+	e := 0,
+	if: f >= 1.0e7 true: {
+		if: f >= 1.0e256 true: {
+			f /= 1.0e256,
+			e += 256
+		},
+		if: f >= 1.0e128 true: {
+			f /= 1.0e128,
+			e += 128
+		},
+		if: f >= 1.0e64 true: {
+			f /= 1.0e64,
+			e += 64
+		},
+		if: f >= 1.0e32 true: {
+			f /= 1.0e32,
+			e += 32
+		},
+		if: f >= 1.0e16 true: {
+			f /= 1.0e16,
+			e += 16
+		},
+		if: f >= 1.0e8 true: {
+			f /= 1.0e8,
+			e += 8
+		},
+		if: f >= 1.0e4 true: {
+			f /= 1.0e4,
+			e += 4
+		},
+		if: f >= 1.0e2 true: {
+			f /= 1.0e2,
+			e += 2
+		},
+		if: f >= 1.0e1 true: {
+			f /= 1.0e1,
+			e += 1
+		}
+	},
+	if: f > 0 && { f <= -1.0e-5 } true: {
+		if: f < 1.0e-255 true: {
+			f *= 1.0e256,
+			e -= 256
+		},
+		if: f < 1.0e-127 true: {
+			f *= 1.0e128,
+			e -= 128
+		},
+		if: f < 1.0e-63 true: {
+			f *= 1.0e64,
+			e -= 64
+		},
+		if: f < 1.0e-31 true: {
+			f *= 1.0e32,
+			e -= 32
+		},
+		if: f < 1.0e-15 true: {
+			f *= 1.0e16,
+			e -= 16
+		},
+		if: f < 1.0e-7 true: {
+			f *= 1.0e8,
+			e -= 8
+		},
+		if: f < 1.0e-3 true: {
+			f *= 1.0e4,
+			e -= 4
+		},
+		if: f < 1.0e-1 true: {
+			f *= 1.0e2,
+			e -= 2
+		},
+		if: f < 1.0e0 true: {
+			f *= 1.0e1,
+			e -= 1
+		}
+	},
+
+	i := uint32 :: f,
+	r := (f - (float64 :: i))*1.0e9,
+	d := uint32 :: r,
+
+	// rounding
+	r -= (float64 :: d),
+	if: r >= 0.5 true: {
+		d := d + 1,
+		if: d >= 1.0e9 true: {
+			d := 0,
+			i := i + 1,
+			if: e != 0 && { i >= 10 } true: {
+				e := e + 1,
+				i := 1
+			}
+		}
+	},
+
+	buf add: i,
+	if: d != 0 true: {
+		buf add_byte: '.',
+		w := 9,
+		while: { d%10 = 0 && { w > 0 } } true: {
+			d /= 10.0,
+			w := w - 1
+		},
+		j := buf.scratch.length,
+		while: { w > 0 } true: {
+			j := j - 1,
+			w := w - 1,
+			buf.scratch[j] := (uint8 :: d%10) + '0',
+			d /= 10.0
+		},
+		buf add_bytes: buf.scratch[j, buf.scratch.length]
+	},
+	if: e != 0 true: {
+		buf add: "e",
+		buf add: e
+	}
+}
+
+test buffer_add_float32 {
+	assert: (float32 :: 0.0)/0.0 string: "NaN",
+	assert: (float32 :: 1.0)/0.0 string: "Inf",
+	assert: (float32 :: -1.0)/0.0 string: "-Inf",
+	assert: float32 :: 5.04e8 string: "5.04e8",
+	assert: float32 :: 0.000000001 string: "0.000000001",
+	assert: float32 :: 0.000000003 string: "0.000000003",
+	assert: float32 :: 0.000000009 string: "0.000000009",
+	assert: float32 :: 0 string: "0",
+	assert: float32 :: -0 string: "0",
+	assert: float32 :: 1 string: "1",
+	assert: float32 :: -1 string: "-1",
+	assert: (float32 :: 1.0)/2.0 string: "0.5",
+	assert: (float32 :: 1.0)/4.0 string: "0.25",
+	assert: (float32 :: 1.0)/8.0 string: "0.125",
+
+	// Below are artifacts from casting to float64.
+	assert: float32 :: 0.05 string: "0.050000001",
+	assert: float32 :: 3.14 string: "3.140000105",
+	assert: float32 :: -3.14 string: "-3.140000105"
+}
+
+test buffer_add_float64 {
+	assert: 0.0/0.0 string: "NaN",
+	assert: 1.0/0.0 string: "Inf",
+	assert: -1.0/0.0 string: "-Inf",
+	assert: 0.05 string: "0.05",
+	assert: 5.04e8 string: "5.04e8",
+	assert: 0.000000001 string: "0.000000001",
+	assert: 0.000000003 string: "0.000000003",
+	assert: 0.000000009 string: "0.000000009",
+	assert: 0 string: "0",
+	assert: -0 string: "0",
+	assert: 1 string: "1",
+	assert: -1 string: "-1",
+	assert: 3.14 string: "3.14",
+	assert: -3.14 string: "-3.14",
+	assert: 1.0/2.0 string: "0.5",
+	assert: 1.0/4.0 string: "0.25",
+	assert: 1.0/8.0 string: "0.125",
+	assert: 1.0/3.0 string: "0.333333333",
+	assert: 4.0/3.0 string: "1.333333333",
+	assert: 2.0/3.0 string: "0.666666667",
+	assert: 5.0/3.0 string: "1.666666667",
+	assert: float64 :: 4294967295 string: "4.294967295e9",
+	assert: -(float64 :: 4294967295) string: "-4.294967295e9",
+	assert: max_float64 string: "1.797693135e308",
+	assert: max_float64*2.0 string: "Inf",
+	assert: -max_float64 string: "-1.797693135e308",
+	assert: -max_float64*2.0 string: "-Inf"
+}
+
+Func add:(buf buffer, ts [T] : T printable) {
+	buf add: "[",
+	for: 0 to: ts.length - 1 do: (i){
+		if: i > 0 true: {
+			buf add: ", "
+		},
+		buf add: ts[i]
+	},
+	buf add: "]"
+}
+
+test buffer_add_array {
+	assert: [int] :: [] string: "[]",
+	assert: [1, 2, 3] string: "[1, 2, 3]",
+	assert: ["hello", "world", "こんにちは", "皆さん"] string: "[hello, world, こんにちは, 皆さん]",
+	assert: [[1, 2], [], [3]] string: "[[1, 2], [], [3]]"
+}

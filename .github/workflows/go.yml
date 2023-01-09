@@ -25,4 +25,5 @@ jobs:
     - name: Test modules
       run: |
         export PEA_TEST_TIMEOUT_SECONDS=300
+        sh ./pea_test.sh modules2
         sh ./pea_test.sh modules

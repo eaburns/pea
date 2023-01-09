@@ -1,0 +1,46 @@
+// The interface implemented by printable types.
+// A printable type is one that implements add:, printing itself to a buffer.
+Iface T printable {
+	add:(buffer, T),
+}
+
+// Prints a value to a buffer and returns the buffer.
+Func ++(buf buffer, t T : T printable) buffer {
+	buf add: t,
+	return: buf
+}
+
+test buffer_plus_plus_printable {
+	assert: reset(buffer() ++ 1 ++ "2" ++ 3.0 ++ [4, 5, 6]) string: "123[4, 5, 6]"
+}
+
+// Makes a new buffer, prints a value to the buffer
+// and then prints a value of type U to the buffer
+// and returns the buffer.
+Func ++(t T : T printable, u U : U printable) buffer {
+	return: buffer() ++ t ++ u
+}
+
+test printable_plus_plus_printable {
+	assert: reset(1 ++ "2" ++ 3.0 ++ [4, 5, 6]) string: "123[4, 5, 6]"
+}
+
+// Returns the printed string representation of a value.
+Func string(t T : T printable) string {
+	return: reset(buffer() ++ t)
+}
+
+// Writes the printed string representation of a value to stdout.
+Func stdout(t T : T printable) {
+	print(reset(buffer() ++ t))
+}
+
+// Resets a buffer and writes the resulting string to standard output.
+Func stdout(buf buffer) {
+	print(reset(buf))
+}
+
+// Resets a buffer and panics the resulting string.
+Func panic(buf buffer) ! {
+	panic(reset(buf))
+}

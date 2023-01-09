@@ -30,4 +30,8 @@ modules/**/*.a
 modules/**/*.o
 modules/**/*.pea_cache
 modules/**/*.test
+modules2/**/*.a
+modules2/**/*.o
+modules2/**/*.pea_cache
+modules2/**/*.test
 peac/peac

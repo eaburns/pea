@@ -1,0 +1,77 @@
+type bool := [false?, true?]
+const false := bool :: [false?]
+const true := bool :: [true?]
+
+func !(b bool) bool { return: b true? { false } false? { true } }
+func !=(a T : { =(T, T)bool }, b T) bool { return: !(a = b) }
+func &&(a bool, b (){bool}) bool { return: a true? b false? { false } }
+
+iface O ordering {
+	less?_?(O, (){bool}, (){bool})bool,
+	less?equal?_?(O, (){bool}, (){bool}, (){bool})bool,
+	greater?_?(O, (){bool}, (){bool})bool,
+	greater?equal?_?(O, (){bool}, (){bool}, (){bool})bool,
+}
+
+type ordering := [less?, equal?, greater?]
+type partial_ordering := [less?, equal?, greater?, none?]
+
+func <(a T : { <=>(T, T)O, O ordering }, b T) bool {
+	return: a <=> b less? { true } _? { false }
+}
+
+func <=(a T : { <=>(T, T)O, O ordering }, b T) bool {
+	return: a <=> b less? { true } equal? { true } _? { false }
+}
+
+func >(a T : { <=>(T, T)O, O ordering }, b T) bool {
+	return: a <=> b greater? { true } _? { false }
+}
+
+func >=(a T : { <=>(T, T)O, O ordering }, b T) bool {
+	return: a <=> b greater? { true } equal? { true } _? { false }
+}
+
+func +=(a &T : { +(T, T)T }, b T) { a := a + b }
+func -=(a &T : { -(T, T)T }, b T) { a := a - b }
+func *=(a &T : { *(T, T)T }, b T) { a := a*b }
+func /=(a &T : { /(T, T)T }, b T) { a := a/b }
+
+func for:to:do:(s, e int, f (int){}) {
+	if: s <= e true: {
+		f(s),
+		for: s + 1 to: e do: f
+	}
+}
+
+func while:true:(c (){bool}, f (){}) {
+	if: c() true: {
+		f(),
+		while: c true: f
+	}
+}
+
+func =(a, b string) bool {
+	if: a.length = b.length false: {
+		return: false
+	},
+	for: 0 to: a.length - 1 do: (i){
+		if: a[i] = b[i] false: {
+			return: false
+		}
+	},
+	return: true
+}
+
+func assert:string:(t T : { string(T)string }, want string) {
+	got := string(t),
+	if: got = want false: {
+		panic(got)
+	}
+}
+
+func assert:eq:(t T : { =(T, T)bool }, u T) {
+	if: t = u false: {
+		panic("not equal")
+	}
+}
