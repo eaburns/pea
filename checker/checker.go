@@ -2098,7 +2098,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	// typ may be nil if there was an error in the type, so use patternOrAny.
 	expr, es := _checkExpr(x, parserConvert.Expr, patternOrAny(typ), explicit)
 	errs = append(errs, es...)
-	if typ == nil || expr.Type() == nil {
+	if typ == nil || expr == nil || expr.Type() == nil {
 		return expr, errs
 	}
 
