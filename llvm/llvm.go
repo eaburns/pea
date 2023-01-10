@@ -646,7 +646,7 @@ func (g *gen) writeInstr(f *flowgraph.FuncDef, r flowgraph.Instruction) {
 	case *flowgraph.Op:
 		switch r.Op {
 		case flowgraph.BitNot:
-			g.line(r, " = xor ", typeVal{r.Args[0]})
+			g.line(r, " = xor ", typeVal{r.Args[0]}, ", -1")
 		case flowgraph.BitXor:
 			g.line(r, " = xor ", typeVal{r.Args[0]}, ", ", r.Args[1])
 		case flowgraph.BitAnd:
