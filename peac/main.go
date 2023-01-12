@@ -278,14 +278,14 @@ func compileA(m *mod.Mod, fg *flowgraph.Mod, locs loc.Files) {
 	for _, file := range m.SrcFiles {
 		switch filepath.Ext(file) {
 		case ".c":
-			oFile := strings.TrimSuffix(file, ".c") + ".o"
+			oFile := file + ".o"
 			if err := run("clang", "-I", *libpea, "-I", filepath.Join(*libpea, "vendor/gc-8.2.0/include"), "-g", "-o", oFile, "-c", file); err != nil {
 				fail(err)
 			}
 			defer os.Remove(oFile)
 			oFiles = append(oFiles, oFile)
 		case ".ll":
-			oFile := strings.TrimSuffix(file, ".ll") + ".ll.o"
+			oFile := file + ".ll.o"
 			if err := compileLL(file, oFile); err != nil {
 				fail(err)
 			}
