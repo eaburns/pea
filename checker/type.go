@@ -207,7 +207,7 @@ func isBasicNum(typ Type) bool {
 		return false
 	}
 	switch basic.Kind {
-	case Int, Int8, Int16, Int32, Int64, Uint, Uint8, Uint16, Uint32, Uint64, UintRef, Float32, Float64:
+	case Int, Int8, Int16, Int32, Int64, Int128, Uint, Uint8, Uint16, Uint32, Uint64, Uint128, UintRef, Float32, Float64:
 		return true
 	default:
 		return false

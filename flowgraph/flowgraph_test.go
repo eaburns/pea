@@ -35,6 +35,11 @@ func TestOptimize(t *testing.T) {
 	for _, fileInfo := range fileInfos {
 		fileInfo := fileInfo
 		t.Run(fileInfo.Name(), func(t *testing.T) {
+			if fileInfo.Name() == "uint128.pea" {
+				// The flowgraph interpreter currently
+				// does not implement 128 bit integers.
+				t.Skip()
+			}
 			path := filepath.Join(dir, fileInfo.Name())
 			c, err := loadMod(path)
 			if err != nil {

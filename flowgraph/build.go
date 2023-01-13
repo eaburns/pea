@@ -354,6 +354,8 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			return &IntType{Size: 32}
 		case checker.Int64:
 			return &IntType{Size: 64}
+		case checker.Int128:
+			return &IntType{Size: 128}
 		case checker.UintRef:
 			i := mb.intType()
 			i.Unsigned = true
@@ -370,6 +372,8 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 			return &IntType{Size: 32, Unsigned: true}
 		case checker.Uint64:
 			return &IntType{Size: 64, Unsigned: true}
+		case checker.Uint128:
+			return &IntType{Size: 128, Unsigned: true}
 		case checker.Float32:
 			return &FloatType{Size: 32}
 		case checker.Float64:

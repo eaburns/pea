@@ -381,6 +381,8 @@ func (k BasicTypeKind) String() string {
 		return "int32"
 	case Int64:
 		return "int64"
+	case Int128:
+		return "int128"
 	case UintRef:
 		return "uintref"
 	case Uint:
@@ -393,6 +395,8 @@ func (k BasicTypeKind) String() string {
 		return "uint32"
 	case Uint64:
 		return "uint64"
+	case Uint128:
+		return "uint128"
 	case Float32:
 		return "float32"
 	case Float64:

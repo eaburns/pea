@@ -2428,7 +2428,7 @@ func _checkIntLit(parserLit *parser.IntLit, pat TypePattern, kind BasicTypeKind)
 		case Float32, Float64:
 			floatLit := &parser.FloatLit{Text: parserLit.Text, L: parserLit.L}
 			return checkFloatLit(floatLit, pat)
-		case Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64:
+		case Int, Int8, Int16, Int32, Int64, Int128, UintRef, Uint, Uint8, Uint16, Uint32, Uint64, Uint128:
 			kind = basic.Kind
 		}
 	}
@@ -2470,6 +2470,9 @@ func checkValueSize(lit *IntLit) Error {
 	case Int64:
 		bits = 64
 		signed = true
+	case Int128:
+		bits = 128
+		signed = true
 	case UintRef:
 		bits = 64 // TODO: set by a flag
 		signed = false
@@ -2487,6 +2490,9 @@ func checkValueSize(lit *IntLit) Error {
 		signed = false
 	case Uint64:
 		bits = 64
+		signed = false
+	case Uint128:
+		bits = 128
 		signed = false
 	default:
 		panic(fmt.Sprintf("impossible int kind: %s", kind))
@@ -2525,7 +2531,7 @@ func checkFloatLit(parserLit *parser.FloatLit, pat TypePattern) (Expr, []Error) 
 		switch basic.Kind {
 		case Float32, Float64:
 			kind = basic.Kind
-		case Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64:
+		case Int, Int8, Int16, Int32, Int64, Int128, UintRef, Uint, Uint8, Uint16, Uint32, Uint64, Uint128:
 			var i big.Int
 			var errs []Error
 			if _, acc := val.Int(&i); acc != big.Exact {

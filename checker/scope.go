@@ -217,6 +217,8 @@ func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 		return &BasicType{Kind: Int32, L: l}
 	case "int64":
 		return &BasicType{Kind: Int64, L: l}
+	case "int128":
+		return &BasicType{Kind: Int128, L: l}
 	case "uintref":
 		return &BasicType{Kind: UintRef, L: l}
 	case "uint":
@@ -229,6 +231,8 @@ func findBuiltInType(args []Type, name string, l loc.Loc) Type {
 		return &BasicType{Kind: Uint32, L: l}
 	case "uint64":
 		return &BasicType{Kind: Uint64, L: l}
+	case "uint128":
+		return &BasicType{Kind: Uint128, L: l}
 	case "float32":
 		return &BasicType{Kind: Float32, L: l}
 	case "float64":
@@ -459,11 +463,13 @@ var (
 	_int16   = basic(Int16)
 	_int32   = basic(Int32)
 	_int64   = basic(Int64)
+	_int128   = basic(Int128)
 	_uint    = basic(Uint)
 	_uint8   = basic(Uint8)
 	_uint16  = basic(Uint16)
 	_uint32  = basic(Uint32)
 	_uint64  = basic(Uint64)
+	_uint128  = basic(Uint128)
 	_uintref = basic(UintRef)
 	_float32 = basic(Float32)
 	_float64 = basic(Float64)
@@ -530,6 +536,13 @@ var (
 		{N: "<<", Op: LeftShift, Parms: []Type{_int64, _int}, Ret: _int64},
 		{N: ">>", Op: RightShift, Parms: []Type{_int64, _int}, Ret: _int64},
 
+		{N: "^", Op: BitNot, Parms: []Type{_int128}, Ret: _int128},
+		{N: "^", Op: BitXor, Parms: []Type{_int128, _int128}, Ret: _int128},
+		{N: "&", Op: BitAnd, Parms: []Type{_int128, _int128}, Ret: _int128},
+		{N: "|", Op: BitOr, Parms: []Type{_int128, _int128}, Ret: _int128},
+		{N: "<<", Op: LeftShift, Parms: []Type{_int128, _int}, Ret: _int128},
+		{N: ">>", Op: RightShift, Parms: []Type{_int128, _int}, Ret: _int128},
+
 		{N: "^", Op: BitNot, Parms: []Type{_uint}, Ret: _uint},
 		{N: "^", Op: BitXor, Parms: []Type{_uint, _uint}, Ret: _uint},
 		{N: "&", Op: BitAnd, Parms: []Type{_uint, _uint}, Ret: _uint},
@@ -564,6 +577,13 @@ var (
 		{N: "|", Op: BitOr, Parms: []Type{_uint64, _uint64}, Ret: _uint64},
 		{N: "<<", Op: LeftShift, Parms: []Type{_uint64, _int}, Ret: _uint64},
 		{N: ">>", Op: RightShift, Parms: []Type{_uint64, _int}, Ret: _uint64},
+
+		{N: "^", Op: BitNot, Parms: []Type{_uint128}, Ret: _uint128},
+		{N: "^", Op: BitXor, Parms: []Type{_uint128, _uint128}, Ret: _uint128},
+		{N: "&", Op: BitAnd, Parms: []Type{_uint128, _uint128}, Ret: _uint128},
+		{N: "|", Op: BitOr, Parms: []Type{_uint128, _uint128}, Ret: _uint128},
+		{N: "<<", Op: LeftShift, Parms: []Type{_uint128, _int}, Ret: _uint128},
+		{N: ">>", Op: RightShift, Parms: []Type{_uint128, _int}, Ret: _uint128},
 
 		{N: "-", Op: Negate, Parms: []Type{_int}, Ret: _int},
 		{N: "-", Op: Minus, Parms: []Type{_int, _int}, Ret: _int},
@@ -600,6 +620,13 @@ var (
 		{N: "/", Op: Divide, Parms: []Type{_int64, _int64}, Ret: _int64},
 		{N: "%", Op: Modulus, Parms: []Type{_int64, _int64}, Ret: _int64},
 
+		{N: "-", Op: Negate, Parms: []Type{_int128}, Ret: _int128},
+		{N: "-", Op: Minus, Parms: []Type{_int128, _int128}, Ret: _int128},
+		{N: "+", Op: Plus, Parms: []Type{_int128, _int128}, Ret: _int128},
+		{N: "*", Op: Times, Parms: []Type{_int128, _int128}, Ret: _int128},
+		{N: "/", Op: Divide, Parms: []Type{_int128, _int128}, Ret: _int128},
+		{N: "%", Op: Modulus, Parms: []Type{_int128, _int128}, Ret: _int128},
+
 		{N: "-", Op: Negate, Parms: []Type{_uint}, Ret: _uint},
 		{N: "-", Op: Minus, Parms: []Type{_uint, _uint}, Ret: _uint},
 		{N: "+", Op: Plus, Parms: []Type{_uint, _uint}, Ret: _uint},
@@ -635,6 +662,13 @@ var (
 		{N: "/", Op: Divide, Parms: []Type{_uint64, _uint64}, Ret: _uint64},
 		{N: "%", Op: Modulus, Parms: []Type{_uint64, _uint64}, Ret: _uint64},
 
+		{N: "-", Op: Negate, Parms: []Type{_uint128}, Ret: _uint128},
+		{N: "-", Op: Minus, Parms: []Type{_uint128, _uint128}, Ret: _uint128},
+		{N: "+", Op: Plus, Parms: []Type{_uint128, _uint128}, Ret: _uint128},
+		{N: "*", Op: Times, Parms: []Type{_uint128, _uint128}, Ret: _uint128},
+		{N: "/", Op: Divide, Parms: []Type{_uint128, _uint128}, Ret: _uint128},
+		{N: "%", Op: Modulus, Parms: []Type{_uint128, _uint128}, Ret: _uint128},
+
 		{N: "-", Op: Negate, Parms: []Type{_float32}, Ret: _float32},
 		{N: "-", Op: Minus, Parms: []Type{_float32, _float32}, Ret: _float32},
 		{N: "+", Op: Plus, Parms: []Type{_float32, _float32}, Ret: _float32},
@@ -664,6 +698,9 @@ var (
 		{N: "=", Op: Eq, Parms: []Type{_int64, _int64}, Ret: _bool},
 		{N: "<=>", Op: Cmp, Parms: []Type{_int64, _int64}, Ret: _ordering},
 
+		{N: "=", Op: Eq, Parms: []Type{_int128, _int128}, Ret: _bool},
+		{N: "<=>", Op: Cmp, Parms: []Type{_int128, _int128}, Ret: _ordering},
+
 		{N: "=", Op: Eq, Parms: []Type{_uint, _uint}, Ret: _bool},
 		{N: "<=>", Op: Cmp, Parms: []Type{_uint, _uint}, Ret: _ordering},
 
@@ -678,6 +715,9 @@ var (
 
 		{N: "=", Op: Eq, Parms: []Type{_uint64, _uint64}, Ret: _bool},
 		{N: "<=>", Op: Cmp, Parms: []Type{_uint64, _uint64}, Ret: _ordering},
+
+		{N: "=", Op: Eq, Parms: []Type{_uint128, _uint128}, Ret: _bool},
+		{N: "<=>", Op: Cmp, Parms: []Type{_uint128, _uint128}, Ret: _ordering},
 
 		{N: "=", Op: Eq, Parms: []Type{_uintref, _uintref}, Ret: _bool},
 		// uintref has no <=> operator.

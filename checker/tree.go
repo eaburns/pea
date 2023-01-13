@@ -200,12 +200,14 @@ const (
 	Int16
 	Int32
 	Int64
+	Int128
 	UintRef
 	Uint
 	Uint8
 	Uint16
 	Uint32
 	Uint64
+	Uint128
 	Float32
 	Float64
 	String

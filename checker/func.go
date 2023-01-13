@@ -716,9 +716,6 @@ func (f *Builtin) parm(i int) TypePattern {
 	return makeTypePattern(f.typeParms, f.Parms[i])
 }
 
-var intTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64}
-var numTypes = []BasicTypeKind{Int, Int8, Int16, Int32, Int64, UintRef, Uint, Uint8, Uint16, Uint32, Uint64, Float32, Float64}
-
 func (f *Builtin) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *CandidateError) {
 	copy := *f
 	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
