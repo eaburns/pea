@@ -222,7 +222,7 @@ func compile(m *mod.Mod) {
 
 func link(binFile string, objs []string) {
 	args := []string{
-		"-g",
+		"-O3",
 		"-o", binFile,
 		"-pthread",
 		"-ldl", // needed for libunwind
@@ -279,7 +279,7 @@ func compileA(m *mod.Mod, fg *flowgraph.Mod, locs loc.Files) {
 		switch filepath.Ext(file) {
 		case ".c":
 			oFile := file + ".o"
-			if err := run("clang", "-I", *libpea, "-I", filepath.Join(*libpea, "vendor/gc-8.2.0/include"), "-g", "-o", oFile, "-c", file); err != nil {
+			if err := run("clang", "-O3", "-I", *libpea, "-I", filepath.Join(*libpea, "vendor/gc-8.2.0/include"), "-g", "-o", oFile, "-c", file); err != nil {
 				fail(err)
 			}
 			defer os.Remove(oFile)
@@ -366,7 +366,7 @@ func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs 
 func compileLL(file, oFile string) error {
 	// We use clang here instead of opt+llc, because
 	// it sets the target datalayout and triple for us.
-	if err := run("clang", "-O2", "-o", oFile, "-c", file); err != nil {
+	if err := run("clang", "-O3", "-o", oFile, "-c", file); err != nil {
 		fail(fmt.Errorf("%s", err))
 	}
 	return nil
