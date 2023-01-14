@@ -1249,7 +1249,7 @@ func _checkExpr(x scope, parserExpr parser.Expr, pat TypePattern, mode convertMo
 		return checkExpr(x, parserExpr.Expr, pat)
 	case *parser.ArrayLit, *parser.StructLit, *parser.UnionLit, *parser.BlockLit,
 		*parser.StrLit, *parser.CharLit, *parser.IntLit, *parser.FloatLit:
-		return checkLit(x, parserExpr, pat)
+		return checkLit(x, parserExpr, pat, mode)
 	case *parser.ModSel:
 		expr, err := checkModSel(x, parserExpr, pat)
 		if err != nil {
@@ -2098,7 +2098,7 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	// typ may be nil if there was an error in the type, so use patternOrAny.
 	expr, es := _checkExpr(x, parserConvert.Expr, patternOrAny(typ), explicit)
 	errs = append(errs, es...)
-	if typ == nil || expr == nil || expr.Type() == nil {
+	if len(errs) > 0 || typ == nil || expr == nil || expr.Type() == nil {
 		return expr, errs
 	}
 
@@ -2144,9 +2144,17 @@ func checkConvert(x scope, parserConvert *parser.Convert) (Expr, []Error) {
 	}
 }
 
-func checkLit(x scope, parserExpr parser.Expr, pat TypePattern) (Expr, []Error) {
+func checkLit(x scope, parserExpr parser.Expr, pat TypePattern, mode convertMode) (Expr, []Error) {
 	expr, errs := _checkLit(x, parserExpr, pat)
 	if len(errs) > 0 {
+		return expr, errs
+	}
+	// If we are already going to explicitly convert this, don't bother here.
+	// The caller will do explict conversion with the scope
+	// allowing user-defined :: functions to be considered.
+	// We only want to do the conversion below for _implicity_
+	// conversion that uses a special explicit case for literals.
+	if mode == explicit {
 		return expr, errs
 	}
 	switch expr, _, err := convertExpr(x, expr, pat, explicit); {
