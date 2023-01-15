@@ -226,34 +226,17 @@ func doConvertExpr(x scope, expr Expr, cvt *Convert) Expr {
 	cvt.Expr = doConvertExpr(x, expr, next)
 	switch {
 	case cvt.Kind == Ref:
-		// Ref conversions that convert an identifier
-		// result in the reference to the identifier's variable.
-		if id := identifierRef(cvt.Expr); id != nil {
-			if cvt.Explicit {
-				return &Convert{
-					Kind:     Noop,
-					Explicit: true,
-					Expr:     id,
-					T:        id.Type(),
-					L:        id.Loc(),
-				}
+		if inner, ok := cvt.Expr.(*Convert); ok && inner.Kind == Deref && !inner.Explicit {
+			if !cvt.Explicit {
+				return inner.Expr
 			}
-			return id
-		}
-		// Ref conversions that convert a call
-		// to a reference-returning function
-		// result in the returned reference.
-		if call := callRef(cvt.Expr); call != nil {
-			if cvt.Explicit {
-				return &Convert{
-					Kind:     Noop,
-					Explicit: true,
-					Expr:     call,
-					T:        call.Type(),
-					L:        call.Loc(),
-				}
+			return &Convert{
+				Kind:     Noop,
+				Explicit: true,
+				Expr:     inner.Expr,
+				T:        inner.Expr.Type(),
+				L:        inner.Expr.Loc(),
 			}
-			return call
 		}
 	case cvt.Kind == funcConvert:
 		dstFunc := cvt.T.(*FuncType)
