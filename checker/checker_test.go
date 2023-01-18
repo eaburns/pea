@@ -40,7 +40,7 @@ type testImporter struct {
 	files  loc.Files
 	mods   []testMod
 	loaded map[string]*Mod
-	deps   []string
+	deps   []*Mod
 }
 
 func newTestImporter(mods []testMod, files []*parser.File) *testImporter {
@@ -84,11 +84,11 @@ func (imp *testImporter) Load(path string) (*Mod, error) {
 	}
 	mod.Imported = true
 	imp.loaded[path] = mod
-	imp.deps = append(imp.deps, path)
+	imp.deps = append(imp.deps, mod)
 	return mod, nil
 }
 
-func (imp *testImporter) Deps() []string { return imp.deps }
+func (imp *testImporter) Deps() []*Mod { return imp.deps }
 
 func check(path string, files []string, mods []testMod) (*Mod, []error) {
 	p := parser.New()

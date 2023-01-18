@@ -71,7 +71,6 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 		{0, "string"}:  {},
 	}
 	mod := &Mod{Path: modPath, topScope: &topScope}
-	var importedMods []*Mod
 	for _, parserFile := range files {
 		var imports []*Import
 		for _, parserImport := range parserFile.Imports {
@@ -80,7 +79,6 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 				errs = append(errs, newError(parserImport.L, err.Error()))
 				continue
 			}
-			importedMods = append(importedMods, m)
 			name := importName(parserImport.Path)
 			if parserImport.Name != nil {
 				name = parserImport.Name.Name
@@ -326,7 +324,7 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 	for i := 0; i < 5; i++ {
 		toSub := mod.toSub
 		mod.toSub = nil
-		for _, imp := range importedMods {
+		for _, imp := range topScope.importer.Deps() {
 			toSub = append(toSub, imp.toSub...)
 			imp.toSub = nil
 		}
@@ -338,7 +336,9 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 		// TODO: improve too much substitution error message
 		return nil, nil, []error{errors.New("too much substitution")}
 	}
-	mod.Deps = topScope.importer.Deps()
+	for _, m := range topScope.importer.Deps() {
+		mod.Deps = append(mod.Deps, m.Path)
+	}
 	return mod, topScope.importer.Files(), nil
 }
 

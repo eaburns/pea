@@ -15,14 +15,14 @@ type Importer interface {
 	// Deps returns the transitive dependencies
 	// in topological order with dependencies
 	// appearing before their dependents.
-	Deps() []string
+	Deps() []*Mod
 }
 
 type defaultImporter struct {
 	root                *mod.Root
 	files               loc.Files
 	loaded              map[string]*Mod
-	deps                []string
+	deps []*Mod
 	trimErrorPathPrefix string
 }
 
@@ -74,11 +74,11 @@ func (imp *defaultImporter) Load(path string) (*Mod, error) {
 	}
 	mod.Imported = true
 	imp.loaded[path] = mod
-	imp.deps = append(imp.deps, path)
+	imp.deps = append(imp.deps, mod)
 	return mod, nil
 }
 
-func (imp *defaultImporter) Deps() []string { return imp.deps }
+func (imp *defaultImporter) Deps() []*Mod { return imp.deps }
 
 func cleanImportPath(path string) string {
 	return strings.TrimPrefix(filepath.Clean(path), "/")
