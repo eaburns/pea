@@ -1,0 +1,67 @@
+Import "basic"
+import "print"
+
+/*
+	A PCG32 pseudo random number generator from
+	https://github.com/imneme/pcg-c-basic.
+	Also see http://www.pcg-random.org for more info.
+
+	The original source is distributed with the following notice:
+
+		Copyright 2014 Melissa O'Neill <oneill@pcg-random.org>
+
+		Licensed under the Apache License, Version 2.0 (the "License");
+		you may not use this file except in compliance with the License.
+		You may obtain a copy of the License at
+
+		    http://www.apache.org/licenses/LICENSE-2.0
+
+		Unless required by applicable law or agreed to in writing, software
+		distributed under the License is distributed on an "AS IS" BASIS,
+		WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+		See the License for the specific language governing permissions and
+		limitations under the License.
+
+		For additional information about the PCG random number generation scheme,
+		including its license and other licensing options, visit
+*/
+
+// State for a pcg32 pseudo random number generator.
+Type state (&[.state uint64, .inc uint64])
+
+// Returns a new state using the given initstate and sequence number.
+Func state(initstate uint64, initseq uint64) state {
+	s := state :: [.state 0, .inc (initseq << 1) | 1],
+	random(s),
+	s.state += initstate,
+	random(s),
+	return: s
+}
+
+// Returns the next pseudo random number for the given state.
+Func random(s state) uint32 {
+	old_state := s.state,
+	s.state := old_state*6364136223846793005 + s.inc,
+	xor_shifted := uint32 :: ((old_state >> 18) ^ old_state) >> 27,
+	rot := uint64 :: old_state >> 59,
+	// xor_shifted64 should not be needed,
+	// but it is there to work around a compiler bug.
+	// We should be able to use xor_shifted directly,
+	// but currently the LLVM backend
+	// gives an error when shifting a uint32 (i32)
+	// by an int (i64), since it wants the types to match.
+	xor_shifted64 := uint64 :: xor_shifted,
+	return: uint32 :: (xor_shifted64 >> rot) | (xor_shifted64 << (-rot & 31))
+}
+
+test random {
+	// This tests against the values computed by pcg32-demo.c
+	// from https://github.com/imneme/pcg-c-basic.
+	s := state(42, 54),
+	assert: random(s) eq: 2707161783,
+	assert: random(s) eq: 2068313097,
+	assert: random(s) eq: 3122475824,
+	assert: random(s) eq: 2211639955,
+	assert: random(s) eq: 3215226955,
+	assert: random(s) eq: 3421331566
+}

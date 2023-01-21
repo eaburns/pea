@@ -1,0 +1,62 @@
+Import "basic"
+import "print"
+import "random/pcg32"
+
+/*
+	A PCG32x2 pseudo random number generator from
+	https://github.com/imneme/pcg-c-basic.
+	Also see http://www.pcg-random.org for more info.
+
+	The original source is distributed with the following notice:
+
+		Copyright 2014 Melissa O'Neill <oneill@pcg-random.org>
+
+		Licensed under the Apache License, Version 2.0 (the "License");
+		you may not use this file except in compliance with the License.
+		You may obtain a copy of the License at
+
+		    http://www.apache.org/licenses/LICENSE-2.0
+
+		Unless required by applicable law or agreed to in writing, software
+		distributed under the License is distributed on an "AS IS" BASIS,
+		WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+		See the License for the specific language governing permissions and
+		limitations under the License.
+
+		For additional information about the PCG random number generation scheme,
+		including its license and other licensing options, visit
+*/
+
+// State for a pcg32x2 pseudo random number generator.
+// A pcg32x2 generator generates pseudo random 64-bit numbers
+// by using two underlying pcg32 generators.
+Type state (&[.state1 pcg32#state, .state2 pcg32#state])
+
+// Returns a new state using the given seeds and sequences.
+Func state(seed1 uint64, seed2 uint64, seq1 uint64, seq2 uint64) state {
+	mask := ^(uint64 :: 0) >> 1,
+	if: (seq1 & mask) = (seq2 & mask) true: {
+		seq2 := ^seq2
+	},
+	return: [
+		.state1 pcg32#state(seed1, seq1),
+		.state2 pcg32#state(seed2, seq2),
+	]
+}
+
+// Returns the next pseudo random number for the given state.
+Func random(s state) uint64 {
+	return: ((uint64 :: pcg32#random(s.state1)) << 32) | (uint64 :: pcg32#random(s.state2))
+}
+
+test state {
+	// This tests against the values computed by pcg32x2-demo.c
+	// from https://github.com/imneme/pcg-c-basic.
+	s := state(42, 42, 54, 54),
+	assert: random(s) eq: 11627171323406520165,
+	assert: random(s) eq: 8883337113273145939,
+	assert: random(s) eq: 13410931546932357292,
+	assert: random(s) eq: 9498921278412264425,
+	assert: random(s) eq: 13809294621849168914,
+	assert: random(s) eq: 14694507188862534033
+}

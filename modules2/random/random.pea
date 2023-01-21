@@ -1,0 +1,78 @@
+// This module provides a pseudo-random number generator.
+// It is not suitable for cryptography.
+Import "basic"
+import "hash"
+import "print"
+import "random/pcg32x2"
+
+// State for a sequence of pseudo random numbers.
+Type state (&[
+	.pcg_state pcg32x2#state,
+])
+
+// Returns a new state, created from the given seed.
+Func state(seed uint64) state {
+	// Running seed though hash_128_to_64 for the avalanch-effect,
+	// so that seeds like 1, 2, 3, and so forth that would
+	// only have 1-bits in the low-order bytes,
+	// will more likely have 1-bits throughout.
+	seed := hash_128_to_64(seed, seed),
+	return: [.pcg_state pcg32x2#state(
+		(seed >> 48) & 0xFFFF,
+		(seed >> 32) & 0xFFFF,
+		(seed >> 16) & 0xFFFF,
+		(seed >> 0) & 0xFFFF
+		)]
+}
+
+func hash_128_to_64(lo uint64, hi uint64) uint64 {
+	kmul := uint64 :: 0x9ddfea08eb382d69,
+	a := (lo ^ hi)*kmul,
+	a := a ^ (a >> 47),
+	b := (hi ^ a)*kmul,
+	b := b ^ (b >> 47),
+	b := b*kmul,
+	return: b
+}
+
+// Returns the next pseudo-random uint64 from the given state.
+Func uint64(s state) uint64 {
+	return: pcg32x2#random(s.pcg_state)
+}
+
+// Returns the next pseudo-random uint64 from the state,
+// where the returned value, r, is bounded to the range 0 ≤ r < b.
+Func uint64(s state, b uint64) uint64 {
+	rand_max := ^(uint64 :: 0),
+	max := rand_max - (rand_max%b) - 1,
+	r := uint64(s),
+	while: { r > max } true: {
+		r := uint64(s)
+	},
+	return: r%b
+}
+
+test bounded {
+	s := state(0),
+	for: 1 to: 50 do: (_){
+		assert: uint64(s, 188) cmp: 188 is: less
+	}
+}
+
+test same_seeds {
+	s := state(0),
+	x1 := uint64(s),
+	x2 := uint64(s),
+	s := state(0),
+	assert: uint64(s) eq: x1,
+	assert: uint64(s) eq: x2
+}
+
+test different_seeds {
+	s := state(0),
+	x1 := uint64(s),
+	x2 := uint64(s),
+	s := state(1),
+	assert: uint64(s) ne: x1,
+	assert: uint64(s) ne: x2
+}
