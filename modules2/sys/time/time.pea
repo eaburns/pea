@@ -1,0 +1,11 @@
+Import "basic"
+import "print"
+import "time"
+
+// Retruns a duration from an unspecified point,
+// guaranteed to be monotonically increasing across calls.
+Func monotonic() time#duration { return: _monotonic() }
+
+test monotonic {
+	assert: monotonic() <= monotonic() eq: true
+}

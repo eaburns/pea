@@ -1,0 +1,23 @@
+// Wrappers around a small set of POSIX functions
+// used to implement the modules under sys.
+//
+// A few things of note about the API:
+//
+//  * We can't generally pass structs between Pea and C,
+//    since Pea has not defined ABI for it, so pass the components instead.
+//
+//  * We can't pass int and uint between Pea and C,
+//    since the two languages may not agree on the size of these types,
+//    so always pass sized-integer types instead.
+//
+//  * POSIX doesn't define the numeric values of most constants,
+//    so most POSIX constants are implemented as functions
+//    that return the constant's value from C (e.g., CLOCK_REALTIME()).
+
+Func errno() int32
+Func strerror_r(e int32, buf [uint8])
+
+Type clockid_t (int32)
+Func CLOCK_REALTIME() clockid_t
+Func CLOCK_MONOTONIC() clockid_t
+Func clock_gettime(clock_id clockid_t, sec &int64, nsec &int64) int32

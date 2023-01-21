@@ -1,0 +1,18 @@
+Import "basic"
+import "sys/internal/posix"
+import "time"
+
+func _monotonic() time#duration {
+	return: clock_gettime(posix#CLOCK_MONOTONIC())
+}
+
+func clock_gettime(clock_id posix#clockid_t) time#duration {
+	sec := int64 :: 0,
+	nsec := int64 :: 0,
+	if: posix#clock_gettime(clock_id, sec, nsec) < 0 true: {
+		buf := [uint8] :: new(128, uint8 :: 0),
+		posix#strerror_r(posix#errno(), buf),
+		panic(string :: buf)
+	},
+	return: sec*time#second + nsec*time#nanosecond
+}
