@@ -1,0 +1,88 @@
+Import "basic"
+import "print"
+import "hash/wyhash_final3"
+
+// The interface implemented by hashable types.
+// A hashable type is one that implements add:,
+// adding its data to a hash state.
+Iface T hashable {
+	add:(state, T),
+}
+
+// Returns a hash value for t using the given initial seed.
+Func hash(seed uint64, t T : T hashable) uint64 {
+	s := state(seed),
+	s add: t,
+	return: s.seed
+}
+
+// Returns a hash value for t using the default initial seed.
+Func hash(t T : T hashable) uint64 { return: hash(default_seed(), t) }
+
+// Intermediate state used to compute hash values.
+Type state (&[.seed uint64])
+
+// Returns a new initial hash state using the given seed.
+Func state(seed uint64) state { return: [.seed seed] }
+
+// Returns a new initial hash state using the default seed.
+// The default seed is constant within a single execution of a program,
+// but it may change across executions.
+Func state() state { return: state(default_seed()) }
+
+// The address of default_seed_var is used as the initial hash state.
+// Address space layout randomization should make this a different value across runs.
+const default_seed_var := uint64 :: 1
+
+func default_seed() uint64 {
+	return: uint64 :: (uintref :: (&uint64 :: default_seed_var))
+}
+
+test simple_test {
+	// This is the hash value from wyhash_final3.
+	// Just a simple test that things compile and hash can be called.
+	assert: hash(19840923, "abc") eq: 7965387199147539994
+}
+
+Func add:(s state, x bool) {
+	s add: x false? { uint64 :: 0 } true? { 1 }
+}
+
+Func add:(s state, x ordering) {
+	s add: x less? { uint64 :: 0 } equal? { 1 } greater? { 2 }
+}
+
+Func add:(s state, x partial_ordering) {
+	s add: x less? { uint64 :: 0 } equal? { 1 } greater? { 2 } none? { 3 }
+}
+
+Func add:(s state, x uint) { s add: uint64 :: x }
+Func add:(s state, x uint8) { s add: uint64 :: x }
+Func add:(s state, x uint16) { s add: uint64 :: x }
+Func add:(s state, x uint32) { s add: uint64 :: x }
+Func add:(s state, x uint64) { s.seed := hash_128_to_64(s.seed, x) }
+Func add:(s state, x uintref) { s add: uint64 :: x }
+Func add:(s state, x int) { s add: uint64 :: x }
+Func add:(s state, x int8) { s add: uint64 :: x }
+Func add:(s state, x int16) { s add: uint64 :: x }
+Func add:(s state, x int32) { s add: uint64 :: x }
+Func add:(s state, x int64) { s add: uint64 :: x }
+
+Func add:(s state, x string) { s.seed := wyhash_final3#hash(s.seed, x) }
+
+Func add:(s state, x [T] : T hashable) {
+	for: x each: (t){ s add: t },
+	s add: x.length
+}
+
+// Hashes two uint64s down to a single uint64.
+// This is from https://github.com/google/cityhash/blob/f5dc54147fcce12cefd16548c8e760d68ac04226/src/city.h#L101
+func hash_128_to_64(lo uint64, hi uint64) uint64 {
+	kmul := uint64 :: 0x9ddfea08eb382d69,
+	a := (lo ^ hi)*kmul,
+	a := a ^ (a >> 47),
+	b := (hi ^ a)*kmul,
+	b := b ^ (b >> 47),
+	b := b*kmul,
+	return: b
+}

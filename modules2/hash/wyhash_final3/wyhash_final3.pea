@@ -1,0 +1,134 @@
+Import "basic"
+import "print"
+
+// A span of bytes.
+Iface S byte_span {
+	.length(S)int,
+	[](S, int)uint8,
+	[](S, int, int)S,
+}
+
+const secret0 := uint64 :: 0xa0761d6478bd642f
+const secret1 := uint64 :: 0xe7037ed1a0b428db
+const secret2 := uint64 :: 0x8ebc6af09c88c6e3
+const secret3 := uint64 :: 0x589965cc75374cc3
+
+// The wyhash_final3 algorithm from https://github.com/wangyi-fudan/wyhash.
+Func hash(seed uint64, s S : S byte_span) uint64 {
+	p := 0,
+	len := s.length,
+	a := uint64 :: 0,
+	b := uint64 :: 0,
+	seed := seed ^ mix(seed ^ secret0, secret1),
+	if: len <= 16 true: {
+		if: len >= 4 true: {
+			a := (read4(s, p) << 32) | read4(s, (len >> 3) << 2),
+			b := (read4(s, len - 4) << 32) | read4(s, len - 4 - ((len >> 3) << 2))
+		} else: { len > 0 } true: {
+			a := read3(s)
+		}
+	} false: {
+		i := len,
+		if: i > 48 true: {
+			see1 := seed,
+			see2 := seed,
+			do: {
+				seed := mix(read8(s, p) ^ secret1, read8(s, p + 8) ^ seed),
+				see1 := mix(read8(s, p + 16) ^ secret2, read8(s, p + 24) ^ see1),
+				see2 := mix(read8(s, p + 32) ^ secret3, read8(s, p + 40) ^ see2),
+				p += 48,
+				i -= 48
+			} while: { i > 48 },
+			seed := seed ^ see1 ^ see2
+		},
+		while: { i > 16 } true: {
+			seed := mix(read8(s, p) ^ secret1, read8(s, p + 8) ^ seed),
+			p += 16,
+			i -= 16
+		},
+		a := read8(s, p + i - 16),
+		b := read8(s, p + i - 8)
+	},
+	a := a ^ secret1,
+	b := b ^ seed,
+	x := (uint128 :: a)*(uint128 :: b),
+	return: mix((uint64 :: x) ^ secret0 ^ (uint64 :: len), (uint64 :: x >> 64) ^ secret1)
+}
+
+Func mix(a uint64, b uint64) uint64 {
+	p := (uint128 :: a)*(uint128 :: b),
+	return: (uint64 :: p >> 64) ^ (uint64 :: p)
+}
+
+func read8(s S : S byte_span, p int) uint64 {
+	return: (uint64 :: s[p]) | (uint64 :: s[p + 1]) << 8 | (uint64 :: s[p + 2]) << 16 | (uint64 :: s[p + 3]) << 24 |
+		(uint64 :: s[p + 4]) << 32 | (uint64 :: s[p + 5]) << 40 | (uint64 :: s[p + 6]) << 48 | (uint64 :: s[p + 7]) << 56
+}
+
+func read4(s S : S byte_span, p int) uint64 {
+	return: (uint64 :: s[p]) | (uint64 :: s[p + 1]) << 8 | (uint64 :: s[p + 2]) << 16 | (uint64 :: s[p + 3]) << 24
+}
+
+func read3(s S : S byte_span) uint64 {
+	return: (uint64 :: s[0]) << 16 | (uint64 :: s[s.length >> 1]) << 8 | (uint64 :: s[s.length - 1])
+}
+
+test hash {
+	// Golden values computed with the reference implementation
+	// from https://github.com/wangyi-fudan/wyhash.
+	assert: hash(19840923, "") eq: 12087294821769277535,
+	assert: hash(19840923, "a") eq: 3484240775335195119,
+	assert: hash(19840923, "ab") eq: 6244455570175863167,
+	assert: hash(19840923, "abc") eq: 7965387199147539994,
+	assert: hash(19840923, "abcd") eq: 1892275627847992497,
+	assert: hash(19840923, "abcde") eq: 1041812705833666363,
+	assert: hash(19840923, "abcdef") eq: 14065285035052140716,
+	assert: hash(19840923, "abcdefg") eq: 15352736444855843477,
+	assert: hash(19840923, "abcdefgh") eq: 14585999962671940276,
+	assert: hash(19840923, "abcdefghi") eq: 6376171272342792910,
+	assert: hash(19840923, "abcdefghij") eq: 8440625500898830039,
+	assert: hash(19840923, "abcdefghijk") eq: 13612428054304061797,
+	assert: hash(19840923, "abcdefghijkl") eq: 15666992115007580920,
+	assert: hash(19840923, "abcdefghijklm") eq: 12931094745992393849,
+	assert: hash(19840923, "abcdefghijklmn") eq: 11384675677166530522,
+	assert: hash(19840923, "abcdefghijklmno") eq: 3065499450815571458,
+	assert: hash(19840923, "abcdefghijklmnop") eq: 13828120715030344382,
+	assert: hash(19840923, "abcdefghijklmnopq") eq: 6473912325939517248,
+	assert: hash(19840923, "abcdefghijklmnopqr") eq: 18005767301009744241,
+	assert: hash(19840923, "abcdefghijklmnopqrs") eq: 1618882336142096899,
+	assert: hash(19840923, "abcdefghijklmnopqrst") eq: 2651277132137520944,
+	assert: hash(19840923, "abcdefghijklmnopqrstu") eq: 16348319865898546374,
+	assert: hash(19840923, "abcdefghijklmnopqrstuv") eq: 4145566284104454218,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvw") eq: 13222104854137424369,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwx") eq: 9199186604412709193,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxy") eq: 3997322365153280099,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyz") eq: 6895780635610009927,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyza") eq: 13704005011275347125,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzab") eq: 17699653281059140217,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabc") eq: 9769442524771742107,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcd") eq: 8940341048708573883,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcde") eq: 1423697133599407327,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdef") eq: 13265011814997617851,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefg") eq: 9388677502696729936,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefgh") eq: 11265121304656161081,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghi") eq: 8694254391793368346,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghij") eq: 14365485303022296233,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijk") eq: 3919497077562572171,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijkl") eq: 6150324228081165736,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklm") eq: 8394578253518063293,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmn") eq: 10385549490239015624,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmno") eq: 1613513336307457929,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnop") eq: 5987719112595811937,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopq") eq: 2026522166796584643,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr") eq: 259577293741623035,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrs") eq: 10162395650791338681,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrst") eq: 6459054372949572023,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstu") eq: 9858428784131131790,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuv") eq: 2383395582567009227,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvw") eq: 8789940950192851598,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx") eq: 17680177896868860911,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxy") eq: 2777895201738851558,
+	assert: hash(19840923, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz") eq: 11959693997430757663,
+
+	assert: hash(19840923, [uint8 :: 'a']) eq: 3484240775335195119
+}
