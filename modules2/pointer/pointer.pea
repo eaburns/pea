@@ -1,0 +1,56 @@
+Import "basic"
+import "print"
+
+// A pointer is a re-assignable reference to a value of type T.
+Type T pointer (&T)
+
+// Returns a pointer to t.
+Func &(t &T) T pointer { return: T pointer :: t }
+
+// Returns the reference pointed to by p.
+Func *(p T pointer) &T { return: &T :: p }
+
+test pointer {
+	x := 1,
+	xp := int pointer :: &x,
+	assert: *xp eq: 1,
+	assert: x eq: 1,
+
+	*xp := 2,
+	assert: *xp eq: 2,
+	assert: x eq: 2,
+
+	y := 3,
+	xp := &y,
+	assert: *xp eq: 3,
+	assert: y eq: 3,
+	assert: x eq: 2,
+
+	*xp := 4,
+	assert: *xp eq: 4,
+	assert: y eq: 4,
+	assert: x eq: 2
+}
+
+// Returns whether a and b reference the same object.
+Func =(a, b T pointer) bool {
+	return: (uintref :: (&T :: a)) = (uintref :: (&T :: b))
+}
+
+test equal {
+	a := 1,
+	b := 1,
+	// We can't use assert:eq: on bool, because it is a type literal,
+	// and thus it can be implicitly converted to T pointer
+	// from the scope of this module, and add:(print#buffer, …) is ambiguous.
+	// This isn't a problem outside of this module, because T pointer is opaque.
+	if: &a = &b true: { panic("fail") },
+	if: &b = &a true: { panic("fail") },
+	if: &a = &a false: { panic("fail") },
+	if: &b = &b false: { panic("fail") }
+}
+
+// Adds the address of p to the print#buffer as a hexadecimal number.
+Func add:(buf print#buffer, p T pointer) {
+	buf ++ (uintref :: (&T :: p))
+}
