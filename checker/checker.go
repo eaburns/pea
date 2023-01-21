@@ -2007,7 +2007,7 @@ func useID(x scope, l loc.Loc, assignLHS bool, id id) Expr {
 		case *ExprFunc:
 			return f.Expr
 		default:
-			return wrapCallInBlock(x, id, id.ret().groundType(), l)
+			return wrapCallInBlock(x, f, f.ret().groundType(), l)
 		}
 	case Func:
 		return wrapCallInBlock(x, id, id.ret().groundType(), l)
