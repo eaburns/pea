@@ -1,0 +1,59 @@
+Import "basic"
+import "print"
+
+// An optional type is either a some? value of type T or none?.
+Type T option [none?, some? T]
+
+// Returns [none?].
+Func none() T option { return: [none?] }
+
+// Returns [some? t].
+Func some(t T) T option { return: [some? t] }
+
+// Returns the some value in the some? case
+// or the result of default() in the none? case.
+Func none?(t T option, default (){T}) T {
+	return: t some? (t){ t } none? default
+}
+
+// Returns whether the ao is equal to bo.
+// Two options are equal if they are both none?
+// or if they are both some? with equal values.
+Func =(ao T option : { =(T, T)bool }, bo T option) bool {
+	return: ao some? (a){
+		bo some? (b){ a = b } none? { false }
+	} none? {
+		bo some? (_){ false } none? { true }
+	}
+}
+
+// Adds the string representation of o to the print#buffer b.
+// Options are printed as "none()" and "some(x)",
+// where "x" is the printed representation of the some value.
+Func add:(b print#buffer, o T option : T print#printable) {
+	if: o some: (t){
+		b ++ "some(" ++ t ++ ")"
+	} none: {
+		b ++ "none()"
+	}
+}
+
+// Repeatedly calls o until it returns [none?];
+// each time it returns [some? t], f(t) is called.
+Func while:some:(o (){T option}, f (T){}) {
+	if: o() some: (t){
+		f(t),
+		while: o some: f
+	}
+}
+
+test while_some {
+	i := 0,
+	while: {
+		i < 4 true? { int option :: [some? i] } false? { [none?] }
+	} some: (j){
+		assert: i eq: j,
+		++i
+	},
+	assert: i eq: 4
+}
