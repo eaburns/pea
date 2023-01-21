@@ -217,6 +217,14 @@ func compile(m *mod.Mod) {
 		fail(fmt.Errorf("%s", err))
 	}
 	defer os.Remove(oFile)
+
+	// Reverse the aFiles, because they need to be linked
+	// with dependencies following their dependents,
+	// but the aFiles were appended in the opposite order.
+	for i := 0; i < len(aFiles)/2; i++ {
+		aFiles[i], aFiles[len(aFiles)-i - 1] = aFiles[len(aFiles)-i - 1], aFiles[i]
+	}
+
 	link(binFilePath, append([]string{oFile}, aFiles...))
 }
 
