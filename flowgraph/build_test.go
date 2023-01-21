@@ -320,6 +320,77 @@ func TestSimplificationOfComparisonFunctions(t *testing.T) {
 	}
 }
 
+// Same as TestSimplificationOfComparisonFunctions
+// but copying the definition of <, <=, >, and >=
+// from the new modules implementation.
+func TestSimplificationOfComparisonFunctions2(t *testing.T) {
+	const src = `
+		type bool := [false?, true?]
+		const true := bool :: [true?]
+		const false := bool :: [false?]
+		func main() {
+			use(1 < 2),
+			use(2 <= 3),
+			use(3 > 4),
+			use(4 >= 5),
+		}
+		Iface O ordering {
+			less?_?(O, (){bool}, (){bool})bool,
+			less?equal?_?(O, (){bool}, (){bool}, (){bool})bool,
+			equal?_?(O, (){bool}, (){bool})bool,
+			greater?_?(O, (){bool}, (){bool})bool,
+			greater?equal?_?(O, (){bool}, (){bool}, (){bool})bool,
+		}
+		Func <(a, b T : { <=>(T, T)O, O ordering }) bool {
+			return: a <=> b less? { true } _? { false }
+		}
+		Func <=(a, b T : { <=>(T, T)O, O ordering }) bool {
+			return: a <=> b less? { true } equal? { true } _? { false }
+		}
+		Func >(a, b T : { <=>(T, T)O, O ordering }) bool {
+			return: a <=> b greater? { true } _? { false }
+		}
+		Func >=(a, b T : { <=>(T, T)O, O ordering }) bool {
+			return: a <=> b greater? { true } equal? { true } _? { false } }
+		func use(_ bool)
+	`
+
+	const expected = `func "main#main()"() {
+0:	in=[], out=[]
+    x0 := 1
+    x1 := 2
+    x2 := x0 < x1
+    x3 := &"main#use([false?, true?])"
+    x3(x2)
+    x4 := 2
+    x5 := 3
+    x6 := x4 <= x5
+    x7 := &"main#use([false?, true?])"
+    x7(x6)
+    x8 := 3
+    x9 := 4
+    x10 := x8 > x9
+    x11 := &"main#use([false?, true?])"
+    x11(x10)
+    x12 := 4
+    x13 := 5
+    x14 := x12 >= x13
+    x15 := &"main#use([false?, true?])"
+    x15(x14)
+    return
+}`
+	fg, err := build(src)
+	if err != nil {
+		t.Log(src)
+		t.Fatalf("failed to compile %s\n", err)
+	}
+	// Strip type name comments.
+	fg = comments.ReplaceAllLiteralString(fg, "")
+	if fg != expected {
+		t.Errorf("got\n%s\nwanted\n%s", fg, expected)
+	}
+}
+
 func build(src string, opts ...Option) (string, error) {
 	p := parser.New()
 	if err := p.Parse("", strings.NewReader(src)); err != nil {

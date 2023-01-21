@@ -1313,6 +1313,8 @@ func (bb *blockBuilder) simplifyCmpSwitch(sw *checker.Switch, call *checker.Call
 		op = Greater
 	case less == "false?" && equal == "true?" && greater == "true?":
 		op = GreaterEq
+	default:
+		fmt.Printf("less=%s, equal=%s, greater=%s\n", less, equal, greater)
 	}
 	if op != 0 {
 		cmpFun := cmpCall.Func.(*checker.Builtin)
@@ -1472,6 +1474,13 @@ func boolConstArgs(sw *checker.Switch, call *checker.Call) (less, equal, greater
 // to only return the true ("true?"), false ("false?"),
 // or if it is no such block literal or cannot be proven either way ("").
 func boolConstBlock(expr checker.Expr) string {
+	for {
+		cvt, ok := expr.(*checker.Convert)
+		if !ok || cvt.Kind != checker.Noop {
+			break
+		}
+		expr = cvt.Expr
+	}
 	blockLit, ok := expr.(*checker.BlockLit)
 	if !ok || len(blockLit.Exprs) != 1 {
 		return ""
