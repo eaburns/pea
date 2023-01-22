@@ -1,0 +1,60 @@
+Import "basic"
+import "print"
+
+// The interface implemented by container types.
+// Containers are collections of elements of a type T.
+// They can be created empty and can be inserted into.
+// The semantics of insertion (where it inserts to,
+// and whether insert overwrites previous elements)
+// are specific to each implementation.
+Iface (C, T) container {
+	for:each:(C, (T){}),
+	new()C,
+	insert:(C, T),
+}
+
+// Returns a new container of type D with a copy of the contents of c.
+// The returned container is constructed empty
+// and it is populated by repeated calls to insert:
+// with the elements of c in order of for:each:.
+Func new(c C : { for:each:(C, (T){}) }) D : (D, T) container {
+	d := D :: new(),
+	for: c each: (t){
+		d insert: t
+	},
+	return: d
+}
+
+test new {
+	assert: (test_container :: new([int] :: [])) ordered: [],
+	assert: (test_container :: new([1])) ordered: [1],
+	assert: (test_container :: new([1, 2, 3])) ordered: [1, 2, 3]
+}
+
+// Adds the string representation of c to print buffer buf.
+Func add:(buf print#buffer, c C : { (C, T) container, T print#printable }) {
+	buf add: "[",
+	first := true,
+	for: c each: (t){
+		if: first true: {
+			first := false
+		} false: {
+			buf add: ", "
+		},
+		buf add: t
+	},
+	buf add: "]"
+}
+
+test container_add {
+	assert: print#string(test_container([])) eq: "[]",
+	assert: print#string(test_container([1])) eq: "[1]",
+	assert: print#string(test_container([1, 2, 3])) eq: "[1, 2, 3]"
+}
+
+// A simple container for testing.
+type test_container &[.n int, .data [int]]
+func new() test_container { return: [.n 0, .data new(100, 0)] }
+func test_container(a [int]) test_container { return: [.n a.length, .data a] }
+func insert:(c test_container, t int) { c.data[c.n] := t, ++c.n }
+func for:each:(c test_container, f (int){}) { for: c.data[0, c.n] each: f }
