@@ -1,0 +1,280 @@
+Import "basic"
+import "collection/container"
+import "collection/span"
+import "hash"
+import "option"
+import "print"
+
+// A dynamically sized array of elements of type T.
+//
+// A T dynamic_array is a length and an underlying [T].
+// The underlying [T] has a length greater than or equal to the dynamic array length.
+// The length of the underlying [T] is called the capacity of the dynamic array.
+//
+// push_back into a dynamic array up to its capacity, inserts into the underlying [T].
+// If a push_back would cause the dynamic array's length to exceed its capacity,
+// a new, larger underlying [T] is allocated, and the elements are copied into it.
+// When such a reallocation occurs, the size of the new [T] is such that
+// subsequent calls to push_back are amortized constant time.
+//
+// pop_back from a dynamic array decreases its length.
+// The implementation is free to decrease the size of the underlying [T],
+// so long as it does so in a way where subsequent calls to pop_back
+// are amortized constant time.
+// The current implementation does not do so.
+//
+// Indexing returns a reference to the current underlying [T] element.
+// This is a constant time operation.
+// If a dynamic array operation causes it to reallocate its underlying [T],
+// previously returned references still refer to elements of the old, original [T].
+//
+// Slicing returns a new dynamic array referring to the same underlying [T].
+// This is a constant time operation — it does not copy the underlying [T].
+// Modifying elements of one dynamic array will modify corresponding elements
+// of any slice that refer to the same underlying [T].
+// If a dynamic array operation causes it to reallocate its underlying [T],
+// previously returned slices will still refer to the old, original [T].
+Type T dynamic_array (&[
+	.n int,
+	.data [T],
+])
+
+// Returns a new, empty dynamic_array.
+Func new() T dynamic_array {
+	return: [.n 0, .data []]
+}
+
+// Returns the number of elements in da.
+Func .length(da T dynamic_array) int {
+	return: da.n
+}
+
+test new_length {
+	assert: (int dynamic_array :: new()).length eq: 0
+}
+
+// Returns the ith element of da.
+// Panics if it's not the case that 0 ≤ i < da.length
+Func [](da T dynamic_array, i int) &T {
+	if: i < 0 || { i >= da.n } true: {
+		print#panic("index out of bounds: index=" ++ i ++ ", length=" ++ da.n)
+	},
+	return: da.data[i]
+}
+
+test index {
+	da := int dynamic_array :: new(),
+	da push_back: 1,
+	da push_back: 2,
+	da push_back: 3,
+	assert: da[0] eq: 1,
+	assert: da[1] eq: 2,
+	assert: da[2] eq: 3
+}
+
+// Returns a slice of da containing elements from index i (inclusive) to j (exclusive).
+//
+// The returned dynamic array references the current underlying [T] of da,
+// including any excess capacity beyond da.length.
+// If either is re-allocated, they will no longer refer to the same [T].
+//
+// Panics if it's not the case that 0 ≤ i ≤ j ≤ da.length
+Func [](da T dynamic_array, i, j int) T dynamic_array {
+	if: i < 0 || { i > j } || { j > da.length } true: {
+		print#panic("slice out of bounds: start=" ++ i ++ ", end=" ++ j ++ ", length=" ++ da.length)
+	},
+	return: [.n j - i, .data da.data[i, da.data.length]]
+}
+
+test slice_empty {
+	da := int dynamic_array :: new(),
+	assert: da[0, 0] ordered: []
+}
+
+test slice {
+	da := int dynamic_array :: container#new([0, 1, 2, 3, 4]),
+	assert: da[0, 0] ordered: [],
+	assert: da[0, 1] ordered: [0],
+	assert: da[0, 2] ordered: [0, 1],
+	assert: da[0, 3] ordered: [0, 1, 2],
+	assert: da[0, 4] ordered: [0, 1, 2, 3],
+	assert: da[0, 5] ordered: [0, 1, 2, 3, 4],
+	assert: da[5, 5] ordered: [],
+	assert: da[4, 5] ordered: [4],
+	assert: da[3, 5] ordered: [3, 4],
+	assert: da[2, 5] ordered: [2, 3, 4],
+	assert: da[1, 5] ordered: [1, 2, 3, 4],
+	assert: da[2, 4] ordered: [2, 3]
+}
+
+// Returns the da.length-1th element of da or none() if da is empty.
+Func .back(da T dynamic_array) T option {
+	if: da.n = 0 true: {
+		return: none()
+	},
+	return: some(da.data[da.n - 1])
+}
+
+test back {
+	da := int dynamic_array :: new(),
+	assert: da.back eq: none(),
+	da push_back: 1,
+	assert: da.back eq: some(1),
+	da push_back: 2,
+	assert: da.back eq: some(2),
+	da push_back: 3,
+	assert: da.back eq: some(3)
+}
+
+// An alias for push_back:.
+Func insert:(da T dynamic_array, t T) {
+	da push_back: t
+}
+
+test insert {
+	da := int dynamic_array :: new(),
+	assert: da ordered: [],
+	da insert: 1,
+	assert: da ordered: [1],
+	da insert: 2,
+	assert: da ordered: [1, 2],
+	da insert: 3,
+	assert: da ordered: [1, 2, 3]
+}
+
+// Adds t to the back of da.
+//
+// If the capacity of da is insufficient to hold a new element,
+// a new, larger underlying [T] is allocated,
+// and the elements of da, along with the new element are copied to it.
+// The new [T] is sized such that subsequent calls to this function
+// happen in amortized constant time.
+Func push_back:(da T dynamic_array, t T) {
+	if: da.n < da.data.length true: {
+		da.data[da.n] := t,
+		++da.n,
+		return()
+	},
+	n := max(2*da.data.length, 16),
+	old := da.data,
+	da.data := new(n, t),
+	for: 0 to: da.n - 1 do: (i){ da.data[i] := old[i] },
+	++da.n
+}
+
+test push_back {
+	da := int dynamic_array :: new(),
+	assert: da ordered: [],
+	da push_back: 1,
+	assert: da ordered: [1],
+	da push_back: 2,
+	assert: da ordered: [1, 2],
+	da push_back: 3,
+	assert: da ordered: [1, 2, 3]
+}
+
+// If da is empty, returns none().
+// If da is not empty, removes and returns the da.length-1th element.
+// The underlying [T] is not modified.
+Func pop_back(da T dynamic_array) T option {
+	if: da.n = 0 true: {
+		return: none()
+	},
+	--da.n,
+	b := da.data[da.n],
+	return: some(b)
+}
+
+test pop_back_empty {
+	da := int dynamic_array :: new(),
+	assert: pop_back(da) eq: none()
+}
+
+test pop_back_one {
+	da := int dynamic_array :: new(),
+	da push_back: 1,
+	assert: pop_back(da) eq: some(1),
+	da push_back: 2,
+	assert: pop_back(da) eq: some(2),
+	da push_back: 3,
+	assert: pop_back(da) eq: some(3)
+}
+
+test pop_back {
+	da := int dynamic_array :: new(),
+	da push_back: 1,
+	da push_back: 2,
+	da push_back: 3,
+	assert: da ordered: [1, 2, 3],
+	assert: pop_back(da) eq: some(3),
+	assert: da ordered: [1, 2],
+	assert: pop_back(da) eq: some(2),
+	assert: da ordered: [1],
+	assert: pop_back(da) eq: some(1),
+	assert: da ordered: [],
+	assert: pop_back(da) eq: none(),
+	assert: da ordered: []
+}
+
+// Calls f for each element of da in increasing order of index.
+Func for:each:(da T dynamic_array, f (T){}) {
+	span#for: da each: (t){ f(t) }
+}
+
+// Returns whether a and b contain the same elements in the same order.
+Func =(a T dynamic_array : { =(T, T)bool }, b T dynamic_array) bool {
+	return: span#eq(a, b)
+}
+
+test array_equal {
+	assert: (int dynamic_array :: container#new(([int] :: []))) eq: container#new([int] :: []),
+	assert: (int dynamic_array :: container#new([1])) eq: container#new([1]),
+	assert: (int dynamic_array :: container#new([1, 2])) eq: container#new([1, 2]),
+	assert: (int dynamic_array :: container#new([1, 2, 3])) eq: container#new([1, 2, 3]),
+	assert: (int dynamic_array :: container#new(([int] :: []))) ne: container#new([1]),
+	assert: (int dynamic_array :: container#new([1])) ne: container#new([int] :: []),
+	assert: (int dynamic_array :: container#new([1])) ne: container#new([1, 2]),
+	assert: (int dynamic_array :: container#new([1, 2])) ne: container#new([1]),
+	assert: (int dynamic_array :: container#new([1, 2])) ne: container#new([2, 1])
+}
+
+// Returns whether a is lexically less than, equal to, or greater than b.
+Func <=>(a T dynamic_array : { <=>(T, T)O, O ordering }, b T dynamic_array) ordering {
+	return: span#cmp(a, b)
+}
+
+test compare {
+	assert: (int dynamic_array :: container#new([int] :: [])) cmp: container#new([int] :: []) is: equal,
+	assert: (int dynamic_array :: container#new([int] :: [])) cmp: container#new([1]) is: less,
+	assert: (int dynamic_array :: container#new([1])) cmp: container#new([int] :: []) is: greater,
+	assert: (int dynamic_array :: container#new([1, 2])) cmp: container#new([2, 2]) is: less,
+	assert: (int dynamic_array :: container#new([1, 2])) cmp: container#new([1, 2]) is: equal,
+	assert: (int dynamic_array :: container#new([1, 2])) cmp: container#new([0, 2]) is: greater,
+	assert: (int dynamic_array :: container#new([1, 2])) cmp: container#new([1, 3]) is: less,
+	assert: (int dynamic_array :: container#new([1, 2])) cmp: container#new([1, 2]) is: equal,
+	assert: (int dynamic_array :: container#new([1, 2])) cmp: container#new([1, 1]) is: greater,
+	assert: (int dynamic_array :: container#new([1, 2, 3])) cmp: container#new([1, 2, 4]) is: less,
+	assert: (int dynamic_array :: container#new([1, 2, 3])) cmp: container#new([1, 2, 3]) is: equal,
+	assert: (int dynamic_array :: container#new([1, 2, 3])) cmp: container#new([1, 2, 2]) is: greater,
+	assert: (int dynamic_array :: container#new([2])) cmp: container#new([2, 1]) is: less,
+	assert: (int dynamic_array :: container#new([2, 1])) cmp: container#new([2]) is: greater,
+	assert: (int dynamic_array :: container#new([3])) cmp: container#new([2, 1]) is: greater,
+	assert: (int dynamic_array :: container#new([2, 1])) cmp: container#new([3]) is: less
+}
+
+// Adds the string representation of da to print buffer buf.
+Func add:(buf print#buffer, da T dynamic_array : T print#printable) {
+	buf container#add: da
+}
+
+test print_buffer_add {
+	assert: print#string(int dynamic_array :: new()) eq: "[]",
+	assert: print#string(int dynamic_array :: container#new([1, 2, 3])) eq: "[1, 2, 3]",
+	assert: print#string(string dynamic_array :: container#new(["hello", "world", "こんにちは", "皆さん"])) eq: "[hello, world, こんにちは, 皆さん]",
+	assert: print#string([int] dynamic_array :: container#new([[1, 2], [], [3]])) eq: "[[1, 2], [], [3]]"
+}
+
+// Adds da and its contents to hash state hs.
+Func add:(hs hash#state, da T dynamic_array : T hash#hashable) {
+	hs span#add: da
+}
