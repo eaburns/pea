@@ -1,0 +1,80 @@
+Import "basic"
+import "option"
+import "print"
+
+// A map stores a mapping from keys of type K to values of type V.
+Iface (M, K, V) map {
+	find(M, K)V option,
+	insert(M, (K, V) entry)V option,
+	remove(M, K)V option,
+}
+
+// An entry mapping a key of type K to a value of type V.
+Type (K, V) entry [.key K, .value V]
+
+// Returns whether a and b have equivalent keys and values.
+Func =(a (K, V) entry : { =(K, K)bool, =(V, V)bool }, b (K, V) entry) bool {
+	return: a.key = b.key && { a.value = b.value }
+}
+
+test entry_equal {
+	assert: ((int, int) entry :: [.key 0, .value 0]) eq: [.key 0, .value 0],
+	assert: ((int, int) entry :: [.key 10, .value 10]) eq: [.key 10, .value 10],
+	assert: ((int, int) entry :: [.key 1, .value 0]) ne: [.key 0, .value 0],
+	assert: ((int, int) entry :: [.key 0, .value 1]) ne: [.key 0, .value 0],
+	assert: ((int, int) entry :: [.key 1, .value 1]) ne: [.key 0, .value 0]
+}
+
+// Adds the string representation of e to buf.
+Func add:(buf print#buffer, e (K, V) entry : { K print#printable, V print#printable }) {
+	buf ++ "[.key " ++ e.key ++ ", .value " ++ e.value ++ "]"
+}
+
+test entry_add_print_buffer {
+	assert: print#string((int, int) entry :: [.key 0, .value 0]) eq: "[.key 0, .value 0]",
+	assert: print#string((int, int) entry :: [.key 5, .value 5]) eq: "[.key 5, .value 5]"
+}
+
+// Calls f for each key in m.
+// The order f is called is based on the order of the underlying for:each:.
+Func for:keys:(m M : { for:each:(M, ((K, V) entry){}) }, f (K){}) {
+	for: m each: (e){
+		f(e.key)
+	}
+}
+
+test for_keys {
+	ents := [(int, int) entry] :: [
+		[.key 1, .value 10],
+		[.key 2, .value 20],
+		[.key 3, .value 30],
+	],
+	i := 1,
+	for: ents keys: (k){
+		assert: k eq: i,
+		++i
+	},
+	assert: i eq: 4
+}
+
+// Calls f for each value in m.
+// The order f is called is based on the order of the underlying for:each:.
+Func for:values:(m M : { for:each:(M, ((K, V) entry){}) }, f (V){}) {
+	for: m each: (e){
+		f(e.value)
+	}
+}
+
+test for_values {
+	ents := [(int, int) entry] :: [
+		[.key 10, .value 1],
+		[.key 20, .value 2],
+		[.key 30, .value 3],
+	],
+	i := 1,
+	for: ents values: (v){
+		assert: v eq: i,
+		++i
+	},
+	assert: i eq: 4
+}
