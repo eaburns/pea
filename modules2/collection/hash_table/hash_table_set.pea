@@ -1,0 +1,187 @@
+Import "basic"
+import "hash"
+import "option"
+import "print"
+
+// A hash table is a data structure that implements
+// an unordered set of values of type T.
+//
+// For a uniformly distributed hash function,
+// the insert, contains, and remove functions use
+// amortized constant time.
+Type T hash_table ([
+	// TODO: fix flowgraph crash on [.]-typed field access
+	// and then change T hash_table to use [.] for the value type.
+	.table (T, bool) hash_table,
+])
+
+Func new() T hash_table : { T hash#hashable, =(T, T)bool } {
+	return: [.table new()]
+}
+
+test set_hash_table_new {
+	ht := int hash_table :: new()
+}
+
+Func .length(ht T hash_table) int {
+	return: ht.table.length
+}
+
+Func contains(ht T hash_table, t T) bool {
+	return: find(ht.table, t) != none()
+}
+
+Func insert:(ht T hash_table, t T) {
+	insert(ht, t)
+}
+
+Func insert(ht T hash_table, t T) bool {
+	return: insert(ht.table, [.key t, .value true]) = none()
+}
+
+test set_hash_table_insert_contains_one {
+	ht := string hash_table :: new(),
+	assert: ht.length eq: 0,
+	assert: contains(ht, "hello") eq: false,
+
+	assert: insert(ht, "hello") eq: true,
+	assert: ht.length eq: 1,
+	assert: contains(ht, "hello") eq: true,
+
+	assert: insert(ht, "hello") eq: false,
+	assert: ht.length eq: 1,
+	assert: contains(ht, "hello") eq: true,
+
+	assert: insert(ht, "hello") eq: false,
+	assert: ht.length eq: 1,
+	assert: contains(ht, "hello") eq: true
+}
+
+test set_hash_table_insert_contains_two {
+	ht := string hash_table :: new(),
+	assert: ht.length eq: 0,
+	assert: contains(ht, "hello") eq: false,
+	assert: contains(ht, "good-bye") eq: false,
+
+	assert: insert(ht, "hello") eq: true,
+	assert: ht.length eq: 1,
+	assert: contains(ht, "hello") eq: true,
+	assert: contains(ht, "good-bye") eq: false,
+
+	assert: insert(ht, "good-bye") eq: true,
+	assert: ht.length eq: 2,
+	assert: contains(ht, "hello") eq: true,
+	assert: contains(ht, "good-bye") eq: true,
+
+	assert: insert(ht, "hello") eq: false,
+	assert: ht.length eq: 2,
+	assert: contains(ht, "hello") eq: true,
+	assert: contains(ht, "good-bye") eq: true,
+
+	assert: insert(ht, "good-bye") eq: false,
+	assert: ht.length eq: 2,
+	assert: contains(ht, "hello") eq: true,
+	assert: contains(ht, "good-bye") eq: true
+}
+
+test set_hash_table_insert_contains_1k {
+	ht := string hash_table :: new(),
+	for: 1 to: 1000 do: (n){
+		assert: insert(ht, print#string(n)) eq: true,
+		assert: ht.length eq: n,
+		for: 1 to: n do: (i){
+			assert: contains(ht, print#string(i)) eq: true
+		},
+		for: n + 1 to: 1000 do: (i){
+			assert: contains(ht, print#string(i)) eq: false
+		}
+	}
+}
+
+Func remove:(ht T hash_table, t T) {
+	remove(ht, t)
+}
+
+Func remove(ht T hash_table, t T) bool {
+	return: remove(ht.table, t) != none()
+}
+
+test set_hash_table_insert_remove_one {
+	ht := string hash_table :: new(),
+	assert: ht.length eq: 0,
+	assert: remove(ht, "hello") eq: false,
+
+	ht insert: "hello",
+	assert: ht.length eq: 1,
+	assert: remove(ht, "hello") eq: true,
+	assert: ht.length eq: 0,
+	assert: contains(ht, "hello") eq: false,
+
+	ht insert: "hello",
+	assert: ht.length eq: 1,
+	assert: remove(ht, "hello") eq: true,
+	assert: ht.length eq: 0,
+	assert: contains(ht, "hello") eq: false
+}
+
+test set_hash_table_insert_remove_two {
+	ht := string hash_table :: new(),
+	ht insert: "hello",
+	ht insert: "good-bye",
+	assert: ht.length eq: 2,
+
+	assert: remove(ht, "hello") eq: true,
+	assert: ht.length eq: 1,
+	assert: contains(ht, "hello") eq: false,
+	assert: contains(ht, "good-bye") eq: true,
+
+	assert: remove(ht, "good-bye") eq: true,
+	assert: ht.length eq: 0,
+	assert: contains(ht, "hello") eq: false,
+	assert: contains(ht, "good-bye") eq: false
+}
+
+test set_hash_table_insert_remove_1k {
+	ht := string hash_table :: new(),
+	for: 1 to: 1000 do: (n){
+		ht insert: print#string(n)
+	},
+	for: 1 to: 1000 do: (n){
+		for: 1 to: n - 1 do: (i){
+			assert: remove(ht, print#string(i)) eq: false
+		},
+		assert: remove(ht, print#string(n)) eq: true,
+		assert: ht.length eq: 1000 - n,
+		for: 1 to: n do: (i){
+			assert: contains(ht, print#string(i)) eq: false
+		},
+		for: n + 1 to: 1000 do: (i){
+			assert: contains(ht, print#string(i)) eq: true
+		}
+	}
+}
+
+Func for:each:(ht T hash_table, f (T){}) {
+	for: ht.table each: (e){ f(e.key) }
+}
+
+test set_hash_table_for_each {
+	ht := string hash_table :: new(),
+	assert: ht unordered: [],
+
+	ht insert: "hello",
+	assert: ht unordered: ["hello"],
+
+	ht insert: "a",
+	ht insert: "b",
+	ht insert: "c",
+	assert: ht unordered: ["hello", "a", "b", "c"],
+
+	ht remove: "hello",
+	assert: ht unordered: ["a", "b", "c"],
+
+	ht remove: "a",
+	ht remove: "b",
+	ht remove: "c",
+	assert: ht unordered: []
+}

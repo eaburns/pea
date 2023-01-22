@@ -1,0 +1,283 @@
+Import "basic"
+import "collection/map"
+import "hash"
+import "option"
+import "pointer"
+import "print"
+
+// A hash table is a data structure that implements
+// an unordered map from keys of type K to values of type V.
+//
+// For a uniformly distributed hash function,
+// the insert, find, and remove functions use
+// amortized constant time.
+Type (K, V) hash_table (&[
+	.n int,
+	.buckets [(K, V) bucket option],
+	.eq (K, K){bool},
+	.hash (K){uint64},
+])
+
+type (K, V) bucket &[
+	.hash uint64,
+	.entry (K, V) map#entry,
+	.next (K, V) bucket option,
+]
+
+// Returns a new, empty hash table.
+Func new() (K, V) hash_table : { K hash#hashable, =(K, K)bool } {
+	return: [
+		.n 0,
+		.buckets [],
+		.eq (a, b){ a = b },
+		.hash (k){ hash#hash(k) },
+	]
+}
+
+// Returns the number of mappings in the hash table.
+Func .length(ht (K, V) hash_table) int {
+	return: ht.n
+}
+
+// Sets the mapping from k to v.
+Func insert:(ht (K, V) hash_table, e (K, V) map#entry) {
+	insert(ht, e)
+}
+
+// Sets the mapping from k to v, returning the previous mapping if any.
+Func insert(ht (K, V) hash_table, e (K, V) map#entry) V option {
+	if: ht.n/4 >= ht.buckets.length true: {
+		grow(ht)
+	},
+	h := ht.hash(e.key),
+	i := int :: h%(uint64 :: ht.buckets.length),
+	for: ht.buckets[i] each: (b){
+		if: b.hash = h && { ht.eq(b.entry.key, e.key) } true: {
+			prev := b.entry.value,
+			b.entry := e,
+			return: some(prev)
+		}
+	},
+	ht.buckets[i] := [some? [.hash h, .entry e, .next ht.buckets[i]]],
+	++ht.n,
+	return: none()
+}
+
+func grow(ht (K, V) hash_table) {
+	n := max(ht.n*2, 8),
+	old := ht.buckets,
+	ht.buckets := new(n, (K, V) bucket option :: [none?]),
+	for: old each: (bl){
+		for: bl each: (b){
+			i := int :: b.hash%(uint64 :: ht.buckets.length),
+			b.next := ht.buckets[i],
+			ht.buckets[i] := [some? b]
+		}
+	}
+}
+
+// Returns the value mapped from k if any.
+Func find(ht (K, V) hash_table, k K) V option {
+	if: ht.buckets.length = 0 true: {
+		return: none()
+	},
+	h := ht.hash(k),
+	i := int :: h%(uint64 :: ht.buckets.length),
+	for: ht.buckets[i] each: (b){
+		if: b.hash = h && { ht.eq(b.entry.key, k) } true: {
+			return: some(b.entry.value)
+		}
+	},
+	return: none()
+}
+
+test map_hash_table_insert_find_one {
+	ht := (string, int) hash_table :: new(),
+	assert: ht.length eq: 0,
+	assert: find(ht, "hello") eq: none(),
+
+	ht insert: [.key "hello", .value 0],
+	assert: ht.length eq: 1,
+	assert: find(ht, "hello") eq: some(0),
+
+	ht insert: [.key "hello", .value 1],
+	assert: ht.length eq: 1,
+	assert: find(ht, "hello") eq: some(1),
+
+	ht insert: [.key "hello", .value 2],
+	assert: ht.length eq: 1,
+	assert: find(ht, "hello") eq: some(2)
+}
+
+test map_hash_table_insert_find_two {
+	ht := (string, int) hash_table :: new(),
+	assert: ht.length eq: 0,
+	assert: find(ht, "hello") eq: none(),
+	assert: find(ht, "good-bye") eq: none(),
+
+	ht insert: [.key "hello", .value 0],
+	assert: ht.length eq: 1,
+	assert: find(ht, "hello") eq: some(0),
+	assert: find(ht, "good-bye") eq: none(),
+
+	ht insert: [.key "good-bye", .value 1],
+	assert: ht.length eq: 2,
+	assert: find(ht, "hello") eq: some(0),
+	assert: find(ht, "good-bye") eq: some(1),
+
+	ht insert: [.key "hello", .value 2],
+	assert: ht.length eq: 2,
+	assert: find(ht, "hello") eq: some(2),
+	assert: find(ht, "good-bye") eq: some(1),
+
+	ht insert: [.key "good-bye", .value 3],
+	assert: ht.length eq: 2,
+	assert: find(ht, "hello") eq: some(2),
+	assert: find(ht, "good-bye") eq: some(3)
+}
+
+test map_hash_table_insert_find_1k {
+	ht := (string, int) hash_table :: new(),
+	for: 1 to: 1000 do: (n){
+		ht insert: [.key print#string(n), .value n],
+		assert: ht.length eq: n,
+		for: 1 to: n do: (i){
+			assert: find(ht, print#string(i)) eq: some(i)
+		},
+		for: n + 1 to: 1000 do: (i){
+			assert: find(ht, print#string(i)) eq: none()
+		}
+	}
+}
+
+// Removes the a mapping from k to v.
+Func remove:(ht (K, V) hash_table, k K) {
+	remove(ht, k)
+}
+
+// Removes the a mapping from k to v, and returns the removed value if any.
+Func remove(ht (K, V) hash_table, k K) V option {
+	if: ht.n = 0 true: {
+		return: none()
+	},
+	h := ht.hash(k),
+	i := int :: h%(uint64 :: ht.buckets.length),
+	prev := (K, V) bucket option pointer :: &ht.buckets[i],
+	for: ht.buckets[i] each: (b){
+		if: b.hash = h && { ht.eq(b.entry.key, k) } true: {
+			--ht.n,
+			*prev := b.next,
+			return: some(b.entry.value)
+		},
+		prev := &b.next
+	},
+	return: none()
+}
+
+test map_hash_table_insert_remove_one {
+	ht := (string, int) hash_table :: new(),
+	assert: ht.length eq: 0,
+	assert: remove(ht, "hello") eq: none(),
+
+	ht insert: [.key "hello", .value 0],
+	assert: ht.length eq: 1,
+	assert: remove(ht, "hello") eq: some(0),
+	assert: ht.length eq: 0,
+	assert: find(ht, "hello") eq: none(),
+
+	ht insert: [.key "hello", .value 0],
+	assert: ht.length eq: 1,
+	assert: remove(ht, "hello") eq: some(0),
+	assert: ht.length eq: 0,
+	assert: find(ht, "hello") eq: none(),
+
+	ht insert: [.key "hello", .value 1],
+	assert: ht.length eq: 1,
+	assert: remove(ht, "hello") eq: some(1),
+	assert: ht.length eq: 0,
+	assert: find(ht, "hello") eq: none()
+}
+
+test map_hash_table_insert_remove_two {
+	ht := (string, int) hash_table :: new(),
+	ht insert: [.key "hello", .value 0],
+	ht insert: [.key "good-bye", .value 1],
+	assert: ht.length eq: 2,
+
+	assert: remove(ht, "hello") eq: some(0),
+	assert: ht.length eq: 1,
+	assert: find(ht, "hello") eq: none(),
+	assert: find(ht, "good-bye") eq: some(1),
+
+	assert: remove(ht, "good-bye") eq: some(1),
+	assert: ht.length eq: 0,
+	assert: find(ht, "hello") eq: none(),
+	assert: find(ht, "good-bye") eq: none()
+}
+
+test map_hash_table_insert_remove_1k {
+	ht := (string, int) hash_table :: new(),
+	for: 1 to: 1000 do: (n){
+		ht insert: [.key print#string(n), .value n]
+	},
+	for: 1 to: 1000 do: (n){
+		for: 1 to: n - 1 do: (i){
+			assert: remove(ht, print#string(i)) eq: none()
+		},
+		assert: remove(ht, print#string(n)) eq: some(n),
+		assert: ht.length eq: 1000 - n,
+		for: 1 to: n do: (i){
+			assert: find(ht, print#string(i)) eq: none()
+		},
+		for: n + 1 to: 1000 do: (i){
+			assert: find(ht, print#string(i)) eq: some(i)
+		}
+	}
+}
+
+// Calls f for each key/value mapping in the table in an unspecified order.
+Func for:each:(ht (K, V) hash_table, f ((K, V) map#entry){}) {
+	for: ht.buckets each: (bl){
+		for: bl each: (b){
+			f(b.entry)
+		}
+	}
+}
+
+func for:each:(bo (K, V) bucket option, f ((K, V) bucket){}) {
+	if: bo some: (b){
+		n := b.next,
+		f(b),
+		for: n each: f
+	}
+}
+
+test map_hash_table_for_each {
+	ht := (string, int) hash_table :: new(),
+	assert: ht unordered: [(string, int) map#entry] :: [],
+
+	ht insert: [.key "hello", .value 0],
+	assert: ht unordered: [[.key "hello", .value 0]],
+
+	ht insert: [.key "a", .value 'a'],
+	ht insert: [.key "b", .value 'b'],
+	ht insert: [.key "c", .value 'c'],
+	assert: ht unordered: [
+		[.key "hello", .value 0],
+		[.key "a", .value 'a'],
+		[.key "b", .value 'b'],
+		[.key "c", .value 'c'],
+	],
+
+	ht remove: "hello",
+	assert: ht unordered: [
+		[.key "a", .value 'a'],
+		[.key "b", .value 'b'],
+		[.key "c", .value 'c'],
+	],
+
+	ht remove: "a",
+	ht remove: "b",
+	ht remove: "c",
+	assert: ht unordered: [(string, int) map#entry] :: []
+}
