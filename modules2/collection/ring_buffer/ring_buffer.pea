@@ -1,0 +1,514 @@
+Import "basic"
+import "collection/container"
+import "collection/span"
+import "hash"
+import "option"
+import "print"
+
+// An ordered sequence of elements of type T.
+// Indexing into a ring_buffer is constant time.
+// Insertion and removal from the front or back are amortized constant time.
+
+// A dynamically sized sequence of elements of type T,
+// allowing for effircient insertion and removal from
+// both the front and back ends.
+//
+// A T ring_buffer is an underlying [T] and a pair of indices start and end.
+// The start and end indices implement a ring buffer on the underlying [T],
+// containing elements from start to end, wrapping at either end of the [T].
+// The underlying [T] has a length greater than or equal to the ring buffer length.
+// The length of the underlying [T] is called the capacity of the ring buffer.
+//
+// push_front and push_back into a ring buffer up to its capacity,
+// inserts into the underlying [T].
+// If a push_front or push_back  would cause the ring buffer's length
+// to exceed its capacity, a new, larger underlying [T] is allocated,
+// and the elements are copied into it.
+// When such a reallocation occurs, the size of the new [T] is such that
+// subsequent calls to push_front and push_back are amortized constant time.
+//
+// pop_front and pop_back from a ring buffer modify its start or end index.
+// The implementation is free to decrease the size of the underlying [T],
+// so long as it does so in a way where subsequent calls to pop_front and pop_back
+// are amortized constant time.
+// The current implementation does not do so.
+//
+// Indexing returns a reference to the current underlying [T] element.
+// This is a constant time operation.
+// If a ring buffer operation causes it to reallocate its underlying [T],
+// previously returned references still refer to elements of the old, original [T].
+//
+// Slicing returns a new ring buffer referring to the same underlying [T].
+// This is a constant time operation — it does not copy the underlying [T].
+// Modifying elements of one ring buffer will modify corresponding elements
+// of any slice that refer to the same underlying [T].
+// If a ring buffer operation causes it to reallocate its underlying [T],
+// previously returned slices will still refer to the old, original [T].
+Type T ring_buffer := T _ring_buffer
+type T _ring_buffer &[
+	.start int,
+	.end int, // exclusive
+	.data [T],
+]
+
+// Returns a new, empty ring_buffer.
+Func new() T ring_buffer {
+	return: [.start 0, .end 0, .data []]
+}
+
+// Returns the number of elements in rb.
+Func .length(rb T ring_buffer) int {
+	return: rb.start <= rb.end true? {
+		rb.end - rb.start
+	} false? {
+		rb.data.length - rb.start + rb.end
+	}
+}
+
+test new_length {
+	assert: (int ring_buffer :: new()).length eq: 0
+}
+
+// Returns the ith element of rb.
+// Panics if i is negative or beyond the end of the dynamic_array.
+Func [](rb T ring_buffer, i int) &T {
+	if: i < 0 || { i >= rb.length } true: {
+		print#panic("index out of bounds: index=" ++ i ++ ", length=" ++ rb.length)
+	},
+	return: rb.data[index(rb, i)]
+}
+
+test index {
+	rb := int ring_buffer :: new(),
+	rb push_back: 3,
+	rb push_back: 4,
+	rb push_back: 5,
+	rb push_front: 2,
+	rb push_front: 1,
+	rb push_front: 0,
+	assert: rb[0] eq: 0,
+	assert: rb[1] eq: 1,
+	assert: rb[2] eq: 2,
+	assert: rb[3] eq: 3,
+	assert: rb[4] eq: 4,
+	assert: rb[5] eq: 5
+}
+
+// Returns a slice of rb containing elements from index i (inclusive) to j (exclusive).
+//
+// The returned ring buffer references the current underlying [T] of rb,
+// including any excess capacity beyond rb.length.
+// If either is re-allocated, they will no longer refer to the same [T].
+//
+// Panics if it's not the case that 0 ≤ i ≤ j ≤ da.length
+Func [](rb T ring_buffer, i, j int) T ring_buffer {
+	if: i < 0 || { i > j } || { j > rb.length } true: {
+		print#panic("slice out of bounds: start=" ++ i ++ ", end=" ++ j ++ ", length=" ++ rb.length)
+	},
+	return: [.start index(rb, i), .end index(rb, j), .data rb.data]
+}
+
+test slice_empty {
+	rb := int ring_buffer :: new(),
+	assert: rb[0, 0] ordered: []
+}
+
+test slice_start_before_end {
+	rb := int ring_buffer :: container#new([0, 1, 2, 3, 4]),
+	assert: rb.start cmp: rb.end is: less,
+	assert: rb[0, 0] ordered: [],
+	assert: rb[0, 1] ordered: [0],
+	assert: rb[0, 2] ordered: [0, 1],
+	assert: rb[0, 3] ordered: [0, 1, 2],
+	assert: rb[0, 4] ordered: [0, 1, 2, 3],
+	assert: rb[0, 5] ordered: [0, 1, 2, 3, 4],
+	assert: rb[5, 5] ordered: [],
+	assert: rb[4, 5] ordered: [4],
+	assert: rb[3, 5] ordered: [3, 4],
+	assert: rb[2, 5] ordered: [2, 3, 4],
+	assert: rb[1, 5] ordered: [1, 2, 3, 4],
+	assert: rb[2, 4] ordered: [2, 3]
+}
+
+test slice_start_after_end {
+	rb := int ring_buffer :: new(),
+	rb push_front: 4,
+	rb push_front: 3,
+	rb push_front: 2,
+	rb push_front: 1,
+	rb push_front: 0,
+	assert: rb.start cmp: rb.end is: greater,
+	assert: rb[0, 0] ordered: [],
+	assert: rb[0, 1] ordered: [0],
+	assert: rb[0, 2] ordered: [0, 1],
+	assert: rb[0, 3] ordered: [0, 1, 2],
+	assert: rb[0, 4] ordered: [0, 1, 2, 3],
+	assert: rb[0, 5] ordered: [0, 1, 2, 3, 4],
+	assert: rb[5, 5] ordered: [],
+	assert: rb[4, 5] ordered: [4],
+	assert: rb[3, 5] ordered: [3, 4],
+	assert: rb[2, 5] ordered: [2, 3, 4],
+	assert: rb[1, 5] ordered: [1, 2, 3, 4],
+	assert: rb[2, 4] ordered: [2, 3]
+}
+
+test slice_start_and_end_in_middle {
+	rb := int ring_buffer :: [.start 1, .end 6, .data [-1, 0, 1, 2, 3, 4, 5]],
+	assert: rb ordered: [0, 1, 2, 3, 4],
+
+	assert: rb[0, 0] ordered: [],
+	assert: rb[0, 1] ordered: [0],
+	assert: rb[0, 2] ordered: [0, 1],
+	assert: rb[0, 3] ordered: [0, 1, 2],
+	assert: rb[0, 4] ordered: [0, 1, 2, 3],
+	assert: rb[0, 5] ordered: [0, 1, 2, 3, 4],
+	assert: rb[5, 5] ordered: [],
+	assert: rb[4, 5] ordered: [4],
+	assert: rb[3, 5] ordered: [3, 4],
+	assert: rb[2, 5] ordered: [2, 3, 4],
+	assert: rb[1, 5] ordered: [1, 2, 3, 4],
+	assert: rb[2, 4] ordered: [2, 3]
+}
+
+// Returns the 0th element of rb or none if rb is empty.
+Func .front(rb T ring_buffer) T option {
+	if: rb.length = 0 true: {
+		return: none()
+	},
+	return: some(rb.data[index(rb, 0)])
+}
+
+test front {
+	rb := int ring_buffer :: new(),
+	assert: rb.back eq: none(),
+	rb push_front: 1,
+	assert: rb.front eq: some(1),
+	rb push_front: 2,
+	assert: rb.front eq: some(2),
+	rb push_front: 3,
+	assert: rb.front eq: some(3)
+}
+
+// Returns the rb.length-1th element of rb or none() if rb is empty.
+Func .back(rb T ring_buffer) T option {
+	if: rb.length = 0 true: {
+		return: none()
+	},
+	return: some(rb.data[prev(rb, rb.end)])
+}
+
+test back {
+	rb := int ring_buffer :: new(),
+	assert: rb.back eq: none(),
+	rb push_back: 1,
+	assert: rb.back eq: some(1),
+	rb push_back: 2,
+	assert: rb.back eq: some(2),
+	rb push_back: 3,
+	assert: rb.back eq: some(3)
+}
+
+// Adds t to the front of rb.
+//
+// If the capacity of rb is insufficient to hold a new element,
+// a new, larger underlying [T] is allocated,
+// and the elements of rb, along with the new element are copied to it.
+// The new [T] is sized such that subsequent calls to this function
+// happen in amortized constant time.
+Func push_front:(rb T ring_buffer, t T) {
+	if: rb.length = rb.data.length true: {
+		grow(rb, t)
+	},
+	rb.start := prev(rb, rb.start),
+	rb.data[rb.start] := t
+}
+
+test push_front {
+	rb := int ring_buffer :: new(),
+	assert: rb ordered: [],
+	rb push_front: 1,
+	assert: rb ordered: [1],
+	rb push_front: 2,
+	assert: rb ordered: [2, 1],
+	rb push_front: 3,
+	assert: rb ordered: [3, 2, 1]
+}
+
+// An alias for push_back:.
+Func insert:(rb T ring_buffer, t T) {
+	rb push_back: t
+}
+
+test insert {
+	rb := int ring_buffer :: new(),
+	assert: rb ordered: [],
+	rb insert: 1,
+	assert: rb ordered: [1],
+	rb insert: 2,
+	assert: rb ordered: [1, 2],
+	rb insert: 3,
+	assert: rb ordered: [1, 2, 3]
+}
+
+// Adds t to the back of rb.
+//
+// If the capacity of rb is insufficient to hold a new element,
+// a new, larger underlying [T] is allocated,
+// and the elements of rb, along with the new element are copied to it.
+// The new [T] is sized such that subsequent calls to this function
+// happen in amortized constant time.
+Func push_back:(rb T ring_buffer, t T) {
+	if: rb.length = rb.data.length true: {
+		grow(rb, t)
+	},
+	rb.data[rb.end] := t,
+	rb.end := next(rb, rb.end)
+}
+
+test push_back {
+	rb := int ring_buffer :: new(),
+	assert: rb ordered: [],
+	rb push_back: 1,
+	assert: rb ordered: [1],
+	rb push_back: 2,
+	assert: rb ordered: [1, 2],
+	rb push_back: 3,
+	assert: rb ordered: [1, 2, 3]
+}
+
+func grow(rb T ring_buffer, t T) {
+	data := [T] :: new(max(rb.data.length*2, 16), t),
+	start := data.length/4,
+	end := start,
+	if: data.length - start > rb.length false: {
+		panic("impossible")
+	},
+	if: rb.length > 0 true: {
+		if: rb.start < rb.end true: {
+			for: rb.start to: rb.end - 1 do: (i){
+				data[end] := rb.data[i],
+				++end
+			}
+		} false: {
+			for: rb.start to: rb.data.length - 1 do: (i){
+				data[end] := rb.data[i],
+				++end
+			},
+			for: 0 to: rb.end - 1 do: (i){
+				data[end] := rb.data[i],
+				++end
+			}
+		}
+	},
+	rb.start := start,
+	rb.end := end,
+	rb.data := data
+}
+
+// If rb is empty, returns none().
+// If rb is not empty, removes and returns the 0th element.
+// The underlying [T] is not modified,
+// but a new underlying [T] may be allocated with a smaller size.
+Func pop_front(rb T ring_buffer) T option {
+	if: rb.length = 0 true: {
+		return: none()
+	},
+	i := index(rb, 0),
+	x := rb.data[i],
+	rb.start := next(rb, rb.start),
+	return: some(x)
+}
+
+test pop_front_empty {
+	rb := int ring_buffer :: new(),
+	assert: pop_front(rb) eq: none()
+}
+
+test pop_front_one {
+	rb := int ring_buffer :: new(),
+	rb push_back: 1,
+	assert: pop_front(rb) eq: some(1),
+	rb push_back: 2,
+	assert: pop_front(rb) eq: some(2),
+	rb push_back: 3,
+	assert: pop_front(rb) eq: some(3)
+}
+
+test pop_front {
+	rb := int ring_buffer :: new(),
+	assert: pop_front(rb) eq: none(),
+	rb push_back: 0,
+	rb push_back: 1,
+	rb push_back: 2,
+	assert: pop_front(rb) eq: some(0),
+	assert: rb.length eq: 2,
+	assert: pop_front(rb) eq: some(1),
+	assert: rb.length eq: 1,
+	assert: pop_front(rb) eq: some(2),
+	assert: rb.length eq: 0,
+	assert: pop_front(rb) eq: none(),
+	assert: rb.length eq: 0
+}
+
+// If rb is empty, returns none().
+// If rb is not empty, removes and returns the rb.length-1th element.
+// The underlying [T] is not modified.
+Func pop_back(rb T ring_buffer) T option {
+	if: rb.length = 0 true: {
+		return: none()
+	},
+	i := prev(rb, rb.end),
+	x := rb.data[i],
+	rb.end := i,
+	return: some(x)
+}
+
+test pop_back_empty {
+	rb := int ring_buffer :: new(),
+	assert: pop_back(rb) eq: none()
+}
+
+test pop_back_one {
+	rb := int ring_buffer :: new(),
+	rb push_back: 1,
+	assert: pop_back(rb) eq: some(1),
+	rb push_back: 2,
+	assert: pop_back(rb) eq: some(2),
+	rb push_back: 3,
+	assert: pop_back(rb) eq: some(3)
+}
+
+test pop_back {
+	rb := int ring_buffer :: new(),
+	assert: pop_back(rb) eq: none(),
+	rb push_back: 0,
+	rb push_back: 1,
+	rb push_back: 2,
+	assert: pop_back(rb) eq: some(2),
+	assert: rb.length eq: 2,
+	assert: pop_back(rb) eq: some(1),
+	assert: rb.length eq: 1,
+	assert: pop_back(rb) eq: some(0),
+	assert: rb.length eq: 0,
+	assert: pop_back(rb) eq: none(),
+	assert: rb.length eq: 0
+}
+
+test push_pop_front_back {
+	rb := string ring_buffer :: new(),
+	rb push_front: "three",
+	rb push_back: "four",
+	rb push_front: "two",
+	assert: rb ordered: ["two", "three", "four"],
+	assert: pop_back(rb) eq: some("four"),
+	assert: rb ordered: ["two", "three"],
+	rb push_back: "four",
+	assert: rb ordered: ["two", "three", "four"],
+	assert: pop_front(rb) eq: some("two"),
+	assert: rb ordered: ["three", "four"],
+	rb push_front: "one",
+	assert: rb ordered: ["one", "three", "four"],
+	assert: pop_back(rb) eq: some("four"),
+	assert: rb ordered: ["one", "three"],
+	assert: pop_back(rb) eq: some("three"),
+	assert: rb ordered: ["one"],
+	assert: pop_front(rb) eq: some("one"),
+	assert: rb ordered: [string] :: [],
+	assert: pop_front(rb) eq: none(),
+	assert: rb ordered: [string] :: []
+}
+
+// Calls f for each element of da in increasing order of index.
+Func for:each:(rb T ring_buffer, f (T){}) {
+	if: rb.length = 0 true: {
+		return()
+	},
+	if: rb.start < rb.end true: {
+		span#for: rb.data[rb.start, rb.end] each: (t){ f(t) }
+	} false: {
+		span#for: rb.data[rb.start, rb.data.length] each: (t){ f(t) },
+		span#for: rb.data[0, rb.end] each: (t){ f(t) }
+	}
+}
+
+func index(rb T ring_buffer, i int) int {
+	i += rb.start,
+	if: i >= rb.data.length true: {
+		i -= rb.data.length
+	},
+	return: i
+}
+
+func next(rb T ring_buffer, i int) int {
+	++i,
+	if: i >= rb.data.length true: {
+		i -= rb.data.length
+	},
+	return: i
+}
+
+func prev(rb T ring_buffer, i int) int {
+	i := i + rb.data.length - 1,
+	if: i >= rb.data.length true: {
+		i -= rb.data.length
+	},
+	return: i
+}
+
+// Returns whether a and b contain the same elements in the same order.
+Func =(a T ring_buffer : { =(T, T)bool }, b T ring_buffer) bool {
+	return: span#eq(a, b)
+}
+
+test array_equal {
+	assert: (int ring_buffer :: container#new(([int] :: []))) eq: container#new([int] :: []),
+	assert: (int ring_buffer :: container#new([1])) eq: container#new([1]),
+	assert: (int ring_buffer :: container#new([1, 2])) eq: container#new([1, 2]),
+	assert: (int ring_buffer :: container#new([1, 2, 3])) eq: container#new([1, 2, 3]),
+	assert: (int ring_buffer :: container#new(([int] :: []))) ne: container#new([1]),
+	assert: (int ring_buffer :: container#new([1])) ne: container#new([int] :: []),
+	assert: (int ring_buffer :: container#new([1])) ne: container#new([1, 2]),
+	assert: (int ring_buffer :: container#new([1, 2])) ne: container#new([1]),
+	assert: (int ring_buffer :: container#new([1, 2])) ne: container#new([2, 1])
+}
+
+// Returns whether a is lexically less than, equal to, or greater than b.
+Func <=>(a T ring_buffer : { <=>(T, T)O, O ordering }, b T ring_buffer) ordering {
+	return: span#cmp(a, b)
+}
+
+test compare {
+	assert: (int ring_buffer :: container#new([int] :: [])) cmp: container#new([int] :: []) is: equal,
+	assert: (int ring_buffer :: container#new([int] :: [])) cmp: container#new([1]) is: less,
+	assert: (int ring_buffer :: container#new([1])) cmp: container#new([int] :: []) is: greater,
+	assert: (int ring_buffer :: container#new([1, 2])) cmp: container#new([2, 2]) is: less,
+	assert: (int ring_buffer :: container#new([1, 2])) cmp: container#new([1, 2]) is: equal,
+	assert: (int ring_buffer :: container#new([1, 2])) cmp: container#new([0, 2]) is: greater,
+	assert: (int ring_buffer :: container#new([1, 2])) cmp: container#new([1, 3]) is: less,
+	assert: (int ring_buffer :: container#new([1, 2])) cmp: container#new([1, 2]) is: equal,
+	assert: (int ring_buffer :: container#new([1, 2])) cmp: container#new([1, 1]) is: greater,
+	assert: (int ring_buffer :: container#new([1, 2, 3])) cmp: container#new([1, 2, 4]) is: less,
+	assert: (int ring_buffer :: container#new([1, 2, 3])) cmp: container#new([1, 2, 3]) is: equal,
+	assert: (int ring_buffer :: container#new([1, 2, 3])) cmp: container#new([1, 2, 2]) is: greater,
+	assert: (int ring_buffer :: container#new([2])) cmp: container#new([2, 1]) is: less,
+	assert: (int ring_buffer :: container#new([2, 1])) cmp: container#new([2]) is: greater,
+	assert: (int ring_buffer :: container#new([3])) cmp: container#new([2, 1]) is: greater,
+	assert: (int ring_buffer :: container#new([2, 1])) cmp: container#new([3]) is: less
+}
+
+// Adds the string representation of rb to print buffer buf.
+Func add:(buf print#buffer, rb T ring_buffer : T print#printable) {
+	buf container#add: rb
+}
+
+test print_buffer_add {
+	assert: print#string(int ring_buffer :: new()) eq: "[]",
+	assert: print#string(int ring_buffer :: container#new([1, 2, 3])) eq: "[1, 2, 3]",
+	assert: print#string(string ring_buffer :: container#new(["hello", "world", "こんにちは", "皆さん"])) eq: "[hello, world, こんにちは, 皆さん]",
+	assert: print#string([int] ring_buffer :: container#new([[1, 2], [], [3]])) eq: "[[1, 2], [], [3]]"
+}
+
+// Adds rb and its contents to hash state hs.
+Func add:(hs hash#state, rb T ring_buffer : T hash#hashable) {
+	hs span#add: rb
+}
