@@ -1,0 +1,303 @@
+Import "basic"
+import "hash"
+import "print"
+
+// The interface implemented by span types.
+// Spans are finite, slicable, 0-indexed sequences
+// of an element type T.
+Iface (S, T) span {
+	.length(S)int,
+	[](S, int)T,
+	[](S, int, int)S,
+}
+
+// Returns whether a and b contain the same elements in the same order.
+Func eq(a S : { (S, T) span, =(T, T)bool }, b S) bool {
+	if: a.length = b.length false: {
+		return: false
+	},
+	for: 0 to: a.length - 1 do: (i){
+		if: a[i] = b[i] false: {
+			return: false
+		}
+	},
+	return: true
+}
+
+test eq {
+	assert: eq(([int] :: []), []) eq: true,
+	assert: eq([1], [1]) eq: true,
+	assert: eq([1, 2], [1, 2]) eq: true,
+	assert: eq([1, 2, 3], [1, 2, 3]) eq: true,
+
+	assert: eq(([int] :: []), [1]) eq: false,
+	assert: eq([1], []) eq: false,
+	assert: eq([1], [1, 2]) eq: false,
+	assert: eq([1, 2], [1]) eq: false,
+	assert: eq([1, 2], [2, 1]) eq: false,
+
+	assert: eq(["hello", "world"], ["hello", "world"]) eq: true,
+	assert: eq(["hello", "world"], ["こんにちは", "皆さん"]) eq: false
+}
+
+// Returns whether a is lexically less than, equal to, or greater than b.
+Func cmp(a S : { (S, T) span, <=>(T, T)O, O ordering }, b S) ordering {
+	for: 0 to: a.length - 1 do: (i){
+		if: i < b.length false: {
+			return: greater
+		},
+		if: a[i] < b[i] true: {
+			return: less
+		},
+		// Use <= instead of > so that partial_none will result in false,
+		// and therefore slices with partial_none ordered items
+		// will not compare as equal.
+		if: a[i] <= b[i] false: {
+			return: greater
+		}
+	},
+	return: a.length <=> b.length
+}
+
+test array_compare {
+	assert: cmp([int] :: [], []) eq: equal,
+	assert: cmp([int] :: [], [1]) eq: less,
+	assert: cmp([1], []) eq: greater,
+	assert: cmp([1, 2], [2, 2]) eq: less,
+	assert: cmp([1, 2], [1, 2]) eq: equal,
+	assert: cmp([1, 2], [0, 2]) eq: greater,
+	assert: cmp([1, 2], [1, 3]) eq: less,
+	assert: cmp([1, 2], [1, 2]) eq: equal,
+	assert: cmp([1, 2], [1, 1]) eq: greater,
+	assert: cmp([1, 2, 3], [1, 2, 4]) eq: less,
+	assert: cmp([1, 2, 3], [1, 2, 3]) eq: equal,
+	assert: cmp([1, 2, 3], [1, 2, 2]) eq: greater,
+	assert: cmp([2], [2, 1]) eq: less,
+	assert: cmp([2, 1], [2]) eq: greater,
+	assert: cmp([3], [2, 1]) eq: greater,
+	assert: cmp([2, 1], [3]) eq: less,
+	assert: cmp([1.0, 1.0], [1.0, NaN64]) eq: greater,
+	assert: cmp([1.0, NaN64], [1.0, 1.0]) eq: greater
+}
+
+// Calls f for each element of s in increasing order of index.
+Func for:each:(s S : (S, T) span, f (T){}) {
+	for: 0 to: s.length - 1 do: (i){
+		f(s[i])
+	}
+}
+
+// Adds s and its contents to hash state hs.
+Func add:(hs hash#state, s S : { (S, T) span, T hash#hashable }) {
+	for: s each: (t){
+		hs add: t
+	},
+	hs add: s.length
+}
+
+// Swaps the elements at index i and j.
+Func swap(s S : (S, &T) span, i, j int) {
+	tmp := T :: s[i],
+	s[i] := s[j],
+	s[j] := tmp
+}
+
+test swap {
+	a := [1, 0],
+	swap(a, 0, 1),
+	assert: a ordered_span: [0, 1],
+
+	a := [1, 0],
+	swap(a, 1, 0),
+	assert: a ordered_span: [0, 1],
+
+	a := [1, 0],
+	swap(a, 0, 0),
+	assert: a ordered_span: [1, 0],
+
+	a := [0, 1, 2],
+	swap(a, 0, 2),
+	assert: a ordered_span: [2, 1, 0]
+}
+
+// Reverses the order of elements in s.
+Func reverse:(s S : (S, &T) span) {
+	reverse(s)
+}
+
+// Reverses the order of elements in s and returns s.
+Func reverse(s S : (S, &T) span) S {
+	j := s.length - 1,
+	for: 0 to: s.length/2 - 1 do: (i){
+		swap(s, i, j),
+		--j
+	},
+	return: s
+}
+
+test reverse {
+	assert: reverse([int] :: []) ordered_span: [],
+	assert: reverse([1]) ordered_span: [1],
+	assert: reverse([1, 2]) ordered_span: [2, 1],
+	assert: reverse([1, 2, 3]) ordered_span: [3, 2, 1]
+}
+
+// Sorts the elements of s in increasing order of the predecessor function pred.
+Func sort:by:(s S : (S, &T) span, pred (T, T){bool}) {
+	for: s.length/2 - 1 down_to: 0 do: (i){
+		heap_down(pred, s, s.length, i)
+	},
+	for: s.length - 1 down_to: 1 do: (i){
+		swap(s, 0, i),
+		heap_down(pred, s, i, 0)
+	}
+}
+
+func heap_down(pred (T, T){bool}, s S : (S, &T) span, end, i int) {
+	big := i,
+	left := 2*i + 1,
+	right := 2*i + 2,
+	if: left < end && { pred(s[big], s[left]) } true: {
+		big := left
+	},
+	if: right < end && { pred(s[big], s[right]) } true: {
+		big := right
+	},
+	if: big != i true: {
+		swap(s, big, i),
+		heap_down(pred, s, end, big)
+	}
+}
+
+func for:down_to:do:(s, e int, f (int){}) {
+	if: s >= e true: {
+		f(s),
+		for: s - 1 down_to: e do: f
+	}
+}
+
+test sort_by {
+	sorted_by_max := (a [int]){
+		sort: a by: (>),
+		a
+	},
+	assert: sorted_by_max([]) ordered_span: [],
+	assert: sorted_by_max([5]) ordered_span: [5],
+	assert: sorted_by_max([1, 2]) ordered_span: [2, 1],
+	assert: sorted_by_max([2, 1]) ordered_span: [2, 1],
+	assert: sorted_by_max([1, 2, 3]) ordered_span: [3, 2, 1],
+	assert: sorted_by_max([2, 1, 3]) ordered_span: [3, 2, 1],
+	assert: sorted_by_max([3, 2, 1]) ordered_span: [3, 2, 1],
+	assert: sorted_by_max([1, 3, 2]) ordered_span: [3, 2, 1],
+	assert: sorted_by_max([1, 2, 3, 4]) ordered_span: [4, 3, 2, 1],
+	assert: sorted_by_max([2, 1, 3, 4]) ordered_span: [4, 3, 2, 1],
+	assert: sorted_by_max([3, 2, 1, 4]) ordered_span: [4, 3, 2, 1],
+	assert: sorted_by_max([4, 2, 3, 1]) ordered_span: [4, 3, 2, 1],
+	assert: sorted_by_max([1, 3, 2, 4]) ordered_span: [4, 3, 2, 1],
+	assert: sorted_by_max([1, 4, 3, 2]) ordered_span: [4, 3, 2, 1],
+	assert: sorted_by_max([1, 2, 4, 3]) ordered_span: [4, 3, 2, 1]
+}
+
+// Sorts s in increasing order of <.
+Func sort:(s S : { (S, &T) span, <(T, T)bool }) {
+	sort(s)
+}
+
+// Sorts s in increasing order of < and returns s.
+Func sort(s S : { (S, &T) span, <(T, T)bool }) S {
+	sort: s by: (<),
+	return: s
+}
+
+test sort {
+	assert: sort([int] :: []) ordered_span: [],
+	assert: sort([5]) ordered_span: [5],
+	assert: sort([1, 2]) ordered_span: [1, 2],
+	assert: sort([2, 1]) ordered_span: [1, 2],
+	assert: sort([1, 2, 3]) ordered_span: [1, 2, 3],
+	assert: sort([2, 1, 3]) ordered_span: [1, 2, 3],
+	assert: sort([3, 2, 1]) ordered_span: [1, 2, 3],
+	assert: sort([1, 3, 2]) ordered_span: [1, 2, 3],
+	assert: sort([1, 2, 3, 4]) ordered_span: [1, 2, 3, 4],
+	assert: sort([2, 1, 3, 4]) ordered_span: [1, 2, 3, 4],
+	assert: sort([3, 2, 1, 4]) ordered_span: [1, 2, 3, 4],
+	assert: sort([4, 2, 3, 1]) ordered_span: [1, 2, 3, 4],
+	assert: sort([1, 3, 2, 4]) ordered_span: [1, 2, 3, 4],
+	assert: sort([1, 4, 3, 2]) ordered_span: [1, 2, 3, 4],
+	assert: sort([1, 2, 4, 3]) ordered_span: [1, 2, 3, 4]
+}
+
+// Returns the smallest index in the sorted span s for which p returns true.
+// If p returns false for all elements in s, s.length is returned.
+Func binary_search(s S : (S, T) span, p (T){bool}) int {
+	l := 0,
+	r := s.length,
+	while: { l < r } true: {
+		// This is equivalent to (l + r)/2,
+		// but avoids possible overflow of l + r.
+		m := l + (r - l)/2,
+		if: p(s[m]) false: {
+			l := m + 1
+		} true: {
+			r := m
+		}
+	},
+	return: l
+}
+
+test binary_search_pred {
+	assert: binary_search([int] :: [], (i &int){ i = 1 }) eq: 0,
+	assert: binary_search([0], (i &int){ i = 1 }) eq: 1,
+	assert: binary_search([1], (i &int){ i = 1 }) eq: 0,
+	assert: binary_search([0, 0], (i &int){ i = 1 }) eq: 2,
+	assert: binary_search([0, 1], (i &int){ i = 1 }) eq: 1,
+	assert: binary_search([1, 1], (i &int){ i = 1 }) eq: 0,
+	assert: binary_search([0, 0, 0], (i &int){ i = 1 }) eq: 3,
+	assert: binary_search([0, 0, 1], (i &int){ i = 1 }) eq: 2,
+	assert: binary_search([0, 1, 1], (i &int){ i = 1 }) eq: 1,
+	assert: binary_search([1, 1, 1], (i &int){ i = 1 }) eq: 0,
+	assert: binary_search([0, 0, 0, 0], (i &int){ i = 1 }) eq: 4,
+	assert: binary_search([0, 0, 0, 1], (i &int){ i = 1 }) eq: 3,
+	assert: binary_search([0, 0, 1, 1], (i &int){ i = 1 }) eq: 2,
+	assert: binary_search([0, 1, 1, 1], (i &int){ i = 1 }) eq: 1,
+	assert: binary_search([1, 1, 1, 1], (i &int){ i = 1 }) eq: 0
+}
+
+// Returns the smallest index in the sorted span s equal to element t.
+// If no elements of s are equal to t, then s.length is returned.
+Func binary_search(s S : { (S, T) span, <=>(T, T)O, O ordering }, t T) int {
+	i := binary_search(s, (x T){ x >= t }),
+	if: i < s.length && { s[i] <=> t equal? { true } _? { false } } true: {
+		return: i
+	},
+	return: s.length
+}
+
+test binary_search {
+	assert: binary_search([int] :: [], 1) eq: 0,
+	assert: binary_search([0], 1) eq: 1,
+	assert: binary_search([1], 1) eq: 0,
+	assert: binary_search([0, 0], 1) eq: 2,
+	assert: binary_search([2, 3], 1) eq: 2,
+	assert: binary_search([0, 2], 1) eq: 2,
+	assert: binary_search([0, 1], 1) eq: 1,
+	assert: binary_search([1, 1], 1) eq: 0,
+	assert: binary_search([1, 2], 1) eq: 0,
+	assert: binary_search([0, 1, 2, 3], 4) eq: 4,
+	assert: binary_search([0, 1, 2, 3], 3) eq: 3,
+	assert: binary_search([0, 1, 2, 3], 2) eq: 2,
+	assert: binary_search([0, 1, 2, 3], 1) eq: 1,
+	assert: binary_search([0, 1, 2, 3], 0) eq: 0,
+	assert: binary_search([0, 1, 2, 3], -1) eq: 4
+}
+
+// To remove the ambiguity between [T]'s for:each: and span#for:each:.
+func assert:ordered_span:(s [T] : { T print#printable, =(T, T)bool }, ts [T]) {
+	assert: (T non_span :: [.ary s]) ordered: ts
+}
+
+type T non_span [.ary [T]]
+
+func for:each:(ts T non_span, f (T){}) {
+	for: ts.ary each: f
+}
