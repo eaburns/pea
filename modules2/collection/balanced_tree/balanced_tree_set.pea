@@ -1,0 +1,187 @@
+Import "basic"
+import "hash"
+import "option"
+import "print"
+
+// A balanced tree is a data structure that implements
+// an ordered set of values of type T.
+//
+// The insert, contains, and remove functions use worst-case O(lg n) time
+// for a tree containing n elements.
+Type T balanced_tree ([
+	// TODO: fix flowgraph crash on [.]-typed field access
+	// and then change T balanced_tree to use [.] for the value type.
+	.tree (T, bool) balanced_tree,
+])
+
+Func new() T balanced_tree : { <=>(T, T)O, O ordering } {
+	return: [.tree new()]
+}
+
+test set_balanced_tree_new {
+	bt := int balanced_tree :: new(),
+	assert: bt ordered: []
+}
+
+Func .length(bt T balanced_tree) int {
+	return: bt.tree.length
+}
+
+Func contains(bt T balanced_tree, t T) bool {
+	return: find(bt.tree, t) != none()
+}
+
+Func insert:(bt T balanced_tree, t T) {
+	insert(bt, t)
+}
+
+Func insert(bt T balanced_tree, t T) bool {
+	return: insert(bt.tree, [.key t, .value true]) = none()
+}
+
+test set_balanced_tree_insert_contains_one {
+	bt := string balanced_tree :: new(),
+	assert: bt.length eq: 0,
+	assert: contains(bt, "hello") eq: false,
+
+	assert: insert(bt, "hello") eq: true,
+	assert: bt.length eq: 1,
+	assert: contains(bt, "hello") eq: true,
+
+	assert: insert(bt, "hello") eq: false,
+	assert: bt.length eq: 1,
+	assert: contains(bt, "hello") eq: true,
+
+	assert: insert(bt, "hello") eq: false,
+	assert: bt.length eq: 1,
+	assert: contains(bt, "hello") eq: true
+}
+
+test set_balanced_tree_insert_contains_two {
+	bt := string balanced_tree :: new(),
+	assert: bt.length eq: 0,
+	assert: contains(bt, "hello") eq: false,
+	assert: contains(bt, "good-bye") eq: false,
+
+	assert: insert(bt, "hello") eq: true,
+	assert: bt.length eq: 1,
+	assert: contains(bt, "hello") eq: true,
+	assert: contains(bt, "good-bye") eq: false,
+
+	assert: insert(bt, "good-bye") eq: true,
+	assert: bt.length eq: 2,
+	assert: contains(bt, "hello") eq: true,
+	assert: contains(bt, "good-bye") eq: true,
+
+	assert: insert(bt, "hello") eq: false,
+	assert: bt.length eq: 2,
+	assert: contains(bt, "hello") eq: true,
+	assert: contains(bt, "good-bye") eq: true,
+
+	assert: insert(bt, "good-bye") eq: false,
+	assert: bt.length eq: 2,
+	assert: contains(bt, "hello") eq: true,
+	assert: contains(bt, "good-bye") eq: true
+}
+
+test set_balanced_tree_insert_contains_1k {
+	bt := string balanced_tree :: new(),
+	for: 1 to: 1000 do: (n){
+		assert: insert(bt, print#string(n)) eq: true,
+		assert: bt.length eq: n,
+		for: 1 to: n do: (i){
+			assert: contains(bt, print#string(i)) eq: true
+		},
+		for: n + 1 to: 1000 do: (i){
+			assert: contains(bt, print#string(i)) eq: false
+		}
+	}
+}
+
+Func remove:(ht T balanced_tree, t T) {
+	remove(ht, t)
+}
+
+Func remove(ht T balanced_tree, t T) bool {
+	return: remove(ht.tree, t) != none()
+}
+
+test set_balanced_tree_insert_remove_one {
+	bt := string balanced_tree :: new(),
+	assert: bt.length eq: 0,
+	assert: remove(bt, "hello") eq: false,
+
+	bt insert: "hello",
+	assert: bt.length eq: 1,
+	assert: remove(bt, "hello") eq: true,
+	assert: bt.length eq: 0,
+	assert: contains(bt, "hello") eq: false,
+
+	bt insert: "hello",
+	assert: bt.length eq: 1,
+	assert: remove(bt, "hello") eq: true,
+	assert: bt.length eq: 0,
+	assert: contains(bt, "hello") eq: false
+}
+
+test set_balanced_tree_insert_remove_two {
+	bt := string balanced_tree :: new(),
+	bt insert: "hello",
+	bt insert: "good-bye",
+	assert: bt.length eq: 2,
+
+	assert: remove(bt, "hello") eq: true,
+	assert: bt.length eq: 1,
+	assert: contains(bt, "hello") eq: false,
+	assert: contains(bt, "good-bye") eq: true,
+
+	assert: remove(bt, "good-bye") eq: true,
+	assert: bt.length eq: 0,
+	assert: contains(bt, "hello") eq: false,
+	assert: contains(bt, "good-bye") eq: false
+}
+
+test set_balanced_tree_insert_remove_1k {
+	bt := string balanced_tree :: new(),
+	for: 1 to: 1000 do: (n){
+		bt insert: print#string(n)
+	},
+	for: 1 to: 1000 do: (n){
+		for: 1 to: n - 1 do: (i){
+			assert: remove(bt, print#string(i)) eq: false
+		},
+		assert: remove(bt, print#string(n)) eq: true,
+		assert: bt.length eq: 1000 - n,
+		for: 1 to: n do: (i){
+			assert: contains(bt, print#string(i)) eq: false
+		},
+		for: n + 1 to: 1000 do: (i){
+			assert: contains(bt, print#string(i)) eq: true
+		}
+	}
+}
+
+Func for:each:(bt T balanced_tree, f (T){}) {
+	for: bt.tree each: (e){ f(e.key) }
+}
+
+test set_balanced_tree_for_each {
+	bt := string balanced_tree :: new(),
+	assert: bt unordered: [],
+
+	bt insert: "hello",
+	assert: bt ordered: ["hello"],
+
+	bt insert: "a",
+	bt insert: "b",
+	bt insert: "c",
+	assert: bt ordered: ["a", "b", "c", "hello"],
+
+	bt remove: "hello",
+	assert: bt ordered: ["a", "b", "c"],
+
+	bt remove: "a",
+	bt remove: "b",
+	bt remove: "c",
+	assert: bt ordered: []
+}

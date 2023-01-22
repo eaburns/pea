@@ -1,0 +1,481 @@
+Import "basic"
+import "collection/container"
+import "collection/dynamic_array"
+import "collection/map"
+import "hash"
+import "option"
+import "pointer"
+import "print"
+
+// A balanced tree is a data structure that implements
+// an ordered map from keys of type K to values of type V.
+//
+// The add, find, and remove functions use worst-case O(lg n) time
+// for a tree containing n elements.
+Type (K, V) balanced_tree (&[
+	.n int,
+	.root (K, V) node option,
+	.cmp (K, K){ordering},
+])
+
+// The current implementation of balanced_tree is an [AA Tree].
+//
+// [AA Tree]: https://en.wikipedia.org/wiki/AA_tree
+type (K, V) node &[
+	.left (K, V) node option,
+	.right (K, V) node option,
+	.entry (K, V) map#entry,
+	.level int,
+]
+
+// Returns a new, empty balanced binary tree.
+// If <=> is a partial_ordering, then it is made an ordering
+// by treating partial_none as-if it was greater.
+Func new() (K, V) balanced_tree : { <=>(K, K)O, O ordering } {
+	return: [.n 0, .root none(), .cmp (a, b){ cmp(a, b) }]
+}
+
+// Returns the number of mappings in the tree.
+Func .length(bt (K, V) balanced_tree) int {
+	return: bt.n
+}
+
+// Sets the mapping from k to v.
+Func insert:(bt (K, V) balanced_tree, e (K, V) map#entry) {
+	insert(bt, e)
+}
+
+// Sets the mapping from k to v, returning the previous mapping if any.
+Func insert(bt (K, V) balanced_tree, e (K, V) map#entry) V option {
+	prev := V option :: none(),
+	bt.root := insert(bt, bt.root, prev, e),
+	if: prev none: {
+		++bt.n
+	},
+	return: prev
+}
+
+func insert(bt (K, V) balanced_tree, t_opt (K, V) node option, prev &V option, e (K, V) map#entry) (K, V) node option {
+	t := t_opt none? {
+		return: leaf(e)
+	},
+	if: bt.cmp(e.key, t.entry.key) less: {
+		t.left := insert(bt, t.left, prev, e)
+	} greater: {
+		t.right := insert(bt, t.right, prev, e)
+	} equal: {
+		prev := some(t.entry.value),
+		t.entry := e,
+		return: some(t)
+	},
+	return: some(split(skew(t)))
+}
+
+func leaf(e (K, V) map#entry) (K, V) node option {
+	return: [some? [.left none(), .right none(), .entry e, .level 1]]
+}
+
+test insert {
+	vals := [(int, int) map#entry] :: [
+		[.key 0, .value 0],
+		[.key 1, .value 1],
+		[.key 2, .value 2],
+		[.key 3, .value 3],
+		[.key 4, .value 4],
+		[.key 5, .value 5],
+		[.key 6, .value 6],
+		[.key 7, .value 7],
+		[.key 8, .value 8],
+		[.key 9, .value 9],
+	],
+	bt := (int, int) balanced_tree :: new(),
+	for: 0 to: 9 do: (i){
+		bt insert: [.key i, .value i],
+		assert: bt.length eq: i + 1,
+		assert: bt ordered: vals[0, i + 1]
+	},
+
+	bt := new(),
+	for: 0 to: 9 do: (i){
+		j := vals.length - i - 1,
+		bt insert: [.key j, .value j],
+		assert: bt.length eq: i + 1,
+		assert: bt ordered: vals[j, vals.length]
+	}
+}
+
+test insert_replace_value {
+	bt := (int, int) balanced_tree :: new(),
+	assert: insert(bt, [.key 2, .value 2]) eq: none(),
+	assert: insert(bt, [.key 1, .value 1]) eq: none(),
+	assert: insert(bt, [.key 3, .value 3]) eq: none(),
+	assert: insert(bt, [.key 0, .value 0]) eq: none(),
+	assert: bt.length eq: 4,
+	assert: bt ordered: [
+		[.key 0, .value 0],
+		[.key 1, .value 1],
+		[.key 2, .value 2],
+		[.key 3, .value 3],
+	],
+	assert: insert(bt, [.key 2, .value 4]) eq: some(2),
+	assert: insert(bt, [.key 1, .value 2]) eq: some(1),
+	assert: insert(bt, [.key 3, .value 6]) eq: some(3),
+	assert: insert(bt, [.key 0, .value 0]) eq: some(0),
+	assert: bt.length eq: 4,
+	assert: bt ordered: [
+		[.key 0, .value 0],
+		[.key 1, .value 2],
+		[.key 2, .value 4],
+		[.key 3, .value 6],
+	]
+}
+
+test insert_strings {
+	bt := (string, int) balanced_tree :: new(),
+	assert: insert(bt, [.key "l", .value 3]) eq: none(),
+	assert: insert(bt, [.key "o", .value 4]) eq: none(),
+	assert: insert(bt, [.key "h", .value 0]) eq: none(),
+	assert: insert(bt, [.key "e", .value 1]) eq: none(),
+	assert: insert(bt, [.key "l", .value 2]) eq: some(3),
+	assert: bt.length eq: 4,
+	assert: bt ordered: [
+		[.key "e", .value 1],
+		[.key "h", .value 0],
+		[.key "l", .value 2],
+		[.key "o", .value 4],
+	]
+}
+
+// Returns the value mapped from k if any.
+Func find(bt (K, V) balanced_tree, k K) V option {
+	return: find(bt, bt.root, k)
+}
+
+func find(bt (K, V) balanced_tree, t_opt (K, V) node option, k K) V option {
+	t := t_opt none? {
+		return: none()
+	},
+	if: bt.cmp(k, t.entry.key) less: {
+		return: find(bt, t.left, k)
+	} greater: {
+		return: find(bt, t.right, k)
+	},
+	return: some(t.entry.value)
+}
+
+test find {
+	bt := (int, int) balanced_tree :: new(),
+	for: 0 to: 4 do: (i){
+		bt insert: [.key i, .value i]
+	},
+	assert: find(bt, 0) eq: some(0),
+	assert: find(bt, 1) eq: some(1),
+	assert: find(bt, 2) eq: some(2),
+	assert: find(bt, 3) eq: some(3),
+	assert: find(bt, 4) eq: some(4),
+	assert: find(bt, -1) eq: none(),
+	assert: find(bt, 100) eq: none(),
+	assert: find(bt, 0) eq: some(0),
+	assert: find(bt, 1) eq: some(1),
+	assert: find(bt, 2) eq: some(2),
+	assert: find(bt, 3) eq: some(3),
+	assert: find(bt, 4) eq: some(4)
+}
+
+// Removes the a mapping from k to v.
+Func remove:(bt (K, V) balanced_tree, k K) {
+	remove(bt, k)
+}
+
+test remove_colon {
+	bt := (int, int) balanced_tree :: new(),
+	bt insert: [.key 1, .value 1],
+	bt insert: [.key 2, .value 2],
+	assert: bt ordered: [[.key 1, .value 1], [.key 2, .value 2]],
+	bt remove: 1,
+	assert: bt ordered: [[.key 2, .value 2]],
+	bt remove: 2,
+	assert: bt ordered: []
+}
+
+// Removes the a mapping from k to v, and returns the removed value if any.
+Func remove(bt (K, V) balanced_tree, k K) V option {
+	v := V option :: none(),
+	bt.root := remove(bt, bt.root, v, k),
+	if: v some: (_){
+		--bt.n
+	},
+	return: v
+}
+
+test remove_empty {
+	bt := (int, int) balanced_tree :: new(),
+	assert: remove(bt, 0) eq: none()
+}
+
+test remove_singleton {
+	bt := (int, int) balanced_tree :: new(),
+	bt insert: [.key 1, .value 1],
+	assert: remove(bt, 0) eq: none(),
+	assert: remove(bt, 1) eq: some(1),
+	assert: bt.length eq: 0,
+	assert: bt ordered: []
+}
+
+test remove {
+	vals := [(int, int) map#entry] :: [
+		[.key 0, .value 0],
+		[.key 1, .value 1],
+		[.key 2, .value 2],
+		[.key 3, .value 3],
+		[.key 4, .value 4],
+		[.key 5, .value 5],
+		[.key 6, .value 6],
+		[.key 7, .value 7],
+		[.key 8, .value 8],
+		[.key 9, .value 9],
+	],
+	bt := (int, int) balanced_tree :: new(),
+	for: 0 to: 9 do: (i){
+		bt insert: [.key i, .value i]
+	},
+	assert: bt ordered: vals,
+	for: 0 to: 9 do: (i){
+		assert: remove(bt, i) eq: some(i),
+		assert: bt.length eq: vals.length - (i + 1),
+		assert: bt ordered: vals[i + 1, vals.length]
+	}
+}
+
+func remove(bt (K, V) balanced_tree, t_opt (K, V) node option, v &V option, k K) (K, V) node option {
+	t := t_opt none? {
+		return: none()
+	},
+	if: bt.cmp(k, t.entry.key) less: {
+		t.left := remove(bt, t.left, v, k)
+	} greater: {
+		t.right := remove(bt, t.right, v, k)
+	} equal: {
+		v := some(t.entry.value),
+		if: t.left none: {
+			if: t.right none: {
+				return: none()
+			} some: (r){
+				t.right := remove_left(r, t.entry)
+			}
+		} some: (l){
+			t.left := remove_right(l, t.entry)
+		}
+	},
+	return: remove_fixup(t)
+}
+
+func remove_left(t (K, V) node, e &(K, V) map#entry) (K, V) node option {
+	l := t.left none? {
+		e := t.entry,
+		return: none()
+	},
+	t.left := remove_left(l, e),
+	return: remove_fixup(t)
+}
+
+func remove_right(t (K, V) node, e &(K, V) map#entry) (K, V) node option {
+	r := t.right none? {
+		e := t.entry,
+		return: none()
+	},
+	t.right := remove_right(r, e),
+	return: remove_fixup(t)
+}
+
+func remove_fixup(t (K, V) node) (K, V) node option {
+	decrease_level(t),
+	t := skew(t),
+	t.right := skew(t.right),
+	if: t.right some: (r){
+		r.right := skew(r.right)
+	},
+	t := split(t),
+	t.right := split(t.right),
+	return: some(t)
+}
+
+func decrease_level(t (K, V) node) {
+	left_level := t.left some? (l){ l.level } none? { 0 },
+	right_level := t.right some? (r){ r.level } none? { 0 },
+	level := min(left_level, right_level) + 1,
+	if: level < t.level true: {
+		t.level := level,
+		if: t.right some: (r){
+			if: level < r.level true: {
+				r.level := level
+			}
+		}
+	}
+}
+
+func skew(t_opt (K, V) node option) (K, V) node option {
+	t := t_opt none? {
+		return: none()
+	},
+	return: some(skew(t))
+}
+
+func skew(t (K, V) node) (K, V) node {
+	l := t.left none? {
+		return: t
+	},
+	if: l.level = t.level true: {
+		t.left := l.right,
+		l.right := some(t),
+		return: l
+	},
+	return: t
+}
+
+func split(t_opt (K, V) node option) (K, V) node option {
+	t := t_opt none? {
+		return: none()
+	},
+	return: some(split(t))
+}
+
+func split(t (K, V) node) (K, V) node {
+	r := t.right none? {
+		return: t
+	},
+	rr := r.right none? {
+		return: t
+	},
+	if: t.level = rr.level true: {
+		t.right := r.left,
+		r.left := some(t),
+		++r.level,
+		return: r
+	},
+	return: t
+}
+
+// Calls f for each key/value mapping in the tree in increasing order by key.
+Func for:each:(bt (K, V) balanced_tree, f ((K, V) map#entry){}) {
+	it := iterator(bt),
+	option#while: { next(it) } some: (e){
+		f(*e)
+	}
+}
+
+// Returns whether a and b contain the same elements.
+Func =(a (K, V) balanced_tree : { =(K, K)bool, =(V, V)bool }, b (K, V) balanced_tree) bool {
+	if: a.length = b.length false: {
+		return: false
+	},
+	ita := iterator(a),
+	itb := iterator(b),
+	option#while: { next(ita) } some: (ea){
+		eb := next(itb) none? { panic("impossible") },
+		if: *ea = *eb false: {
+			return: false
+		}
+	},
+	return: true
+}
+
+test equal {
+	a := (int, int) balanced_tree :: new(),
+	b := (int, int) balanced_tree :: new(),
+	assert: a eq: b,
+
+	a insert: [.key 1, .value 10],
+	assert: a ne: b,
+
+	b insert: [.key 1, .value 10],
+	assert: a eq: b,
+
+	a insert: [.key 1, .value 11],
+	assert: a ne: b,
+
+	b insert: [.key 1, .value 11],
+	assert: a eq: b,
+
+	a insert: [.key 2, .value 20],
+	assert: a ne: b,
+
+	b insert: [.key 2, .value 20],
+	assert: a eq: b,
+
+	b remove: 2,
+	assert: a ne: b,
+
+	a remove: 2,
+	assert: a eq: b
+}
+
+// Adds the string representation of bt to print buffer buf.
+Func add:(buf print#buffer, bt (K, V) balanced_tree : { <=>(K, K)O, O ordering, K print#printable, V print#printable }) {
+	buf container#add: bt
+}
+
+test print_buffer_add {
+	assert: print#string((int, int) balanced_tree :: new()) eq: "[]",
+	assert: print#string((int, int) balanced_tree :: container#new([
+		(int, int) map#entry :: [.key 1, .value 10],
+		[.key 2, .value 20],
+		[.key 3, .value 30],
+	])) eq: "[[.key 1, .value 10], [.key 2, .value 20], [.key 3, .value 30]]"
+}
+
+// Adds bt and its contents to hash state hs.
+Func add:(hs hash#state, bt (K, V) balanced_tree : { K hash#hashable, V hash#hashable }) {
+	hs add: bt.length,
+	for: bt each: (e){
+		hs add: e.key,
+		hs add: e.value
+	}
+}
+
+type (K, V) iterator &[
+	.stack (K, V) node dynamic_array,
+	.next (K, V) map#entry pointer option,
+]
+
+func iterator(bt (K, V) balanced_tree) (K, V) iterator {
+	it := (K, V) iterator :: [.stack new(), .next none()],
+	if: bt.root some: (t){
+		go_left(it, t),
+		next(it)
+	},
+	return: it
+}
+
+func next(it (K, V) iterator) (K, V) map#entry pointer option {
+	n := it.next,
+	if: pop_back(it.stack) none: {
+		it.next := none()
+	} some: (n){
+		it.next := [some? &n.entry],
+		if: n.right some: (r){
+			go_left(it, r)
+		}
+	},
+	return: n
+}
+
+func go_left(it (K, V) iterator, t (K, V) node) {
+	it.stack push_back: t,
+	if: t.left some: (l){
+		go_left(it, l)
+	}
+}
+
+// Compares a and b resulting in an ordering.
+// If O is ordering, this is equivalent to <=>.
+// If O is a partial_ordering, this is like <=> with partial_none always being greater.
+func cmp(a T : { <=>(T, T)O, O ordering }, b T) ordering {
+	if: a <=> b less? { true } _? { false } true: {
+		return: less
+	},
+	if: a <=> b equal? { true } _? { false } true: {
+		return: equal
+	},
+	return: greater
+}
