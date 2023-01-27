@@ -23,12 +23,11 @@ func (sl stringerLoc) Loc() loc.Loc   { return sl.l }
 //
 // When mode==explicit, any returned Cause implements the Error interface.
 func convertWithScope(x scope, src, dst TypePattern, mode convertMode, l loc.Loc) (map[*TypeParm]Type, Func, Cause) {
-	if mode == implicit {
-		bind, convertErr := convertType(src, dst, implicit)
-		if convertErr != nil {
-			return nil, nil, convertErr
-		}
+	switch bind, convertErr := convertType(src, dst, implicit); {
+	case convertErr == nil:
 		return bind, nil, nil
+	case mode == implicit:
+		return nil, nil, convertErr
 	}
 
 	ids := findIDs(x, "::")
@@ -76,8 +75,7 @@ func convertWithScope(x scope, src, dst TypePattern, mode convertMode, l loc.Loc
 			}
 		}
 
-		var unused map[*TypeParm]Type
-		if pat, _, err = convertPattern(nil, f.ret(), dst, implicit, &unused); err != nil {
+		if pat, _, err = convertPattern(nil, f.ret(), dst, implicit, &bind); err != nil {
 			candidateErrs = append(candidateErrs, CandidateError{
 				Candidate: f,
 				Msg:       "return value",
@@ -168,7 +166,7 @@ func mustConvertExpr(expr Expr, dst TypePattern, mode convertMode) Expr {
 	x := &topScope{importer: &defaultImporter{}, verbose: true}
 	expr, _, err := convertExpr(x, expr, dst, mode)
 	if err != nil {
-		panic(fmt.Sprintf("cannot convert %s to %s: %s", expr, dst, err))
+		panic(fmt.Sprintf("cannot convert expr %s to %s: %s", expr, dst, err))
 	}
 	return expr
 }

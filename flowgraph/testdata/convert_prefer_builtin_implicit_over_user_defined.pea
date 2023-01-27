@@ -1,0 +1,6 @@
+// success
+func main() {
+	print(string :: "success")
+}
+
+func ::(_ string) string { return: "failure" }

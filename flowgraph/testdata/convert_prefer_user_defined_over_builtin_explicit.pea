@@ -1,6 +1,7 @@
 // success
 func main() {
-	print(string :: "hello")
+	bytes := [uint8] :: [1, 2, 3],
+	print(string :: bytes)
 }
 
-func ::(_ string) string { return: "success" }
+func ::(_ [uint8]) string { return: "success" }

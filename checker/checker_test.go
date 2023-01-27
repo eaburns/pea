@@ -3097,13 +3097,33 @@ func TestCallIfaceConstraintInst(t *testing.T) {
 			want: "::(string)int32",
 		},
 		{
-			name: "match user-defined convert over a built-in convert",
+			name: "prefer user-defined convert over a built-in explicit convert",
+			src: `
+				func main() { target_function([uint8] :: [0, 1, 2]) }
+				func target_function(_ X) : ::(X)string
+				func ::(_ [uint8])string
+			`,
+			want: "::([uint8])string",
+		},
+		{
+			name: "prefer built-in implicit convert (identity) over user-defined convert",
 			src: `
 				func main() { target_function("string") }
 				func target_function(_ X) : ::(X)string
 				func ::(_ string)string
 			`,
-			want: "::(string)string",
+			// Built-in conversions are wrapped in a block.
+			want: "(x string){…}",
+		},
+		{
+			name: "prefer built-in implicit convert (non-identity) over user-defined convert",
+			src: `
+				func main() { target_function(&string :: "string") }
+				func target_function(_ X) : ::(X)string
+				func ::(_ &string)string
+			`,
+			// Built-in conversions are wrapped in a block.
+			want: "(x &string){…}",
 		},
 		{
 			name: "match arg adl convert",
