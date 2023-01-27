@@ -1,0 +1,294 @@
+Import "basic"
+import "collection/container"
+import "collection/dynamic_array"
+import "collection/hash_table"
+import "hash"
+import "option"
+import "print"
+
+// A (possibly infinite) group of items of type T,
+// implemented as a virtual call wrapper around
+// the for:each: function of an underlying collection type.
+Type T collection (((T){}){})
+
+// Calls f for each T in the collection
+// by calling the underlying collection's for:each: function.
+// The order is that of the underlying collection's for:each: function.
+// If c is an infinite collection, this will be an infinite loop.
+Func for:each:(c T collection, f (T){}) {
+	c(f)
+}
+
+// Converts c, of a collection type C, to a T collection.
+// The resulting T collection is a virtual warpper around C's for:each: function.
+// This means that the order of the elements of the T collection
+// corresponds to the order of C's for:each: function.
+Func ::(c C : { for:each:(C, (T){}) }) T collection {
+	return: (f){ for: c each: f }
+}
+
+// Converts T collection c to a container type C
+// beginning with a new(), empty C, and adding elements
+// using C's insert: function in the order of c's for:each:.
+// If c is an infinite collection, this conversion will be an infinite loop.
+Func ::(c T collection) C : (C, T) container#container {
+	container := C :: new(),
+	for: c each: (t){
+		container insert: t
+	},
+	return: container
+}
+
+// Returns an infinite collection of ints starting from 0 going up by 1s:
+// 	0, 1, 2, 3, …
+Func ints() int collection {
+	return: (f){ ints(0, f) }
+}
+
+func ints(i int, f (int){}) {
+	f(i),
+	ints(i + 1, f)
+}
+
+test ints {
+	assert: ints() -> take(1) ordered: [0],
+	assert: ints() -> take(5) ordered: [0, 1, 2, 3, 4],
+
+	s := "hello",
+	assert: ints() -> map((i int){ s[i] }) -> take(5) ordered: ['h', 'e', 'l', 'l', 'o'],
+
+	is := ints(),
+	assert: is -> take(5) ordered: [0, 1, 2, 3, 4],
+	assert: is -> take(5) ordered: [0, 1, 2, 3, 4],
+
+	evens := is -> keep((i int){ (i & 1) = 0 }),
+	assert: evens -> take(3) ordered: [0, 2, 4],
+	assert: evens -> drop(3) -> take(3) ordered: [6, 8, 10],
+
+	odds := is -> discard((i int){ (i & 1) = 0 }),
+	assert: odds -> take(3) ordered: [1, 3, 5],
+	assert: odds -> drop(3) -> take(3) ordered: [7, 9, 11]
+}
+
+// Returns the result of f on c converted to a T collection.
+// This is intended to be used with functions like
+// map, reduce, keep, discard, take, drop, and unique
+// to perform operations on collections.
+//
+// Collections built using -> are "lazy" in that
+// their elements are only constructed on-demand
+// by calling the resulting collection's for:each; function.
+//
+// For example, in the following code:
+// 	count := 0,
+// 	evens := ints() -> map((i int){
+// 		++count,
+// 		i * 2,
+// 	})
+// At this point, count is 0, as the function passed to map
+// has not yet been evaluated. However, after a call to for:each:
+// 	for: evens -> take(10) each: (i) {
+// 		print#stdout(i ++ "\n")
+// 	},
+// count is now 10. And if we do it again:
+// 	for: evens -> take(10) each: (i) {
+// 		print#stdout(i ++ "\n")
+// 	},
+// count is now 20.
+Func ->(c C : { ::(C)T collection }, f (T collection){U}) U {
+	return: f(T collection :: c)
+}
+
+test example {
+	count := 0,
+	evens := ints() -> map((i int){
+		++count,
+		i*2
+	}),
+	assert: count eq: 0,
+	for: evens -> take(10) each: (i){
+		print#stdout(i ++ "\n")
+	},
+	assert: count eq: 10,
+	for: evens -> take(10) each: (i){
+		print#stdout(i ++ "\n")
+	},
+	assert: count eq: 20
+}
+
+// Returns a function from a source T collection to new U collection
+// where each element of the U collection is f(t)
+// for the corresponding element t of the source T collection:
+// 	[f(t0), f(t1), f(t2), …]
+Func map(f (T){U}) (T collection){U collection} {
+	return: (c){
+		(u){
+			for: c each: (t){
+				u(f(t))
+			}
+		}
+	}
+}
+
+test map {
+	assert: ([int] :: []) -> map((x int){ x*2 }) ordered: [],
+	assert: [1, 2, 3] -> map((x int){ x*2 }) ordered: [2, 4, 6],
+	assert: [1, 2, 3] -> map((x int){ print#string(x) }) ordered: ["1", "2", "3"],
+	assert: [1, 2, 3] -> map((x int){ float64 :: x }) ordered: [1, 2, 3]
+}
+
+// Returns a function that reduces a T collection to a value of type U
+// by evaluating f across the elements of the T collection
+// beginning with f(u0, t0), whose result is the U argument
+// of a subsequent call to f with t1, and so forth:
+// 	f(f(f(f(u0, t0), t1), t2), …)
+Func reduce(u0 U, f (U, T){U}) (T collection){U} {
+	return: (c){
+		u := u0,
+		for: c each: (t){
+			u := f(u, t)
+		},
+		u
+	}
+}
+
+test reduce {
+	assert: ([int] :: []) -> reduce(0, (a, b int){ a + b }) eq: 0,
+	assert: ([int] :: []) -> reduce(5, (a, b int){ a + b }) eq: 5,
+	assert: [1, 2, 3] -> reduce(0, (a, b int){ a + b }) eq: 6,
+	assert: [1, 2, 3] -> reduce(0, (a, b int){ a + b }) eq: 6,
+	assert: [1, 2, 3] -> reduce(1, (a, b int){ a*b }) eq: 6
+}
+
+// Returns a function from a source T collection to new T collection
+// that only contains the elements of the source for which p returns true.
+Func keep(p (T){bool}) (T collection){T collection} {
+	return: (c){
+		(f){
+			for: c each: (t){
+				if: p(t) true: {
+					f(t)
+				}
+			}
+		}
+	}
+}
+
+test keep {
+	assert: ([int] :: []) -> keep((x int){ x > 12 }) ordered: [],
+	assert: [1, 2, 3, 4, 5] -> keep((x int){ x < 100 }) ordered: [1, 2, 3, 4, 5],
+	assert: [1, 2, 3, 4, 5] -> keep((x int){ x%2 = 0 }) ordered: [2, 4],
+	assert: [1, 2, 3, 4, 5] -> keep((x int){ x > 12 }) ordered: []
+}
+
+// Returns a function from a source T collection to new T collection
+// that contains only elements of the source for which p returns false.
+Func discard(p (T){bool}) (T collection){T collection} {
+	return: keep((t T){ !p(t) })
+}
+
+test discard {
+	assert: ([int] :: []) -> discard((x int){ x < 100 }) ordered: [],
+	assert: [1, 2, 3, 4, 5] -> discard((x int){ x = 12 }) ordered: [1, 2, 3, 4, 5],
+	assert: [1, 2, 3, 4, 5] -> discard((x int){ x%2 = 0 }) ordered: [1, 3, 5],
+	assert: [1, 2, 3, 4, 5] -> discard((x int){ x < 100 }) ordered: []
+}
+
+// Returns a function from a source T collection to new T collection
+// that contains only the first n elements of the source.
+Func take(n int) (T collection){T collection} : T print#printable {
+	return: (c){
+		(f){ take(c, n, f) }
+	}
+}
+
+func take(c T collection, n int, f (T){}) : T print#printable {
+	if: n <= 0 true: {
+		return()
+	},
+	for: c each: (t){
+		f(t),
+		--n,
+		if: n = 0 true: {
+			return()
+		}
+	}
+}
+
+test take {
+	assert: ([int] :: []) -> take(5) ordered: [],
+	assert: [1, 2, 3, 4, 5] -> take(0) ordered: [],
+	assert: [1, 2, 3, 4, 5] -> take(1) ordered: [1],
+	assert: [1, 2, 3, 4, 5] -> take(2) ordered: [1, 2],
+	assert: [1, 2, 3, 4, 5] -> take(3) ordered: [1, 2, 3],
+	assert: [1, 2, 3, 4, 5] -> take(4) ordered: [1, 2, 3, 4],
+	assert: [1, 2, 3, 4, 5] -> take(5) ordered: [1, 2, 3, 4, 5],
+	assert: [1, 2, 3, 4, 5] -> take(6) ordered: [1, 2, 3, 4, 5],
+
+	as := [1, 2, 3, 4, 5],
+	assert: as -> take(5) ordered: [1, 2, 3, 4, 5],
+	assert: as -> take(5) ordered: [1, 2, 3, 4, 5]
+}
+
+// Returns a function from a source T collection to new T collection
+// that only contains only elements after the first n of the source.
+Func drop(n int) (T collection){T collection} {
+	return: (c){
+		(f){ drop(c, n, f) }
+	}
+}
+
+func drop(c T collection, n int, f (T){}) {
+	for: c each: (t){
+		if: n = 0 true: {
+			f(t)
+		} false: {
+			--n
+		}
+	}
+}
+
+test drop {
+	assert: ([int] :: []) -> drop(5) ordered: [],
+	assert: [1, 2, 3, 4, 5] -> drop(0) ordered: [1, 2, 3, 4, 5],
+	assert: [1, 2, 3, 4, 5] -> drop(1) ordered: [2, 3, 4, 5],
+	assert: [1, 2, 3, 4, 5] -> drop(2) ordered: [3, 4, 5],
+	assert: [1, 2, 3, 4, 5] -> drop(3) ordered: [4, 5],
+	assert: [1, 2, 3, 4, 5] -> drop(4) ordered: [5],
+	assert: [1, 2, 3, 4, 5] -> drop(5) ordered: [],
+	assert: [1, 2, 3, 4, 5] -> drop(6) ordered: []
+}
+
+// Returns a function from a source T collection to new T collection
+// that contains only the first occurrence of each element from the source.
+Func unique() (T collection){T collection} : { T hash#hashable, =(T, T)bool } {
+	return: (c){
+		ht := (T, bool) hash_table :: new(),
+		(f){
+			for: c each: (t){
+				if: find(ht, t) none: {
+					ht insert: [.key t, .value true],
+					f(t)
+				}
+			}
+		}
+	}
+}
+
+test unique {
+	assert: ([int] :: []) -> unique() ordered: [],
+	assert: [1, 2, 3, 4, 5] -> unique() ordered: [1, 2, 3, 4, 5],
+	assert: [1, 1, 2, 3, 2, 4, 3] -> unique() ordered: [1, 2, 3, 4],
+	assert: [1, 1, 1, 1, 1] -> unique() ordered: [1]
+}
+
+test various {
+	assert:
+		ints()
+			-> map((i int){ i/2 })
+			-> discard((i int){ (i & 1) = 0 })
+			-> keep((i int){ i > 1 })
+			-> unique()
+			-> take(10)
+	ordered: [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]
+}
