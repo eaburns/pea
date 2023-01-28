@@ -1,0 +1,296 @@
+Import "basic"
+import "collection/container"
+import "collection/dynamic_array"
+import "collection/span"
+import "option"
+import "print"
+
+// A binary heap of elements of type T.
+// A binary heap implements a priority queue with
+//  * insertion of O(lg n),
+//  * remove minimum of O(lg n),
+//  * access minimum of O(1),
+// for n elements.
+Type T binary_heap (&[
+	.ents T entry dynamic_array,
+	.pred (T, T){bool},
+])
+
+// An entry in a binary_heap.
+Type T entry (&[
+	.index int,
+	.data T,
+])
+
+// Returns a new, empty binary_heap.
+Func new() T binary_heap : { <(T, T)bool } {
+	return: [.ents new(), .pred (<)]
+}
+
+// Returns a new binary_heap containing the elements from c.
+// This is more efficient than using repeated calls to push:,
+// as that method will take O(n lg n) time for n entries,
+// whereas calling this function will take O(n) time.
+Func new(c C : { for:each:(C, (T){}) }) T binary_heap : { <(T, T)bool } {
+	ents := T entry dynamic_array :: new(),
+	for: c each: (t){
+		ents push_back: [.index ents.length, .data t]
+	},
+	bh := T binary_heap :: [.ents ents, .pred (<)],
+	for: bh.length/2 - 1 down_to: 0 do: (i){
+		heap_down(bh, i, bh.length)
+	},
+	return: bh
+}
+
+func for:down_to:do:(s, e int, f (int){}) {
+	if: s >= e true: {
+		f(s),
+		for: s - 1 down_to: e do: f
+	}
+}
+
+test new_from_container {
+	assert: drain(int binary_heap :: new([int] :: [])) ordered: [],
+	assert: drain(int binary_heap :: new([3])) ordered: [3],
+	assert: drain(int binary_heap :: new([3, 4])) ordered: [3, 4],
+	assert: drain(int binary_heap :: new([4, 3])) ordered: [3, 4],
+	assert: drain(int binary_heap :: new([3, 4, 5])) ordered: [3, 4, 5],
+	assert: drain(int binary_heap :: new([3, 5, 4])) ordered: [3, 4, 5],
+	assert: drain(int binary_heap :: new([4, 3, 5])) ordered: [3, 4, 5],
+	assert: drain(int binary_heap :: new([4, 5, 3])) ordered: [3, 4, 5],
+	assert: drain(int binary_heap :: new([5, 4, 3])) ordered: [3, 4, 5],
+	assert: drain(int binary_heap :: new([8, 4, 3, 9, 10])) ordered: [3, 4, 8, 9, 10]
+}
+
+// Returns the number of elements in bh.
+Func .length(bh T binary_heap) int {
+	return: bh.ents.length
+}
+
+test new_length {
+	assert: (int binary_heap :: new()).length eq: 0,
+	assert: (int binary_heap :: new([int] :: [])).length eq: 0,
+	assert: (int binary_heap :: new([0])).length eq: 1,
+	assert: (int binary_heap :: new([5, 6, 7, 4])).length eq: 4
+}
+
+// Returns the minimum element of bh or none if bh is empty.
+Func .min(bh T binary_heap) T option {
+	if: bh.length = 0 true: {
+		return: none()
+	},
+	return: some(bh.ents[0].data)
+}
+
+test min {
+	assert: (int binary_heap :: new()).min eq: none(),
+	assert: (int binary_heap :: new([0])).min eq: some(0),
+	assert: (int binary_heap :: new([5, 6, 7, 4])).min eq: some(4),
+	assert: (int binary_heap :: new([0])).min eq: some(0)
+}
+
+// An alias for push:.
+Func insert:(bh T binary_heap, t T) {
+	bh push: t
+}
+
+// Pushes t into bh.
+Func push:(bh T binary_heap, t T) {
+	push(bh, t)
+}
+
+// Pushes t into bh and returns its entry.
+Func push(bh T binary_heap, t T) T entry {
+	e := T entry :: [.index bh.ents.length, .data t],
+	bh.ents push_back: e,
+	heap_up(bh, bh.ents.length - 1),
+	return: e
+}
+
+test push {
+	bh := int binary_heap :: new(),
+	bh push: 1,
+	assert: drain(bh) ordered: [1],
+
+	bh push: 1,
+	bh push: 2,
+	bh push: 0,
+	assert: drain(bh) ordered: [0, 1, 2]
+}
+
+test push_entry {
+	bh := int binary_heap :: new(),
+	e1 := push(bh, 1),
+	assert: e1.index eq: 0,
+	e0 := push(bh, 0),
+	assert: e0.index eq: 0,
+	assert: e1.index eq: 1
+}
+
+func heap_up(bh T binary_heap, i int) {
+	p := (i - 1)/2,
+	if: pred(bh, i, p) true: {
+		swap(bh, i, p),
+		heap_up(bh, p)
+	}
+}
+
+// If bh is not empty, removes and returns the minimum element.
+// If bh is empty, returns none().
+Func pop_min(bh T binary_heap) T option {
+	if: bh.length = 0 true: {
+		return: none()
+	},
+	swap(bh, 0, bh.ents.length - 1),
+	small := pop_back(bh.ents) none? { panic("impossible") },
+	heap_down(bh, 0, bh.ents.length),
+	return: some(small.data)
+}
+
+test pop_min {
+	bh := int binary_heap :: new([3, 2, 1]),
+	assert: bh.length eq: 3,
+	assert: pop_min(bh) eq: some(1),
+	assert: bh.length eq: 2,
+	assert: pop_min(bh) eq: some(2),
+	assert: bh.length eq: 1,
+	assert: pop_min(bh) eq: some(3),
+	assert: bh.length eq: 0,
+	assert: pop_min(bh) eq: none(),
+	assert: bh.length eq: 0,
+	assert: pop_min(bh) eq: none(),
+	assert: bh.length eq: 0
+}
+
+func heap_down(bh T binary_heap, i, end int) {
+	small := i,
+	left := 2*i + 1,
+	right := 2*i + 2,
+	if: left < end && { pred(bh, left, small) } true: {
+		small := left
+	},
+	if: right < end && { pred(bh, right, small) } true: {
+		small := right
+	},
+	if: small != i true: {
+		swap(bh, small, i),
+		heap_down(bh, small, end)
+	}
+}
+
+test push_min_pop {
+	bh := int binary_heap :: new(),
+	assert: bh.min eq: none(),
+	assert: bh unordered: [],
+	bh push: 1,
+	assert: bh.min eq: some(1),
+	assert: bh unordered: [1],
+	bh push: 5,
+	assert: bh.min eq: some(1),
+	assert: bh unordered: [1, 5],
+	bh push: 2,
+	assert: bh.min eq: some(1),
+	assert: bh unordered: [1, 5, 2],
+	bh push: 4,
+	assert: bh.min eq: some(1),
+	assert: bh unordered: [1, 5, 2, 4],
+	bh push: 3,
+	assert: bh.min eq: some(1),
+	assert: bh unordered: [1, 5, 2, 4, 3],
+	bh push: 100,
+	assert: bh.min eq: some(1),
+	assert: bh unordered: [1, 5, 2, 4, 3, 100],
+	bh push: -1,
+	assert: bh.min eq: some(-1),
+	assert: bh unordered: [1, 5, 2, 4, 3, 100, -1],
+	bh push: 0,
+	assert: bh.min eq: some(-1),
+	assert: bh unordered: [1, 5, 2, 4, 3, 100, -1, 0],
+	assert: pop_min(bh) eq: some(-1),
+	assert: bh unordered: [1, 5, 2, 4, 3, 100, 0],
+	assert: pop_min(bh) eq: some(0),
+	assert: bh unordered: [1, 5, 2, 4, 3, 100],
+	assert: pop_min(bh) eq: some(1),
+	assert: bh unordered: [5, 2, 4, 3, 100],
+	assert: pop_min(bh) eq: some(2),
+	assert: bh unordered: [5, 4, 3, 100],
+	assert: pop_min(bh) eq: some(3),
+	assert: bh unordered: [5, 4, 100],
+	assert: pop_min(bh) eq: some(4),
+	assert: bh unordered: [5, 100],
+	assert: pop_min(bh) eq: some(5),
+	assert: bh unordered: [100],
+	assert: pop_min(bh) eq: some(100),
+	assert: bh unordered: [],
+	assert: pop_min(bh) eq: none(),
+	assert: bh unordered: []
+}
+
+// Updates the position of e, re-establishing the heap property.
+// Update must be called whenever an item's priority has changed.
+Func update(bh T binary_heap, e T entry) {
+	heap_down(bh, e.index, bh.ents.length - 1),
+	heap_up(bh, e.index)
+}
+
+test update_down {
+	ints := [&int] :: [1, 2, 4, 5],
+	bh := (&int) binary_heap :: new(ints),
+	x := &int :: 6,
+	e := push(bh, x),
+	x := 3,
+	update(bh, e),
+	assert: drain(bh) ordered: [1, 2, 3, 4, 5]
+}
+
+test update_up {
+	ints := [&int] :: [1, 2, 4, 5],
+	bh := (&int) binary_heap :: new(ints),
+	x := &int :: 0,
+	e := push(bh, x),
+	x := 3,
+	update(bh, e),
+	assert: drain(bh) ordered: [1, 2, 3, 4, 5]
+}
+
+test update_remains {
+	ints := [&int] :: [1, 2, 4, 5],
+	bh := (&int) binary_heap :: new(ints),
+	x := &int :: 0,
+	e := push(bh, x),
+	update(bh, e),
+	assert: drain(bh) ordered: [0, 1, 2, 4, 5]
+}
+
+func drain(bh T binary_heap) T dynamic_array {
+	da := T dynamic_array :: new(),
+	option#while: { pop_min(bh) } some: (t){
+		da push_back: t
+	},
+	return: da
+}
+
+// Calls f for each value of bd in an unspecified order.
+Func for:each:(bh T binary_heap, f (T){}) {
+	for: bh.ents each: (e){ f(e.data) }
+}
+
+test for_each {
+	assert: (int binary_heap :: new()) unordered: [],
+	assert: (int binary_heap :: new([1])) unordered: [1],
+	assert: (int binary_heap :: new([1, 2])) unordered: [1, 2],
+	assert: (int binary_heap :: new([1, 4, 2])) unordered: [1, 2, 4],
+	assert: (int binary_heap :: new([1, 6, 5, 3, 4, 2])) unordered: [1, 2, 3, 4, 5, 6],
+	assert: (int binary_heap :: new([1, 6, 5, 3, 4, 2])) unordered: [1, 2, 3, 4, 5, 6]
+}
+
+func swap(bh T binary_heap, i, j int) {
+	bh.ents[i].index := j,
+	bh.ents[j].index := i,
+	span#swap(bh.ents, i, j)
+}
+
+func pred(bh T binary_heap, i, j int) bool {
+	return: bh.pred(bh.ents[i].data, bh.ents[j].data)
+}
