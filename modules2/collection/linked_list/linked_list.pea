@@ -1,0 +1,800 @@
+Import "basic"
+import "collection/container"
+import "hash"
+import "option"
+import "print"
+
+// A doubly-linked list holding elements of type T.
+// A linked list consists of a possibly empty sequence of nodes
+// and links that refer to them.
+//
+// Each node has two non-nil links called .prev and .next
+// which connect the nodes of a single list into a ring;
+// continually following either .prev or .next
+// will eventually return to the original node.
+//
+// Nodes are never accessed directly; they are accessed through a link.
+// A link can be either nil, which indicates an empty list,
+// or it is a reference to some node on a non-empty list.
+//
+// A non-nil link can access the .value of its node.
+// A link can also access a link to the .prev and .next of its node.
+// The .prev and .next of nil link is nil.
+// This means that a sequence of nodes can have multiple links
+// pointing into different positions in the ring.
+//
+// A T linked_list is a reference to a single T link called the head of the list.
+// A T linked_list behaves as a container type for its underlying list
+// allowing to push_front:, push_back:, insert:, append:, prepend:
+// and so forth.
+Type T linked_list ([.h &T link])
+
+// Either nil or a reference to a node of a node.
+Type T link ([nil?, node? T node])
+
+type T node &[.value T, .prev T link, .next T link]
+
+// Returns whether l is nil.
+Func .nil(l T link) bool { return: l = [nil?] }
+
+// Returns a reference to the value at l's node.
+// If l is nil, .value panics.
+Func .value(l T link) &T {
+	return: l node? (n){
+		n.value
+	} nil? {
+		panic(".value called on a nil link")
+	}
+}
+
+// Returns a link referring to the node before l.
+// If l is nil, returns nil.
+Func .prev(l T link) T link {
+	return: l node? (n){ n.prev } nil? { l }
+}
+
+// Returns a link referring to the node after l.
+// If l is nil, returns nil.
+Func .next(l T link) T link {
+	return: l node? (n){ n.next } nil? { l }
+}
+
+// Returns whether a and b are both nil or both refer to the same node.
+Func =(a, b T link) bool {
+	return: a nil? {
+		b nil? { true } node? (_){ false }
+	} node? (a){
+		b nil? { false } node? (b){ (uintref :: a) = (uintref :: b) }
+	}
+}
+
+// Returns a new, empty T linked_list.
+Func new() T linked_list { return: [.h [nil?]] }
+
+// Converts l to a linked_list with the link as its front.
+Func ::(l T link) T linked_list { return: [.h l] }
+
+// Returns whether ll is empty.
+Func .empty(ll T linked_list) bool { return: ll.h.nil }
+
+// Returns the head link of ll;
+// the link referring to the front element of the list or empty.
+Func .head(ll T linked_list) T link { return: ll.h }
+
+// Returns the tail link of ll;
+// the link referring to the back element of the list or empty.
+Func .tail(ll T linked_list) T link { return: ll.h.prev }
+
+// Returns the number of elements in ll.
+// This function is computed in O(n) time for an n item list.
+Func length(ll T linked_list) int {
+	n := 0,
+	for: ll each: (_){
+		++n
+	},
+	return: n
+}
+
+// Returns the front element of ll or none if ll is empty.
+Func .front(ll T linked_list) T option {
+	if: ll.empty true: {
+		return: none()
+	},
+	return: some(ll.head.value)
+}
+
+// Returns the back element of ll or none if ll is empty.
+Func .back(ll T linked_list) T option {
+	if: ll.empty true: {
+		return: none()
+	},
+	return: some(ll.tail.value)
+}
+
+// Inserts t to the front of l.
+// If l is empty, l is set ot refer to the newly inserted node.
+// If l is not empty, t is inserted just before the node referred to by l,
+// and l is set to refer to the newly inserted node.
+Func push_front:(ll T linked_list, t T) {
+	a := node(t),
+	if: ll.h node: (b){
+		append(a, b)
+	},
+	ll.h := [node? a]
+}
+
+// An alias for push_back:.
+Func insert:(ll &T linked_list, t T) {
+	ll push_back: t
+}
+
+// Inserts t to the back of l.
+// If l is empty, l is set to refer to the newly inserted node.
+// If l is not empty, t is inserted just before the node referred to by l.
+Func push_back:(ll T linked_list, t T) {
+	b := node(t),
+	if: ll.h nil: {
+		ll.h := [node? b]
+	} node: (a){
+		append(a, b)
+	}
+}
+
+func node(t T) T node {
+	n := T node :: [.value t, .prev [nil?], .next [nil?]],
+	n.prev := [node? n],
+	n.next := [node? n],
+	return: n
+}
+
+// If ll is not empty, removes the front node of the ring and returns its value.
+// If ll is empty, returns none().
+Func pop_front(ll T linked_list) T option {
+	if: ll.empty true: {
+		return: none()
+	},
+	x := ll.head.value,
+	if: ll.head = ll.head.next true: {
+		ll.h := [nil?]
+	} false: {
+		ll prepend: (T linked_list :: ll.head.next)
+	},
+	return: some(x)
+}
+
+test pop_front_empty {
+	ll := int linked_list :: new(),
+	assert: pop_front(ll) eq: none(),
+	assert: ll.empty eq: true
+}
+
+test pop_front_one {
+	ll := int linked_list :: new(),
+	ll push_back: 1,
+	assert: pop_front(ll) eq: some(1),
+	assert: ll ordered: [],
+	ll push_back: 2,
+	assert: pop_front(ll) eq: some(2),
+	assert: ll ordered: [],
+	ll push_back: 3,
+	assert: pop_front(ll) eq: some(3),
+	assert: ll ordered: []
+}
+
+test pop_front {
+	ll := int linked_list :: new(),
+	assert: pop_front(ll) eq: none(),
+	ll push_back: 0,
+	ll push_back: 1,
+	ll push_back: 2,
+	assert: ll ordered: [0, 1, 2],
+	assert: pop_front(ll) eq: some(0),
+	assert: ll ordered: [1, 2],
+	assert: pop_front(ll) eq: some(1),
+	assert: ll ordered: [2],
+	assert: pop_front(ll) eq: some(2),
+	assert: ll ordered: [],
+	assert: pop_front(ll) eq: none(),
+	assert: ll ordered: []
+}
+
+test pop_front_popped_node_remains_valid {
+	ll := int linked_list :: new(),
+	ll push_back: 0,
+	ll push_back: 1,
+	ll push_back: 2,
+	assert: ll ordered: [0, 1, 2],
+
+	la := int linked_list :: ll.head,
+	assert: la ordered: [0, 1, 2],
+	lb := int linked_list :: ll.head.next,
+	assert: lb ordered: [1, 2, 0],
+	lc := int linked_list :: ll.head.next.next,
+	assert: lc ordered: [2, 0, 1],
+
+	assert: pop_front(ll) eq: some(0),
+	assert: ll ordered: [1, 2],
+	assert: la ordered: [0],
+	assert: lb ordered: [1, 2],
+	assert: lc ordered: [2, 1],
+
+	assert: pop_front(ll) eq: some(1),
+	assert: ll ordered: [2],
+	assert: la ordered: [0],
+	assert: lb ordered: [1],
+	assert: lc ordered: [2],
+
+	assert: pop_front(ll) eq: some(2),
+	assert: ll ordered: [],
+	assert: la ordered: [0],
+	assert: lb ordered: [1],
+	assert: lc ordered: [2]
+}
+
+// If ll is not empty, removes the back node of the ring and returns its value.
+// If ll is empty, returns none().
+Func pop_back(ll T linked_list) T option {
+	if: ll.empty true: {
+		return: none()
+	},
+	x := ll.tail.value,
+	if: ll.tail = ll.tail.prev true: {
+		ll.h := [nil?]
+	} false: {
+		ll append: (T linked_list :: ll.tail)
+	},
+	return: some(x)
+}
+
+test pop_back_empty {
+	ll := int linked_list :: new(),
+	assert: pop_back(ll) eq: none(),
+	assert: ll.empty eq: true
+}
+
+test pop_back_one {
+	ll := int linked_list :: new(),
+	ll push_back: 1,
+	assert: pop_back(ll) eq: some(1),
+	assert: ll ordered: [],
+	ll push_back: 2,
+	assert: pop_back(ll) eq: some(2),
+	assert: ll ordered: [],
+	ll push_back: 3,
+	assert: pop_back(ll) eq: some(3),
+	assert: ll ordered: []
+}
+
+test pop_back {
+	ll := int linked_list :: new(),
+	assert: pop_back(ll) eq: none(),
+	ll push_back: 0,
+	ll push_back: 1,
+	ll push_back: 2,
+	assert: ll ordered: [0, 1, 2],
+	assert: pop_back(ll) eq: some(2),
+	assert: ll ordered: [0, 1],
+	assert: pop_back(ll) eq: some(1),
+	assert: ll ordered: [0],
+	assert: pop_back(ll) eq: some(0),
+	assert: ll ordered: [],
+	assert: pop_back(ll) eq: none(),
+	assert: ll ordered: []
+}
+
+test pop_back_popped_node_remains_valid {
+	ll := int linked_list :: new(),
+	ll push_back: 0,
+	ll push_back: 1,
+	ll push_back: 2,
+	assert: ll ordered: [0, 1, 2],
+
+	la := int linked_list :: ll.head,
+	assert: la ordered: [0, 1, 2],
+	lb := int linked_list :: ll.head.next,
+	assert: lb ordered: [1, 2, 0],
+	lc := int linked_list :: ll.head.next.next,
+	assert: lc ordered: [2, 0, 1],
+
+	assert: pop_back(ll) eq: some(2),
+	assert: ll ordered: [0, 1],
+	assert: la ordered: [0, 1],
+	assert: lb ordered: [1, 0],
+	assert: lc ordered: [2],
+
+	assert: pop_back(ll) eq: some(1),
+	assert: ll ordered: [0],
+	assert: la ordered: [0],
+	assert: lb ordered: [1],
+	assert: lc ordered: [2],
+
+	assert: pop_back(ll) eq: some(0),
+	assert: ll ordered: [],
+	assert: la ordered: [0],
+	assert: lb ordered: [1],
+	assert: lc ordered: [2]
+}
+
+// Prepends lb to the beginning of la.
+//
+// If either is empty, both are set to whichever is
+// the non-empty list if there is one,
+// otherwise they remain empty.
+//
+// If the heads of la and lb are nodes of separate rings,
+// the ring of nodes from lb are prepended to those of la,
+// making them belong to a now single ring of nodes.
+// After prepending, both la and lb refer to lb.head.
+//
+// If the heads of la and lb are nodes of the same ring,
+// it is not possible to prepend one onto the other.
+// In this case, the behavior is different.
+// If la.head = lb.head, the ring remains the same.
+// Otherwise the ring is split into two separate rings:
+// 	1. the nodes from lb.head (inclusive) to la.tail (inclusive); and
+// 	2. the nodes from la.head (inclusive) to lb.tail (inclusive).
+// Both la and lb refer to lb.head, which is in ring #1.
+//
+// This function always operates in O(1) time.
+Func prepend:(lb, la T linked_list) {
+	if: lb.h node: (b){
+		if: la.h node: (a){
+			append(a, b)
+		}
+	},
+	if: la.h nil: {
+		// If prepending an empty list to a non-empty list,
+		// the empty list becomes the beginning of the non-empty,
+		// so set its head to that of the non-empty list.
+		la.h := lb.h
+	},
+	lb.h := la.h
+}
+
+test prepend_empty_empty {
+	list := (a [int]){ int linked_list :: container#new(a) },
+	la := list([]),
+	lb := list([]),
+	la prepend: lb,
+	assert: la ordered: [],
+	assert: lb ordered: [],
+	assert: int reverse_view :: la ordered: [],
+	assert: int reverse_view :: lb ordered: []
+}
+
+test prepend_empty_non_empty {
+	list := (a [int]){ int linked_list :: container#new(a) },
+	la := list([]),
+	lb := list([1, 2, 3]),
+	la prepend: lb,
+	assert: la ordered: [1, 2, 3],
+	assert: lb ordered: [1, 2, 3],
+	assert: int reverse_view :: la ordered: [3, 2, 1],
+	assert: int reverse_view :: lb ordered: [3, 2, 1]
+}
+
+test prepend_non_empty_empty {
+	list := (a [int]){ int linked_list :: container#new(a) },
+	la := list([1, 2, 3]),
+	lb := list([]),
+	la prepend: lb,
+	assert: la ordered: [1, 2, 3],
+	assert: lb ordered: [1, 2, 3],
+	assert: int reverse_view :: la ordered: [3, 2, 1],
+	assert: int reverse_view :: lb ordered: [3, 2, 1]
+}
+
+test prepend {
+	list := (a [int]){ int linked_list :: container#new(a) },
+	la := list([4, 5, 6]),
+	lb := list([1, 2, 3]),
+	la prepend: lb,
+	assert: la ordered: [1, 2, 3, 4, 5, 6],
+	assert: lb ordered: [1, 2, 3, 4, 5, 6],
+
+	// Check the .prev links.
+	assert: int reverse_view :: la ordered: [6, 5, 4, 3, 2, 1],
+	assert: int reverse_view :: lb ordered: [6, 5, 4, 3, 2, 1]
+}
+
+test prepend_same_ring {
+	list := (a [int]){ int linked_list :: container#new(a) },
+
+	la := list([1]),
+	lb := la,
+	la prepend: lb,
+	assert: la ordered: [1],
+	assert: lb ordered: [1],
+	assert: int reverse_view :: la ordered: [1],
+	assert: int reverse_view :: lb ordered: [1],
+
+	la := list([1, 2, 3]),
+	lb := la,
+	la prepend: lb,
+	assert: la ordered: [1, 2, 3],
+	assert: lb ordered: [1, 2, 3],
+	assert: int reverse_view :: la ordered: [3, 2, 1],
+	assert: int reverse_view :: lb ordered: [3, 2, 1],
+
+	la := list([1, 2, 3]),
+	lb := int linked_list :: la.head.next,
+	la prepend: lb,
+	assert: la ordered: [2, 3],
+	assert: lb ordered: [2, 3],
+	assert: int reverse_view :: la ordered: [3, 2],
+	assert: int reverse_view :: lb ordered: [3, 2],
+
+	la := list([1, 2, 3]),
+	lb := int linked_list :: la.head.next.next,
+	la prepend: lb,
+	assert: la ordered: [3],
+	assert: lb ordered: [3],
+	assert: int reverse_view :: la ordered: [3],
+	assert: int reverse_view :: lb ordered: [3],
+
+	la := list([1, 2, 3]),
+	lb := int linked_list :: la.head.next.next.next,
+	la prepend: lb,
+	assert: la ordered: [1, 2, 3],
+	assert: lb ordered: [1, 2, 3],
+	assert: int reverse_view :: la ordered: [3, 2, 1],
+	assert: int reverse_view :: lb ordered: [3, 2, 1],
+
+	la := list([1, 2, 3]),
+	lb := int linked_list :: la.head.next,
+	la := int linked_list :: la.head.next.next,
+	assert: la ordered: [3, 1, 2],
+	assert: lb ordered: [2, 3, 1],
+	la prepend: lb,
+	assert: la ordered: [2],
+	assert: lb ordered: [2],
+	assert: int reverse_view :: la ordered: [2],
+	assert: int reverse_view :: lb ordered: [2],
+
+	la := list([1, 2, 3, 4, 5, 6]),
+	lb := int linked_list :: la.head.next,
+	lc := int linked_list :: la.head.next.next,
+	ld := int linked_list :: la.head.next.next.next,
+	assert: la ordered: [1, 2, 3, 4, 5, 6],
+	assert: lb ordered: [2, 3, 4, 5, 6, 1],
+	assert: lc ordered: [3, 4, 5, 6, 1, 2],
+	assert: ld ordered: [4, 5, 6, 1, 2, 3],
+	la prepend: lc,
+	assert: la ordered: [3, 4, 5, 6],
+	assert: lb ordered: [2, 1],
+	assert: lc ordered: [3, 4, 5, 6],
+	assert: ld ordered: [4, 5, 6, 3],
+	assert: int reverse_view :: la ordered: [6, 5, 4, 3],
+	assert: int reverse_view :: lb ordered: [1, 2],
+	assert: int reverse_view :: lc ordered: [6, 5, 4, 3],
+	assert: int reverse_view :: ld ordered: [3, 6, 5, 4]
+}
+
+// Appends the ring of nodes from lb to the end to those of la.
+// After appending, the end of original ring of lb nodes refers to the head of la,
+// and the end of the original ring of la nodes refers to the head of lb.
+
+// Appends lb to the end of la.
+//
+// If either is empty, both are set to whichever is
+// the non-empty list if there is one,
+// otherwise they remain empty.
+//
+// If the heads of la and lb are nodes of separate rings,
+// the ring of nodes from lb are append to those of la,
+// making them belong to a now single ring of nodes.
+//
+// If the heads of la and lb are nodes of the same ring,
+// it is not possible to append one onto the other.
+// In this case, the behavior is different.
+// If la.head = lb.head, the ring remains the same.
+// Otherwise the ring is split into two separate rings:
+// 	1. the nodes from la.head (inclusive) to lb.head (exclusive); and
+// 	2. the nodes from lb.head (inclusive) to la.head (exclusive).
+// And la and lb continue referring to the same head nodes,
+// la to that of ring #1 and lb to that of ring #2.
+//
+// This function always operates in O(1) time.
+Func append:(la, lb T linked_list) {
+	if: la.h nil: {
+		la.h := lb.h
+	} node: (a){
+		if: lb.h node: (b){
+			append(a, b)
+		} nil: {
+			// If appending an empty list to a non-empty list,
+			// the empty list becomes the end of the non-empty,
+			// so set its head to that of the non-empty list.
+			lb.h := la.h
+		}
+	}
+}
+
+test append_empty_empty {
+	list := (a [int]){ int linked_list :: container#new(a) },
+	la := list([]),
+	lb := list([]),
+	lb append: la,
+	assert: la ordered: [],
+	assert: lb ordered: [],
+	assert: int reverse_view :: la ordered: [],
+	assert: int reverse_view :: lb ordered: []
+}
+
+test append_empty_non_empty {
+	list := (a [int]){ int linked_list :: container#new(a) },
+	la := list([1, 2, 3]),
+	lb := list([]),
+	lb append: la,
+	assert: lb ordered: [1, 2, 3],
+	assert: la ordered: [1, 2, 3],
+	assert: int reverse_view :: la ordered: [3, 2, 1],
+	assert: int reverse_view :: lb ordered: [3, 2, 1]
+}
+
+test append_non_empty_empty {
+	list := (a [int]){ int linked_list :: container#new(a) },
+	la := list([]),
+	lb := list([1, 2, 3]),
+	lb append: la,
+	assert: la ordered: [1, 2, 3],
+	assert: lb ordered: [1, 2, 3],
+	assert: int reverse_view :: la ordered: [3, 2, 1],
+	assert: int reverse_view :: lb ordered: [3, 2, 1]
+}
+
+test append {
+	list := (a [int]){ int linked_list :: container#new(a) },
+	la := list([1, 2, 3]),
+	lb := list([4, 5, 6]),
+	lb append: la,
+	assert: la ordered: [1, 2, 3, 4, 5, 6],
+	// lb still points to the nodes starting from 4.
+	assert: lb ordered: [4, 5, 6, 1, 2, 3],
+	assert: int reverse_view :: la ordered: [6, 5, 4, 3, 2, 1],
+	assert: int reverse_view :: lb ordered: [3, 2, 1, 6, 5, 4]
+}
+
+test append_self {
+	list := (a [int]){ int linked_list :: container#new(a) },
+
+	la := list([1]),
+	lb := la,
+	la append: lb,
+	assert: la ordered: [1],
+	assert: lb ordered: [1],
+	assert: int reverse_view :: la ordered: [1],
+	assert: int reverse_view :: lb ordered: [1],
+
+	la := list([1, 2, 3]),
+	lb := la,
+	la append: lb,
+	assert: la ordered: [1, 2, 3],
+	assert: lb ordered: [1, 2, 3],
+	assert: int reverse_view :: la ordered: [3, 2, 1],
+	assert: int reverse_view :: lb ordered: [3, 2, 1],
+
+	la := list([1, 2, 3]),
+	lb := int linked_list :: la.head.next,
+	la append: lb,
+	assert: la ordered: [1],
+	assert: lb ordered: [2, 3],
+	assert: int reverse_view :: la ordered: [1],
+	assert: int reverse_view :: lb ordered: [3, 2],
+
+	la := list([1, 2, 3]),
+	lb := int linked_list :: la.head.next.next,
+	la append: lb,
+	assert: la ordered: [1, 2],
+	assert: lb ordered: [3],
+	assert: int reverse_view :: la ordered: [2, 1],
+	assert: int reverse_view :: lb ordered: [3],
+
+	la := list([1, 2, 3]),
+	lb := int linked_list :: la.head.next.next.next,
+	la append: lb,
+	assert: la ordered: [1, 2, 3],
+	assert: lb ordered: [1, 2, 3],
+	assert: int reverse_view :: la ordered: [3, 2, 1],
+	assert: int reverse_view :: lb ordered: [3, 2, 1],
+
+	la := list([1, 2, 3]),
+	lb := int linked_list :: la.head.next,
+	la := int linked_list :: la.head.next.next,
+	assert: la ordered: [3, 1, 2],
+	assert: lb ordered: [2, 3, 1],
+	la append: lb,
+	assert: la ordered: [3, 1],
+	assert: lb ordered: [2],
+	assert: int reverse_view :: la ordered: [1, 3],
+	assert: int reverse_view :: lb ordered: [2],
+
+	la := list([1, 2, 3, 4, 5, 6]),
+	lb := int linked_list :: la.head.next,
+	lc := int linked_list :: la.head.next.next,
+	ld := int linked_list :: la.head.next.next.next,
+	assert: la ordered: [1, 2, 3, 4, 5, 6],
+	assert: lb ordered: [2, 3, 4, 5, 6, 1],
+	assert: lc ordered: [3, 4, 5, 6, 1, 2],
+	assert: ld ordered: [4, 5, 6, 1, 2, 3],
+	la append: lc,
+	assert: la ordered: [1, 2],
+	assert: lb ordered: [2, 1],
+	assert: lc ordered: [3, 4, 5, 6],
+	assert: ld ordered: [4, 5, 6, 3],
+	assert: int reverse_view :: la ordered: [2, 1],
+	assert: int reverse_view :: lb ordered: [1, 2],
+	assert: int reverse_view :: lc ordered: [6, 5, 4, 3],
+	assert: int reverse_view :: ld ordered: [3, 6, 5, 4]
+}
+
+func append(a, b T node) {
+	b.prev next: a,
+	a.prev next: b,
+	tmp := b.prev,
+	b.prev := a.prev,
+	a.prev := tmp
+}
+
+func next:(p T link, n T node) {
+	if: p node: (p){ p.next := [node? n] } nil: { panic("impossible") }
+}
+
+func prev:(n T link, p T node) {
+	if: n node: (n){ n.prev := [node? p] } nil: { panic("impossible") }
+}
+
+// Calls f for each element in ll in sequence from front to back.
+Func for:each:(ll T linked_list, f (T){}) {
+	if: ll.empty true: {
+		return()
+	},
+	p := ll.head,
+	do: {
+		f(p.value),
+		p := p.next
+	} while: { p != ll.head }
+}
+
+// Returns whether a and b contain the same elements in the same order.
+Func =(a T linked_list : { =(T, T)bool }, b T linked_list) bool {
+	if: a.empty true: {
+		return: b.empty
+	},
+	if: b.empty true: {
+		return: false
+	},
+	ap := a.head,
+	bp := b.head,
+	do: {
+		if: ap.value = bp.value false: {
+			return: false
+		},
+		ap := ap.next,
+		bp := bp.next
+	} while: { ap != a.head && { bp != b.head } },
+	return: ap = a.head && { bp = b.head }
+}
+
+test equal {
+	list := (a [int]){ int linked_list :: container#new(a) },
+
+	assert: list([]) eq: list([]),
+	assert: list([1]) eq: list([1]),
+	assert: list([1, 2]) eq: list([1, 2]),
+	assert: list([1, 2, 3]) eq: list([1, 2, 3]),
+
+	assert: list([]) ne: list([1]),
+	assert: list([1]) ne: list([]),
+	assert: list([1]) ne: list([2]),
+	assert: list([1, 2]) ne: list([1]),
+	assert: list([1]) ne: list([1, 2]),
+	assert: list([1, 2]) ne: list([3, 2]),
+	assert: list([1, 2]) ne: list([1, 3]),
+	assert: list([1, 2]) ne: list([2, 1]),
+	assert: list([1, 2, 3]) ne: list([1, 2]),
+	assert: list([1, 2]) ne: list([1, 2, 3]),
+	assert: list([1, 2, 3]) ne: list([1, 2, 4]),
+	assert: list([1, 2, 3]) ne: list([4, 5, 6])
+}
+
+// Returns whether a is lexically less than, equal to, or greater than b.
+Func <=>(a T linked_list : { <=>(T, T)O, O ordering }, b T linked_list) ordering {
+	if: a.empty true: {
+		return: b.empty true? { equal } false? { less }
+	},
+	if: b.empty true: {
+		return: greater
+	},
+	ap := a.head,
+	bp := b.head,
+	do: {
+		if: ap.value < bp.value true: {
+			return: less
+		},
+		if: ap.value <= bp.value false: {
+			return: greater
+		},
+		ap := ap.next,
+		bp := bp.next
+	} while: { ap != a.head && { bp != b.head } },
+	return: ap = a.head false? {
+		greater
+	} true? {
+		bp = b.head true? { equal } false? { less }
+	}
+}
+
+test compare {
+	list := (a [int]){ int linked_list :: container#new(a) },
+	assert: list([]) cmp: list([]) is: equal,
+	assert: list([]) cmp: list([1]) is: less,
+	assert: list([1]) cmp: list([]) is: greater,
+	assert: list([1, 2]) cmp: list([2, 2]) is: less,
+	assert: list([1, 2]) cmp: list([1, 2]) is: equal,
+	assert: list([1, 2]) cmp: list([0, 2]) is: greater,
+	assert: list([1, 2]) cmp: list([1, 3]) is: less,
+	assert: list([1, 2]) cmp: list([1, 2]) is: equal,
+	assert: list([1, 2]) cmp: list([1, 1]) is: greater,
+	assert: list([1, 2, 3]) cmp: list([1, 2, 4]) is: less,
+	assert: list([1, 2, 3]) cmp: list([1, 2, 3]) is: equal,
+	assert: list([1, 2, 3]) cmp: list([1, 2, 2]) is: greater,
+	assert: list([2]) cmp: list([2, 1]) is: less,
+	assert: list([2, 1]) cmp: list([2]) is: greater,
+	assert: list([3]) cmp: list([2, 1]) is: greater,
+	assert: list([2, 1]) cmp: list([3]) is: less,
+
+	flist := (a [float64]){ float64 linked_list :: container#new(a) },
+	assert: flist([2, 1]) cmp: flist([3]) is: less,
+	assert: flist([2, 1]) cmp: flist([2, 1]) is: equal,
+	assert: flist([3]) cmp: flist([2, 1]) is: greater,
+	assert: flist([1, 2]) cmp: flist([1, NaN64]) is: greater,
+	assert: flist([1, NaN64]) cmp: flist([1, 2]) is: greater
+}
+
+// Adds the string representation of ll to print buffer buf.
+Func add:(buf print#buffer, ll T linked_list : T print#printable) {
+	buf container#add: ll
+}
+
+test print_buffer_add {
+	assert: print#string(int linked_list :: new()) eq: "[]",
+	assert: print#string(int linked_list :: container#new([1, 2, 3])) eq: "[1, 2, 3]",
+	assert: print#string(string linked_list :: container#new(["hello", "world", "こんにちは", "皆さん"])) eq: "[hello, world, こんにちは, 皆さん]",
+	assert: print#string([int] linked_list :: container#new([[1, 2], [], [3]])) eq: "[[1, 2], [], [3]]"
+}
+
+// Adds ll and its contents to hash state hs.
+Func add:(hs hash#state, ll T linked_list : T hash#hashable) {
+	n := 0,
+	for: ll each: (t){
+		hs add: t,
+		++n
+	},
+	hs add: n
+}
+
+// A utility type for testing a linked list's .prev links.
+// It has a for:each: that goes in reverse order
+// for use with assert:ordered:.
+type T reverse_view T linked_list
+
+func for:each:(r T reverse_view, f (T){}) {
+	ll := T linked_list :: r,
+	if: ll.empty true: {
+		return()
+	},
+	p := ll.tail,
+	do: {
+		f(p.value),
+		p := p.prev
+	} while: { p != ll.tail }
+}
+
+test reverse_view {
+	assert: int reverse_view :: (int linked_list :: new()) ordered: [],
+
+	ll := int linked_list :: container#new([1, 2, 3, 4]),
+	assert: ll ordered: [1, 2, 3, 4],
+	assert: int reverse_view :: ll ordered: [4, 3, 2, 1]
+}
