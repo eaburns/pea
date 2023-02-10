@@ -1,0 +1,81 @@
+Import "basic"
+import "print"
+
+// An absolute point in time.
+// A point can represent absolute points in time
+// with nanosecond precision within the range
+// [-292277022657-01-27T08:29:52+00:00, 292277026596-12-04T15:30:07.99999999+00:00]
+Type point ([.d duration])
+
+// Epoch is the time point representing
+// January 1, year 1, 00:00:00.000000000 UTC.
+// Other time points can be created by adding or subtracting durations from epoch.
+Const epoch := point :: [.d zero_duration]
+
+// Positive infinity time point.
+Const infinite_point := point :: [.d infinite_duration]
+
+// Negative infinity time point.
+Const negative_infinite_point := point :: [.d -infinite_duration]
+
+// The minimum representable, finite time point.
+Const min_point := point :: [.d min_duration]
+
+// The maximum representable, finite time point.
+Const max_point := point :: [.d max_duration]
+
+// Returns the time point t+d or respectively t-d.
+Func +(t point, d duration) point { return: [.d t.d + d] }
+Func -(t point, d duration) point { return: [.d t.d - d] }
+
+// Returns the duration between two time points.
+Func -(a, b point) duration { return: a.d - b.d }
+
+test point_subtraction {
+	assert: (epoch + second) - epoch eq: second,
+	assert: epoch - (epoch + second) eq: -second
+}
+
+// Returns whether a is equal to b.
+Func =(a, b point) bool { return: a.d = b.d }
+
+test point_equal {
+	assert: epoch = epoch eq: true,
+	assert: epoch + second = epoch + second eq: true,
+	assert: epoch + second = epoch - second eq: false
+}
+
+// Returns whether a is less than, equal to, or greater than b.
+Func <=>(a, b point) ordering { return: a.d <=> b.d }
+
+test point_comparison {
+	assert: epoch <=> epoch + 1*second eq: less,
+	assert: epoch <=> epoch eq: equal,
+	assert: epoch + 1*second <=> epoch eq: greater,
+	assert: min_point <=> epoch eq: less,
+	assert: epoch <=> min_point eq: greater,
+	assert: max_point <=> epoch eq: greater,
+	assert: epoch <=> max_point eq: less,
+	assert: infinite_point <=> negative_infinite_point eq: greater,
+	assert: negative_infinite_point <=> infinite_point eq: less,
+	assert: infinite_point <=> infinite_point eq: equal,
+	assert: negative_infinite_point <=> negative_infinite_point eq: equal
+}
+
+// point doesn't implement print#printable function.
+// Instead, you can print it as a string by converting it to a duration from the epoch.
+// Here are some examples.
+test point_as_string {
+	t := epoch + 365*24*hour + 1*second,
+
+	// Human-readable duration since the epoch.
+	assert: print#string(t - epoch) eq: "8760h1s",
+
+	// Seconds from epoch — "Unix seconds"
+	assert: print#string(int64 :: (t - epoch)/second) eq: "31536001",
+
+	// Miliseconds from epoch — "Unix milliseconds"
+	assert: print#string(int64 :: (t - epoch)/millisecond) eq: "31536001000"
+
+	// and so-forth…
+}
