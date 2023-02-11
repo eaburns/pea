@@ -1,0 +1,154 @@
+Import "basic"
+import "print"
+
+// A time zone.
+//
+// Time zones map time points to and from civil times.
+Type zone (
+// TODO: read time zones from the zone info database.
+// (Using int instead of [.] to bypass compiler bug in LLVM backend,
+// emitting a type definition `%"time _zone" = type void`,
+// which LLVM rejects for the void type.)
+int)
+
+// The UTC time zone.
+Const UTC := zone :: 0
+
+// Returns the civil time for p in time zone z.
+//
+// If p is infinite_point or negative_infinite_point then it returns civil time
+// for max_point or min_point respectively instead.
+Func civil(p point, z zone) civil {
+	if: p = infinite_point true: {
+		p := max_point
+	},
+	if: p = negative_infinite_point true: {
+		p := min_point
+	},
+	// TODO: The only timezone is UTC, so just hard-code it for now.
+	return: utc(p)
+}
+
+func utc(p point) civil {
+	s := p.d.s,
+	ns := int64 :: p.d.ns,
+	if: s < 0 true: {
+		++s,
+		ns := ns - 1.0e9
+	},
+	return: normal(1970, 1, 1, 0, 0, s, ns)
+}
+
+test point_to_civil {
+	assert: civil(epoch, UTC) eq: civil(1970, 1, 1),
+	assert: civil(epoch + nanosecond, UTC) eq: civil(1970, 1, 1, 0, 0, 0, 1),
+	assert: civil(epoch + second, UTC) eq: civil(1970, 1, 1, 0, 0, 1, 0),
+	assert: civil(epoch + 24*hour, UTC) eq: civil(1970, 1, 2, 0, 0, 0, 0),
+	assert: civil(epoch - nanosecond, UTC) eq: civil(1970, 1, 1, 0, 0, 0, -1),
+	assert: civil(epoch - second, UTC) eq: civil(1970, 1, 1, 0, 0, -1),
+	assert: civil(epoch - 24*hour, UTC) eq: civil(1969, 12, 31, 0, 0, 0),
+	assert: civil(max_point, UTC) eq: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)),
+
+	// Clamped to max_point.
+	assert: civil(infinite_point, UTC) eq: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)),
+	assert: civil(min_point, UTC) eq: civil(-292277022657, 1, 27, 8, 29, 52, 0),
+
+	// Clamped to min_point.
+	assert: civil(negative_infinite_point, UTC) eq: civil(-292277022657, 1, 27, 8, 29, 52, 0)
+}
+
+// Returns the absolute time point for c in time zone z.
+//
+// If the civil time is beyond the maximum or minimum time point,
+// then it returns infinite_point or negative_infinite_point respectively instead.
+Func point(c civil, z zone) point {
+	if: c > civil(max_point, z) true: {
+		return: infinite_point
+	},
+	if: c < civil(min_point, z) true: {
+		return: negative_infinite_point
+	},
+	// TODO: The only timezone is UTC, so just hard-code it for now.
+	return: utc(c)
+}
+
+/*
+	days_from_epoch_utc is adapted from
+	https://github.com/abseil/abseil-cpp/blob/master/absl/time/internal/cctz/include/cctz/civil_time_detail.h
+	which contains the following notice:
+		Copyright 2016 Google Inc. All Rights Reserved.
+
+		Licensed under the Apache License, Version 2.0 (the "License");
+		you may not use this file except in compliance with the License.
+		You may obtain a copy of the License at
+
+		https://www.apache.org/licenses/LICENSE-2.0
+
+		Unless required by applicable law or agreed to in writing, software
+		distributed under the License is distributed on an "AS IS" BASIS,
+		WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+		See the License for the specific language governing permissions and
+		limitations under the License
+*/
+// Returns the offset from the epoch in days.
+func days_from_epoch_utc(y, m, d int64) int64 {
+	eyear := m <= 2 true? { y - 1 } false? { y },
+	era := (eyear >= 0 true? { eyear } false? { eyear - 399 })/400,
+	yoe := eyear - era*(int64 :: 400),
+	doy := ((int64 :: 153)*(m + (m > 2 true? { int64 :: -3 } false? { 9 })) + 2)/5 + d - 1,
+	doe := yoe*(int64 :: 365) + yoe/4 - yoe/100 + doy,
+	return: era*(int64 :: 146097) + doe - 719468
+}
+
+func utc(c civil) point {
+	day := hour*24,
+	days := days_from_epoch_utc(c.y, int64 :: c.m, int64 :: c.d),
+	if: days < 0 true: {
+		// On negative, it's possible that days < min_duration,
+		// but after adding hours, minutes, seconds, and nanoseconds,
+		// the duratino will be back in range.
+		// This happens for times at or close to min_point.
+		// To prevent the days multiplication from saturating at -infinity,
+		// we add +1 to days before multiplying,
+		// then we subtract off that extra day after the time has been added.
+		return: epoch +
+			(days + 1)*day +
+			(int64 :: c.hh)*hour +
+			(int64 :: c.mm)*minute +
+			(int64 :: c.ss)*second +
+			(int64 :: c.nn)*nanosecond -
+			day
+	},
+	return: epoch +
+		days*day +
+		(int64 :: c.hh)*hour +
+		(int64 :: c.mm)*minute +
+		(int64 :: c.ss)*second +
+		(int64 :: c.nn)*nanosecond
+}
+
+test civil_to_point {
+	assert: point(civil(-292277022657, 1, 27, 8, 29, 52, 0), UTC) eq: min_point,
+	assert: point(civil(1970, 1, 1), UTC) eq: epoch,
+	assert: point(civil(1970, 1, 1, 0, 0, 0, 1), UTC) eq: epoch + nanosecond,
+	assert: point(civil(1970, 1, 1, 0, 0, 1, 0), UTC) eq: epoch + second,
+	assert: point(civil(1970, 1, 2, 0, 0, 0, 0), UTC) eq: epoch + 24*hour,
+
+	c := civil(1970, 1, 1, 0, 0, 0, -1),
+	assert: point(civil(1970, 1, 1, 0, 0, 0, -1), UTC) eq: epoch - nanosecond,
+	assert: point(civil(1970, 1, 1, 0, 0, -1), UTC) eq: epoch - second,
+	assert: point(civil(1969, 12, 31, 0, 0, 0), UTC) eq: epoch - 24*hour,
+	assert: point(civil(-1, 0, 0, 0, 0, 0), UTC) eq: epoch - 62201520000*second,
+	assert: point(civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)), UTC) eq: max_point,
+
+	// Too large for finite points.
+	assert: point(civil(292277026597, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)), UTC) eq: infinite_point,
+	assert: point(civil(-292277022657, 1, 27, 8, 29, 52, 0), UTC) eq: min_point,
+
+	// Too small for finite points.
+	assert: point(civil(-292277022658, 1, 27, 8, 29, 52, 0), UTC) eq: negative_infinite_point
+}
+
+// Need to print points for the civil_to_point test.
+// Just print them as durations.
+func add:(buf print#buffer, t point) { return: buf ++ t.d }
