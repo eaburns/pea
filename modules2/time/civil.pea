@@ -1,0 +1,771 @@
+Import "basic"
+import "print"
+
+// A time represented as years, months, days, hours, minutes, seconds, and nanoseconds, following the Gregorian Calendar.
+Type civil ([
+	.y int64,
+	.m int8,
+	.d int8,
+	.hh int8,
+	.mm int8,
+	.ss int8,
+	.nn int32,
+])
+
+// Returns the compontents of the civil time.
+Func .year(c civil) int64 { return: c.y }
+Func .month(c civil) int { return: int :: c.m }
+Func .day(c civil) int { return: int :: c.d }
+Func .hour(c civil) int { return: int :: c.hh }
+Func .minute(c civil) int { return: int :: c.mm }
+Func .second(c civil) int { return: int :: c.ss }
+Func .nanosecond(c civil) int { return: int :: c.nn }
+
+// Returns a new civil time with the given compontents.
+// Times are normalized on overflow such that,
+// for example,
+// 	civil(2021, 1, 32)
+// becomes
+// 	civil(2021, 2, 1),
+// since month 1 (January) only has 31 days.
+// This simplifies arithmetic on dates.
+// For example, the day following a given civil time c,
+// can be computed using:
+// 	civil(c.year, c.month, c.day+1)
+// and the day before using:
+// 	civil(c.year, c.month, c.day-1)
+Func civil(y int64, m, d int) civil {
+	return: civil(y, m, d, 0, 0, 0, 0)
+}
+
+Func civil(y int64, m, d, hh, mm, ss int) civil {
+	return: civil(y, m, d, hh, mm, ss, 0)
+}
+
+Func civil(y int64, m, d, hh, mm, ss, nn int) civil {
+	return: normal(y, int64 :: m, int64 :: d, int64 :: hh, int64 :: mm, int64 :: ss, int64 :: nn)
+}
+
+Func year:month:day:(y int64, m, d int) civil {
+	return: civil(y, m, d)
+}
+
+Func year:month:day:hour:minute:second:(y int64, m, d, hh, mm, ss int) civil {
+	return: civil(y, m, d, hh, mm, ss)
+}
+
+Func year:month:day:hour:minute:second:nanosecond:(y int64, m, d, hh, mm, ss, nn int) civil {
+	return: civil(y, m, d, hh, mm, ss, nn)
+}
+
+test construct {
+	ct := civil(1, 2, 3),
+	assert: ct.year eq: 1,
+	assert: ct.month eq: 2,
+	assert: ct.day eq: 3,
+	assert: ct.hour eq: 0,
+	assert: ct.minute eq: 0,
+	assert: ct.second eq: 0,
+	assert: ct.nanosecond eq: 0,
+
+	ct := civil(1, 2, 3, 4, 5, 6),
+	assert: ct.year eq: 1,
+	assert: ct.month eq: 2,
+	assert: ct.day eq: 3,
+	assert: ct.hour eq: 4,
+	assert: ct.minute eq: 5,
+	assert: ct.second eq: 6,
+	assert: ct.nanosecond eq: 0,
+
+	ct := civil(1, 2, 3, 4, 5, 6, 7),
+	assert: ct.year eq: 1,
+	assert: ct.month eq: 2,
+	assert: ct.day eq: 3,
+	assert: ct.hour eq: 4,
+	assert: ct.minute eq: 5,
+	assert: ct.second eq: 6,
+	assert: ct.nanosecond eq: 7,
+
+	ct := year: 1 month: 2 day: 3,
+	assert: ct.year eq: 1,
+	assert: ct.month eq: 2,
+	assert: ct.day eq: 3,
+	assert: ct.hour eq: 0,
+	assert: ct.minute eq: 0,
+	assert: ct.second eq: 0,
+	assert: ct.nanosecond eq: 0,
+
+	ct := year: 1 month: 2 day: 3 hour: 4 minute: 5 second: 6,
+	assert: ct.year eq: 1,
+	assert: ct.month eq: 2,
+	assert: ct.day eq: 3,
+	assert: ct.hour eq: 4,
+	assert: ct.minute eq: 5,
+	assert: ct.second eq: 6,
+	assert: ct.nanosecond eq: 0,
+
+	ct := year: 1 month: 2 day: 3 hour: 4 minute: 5 second: 6 nanosecond: 7,
+	assert: ct.year eq: 1,
+	assert: ct.month eq: 2,
+	assert: ct.day eq: 3,
+	assert: ct.hour eq: 4,
+	assert: ct.minute eq: 5,
+	assert: ct.second eq: 6,
+	assert: ct.nanosecond eq: 7
+}
+
+test arithmetic {
+	// leap year
+	t := civil(2020, 2, 28),
+	assert: civil(t.year, t.month, t.day + 1) eq: civil(2020, 2, 29),
+	t := civil(2020, 1, 29),
+	assert: civil(t.year, t.month + 1, t.day) eq: civil(2020, 2, 29),
+
+	// not a leap year
+	t := civil(2021, 2, 28),
+	assert: civil(t.year, t.month, t.day + 1) eq: civil(2021, 3, 1),
+	t := civil(2021, 1, 29),
+	assert: civil(t.year, t.month + 1, t.day) eq: civil(2021, 3, 1)
+}
+
+// Returns the result of comparing a=b.
+Func =(a civil, b civil) bool {
+	return: (a <=> b) = equal
+}
+
+test equal {
+	assert: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 2, 3, 4, 5, 6, 7) eq: true,
+	assert: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 2, 3, 4, 5, 6, 0) eq: false,
+	assert: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 2, 3, 4, 5, 0, 7) eq: false,
+	assert: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 2, 3, 4, 0, 6, 7) eq: false,
+	assert: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 2, 3, 0, 5, 6, 7) eq: false,
+	assert: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 2, 0, 4, 5, 6, 7) eq: false,
+	assert: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 0, 3, 4, 5, 6, 7) eq: false,
+	assert: civil(1, 2, 3, 4, 5, 6, 7) = civil(0, 2, 3, 4, 5, 6, 7) eq: false
+}
+
+// Returns whether a is less than, equal to, or greater than b.
+Func <=>(a, b civil) ordering {
+	if: a.y != b.y true: {
+		return: a.y <=> b.y
+	},
+	if: a.m != b.m true: {
+		return: a.m <=> b.m
+	},
+	if: a.d != b.d true: {
+		return: a.d <=> b.d
+	},
+	if: a.hh != b.hh true: {
+		return: a.hh <=> b.hh
+	},
+	if: a.mm != b.mm true: {
+		return: a.mm <=> b.mm
+	},
+	if: a.ss != b.ss true: {
+		return: a.ss <=> b.ss
+	},
+	return: a.nn <=> b.nn
+}
+
+test compare {
+	assert: civil(0, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 0) is: equal,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 0, 0, 0, 0, 0, 1) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: equal,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: equal,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: equal,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: greater,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: equal,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: greater,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: greater,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: equal,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: equal,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: equal,
+
+	assert: civil(1, 1, 1, 1, 1, 1, 1) cmp: civil(2, 0, 0, 0, 0, 0, 0) is: less,
+	assert: civil(1, 1, 1, 1, 1, 1, 1) cmp: civil(1, 2, 0, 0, 0, 0, 0) is: less,
+	assert: civil(1, 1, 1, 1, 1, 1, 1) cmp: civil(1, 1, 2, 0, 0, 0, 0) is: less,
+	assert: civil(1, 1, 1, 1, 1, 1, 1) cmp: civil(1, 1, 1, 2, 0, 0, 0) is: less,
+	assert: civil(1, 1, 1, 1, 1, 1, 1) cmp: civil(1, 1, 1, 1, 2, 0, 0) is: less,
+	assert: civil(1, 1, 1, 1, 1, 1, 1) cmp: civil(1, 1, 1, 1, 1, 2, 0) is: less,
+	assert: civil(1, 1, 1, 1, 1, 1, 1) cmp: civil(1, 1, 1, 1, 1, 1, 2) is: less,
+
+	assert: civil(0, 0, 0, 0, 0, 0, 0) > civil(0, 0, 0, 0, 0, 0, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) > civil(0, 0, 0, 0, 0, 0, 1) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) > civil(0, 0, 0, 0, 0, 1, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) > civil(0, 0, 0, 0, 1, 0, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) > civil(0, 0, 0, 1, 0, 0, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) > civil(0, 0, 1, 0, 0, 0, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) > civil(0, 1, 0, 0, 0, 0, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 0) > civil(1, 0, 0, 0, 0, 0, 0) eq: false,
+
+	assert: civil(0, 0, 0, 0, 0, 0, 1) > civil(0, 0, 0, 0, 0, 0, 1) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) > civil(0, 0, 0, 0, 0, 1, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) > civil(0, 0, 0, 0, 1, 0, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) > civil(0, 0, 0, 1, 0, 0, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) > civil(0, 0, 1, 0, 0, 0, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) > civil(0, 1, 0, 0, 0, 0, 0) eq: false,
+	assert: civil(0, 0, 0, 0, 0, 0, 1) > civil(1, 0, 0, 0, 0, 0, 0) eq: false,
+
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: equal,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 0, 1, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: equal,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 0, 1, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: greater,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: equal,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 0, 1, 0, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: greater,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: greater,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: equal,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: less,
+	assert: civil(0, 0, 1, 0, 0, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: greater,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: equal,
+	assert: civil(0, 1, 0, 0, 0, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: less,
+
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 0, 1) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 0, 1, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 0, 1, 0, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 0, 1, 0, 0, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 0, 1, 0, 0, 0, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(0, 1, 0, 0, 0, 0, 0) is: greater,
+	assert: civil(1, 0, 0, 0, 0, 0, 0) cmp: civil(1, 0, 0, 0, 0, 0, 0) is: equal,
+
+	assert: civil(2, 0, 0, 0, 0, 0, 0) cmp: civil(1, 1, 1, 1, 1, 1, 1) is: greater,
+	assert: civil(1, 2, 0, 0, 0, 0, 0) cmp: civil(1, 1, 1, 1, 1, 1, 1) is: greater,
+	assert: civil(1, 1, 2, 0, 0, 0, 0) cmp: civil(1, 1, 1, 1, 1, 1, 1) is: greater,
+	assert: civil(1, 1, 1, 2, 0, 0, 0) cmp: civil(1, 1, 1, 1, 1, 1, 1) is: greater,
+	assert: civil(1, 1, 1, 1, 2, 0, 0) cmp: civil(1, 1, 1, 1, 1, 1, 1) is: greater,
+	assert: civil(1, 1, 1, 1, 1, 2, 0) cmp: civil(1, 1, 1, 1, 1, 1, 1) is: greater,
+	assert: civil(1, 1, 1, 1, 1, 1, 2) cmp: civil(1, 1, 1, 1, 1, 1, 1) is: greater
+}
+
+// Adds a the string representation of c to the print#buffer.
+//
+// The string representation is YYYY:MM:DDTHH:mm:SS.NN, where:
+// 	YYYY is the year,
+// 	MM is the month number, with January=1,
+// 	DD is the day of the month with 1 being the first day,
+// 	T is the literal character 'T'.
+// 	HH is the hour, 00 to 23,
+//	mm is the minute,
+// 	SS is the second,
+// 	and NN is the sub-second fraction.
+// If the HH, mm, SS, and NN are all 0, then they are not printed, nor is the T.
+// If the subsecond fraction is 0, then it is not printed.
+Func add:(buf print#buffer, c civil) {
+	buf ++ pad4(c.year) ++ "-" ++ pad2(c.month) ++ "-" ++ pad2(c.day),
+	if: c.hh = 0 && { c.mm = 0 && { c.ss = 0 && { c.nn = 0 } } } true: {
+		return()
+	},
+	buf ++ "T" ++ pad2(c.hour) ++ ":" ++ pad2(c.minute) ++ ":" ++ pad2(c.second),
+	if: c.nn = 0 true: {
+		return()
+	},
+	frac := print#string(((float64 :: c.nanosecond)/1.0e9)),
+	frac := frac[1, frac.length], // trim leading "0"
+	buf ++ frac
+}
+
+test print_civil {
+	assert: print#string(civil(2021, 6, 22)) eq: "2021-06-22",
+	assert: print#string(civil(2021, 6, 22, 12, 13, 14)) eq: "2021-06-22T12:13:14",
+	assert: print#string(civil(2021, 6, 22, 12, 13, 14, 5.0e8)) eq: "2021-06-22T12:13:14.5"
+}
+
+/*
+	Civil time normalization is adapted from
+	https://github.com/abseil/abseil-cpp/blob/4bb739310c0257bedc41bfe2824c3f2860398a65/absl/time/internal/cctz/include/cctz/civil_time_detail.h
+	which contains the following notice:
+		Copyright 2016 Google Inc. All Rights Reserved.
+
+		Licensed under the Apache License, Version 2.0 (the "License");
+		you may not use this file except in compliance with the License.
+		You may obtain a copy of the License at
+
+		https://www.apache.org/licenses/LICENSE-2.0
+
+		Unless required by applicable law or agreed to in writing, software
+		distributed under the License is distributed on an "AS IS" BASIS,
+		WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+		See the License for the specific language governing permissions and
+		limitations under the License
+*/
+
+func normal(y, m, d, hh, mm, ss, nn int64) civil {
+	if: nn < 0 || { nn >= 1.0e9 } true: {
+		return: n_ns(y, m, d, hh, mm, ss, nn)
+	},
+	nnn := int32 :: nn,
+	if: ss < 0 || { ss >= 60 } true: {
+		return: n_sec(y, m, d, hh, mm, ss/60, ss%60, nnn)
+	},
+	nss := int8 :: ss,
+	if: mm < 0 || { mm >= 60 } true: {
+		return: n_min(y, m, d, hh, mm/60, mm%60, nss, nnn)
+	},
+	nmm := int8 :: mm,
+	if: hh < 0 || { hh >= 24 } true: {
+		return: n_hour(y, m, d, hh/24, hh%24, nmm, nss, nnn)
+	},
+	nhh := int8 :: hh,
+	if: d < 1 || { d > 28 || { m < 1 || { m > 12 } } } true: {
+		return: n_month(y, m, d, 0, nhh, nmm, nss, nnn)
+	},
+	nd := int8 :: d,
+	nm := int8 :: m,
+	return: [.y y, .m nm, .d nd, .hh nhh, .mm nmm, .ss nss, .nn nnn]
+}
+
+func n_ns(y, m, d, hh, mm, ss, nn int64) civil {
+	cs := nn/1.0e9,
+	nn %= 1.0e9,
+	if: nn < 0 true: {
+		--cs,
+		nn += 1.0e9
+	},
+	cm := ss/60 + cs/60,
+	ss := ss%60 + cs%60,
+	return: n_sec(y, m, d, hh, mm, cm, ss, int32 :: nn)
+}
+
+func n_sec(y, m, d, hh, mm, cm, ss int64, nn int32) civil {
+	cm += ss/60,
+	ss %= 60,
+	if: ss < 0 true: {
+		--cm,
+		ss += 60
+	},
+	ch := mm/60 + cm/60,
+	mm := mm%60 + cm%60,
+	return: n_min(y, m, d, hh, ch, mm, int8 :: ss, nn)
+}
+
+func n_min(y, m, d, hh, ch, mm int64, ss int8, nn int32) civil {
+	ch += mm/60,
+	mm %= 60,
+	if: mm < 0 true: {
+		--ch,
+		mm += 60
+	},
+	cd := hh/24 + ch/24,
+	hh := hh%24 + ch%24,
+	return: n_hour(y, m, d, cd, hh, int8 :: mm, ss, nn)
+}
+
+func n_hour(y, m, d, cd, hh int64, mm, ss int8, nn int32) civil {
+	cd += hh/24,
+	hh %= 24,
+	if: hh < 0 true: {
+		--cd,
+		hh += 24
+	},
+	return: n_month(y, m, d, cd, int8 :: hh, mm, ss, nn)
+}
+
+func n_month(y, m, d, cd int64, hh, mm, ss int8, nn int32) civil {
+	if: m != 12 true: {
+		y += m/12,
+		m %= 12,
+		if: m <= 0 true: {
+			--y,
+			m += 12
+		}
+	},
+	return: n_day(y, int8 :: m, d, cd, hh, mm, ss, nn)
+}
+
+func n_day(y int64, m int8, d, cd int64, hh, mm, ss int8, nn int32) civil {
+	ey := y%400,
+	oey := ey,
+	ey += (cd/146097)*(int64 :: 400),
+	cd := cd%146097,
+	if: cd < 0 true: {
+		ey -= 400,
+		cd += 146097
+	},
+	ey += (d/146097)*(int64 :: 400),
+	d := d%146097 + cd,
+	if: d > 0 true: {
+		if: d > 146097 true: {
+			ey += 400,
+			d -= 146097
+		}
+	} false: {
+		// Special handling for the common case
+		// of going to the previous year.
+		// This avoids the loops below in that case.
+		if: d > -365 true: {
+			--ey,
+			d += days_per_year(ey, m)
+		} false: {
+			ey -= 400,
+			d += 146097
+		}
+	},
+	if: d > 365 true: {
+		n := days_per_century(ey, m),
+		while: { d > n } true: {
+			d -= n,
+			ey += 100,
+			n := days_per_century(ey, m)
+		},
+		n := days_per_4years(ey, m),
+		while: { d > n } true: {
+			d -= n,
+			ey += 4,
+			n := days_per_4years(ey, m)
+		},
+		n := days_per_year(ey, m),
+		while: { d > n } true: {
+			d -= n,
+			++ey,
+			n := days_per_year(ey, m)
+		}
+	},
+	if: d > 28 true: {
+		n := days_per_month(ey, m),
+		while: { d > n } true: {
+			d -= n,
+			++m,
+			if: m > 12 true: {
+				++ey,
+				m := 1
+			},
+			n := days_per_month(ey, m)
+		}
+	},
+	y += (ey - oey),
+	return: [.y y, .m m, .d int8 :: d, .hh hh, .mm mm, .ss ss, .nn nn]
+}
+
+func is_leap_year(y int64) bool {
+	return: y%4 = 0 && { y%100 != 0 || { y%400 = 0 } }
+}
+
+func year_index(y int64, m int8) int64 {
+	return: (((m > 2 true? { y + 1 } false? { y })%400) + 400)%400
+}
+
+func days_per_century(y int64, m int8) int64 {
+	yi := year_index(y, m),
+	return: int64 :: yi = 0 || { yi > 300 } true? { 36525 } false? { 36524 }
+}
+
+func days_per_4years(y int64, m int8) int64 {
+	yi := year_index(y, m),
+	return: int64 :: yi = 0 || { yi > 300 || { (yi - 1)%100 < 96 } } true? { 1461 } false? { 1460 }
+}
+
+func days_per_year(y int64, m int8) int64 {
+	return: int64 :: is_leap_year(m > 2 true? { y + 1 } false? { y }) true? { 366 } false? { 365 }
+}
+
+const month_days := [int] :: [-1, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+func days_per_month(y int64, m int8) int64 {
+	return: int64 :: month_days[int :: m] + (m = 2 && { is_leap_year(y) } true? { 1 } false? { 0 })
+}
+
+test civil_norm {
+	assert: civil(2021, 1, 32) eq: civil(2021, 2, 1),
+
+	// leap year
+	assert: civil(2020, 2, 29) eq: civil(2020, 2, 29),
+	// not a leap year
+	assert: civil(2021, 2, 29) eq: civil(2021, 3, 1),
+
+	/*
+		// Golden fuzz tests generated with:
+		package main
+
+		import (
+			"fmt"
+			"math/rand"
+			"time"
+		)
+
+		const (
+			year = iota
+			month
+			day
+			hour
+			minute
+			second
+			nanosecond
+		)
+
+		func main() {
+			r := rand.New(rand.NewSource(5496804))
+			for i := 0; i < 100; i++ {
+				x := [...]int{0, 0, 0, 0, 0, 0, 0}
+				for j := range x {
+					switch x[j] = r.Int(); {
+					case j == year:
+						x[j] %= 280
+					case j == month:
+						x[j] %= 280
+					case j == day:
+						x[j] %= 28000
+					case j == hour:
+						x[j] %= 8760 * 20
+					case j == minute:
+						x[j] %= 60 * 8760 * 20
+					case j == second:
+						x[j] %= 60 * 60 * 8760 * 20
+					default:
+						x[j] %= int(int32(2e9))
+					}
+					if rand.Int()&0x1 == 0 {
+						x[j] = -x[j]
+					}
+				}
+				t := time.Date(x[0], time.Month(x[1]), x[2], x[3], x[4], x[5], x[6], time.UTC)
+				fmt.Printf("	assert: civil(%d, %d, %d, %d, %d, %d, %d) eq: civil(%d, %d, %d, %d, %d, %d, %d),\n",
+					x[0], x[1], x[2], x[3], x[4], x[5], x[6],
+					t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond())
+			}
+		}
+	*/
+	assert: civil(-27, 18, 8472, 16267, 4945413, -347847357, -47653461) eq: civil(-3, 11, 4, 2, 17, 2, 952346539),
+	assert: civil(-55, -160, 10269, -159390, 7985911, -556321058, -1020757060) eq: civil(-61, 1, 24, 14, 53, 20, 979242940),
+	assert: civil(137, 263, -19625, 11518, -6991174, 534780800, 1926085547) eq: civil(110, 1, 25, 12, 39, 21, 926085547),
+	assert: civil(-18, 100, 19340, -62085, 8120264, -270925700, -1335371428) eq: civil(42, 12, 19, 11, 35, 38, 664628572),
+	assert: civil(-135, 105, -5356, 149627, 793972, 493116997, 962110556) eq: civil(-107, 3, 16, 4, 48, 37, 962110556),
+	assert: civil(119, 4, 7740, -75880, -7812536, 460452418, -1908942623) eq: civil(131, 7, 8, 6, 30, 56, 91057377),
+	assert: civil(-180, 61, -11490, 43642, 8669608, -64282057, -219839484) eq: civil(-188, 12, 18, 23, 20, 22, 780160516),
+	assert: civil(17, 272, 16164, 113015, -4315038, 508751895, 997042528) eq: civil(104, 8, 23, 17, 40, 15, 997042528),
+	assert: civil(266, 205, -1489, -12828, -4114618, 367367761, -705791736) eq: civil(281, 4, 11, 1, 38, 0, 294208264),
+	assert: civil(0, -133, 24645, 111950, 10026562, 623847267, -1725380490) eq: civil(107, 11, 29, 22, 16, 25, 274619510),
+	assert: civil(246, 29, -14555, -52712, 4408758, 302531714, 1782420966) eq: civil(220, 6, 7, 19, 53, 15, 782420966),
+	assert: civil(105, 35, -14509, -127704, 1822651, -572065831, 745452792) eq: civil(38, 11, 15, 14, 20, 29, 745452792),
+	assert: civil(179, -96, 14234, 43495, 4523813, 610081627, 559254655) eq: civil(242, 10, 12, 23, 0, 7, 559254655),
+	assert: civil(155, 123, -15981, -105256, -10233631, -456964963, -1814103233) eq: civil(75, 6, 17, 16, 46, 15, 185896767),
+	assert: civil(-50, 47, 25041, 4283, 2574651, 128445630, -777511294) eq: civil(31, 11, 5, 1, 11, 29, 222488706),
+	assert: civil(71, -96, 10077, -69467, 8053523, -556248877, 1379295587) eq: civil(80, 4, 6, 4, 48, 24, 379295587),
+	assert: civil(133, -201, 3783, 155280, -8824565, 74522884, 1633914002) eq: civil(129, 10, 25, 8, 43, 5, 633914002),
+	assert: civil(163, 176, -19196, -42785, 7784803, -413242645, 316801975) eq: civil(121, 11, 6, 12, 5, 35, 316801975),
+	assert: civil(-31, -174, -6231, -104781, 8132190, 565875286, 643071220) eq: civil(-42, 10, 16, 23, 4, 46, 643071220),
+	assert: civil(-256, 19, -15990, -77715, -8617165, 347604552, 1275335565) eq: civil(-313, 6, 24, 22, 24, 13, 275335565),
+	assert: civil(-107, -225, 12322, 113834, 1290157, 19292071, -1010184688) eq: civil(-77, 12, 13, 7, 31, 29, 989815312),
+	assert: civil(-210, -146, 27997, 40740, 1599834, 523661837, -392383591) eq: civil(-122, 9, 7, 9, 31, 16, 607616409),
+	assert: civil(212, -157, 16270, -158373, -2694933, 341045093, -351796320) eq: civil(230, 12, 29, 22, 11, 52, 648203680),
+	assert: civil(-85, 205, 8339, 154720, -6158872, 589413660, 1118245605) eq: civil(-21, 6, 12, 14, 9, 1, 118245605),
+	assert: civil(-61, 268, 21822, 115172, -1114102, 489869466, 651207283) eq: civil(47, 7, 14, 22, 29, 6, 651207283),
+	assert: civil(-207, -170, 4678, -41, -5368518, -142990038, -385616228) eq: civil(-224, 10, 23, 4, 14, 41, 614383772),
+	assert: civil(247, 76, -19809, -49025, -7634780, -10196416, 1433636847) eq: civil(178, 7, 30, 8, 19, 45, 433636847),
+	assert: civil(160, -16, -25527, -14831, -5746203, -138703412, -1833503418) eq: civil(71, 9, 4, 6, 13, 26, 166496582),
+	assert: civil(272, -246, -16223, -43310, 6174929, -339574358, 407884173) eq: civil(203, 1, 13, 7, 16, 22, 407884173),
+	assert: civil(156, -253, -21502, 15357, 487769, 221370807, 1381641983) eq: civil(85, 8, 26, 18, 22, 28, 381641983),
+	assert: civil(-90, 102, -3991, 49746, 7538332, -318951093, -1682567564) eq: civil(-83, 5, 21, 3, 20, 25, 317432436),
+	assert: civil(105, -20, -24861, -58622, 4134882, 10347604, -704755094) eq: civil(36, 9, 4, 15, 2, 3, 295244906),
+	assert: civil(14, -144, -23422, 100822, -4970303, 378941005, -446240906) eq: civil(-49, 11, 6, 5, 0, 24, 553759094),
+	assert: civil(-276, -233, -27968, 146043, -3505232, 389917151, 1672745681) eq: civil(-350, 4, 9, 20, 47, 12, 672745681),
+	assert: civil(245, -139, -25802, -43379, 3740562, -458568055, -1878098517) eq: civil(150, 4, 25, 15, 41, 3, 121901483),
+	assert: civil(-24, 171, 22445, -10334, -6295158, 135026910, 1736246672) eq: civil(42, 9, 28, 14, 10, 31, 736246672),
+	assert: civil(-60, -140, 21399, 162874, -6560493, 252791703, -1242183626) eq: civil(0, 12, 13, 8, 22, 1, 757816374),
+	assert: civil(-56, 180, -4602, 51713, 6891022, 269587193, 609765698) eq: civil(-27, 11, 9, 8, 41, 53, 609765698),
+	assert: civil(218, -68, 19273, 91896, 3710706, -269577593, 670517995) eq: civil(274, 1, 3, 18, 26, 7, 670517995),
+	assert: civil(-89, -249, 4205, -55343, 6220192, 188202321, 959366013) eq: civil(-87, 2, 24, 21, 17, 21, 959366013),
+	assert: civil(-140, -224, 15145, 80046, 2173965, 35213810, 862794621) eq: civil(-103, 2, 2, 12, 21, 50, 862794621),
+	assert: civil(21, -7, 8179, 76228, 6758480, 177029390, 1473383638) eq: civil(69, 11, 16, 12, 9, 51, 473383638),
+	assert: civil(-55, -276, 5810, 174387, -7222255, 460938529, 1517397107) eq: civil(-42, 8, 3, 14, 33, 50, 517397107),
+	assert: civil(241, -111, -12784, 139171, 992892, 506196255, -1139601359) eq: civil(230, 6, 20, 1, 16, 13, 860398641),
+	assert: civil(10, -202, 11020, -175016, -5253799, -352487111, 1554474151) eq: civil(-18, 2, 17, 11, 35, 50, 554474151),
+	assert: civil(-276, 187, -4140, -156759, 9215480, -63892127, 309791313) eq: civil(-275, 10, 9, 12, 31, 13, 309791313),
+	assert: civil(-71, 95, 935, -140904, -4519507, -392816095, 1320009159) eq: civil(-98, 4, 11, 23, 18, 6, 320009159),
+	assert: civil(243, -157, -25546, 5440, -2494410, -452380649, -1817236154) eq: civil(141, 6, 6, 13, 12, 29, 182763846),
+	assert: civil(221, -76, 2684, -121640, -8907392, 320979127, 626216422) eq: civil(201, 4, 15, 0, 20, 7, 626216422),
+	assert: civil(237, -225, -21506, 94178, 2107830, 381525934, -131436501) eq: civil(186, 2, 12, 15, 55, 33, 868563499),
+	assert: civil(-103, 29, -832, 151953, 1473850, 379569153, -1040068160) eq: civil(-71, 3, 20, 1, 2, 31, 959931840),
+	assert: civil(95, 63, -7329, 75248, 9606174, -69254046, -63030325) eq: civil(104, 9, 30, 17, 39, 53, 936969675),
+	assert: civil(76, -12, -13224, -120044, -10204940, -218065340, -1667548762) eq: civil(-2, 9, 13, 11, 57, 38, 332451238),
+	assert: civil(-60, -201, -13086, -73112, 8821644, 151522042, 1036660905) eq: civil(-100, 7, 25, 12, 51, 23, 36660905),
+	assert: civil(111, 133, 27700, 77150, 6779817, -488797567, 761514517) eq: civil(204, 1, 16, 9, 50, 53, 761514517),
+	assert: civil(85, -80, 27431, -49138, 6354230, 215401861, 405843507) eq: civil(166, 8, 26, 7, 41, 1, 405843507),
+	assert: civil(-89, 170, 12562, 36515, 4974825, -13161690, -847416563) eq: civil(-28, 9, 6, 20, 43, 29, 152583437),
+	assert: civil(-249, 216, -14272, 131281, 7019691, 479547819, -1754878585) eq: civil(-227, 5, 11, 3, 34, 37, 245121415),
+	assert: civil(-203, 231, 12512, 144718, 6009503, 57238654, 456810489) eq: civil(-120, 3, 1, 16, 0, 34, 456810489),
+	assert: civil(249, 272, 13170, 15614, -9121355, 483245071, 1324643882) eq: civil(307, 5, 23, 10, 9, 32, 324643882),
+	assert: civil(74, -126, 16045, 29669, 7670346, -43638595, -1388640250) eq: civil(123, 12, 5, 18, 16, 3, 611359750),
+	assert: civil(-41, 226, 1878, -103811, -800695, -571184560, 455383335) eq: civil(-49, 6, 4, 13, 42, 20, 455383335),
+	assert: civil(228, -213, -19562, 64930, -7982663, 82395746, -309375504) eq: civil(151, 6, 10, 13, 19, 25, 690624496),
+	assert: civil(-210, -239, -3570, -81015, -10094327, -287724960, 11414957) eq: civil(-278, 9, 3, 6, 37, 0, 11414957),
+	assert: civil(-114, -55, 20992, -174889, 6578956, 613714893, 1440786045) eq: civil(-50, 10, 22, 20, 37, 34, 440786045),
+	assert: civil(-167, -194, -26737, -123911, -7529744, 547021551, 1789545003) eq: civil(-268, 6, 4, 7, 41, 52, 789545003),
+	assert: civil(-3, -73, -19119, -54826, -5592864, -457087352, 505785379) eq: civil(-93, 2, 11, 6, 53, 28, 505785379),
+	assert: civil(14, 257, -9800, -80124, 4542124, -29999105, 1709631638) eq: civil(7, 1, 15, 12, 58, 56, 709631638),
+	assert: civil(239, -187, 3589, -172715, 5070910, 385291782, 1845922082) eq: civil(235, 4, 20, 9, 39, 43, 845922082),
+	assert: civil(276, 54, 7845, -40368, 6616025, 347749197, -1267849359) eq: civil(320, 11, 20, 8, 4, 55, 732150641),
+	assert: civil(-247, -214, -9094, -150170, 10233295, 479101622, -535186912) eq: civil(-273, 9, 10, 12, 42, 1, 464813088),
+	assert: civil(64, -157, -15664, -150913, 6341427, 22307174, -327932652) eq: civil(3, 6, 29, 21, 53, 13, 672067348),
+	assert: civil(-38, -249, 15769, 131345, 1750984, -569030885, -1595503499) eq: civil(-16, 8, 12, 15, 55, 53, 404496501),
+	assert: civil(-118, 137, 16723, 130805, -1174397, 506477064, 1376592694) eq: civil(-33, 11, 8, 15, 47, 25, 376592694),
+	assert: civil(190, -16, -16844, -137110, 3743881, 82234413, 151036514) eq: civil(136, 7, 18, 18, 54, 33, 151036514),
+	assert: civil(239, -154, 20962, -37555, -2195459, 437757880, 1643776326) eq: civil(288, 11, 20, 5, 25, 41, 643776326),
+	assert: civil(77, 13, -15073, -63652, 3538204, 382942403, 674231727) eq: civil(48, 5, 1, 2, 57, 23, 674231727),
+	assert: civil(-49, -142, -251, -75433, 2476990, -507495398, -1597445830) eq: civil(-82, 6, 2, 7, 13, 20, 402554170),
+	assert: civil(-70, -233, -14524, 85068, -3597654, -234089925, -140048618) eq: civil(-134, 3, 4, 18, 7, 14, 859951382),
+	assert: civil(197, 97, -26898, 119877, 9289951, -154278610, 763245082) eq: civil(157, 10, 20, 14, 20, 50, 763245082),
+	assert: civil(78, 198, 21907, -78794, 3527782, 191700623, -508764736) eq: civil(158, 3, 9, 12, 32, 22, 491235264),
+	assert: civil(261, -236, -13181, 162189, 5194083, 517011076, 1470539765) eq: civil(249, 12, 1, 19, 14, 17, 470539765),
+	assert: civil(276, 130, -14088, 169613, 2231568, -245080676, 1742027615) eq: civil(264, 1, 1, 7, 50, 5, 742027615),
+	assert: civil(-59, -104, 25361, -7505, 2052696, -608172650, 1690074639) eq: civil(-15, 6, 15, 17, 45, 11, 690074639),
+	assert: civil(-97, 33, 7150, -91703, 5043436, 453722206, 1994471101) eq: civil(-62, 9, 29, 20, 12, 47, 994471101),
+	assert: civil(121, -151, 15632, -81092, 7007009, -237991129, -1649016079) eq: civil(147, 8, 28, 14, 50, 9, 350983921),
+	assert: civil(-75, 128, -2277, 15791, -5027383, -75409388, 232639884) eq: civil(-81, 3, 13, 22, 13, 52, 232639884),
+	assert: civil(-13, 95, -4097, -21797, -873045, 34647502, 1549127214) eq: civil(-20, 7, 25, 12, 33, 23, 549127214),
+	assert: civil(-138, -255, 7417, 70628, 9136890, -327820831, 555605364) eq: civil(-124, 1, 5, 16, 9, 29, 555605364),
+	assert: civil(-128, -139, -20006, -47153, -9903589, 524112051, 1141241172) eq: civil(-203, 12, 13, 21, 51, 52, 141241172),
+	assert: civil(-107, 228, 19593, 141748, 9137602, -365789573, 1899235062) eq: civil(-13, 7, 5, 1, 9, 8, 899235062),
+	assert: civil(112, 39, 23388, 139633, 6291688, 99483339, 205906158) eq: civil(210, 3, 28, 16, 43, 39, 205906158),
+	assert: civil(240, -273, -9622, 99930, 8324267, 203747214, -1493443006) eq: civil(224, 7, 1, 16, 13, 52, 506556994),
+	assert: civil(121, -7, -9308, 151399, 6507301, 617791184, -956752781) eq: civil(144, 1, 24, 14, 40, 43, 43247219),
+	assert: civil(-9, 175, 6469, 110825, -4492950, -90897367, -473748392) eq: civil(24, 6, 4, 13, 13, 52, 526251608),
+	assert: civil(-170, 110, 11372, -100468, 10358753, -386278010, -161397368) eq: civil(-134, 3, 18, 14, 26, 9, 838602632),
+	assert: civil(246, -78, 21026, -91348, 6608181, -30306225, 747618454) eq: civil(298, 2, 28, 1, 57, 15, 747618454),
+	assert: civil(-198, 255, -21270, -106032, -934661, -434564391, -264528644) eq: civil(-263, 4, 12, 5, 59, 8, 735471356),
+	assert: civil(198, 8, -15821, 53445, 9558339, -319035282, 919361858) eq: civil(169, 6, 4, 1, 44, 18, 919361858),
+	assert: civil(-28, 213, -50, -155488, -1677001, 491803622, 796598165) eq: civil(-16, 3, 8, 22, 6, 2, 796598165)
+}
+
+// TODO: move pad formatting code to the print package.
+type pad [.i int64, .width int]
+
+func pad4(i int64) pad { return: [.i i, .width 4] }
+func pad2(i int) pad { return: [.i int64 :: i, .width 2] }
+func padN(i int64, width int) pad { return: [.i i, .width width] }
+
+func add:(buf print#buffer, x pad) {
+	if: x.i < 0 true: {
+		buf ++ "-",
+		x.i := -x.i
+	},
+	tens := int64 :: 10,
+	for: 1 to: x.width - 1 do: (_){
+		if: x.i < tens true: {
+			buf ++ "0"
+		},
+		tens := tens*(int64 :: 10)
+	},
+	return: buf ++ x.i
+}
+
+test zero_pad {
+	assert: print#string(padN(0, 0)) eq: "0",
+	assert: print#string(padN(0, 1)) eq: "0",
+	assert: print#string(padN(0, 2)) eq: "00",
+	assert: print#string(padN(0, 3)) eq: "000",
+	assert: print#string(padN(0, 4)) eq: "0000",
+
+	assert: print#string(padN(1, 0)) eq: "1",
+	assert: print#string(padN(1, 1)) eq: "1",
+	assert: print#string(padN(1, 2)) eq: "01",
+	assert: print#string(padN(1, 3)) eq: "001",
+	assert: print#string(padN(1, 4)) eq: "0001",
+
+	assert: print#string(padN(15, 0)) eq: "15",
+	assert: print#string(padN(15, 1)) eq: "15",
+	assert: print#string(padN(15, 2)) eq: "15",
+	assert: print#string(padN(15, 3)) eq: "015",
+	assert: print#string(padN(15, 4)) eq: "0015",
+
+	assert: print#string(padN(205, 0)) eq: "205",
+	assert: print#string(padN(205, 1)) eq: "205",
+	assert: print#string(padN(205, 2)) eq: "205",
+	assert: print#string(padN(205, 3)) eq: "205",
+	assert: print#string(padN(205, 4)) eq: "0205",
+
+	assert: print#string(padN(4205, 0)) eq: "4205",
+	assert: print#string(padN(4205, 1)) eq: "4205",
+	assert: print#string(padN(4205, 2)) eq: "4205",
+	assert: print#string(padN(4205, 3)) eq: "4205",
+	assert: print#string(padN(4205, 4)) eq: "4205",
+
+	assert: print#string(padN(14205, 0)) eq: "14205",
+	assert: print#string(padN(14205, 1)) eq: "14205",
+	assert: print#string(padN(14205, 2)) eq: "14205",
+	assert: print#string(padN(14205, 3)) eq: "14205",
+	assert: print#string(padN(14205, 4)) eq: "14205",
+
+	assert: print#string(padN(-15, 0)) eq: "-15",
+	assert: print#string(padN(-15, 1)) eq: "-15",
+	assert: print#string(padN(-15, 2)) eq: "-15",
+	assert: print#string(padN(-15, 3)) eq: "-015",
+	assert: print#string(padN(-15, 4)) eq: "-0015"
+}
