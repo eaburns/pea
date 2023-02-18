@@ -1130,7 +1130,9 @@ func topoSortVars(mod *Mod) []Error {
 				return false
 			}
 		}
-		sorted = append(sorted, vr)
+		if vr.Mod == mod.Path {
+			sorted = append(sorted, vr)
+		}
 		return true
 	}
 	sortFunc = func(l loc.Loc, use funcUse) bool {

@@ -372,6 +372,28 @@ func TestVarSorting(t *testing.T) {
 	}
 }
 
+// This is testing for a regression of a bug where
+// depending on the variable from another module
+// pulled the other module's variable definition
+// incorrectly into this module.
+func TestVarDependsOnOtherModuleVar(t *testing.T) {
+	const src = `
+		import "other"
+		Var x := int :: other#x
+	`
+	other := testMod{
+		path: "other",
+		src: "Var x := int :: 4",
+	}
+	mod, errs := check("test", []string{src}, []testMod{other})
+	if len(errs) > 0 {
+		t.Fatalf("failed to parse and check: %s", errs[0])
+	}
+	if len(mod.Defs) > 1 {
+		t.Errorf("expected 1 definition, got %d", len(mod.Defs))
+	}
+}
+
 func TestRecursiveTypeParmFuncOK(t *testing.T) {
 	const src = `
 		func loop(t T) T {return: loop(t)}
