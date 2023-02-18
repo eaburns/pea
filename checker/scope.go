@@ -796,7 +796,7 @@ func (f *FuncDef) findIDs(name string) []id {
 			ids = append(ids, f)
 		}
 	}
-	if name == "return:" {
+	if name == "return:" || name == "return" {
 		ids = append(ids, &Builtin{
 			Op:    Return,
 			Parms: []Type{f.Ret},

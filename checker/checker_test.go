@@ -870,6 +870,10 @@ func TestCheckFuncReturnCall(t *testing.T) {
 			src:  "func foo() int { return: 1 }",
 		},
 		{
+			name: "ok 1-ary no-colon return overload",
+			src:  "func foo() int { return(1) }",
+		},
+		{
 			name: "ok return, not first expr",
 			src:  "func foo() int { 1, 2, 3, return: 1 }",
 		},
@@ -888,6 +892,10 @@ func TestCheckFuncReturnCall(t *testing.T) {
 		{
 			name: "ok 1-ary return empty struct",
 			src:  "func foo() { return: [.] }",
+		},
+		{
+			name: "ok 1-ary no-colon return empty struct",
+			src:  "func foo() { return([.])}",
 		},
 		{
 			name: "missing return empty body",
