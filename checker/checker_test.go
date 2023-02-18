@@ -4993,12 +4993,23 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in left shift, expected type",
 			call: "(int8 :: 1) << 3",
 			ret:  "int8",
-			want: "built-in <<(int8, int)int8",
+			want: "built-in <<(int8, int8)int8",
 		},
 		{
 			name: "built-in left shift, no expected type",
 			call: "(int8 :: 1) << 3",
-			want: "built-in <<(int8, int)int8",
+			want: "built-in <<(int8, int8)int8",
+		},
+		{
+			name: "built-in right shift, expected type",
+			call: "(int8 :: 1) >> 3",
+			ret:  "int8",
+			want: "built-in >>(int8, int8)int8",
+		},
+		{
+			name: "built-in right shift, no expected type",
+			call: "(int8 :: 1) >> 3",
+			want: "built-in >>(int8, int8)int8",
 		},
 		{
 			name: "built-in negate, expected type",
