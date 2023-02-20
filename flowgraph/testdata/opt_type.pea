@@ -27,7 +27,7 @@ Func none() T opt { return: [none?] }
 Func if:then:else:(c [false?, true?], t (){}, f (){}) { c true? t false? f }
 
 Func for:to:do:(start int, end int, f (int) {}) {
-	start <= end true? {
+	if: start <= end true: {
 		f(start),
 		for: start + 1 to: end do: f
 	}

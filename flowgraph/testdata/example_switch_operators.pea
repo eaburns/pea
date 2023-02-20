@@ -56,4 +56,4 @@ Func ->(c case, d (){}) switch {
 	}
 }
 
-Func ->(s switch, d (){}) { s more? d }
+Func ->(s switch, d (){}) { if: s more: d }

@@ -341,7 +341,7 @@ func TestSwitchSubMatchingParm0(t *testing.T) {
 
 func TestSwitchSubMatchingParm0IncompleteSwitch(t *testing.T) {
 	mod := checkTestMod("")
-	sw := mod.findIDs("x?y?z?")[0].(*Switch)
+	sw := mod.findIDs("if:x:y:z:")[0].(*Switch)
 	typ := parseTestType(t, mod, "[x?, y? int, z?, a?, b?, c?]")
 
 	// We are substituting typeParms[1], which is the union argument.

@@ -15,7 +15,7 @@ type T list [
 ]
 
 func for:each:(ts T list, f (T){}) {
-	ts some? (e) {
+	if: ts some: (e){
 		f(e.t),
 		for: e.next each: f
 	}

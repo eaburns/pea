@@ -87,13 +87,13 @@ Func listener(addr string) listener or_error {
 }
 
 test listener_error {
-	listener("bad host:bad port") ok? (_){
+	if: listener("bad host:bad port") ok: (_){
 		panic("expected error")
 	},
-	listener("bad host:") ok? (_){
+	if: listener("bad host:") ok: (_){
 		panic("expected error")
 	},
-	listener(":bad port") ok? (_){
+	if: listener(":bad port") ok: (_){
 		panic("expected error")
 	},
 }

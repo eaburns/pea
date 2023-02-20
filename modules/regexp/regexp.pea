@@ -237,11 +237,11 @@ func choice_prog(left regexp, right regexp) regexp {
 
 func cat_prog(left regexp, right regexp) regexp {
 	for: 0 to: right.prog.length-1 do: (i) {
-		right.prog[i] save? (s) {
+		if: right.prog[i] save: (s) {
 			right.prog[i] := [save? s + 2*left.ncap]
-		} class? (c) {
+		} class: (c) {
 			right.prog[i] := [class? c + left.class.length]
-		} nclass? (c) {
+		} nclass: (c) {
 			right.prog[i] := [nclass? c + left.class.length]
 		},
 		left.prog push_back: right.prog[i]
@@ -270,7 +270,7 @@ func rep_prog(re regexp, op rune) regexp {
 
 func group_prog(re regexp) regexp {
 	for: 0 to: re.prog.length-1 do: (i) {
-		re.prog[i] save? (s) {
+		if: re.prog[i] save: (s) {
 			re.prog[i] := [save? s + 2]
 		},
 	},
@@ -487,7 +487,7 @@ func read:(vm vm, s &S) : read(&S)read_result {
 }
 
 func step:(vm vm, t thread) {
-	vm.re.prog[t.pc] match? {
+	if: vm.re.prog[t.pc] match: {
 		if: vm.opts.full && (t.mem[0] > 0 || vm.cur_rune != eof) then: {
 			// This match isn't full, so discard it.
 			vm.free_mem push_back: t.mem,
@@ -510,22 +510,22 @@ func step:(vm vm, t thread) {
 		},
 		vm.free_mem push_back: t.mem,
 		return()
-	} rune? (r) {
+	} rune: (r){
 		if: vm.cur_rune != r then: {
 			vm.free_mem push_back: t.mem,
 			return()
 		},
-	} any? {
+	} any: {
 		if: vm.cur_rune = '\n' || vm.cur_rune = eof then: {
 			vm.free_mem push_back: t.mem,
 			return()
 		}
-	} class? (i) {
+	} class: (i){
 		if: !class_accepts(vm.cur_rune, vm.re.class[i], false) then: {
 			vm.free_mem push_back: t.mem,
 			return()
 		}
-	} nclass? (i) {
+	} nclass: (i){
 		if: !class_accepts(vm.cur_rune, vm.re.class[i], true) then: {
 			vm.free_mem push_back: t.mem,
 			return()
@@ -552,34 +552,34 @@ func add_thread:(vm vm, t thread) {
 		return()
 	},
 	vm.seen[t.pc] := vm.at,
-	vm.re.prog[t.pc] nop? {
+	if: vm.re.prog[t.pc] nop: {
 		vm add_thread: [.pc t.pc+1, .mem t.mem],
 		return()
-	}jmp? (delta){
+	} jmp: (delta){
 		vm add_thread: [.pc t.pc+delta, .mem t.mem],
 		return()
-	} fork? (delta){
+	} fork: (delta){
 		mem2 := clone_mem(vm, t.mem),
 		vm add_thread: [.pc t.pc+1, .mem t.mem],
 		vm add_thread: [.pc t.pc+delta, .mem mem2],
 		return()
-	} rfork? (delta){
+	} rfork: (delta){
 		mem2 := clone_mem(vm, t.mem),
 		vm add_thread: [.pc t.pc+delta, .mem t.mem],
 		vm add_thread: [.pc t.pc+1, .mem mem2],
 		return()
-	} save? (i){
+	} save: (i){
 		t.mem[i] := vm.at,
 		vm add_thread: [.pc t.pc+1, .mem t.mem],
 		return()
-	} begin? {
+	} begin: {
 		if: vm.cur_rune != eof then: {
 			vm.free_mem push_back: t.mem,
 		} else: {
 			vm add_thread: [.pc t.pc+1, .mem t.mem],
 		},
 		return()
-	} end? {
+	} end: {
 		if: vm.next_rune != eof then: {
 			vm.free_mem push_back: t.mem,
 		} else: {

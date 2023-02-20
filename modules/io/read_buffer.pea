@@ -237,9 +237,9 @@ func assert:ok:(res read_result, n int) {
 }
 
 func assert_end:(res read_result) {
-	res ok? (n){
+	if: res ok: (n){
 		panic(print#string("got ok? " ++ n ++ " ++ expected end? "))
-	} error? (err){
+	} error: (err){
 		panic(print#string("got error? " ++ err ++ " ++ expected end?"))
 	}
 }
@@ -257,9 +257,9 @@ func assert:ok:(res [uint8] read_line_result, line [uint8]) {
 }
 
 func assert_end:(res [uint8] read_line_result) {
-	res ok? (l){
+	if: res ok: (l){
 		panic(print#string("got ok? " ++ l ++ " ++ expected end?"))
-	} error? (err){
+	} error: (err){
 		panic(print#string("got error? " ++ err.error ++ " ++ expected end?"))
 	}
 }

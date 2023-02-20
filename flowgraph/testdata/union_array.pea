@@ -11,7 +11,7 @@ func main() {
 }
 
 func for:to:do:(start int, end int, f (int){}) {
-	start <= end true? {
+	if: start <= end true: {
 		f(start),
 		for: start + 1 to: end do: f
 	}

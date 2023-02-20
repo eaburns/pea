@@ -4,7 +4,7 @@ func main() {
 }
 
 func foo() string {
-	true true? { return: "Hello, World!" },
+	if: true true: { return: "Hello, World!" },
 	return: "fail"
 }
 

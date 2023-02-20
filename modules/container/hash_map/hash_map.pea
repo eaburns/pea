@@ -89,7 +89,7 @@ func grow(m (K, V) hash_map) {
 
 func append(b &(K, V) bucket, e (K, V) entry) {
 	for: 0 to: b.length - 1 do: (i) {
-		b[i] none? {
+		if: b[i] none: {
 			b[i] := some(e),
 			return()
 		}
@@ -112,7 +112,7 @@ Func delete:(m (K, V) hash_map, k K) V option {
 	i := int :: h%(uint64 :: m.buckets.length),
 	b := m.buckets[i],
 	for: 0 to: b.length - 1 do: (j) {
-		b[j] some? (e) {
+		if: b[j] some: (e){
 			if: m.eq(e.k, k) then: {
 				--m.n,
 				b[j] := none(),
@@ -158,6 +158,6 @@ Func for:each:(m (K, V) hash_map, f ([.key K, .val V]){}) {
 
 func for:each_entry:(b (K, V) bucket, f ((K, V) entry){}) {
 	for: b each: (e) {
-		e some? f
+		if: e some: f
 	}
 }

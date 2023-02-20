@@ -15,7 +15,7 @@ type T elem &[
 ]
 
 func for:each:(ts T elem option, f (T){}) {
-	ts some? (e) {
+	if: ts some: (e){
 		f(e.t),
 		for: e.next each: f
 	}

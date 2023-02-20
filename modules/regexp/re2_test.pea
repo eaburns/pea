@@ -209,9 +209,9 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector) {
 		{string#contains(regexp, `\9`)}
 	then: {
 		for: strs each: (str){
-			read_line(in) end? {
+			if: read_line(in) end: {
 				panic("unexpected end of input")
-			} error? (err){
+			} error: (err){
 				panic(message(err.error))
 			},
 		},

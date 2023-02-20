@@ -4560,13 +4560,25 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in switch on bool true?",
 			src:  "const true := [false?, true?] :: [true?]",
 			call: "true true? {}",
-			want: "built-in true?(&[false?, true?], (){})",
+			err: "missing case false\\?",
+		},
+		{
+			name: "built-in switch on bool if:true:",
+			src:  "const true := [false?, true?] :: [true?]",
+			call: "if: true true: {}",
+			want: "built-in if:true:(&[false?, true?], (){})",
 		},
 		{
 			name: "built-in switch on bool false?",
 			src:  "const true := [false?, true?] :: [true?]",
 			call: "true false? {}",
-			want: "built-in false?(&[false?, true?], (){})",
+			err: "missing case true\\?",
+		},
+		{
+			name: "built-in switch on bool if:false:",
+			src:  "const true := [false?, true?] :: [true?]",
+			call: "if: true false: {}",
+			want: "built-in if:false:(&[false?, true?], (){})",
 		},
 		{
 			name: "built-in switch on ordering less?equal?greater?",
@@ -4584,13 +4596,37 @@ func TestOverloadResolution(t *testing.T) {
 			name: "built-in switch on ordering less?equal?",
 			src:  "const less := [less?, equal?, greater?] :: [less?]",
 			call: "less less? {} equal? {}",
-			want: "built-in less?equal?(&[less?, equal?, greater?], (){}, (){})",
+			err: "missing case greater\\?",
+		},
+		{
+			name: "built-in switch on ordering less?equal?_?",
+			src:  "const less := [less?, equal?, greater?] :: [less?]",
+			call: "less less? {} equal? {} _? {}",
+			want: "built-in less?equal?_?(&[less?, equal?, greater?], (){}, (){}, (){})",
+		},
+		{
+			name: "built-in switch on ordering if:less:equal:",
+			src:  "const less := [less?, equal?, greater?] :: [less?]",
+			call: "if: less less: {} equal: {}",
+			want: "built-in if:less:equal:(&[less?, equal?, greater?], (){}, (){})",
 		},
 		{
 			name: "built-in switch on ordering greater?",
 			src:  "const less := [less?, equal?, greater?] :: [less?]",
 			call: "less greater? {}",
-			want: "built-in greater?(&[less?, equal?, greater?], (){})",
+			err: "missing case",
+		},
+		{
+			name: "built-in switch on ordering greater?_?",
+			src:  "const less := [less?, equal?, greater?] :: [less?]",
+			call: "less greater? {} _? {}",
+			want: "built-in greater?_?(&[less?, equal?, greater?], (){}, (){})",
+		},
+		{
+			name: "built-in switch on ordering if:greater:",
+			src:  "const less := [less?, equal?, greater?] :: [less?]",
+			call: "if: less greater: {}",
+			want: "built-in if:greater:(&[less?, equal?, greater?], (){})",
 		},
 		{
 			name: "built-in switch literal type, not-typed case",
@@ -4698,31 +4734,58 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in b?a?(&[a?, b? int], (int){int}, (){int})int",
 		},
 		{
-			name: "built-in switch not all cases, case not typed",
+			name: "built-in ?-switch not all cases, case not typed",
 			src: `
 				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
-			call: "make() a? () {1} ",
-			want: "built-in a?(&[a?, b? int], (){})",
+			call: "make() a? (){1} ",
+			err: "missing case",
 		},
 		{
-			name: "built-in switch not all cases, case typed",
+			name: "built-in :-switch not all cases, case not typed",
+			src: `
+				type a_or_b [a?, b? int]
+				func make() a_or_b
+			`,
+			call: "if: make() a: () {1} ",
+			want: "built-in if:a:(&[a?, b? int], (){})",
+		},
+		{
+			name: "built-in ?-switch not all cases, case typed",
 			src: `
 				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
 			call: "make() b? (_ int) {1} ",
-			want: "built-in b?(&[a?, b? int], (int){})",
+			err: "missing case",
 		},
 		{
-			name: "built-in switch only default case",
+			name: "built-in :-switch not all cases, case typed",
+			src: `
+				type a_or_b [a?, b? int]
+				func make() a_or_b
+			`,
+			call: "if: make() b: (_ int){1} ",
+			want: "built-in if:b:(&[a?, b? int], (int){})",
+		},
+		{
+			name: "built-in ?-switch only default case",
 			src: `
 				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
 			call: "make() _? {1}",
 			want: "built-in _?(&[a?, b? int], (){int})int",
+		},
+		{
+			name: "built-in :-switch only default case",
+			src: `
+				type a_or_b [a?, b? int]
+				func make() a_or_b
+			`,
+			call: "if: make() _: {1}",
+			want: "built-in if:_:(&[a?, b? int], (){})",
 		},
 		{
 			name: "built-in switch case and default case",
@@ -4748,7 +4811,7 @@ func TestOverloadResolution(t *testing.T) {
 				type a_or_b [a?, b? int]
 				func make() a_or_b
 			`,
-			call: "make() a? () {1} ",
+			call: "if: make() a: (){1} ",
 			ret:  "int",
 			err:  `cannot implicitly convert .* \(type \[\.\]\) to int`,
 		},
@@ -6124,12 +6187,12 @@ func TestSwitchReturnTypes(t *testing.T) {
 			// This was changed by commit c37747f,
 			// which explains why it does not work.
 			//m() a? {"hello"} b? {1},
-			m() a? {1},
-			m() b? {1},
+			if: m() a: {1},
+			if: m() b: {1},
 		}
 		var _ := int :: m() a? {1} b? {1}
 		//var _ := [.] :: m() a? {1} b? {1}
-		var _ := [.] :: m() a? {1}
+		var _ := [.] :: if: m() a: {1}
 		var _ := [.] :: m() a? {} b? {}
 		func m() a_or_b
 	`

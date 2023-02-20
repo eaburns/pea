@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/eaburns/pea/loc"
 )
@@ -614,9 +615,11 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *Candida
 		copy.Cases = append(copy.Cases, c)
 	}
 	complete := true
+	var missingCase string
 	if !hasDefault {
 		for i := range copy.Union.Cases {
 			if !seen[&copy.Union.Cases[i]] {
+				missingCase = copy.Union.Cases[i].Name
 				complete = false
 				break
 			}
@@ -624,6 +627,12 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *Candida
 	}
 
 	if !complete {
+		if strings.Contains(f.N, "?") {
+			return f, &CandidateError{
+				Candidate: f,
+				Msg:       fmt.Sprintf("missing case %s", missingCase),
+			}
+		}
 		copy.T.Ret = _empty
 	} else if tv, ok := copy.T.Ret.(*TypeVar); ok && tv.Def == copy.typeParms[0] {
 		// Otherwise, if the return type has not been substituted yet
