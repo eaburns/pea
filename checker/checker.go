@@ -1051,7 +1051,7 @@ func checkVarDef(def *VarDef, parserDef *parser.VarDef) []Error {
 		return nil
 	}
 	expr, errs := checkAndConvertExpr(def, parserDef.Expr, patternOrAny(def.T))
-	if def.T == nil || expr.Type() == nil {
+	if def.T == nil || expr == nil || expr.Type() == nil {
 		return errs
 	}
 	def.Expr = &Call{
