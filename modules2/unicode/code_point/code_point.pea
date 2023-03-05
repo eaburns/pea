@@ -1,0 +1,272 @@
+Import "basic"
+import "collection/span"
+import "hash"
+import "print"
+import "print"
+
+// A signed integer type representing a Unicode code point.
+Type code_point int32
+
+// The maximum code point value.
+Const max := code_point :: 0x10FFFF
+
+// The Unicode replacement character.
+Const replacement := code_point :: '\uFFFD'
+
+// The minimum UTF-16 surrogate code point value.
+Const min_surrogate := code_point :: 0xD800
+
+// The maximum UTF-16 surrogate code point value.
+Const max_surrogate := code_point :: 0xDFFF
+
+// Returns whether a and b are the same code point.
+Func =(a, b code_point) bool { return: (int32 :: a) = (int32 :: b) }
+
+// Returns whether a is less than, equal to, or greater than b.
+Func <=>(a, b code_point) ordering { return: (int32 :: a) <=> (int32 :: b) }
+
+// Adds the string representation of c to buf.
+// The string representation of a code_point is
+// the Unicode hex form, U+XXXX, 0-padded to 4 digits;
+// in the case of printable characters, the printable representation
+// may be added in paranthesis after the hex representation,
+// for example: U+0041 (A).
+Func add:(buf print#buffer, c code_point) {
+	buf add: "U+",
+	b := print#buffer(),
+	b add: (uint64 :: c) base: 16,
+	for: 0 to: 4 - b.length - 1 do: (_){
+		buf add: "0"
+	},
+	buf add: reset(b),
+	// Print printable ASCII characters as a UTF-8 string.
+	// TODO: Print all printable code points as a UTF8 strings.
+	if: c >= 32 && { c < 127 } true: {
+		buf add: " (",
+		buf add: string :: [uint8 :: c],
+		buf add: ")"
+	}
+}
+
+test print {
+	assert: print#string(code_point :: 0) eq: "U+0000",
+	assert: print#string(code_point :: 1) eq: "U+0001",
+	assert: print#string(code_point :: 2) eq: "U+0002",
+	assert: print#string(code_point :: ' ') eq: "U+0020 ( )",
+	assert: print#string(code_point :: 'A') eq: "U+0041 (A)",
+	assert: print#string(code_point :: 'b') eq: "U+0062 (b)",
+	assert: print#string(code_point :: '9') eq: "U+0039 (9)",
+	assert: print#string(code_point :: '~') eq: "U+007E (~)",
+	assert: print#string(code_point :: '☺') eq: "U+263A",
+	assert: print#string(code_point :: '蟻') eq: "U+87FB",
+	assert: print#string(replacement) eq: "U+FFFD",
+	assert: print#string(max) eq: "U+10FFFF"
+}
+
+// Adds c to hash state s.
+Func add:(s hash#state, c code_point) {
+	s add: (int32 :: c)
+}
+
+// Returns whether c is a letter, a code point in the L category.
+Func is_letter(c code_point) bool {
+	return: contains(category_L, c)
+}
+
+test is_letter {
+	assert: is_letter('a') eq: true,
+	assert: is_letter('z') eq: true,
+	assert: is_letter('A') eq: true,
+	assert: is_letter('Z') eq: true,
+	assert: is_letter('ん') eq: true,
+	assert: is_letter('蟻') eq: true,
+
+	assert: is_letter(' ') eq: false,
+	assert: is_letter('1') eq: false,
+	assert: is_letter('\x00') eq: false,
+	assert: is_letter('!') eq: false,
+	assert: is_letter('⍼') eq: false,
+
+	// Test bounds on range-defined code points in UnicodeData.txt
+	// U+3400 to U+4DBF are letters in CJK Ideograph Extension A.
+	// They are currently defined as a <…First>/<…Last>-style range.
+	// Test the bounds.
+	assert: is_letter('\u33FF') eq: false, // SQUARE GAL is a symbol
+	assert: is_letter('\u3400') eq: true,
+	assert: is_letter('\u4DBF') eq: true,
+	assert: is_letter('\u4DC0') eq: false // HEXAGRAM FOR THE CREATIVE HEAVEN is a symbol.
+}
+
+// Returns whether c is a decimal digit, a code point in the Nd category.
+Func is_digit(c code_point) bool {
+	return: contains(category_Nd, c)
+}
+
+test is_digit {
+	assert: is_digit('0') eq: true,
+	assert: is_digit('1') eq: true,
+	assert: is_digit('2') eq: true,
+	assert: is_digit('3') eq: true,
+	assert: is_digit('4') eq: true,
+	assert: is_digit('5') eq: true,
+	assert: is_digit('6') eq: true,
+	assert: is_digit('7') eq: true,
+	assert: is_digit('8') eq: true,
+	assert: is_digit('9') eq: true,
+	assert: is_digit('０') eq: true,
+	assert: is_digit('１') eq: true,
+	assert: is_digit('２') eq: true,
+	assert: is_digit('３') eq: true,
+	assert: is_digit('４') eq: true,
+	assert: is_digit('５') eq: true,
+	assert: is_digit('６') eq: true,
+	assert: is_digit('７') eq: true,
+	assert: is_digit('８') eq: true,
+	assert: is_digit('９') eq: true,
+	assert: is_digit('๐') eq: true,
+	assert: is_digit('๑') eq: true,
+	assert: is_digit('๒') eq: true,
+	assert: is_digit('๓') eq: true,
+	assert: is_digit('๔') eq: true,
+	assert: is_digit('๕') eq: true,
+	assert: is_digit('๖') eq: true,
+	assert: is_digit('๗') eq: true,
+	assert: is_digit('๘') eq: true,
+	assert: is_digit('๙') eq: true,
+
+	assert: is_digit(' ') eq: false,
+	assert: is_digit('a') eq: false,
+	assert: is_digit('⍼') eq: false,
+	assert: is_digit('!') eq: false,
+	assert: is_digit('美') eq: false
+}
+
+// Returns whether c is a punctuation, a code point in the P category.
+Func is_punctuation(c code_point) bool {
+	return: contains(category_P, c)
+}
+
+test is_punctuation {
+	assert: is_punctuation('.') eq: true,
+	assert: is_punctuation('!') eq: true,
+	assert: is_punctuation('\'') eq: true,
+	assert: is_punctuation('。') eq: true,
+	assert: is_punctuation('！') eq: true,
+	assert: is_punctuation('＆') eq: true,
+	assert: is_punctuation('・') eq: true
+}
+
+// Returns whether c is one of:
+// 	* '\t',
+// 	* '\n',
+// 	* '\x0B' (form feed),
+// 	* '\x0C' (vertical tab),
+// 	* '\x0D' (carriage return),
+// 	* '\x85' (next line, NEL),
+// 	* or a code point in the Z category
+Func is_space(c code_point) bool {
+	return: c = '\t' ||
+		{ c = '\n' } ||
+		{ c = '\x0B' } ||
+		{ c = '\x0C' } ||
+		{ c = '\x0D' } ||
+		{ c = '\x85' } ||
+		{ contains(category_Z, c) }
+}
+
+test is_space {
+	assert: is_space('\t') eq: true,
+	assert: is_space('\n') eq: true,
+	assert: is_space('\x0B') eq: true,
+	assert: is_space('\x0C') eq: true,
+	assert: is_space('\x0D') eq: true,
+	assert: is_space('\x85') eq: true,
+	assert: is_space('\x20') eq: true,
+	assert: is_space('\xA0') eq: true,
+	assert: is_space('\u1680') eq: true,
+	assert: is_space('\u2000') eq: true,
+	assert: is_space('\u2001') eq: true,
+	assert: is_space('\u2002') eq: true,
+	assert: is_space('\u2003') eq: true,
+	assert: is_space('\u2004') eq: true,
+	assert: is_space('\u2005') eq: true,
+	assert: is_space('\u2006') eq: true,
+	assert: is_space('\u2007') eq: true,
+	assert: is_space('\u2008') eq: true,
+	assert: is_space('\u2009') eq: true,
+	assert: is_space('\u200A') eq: true,
+	assert: is_space('\u2028') eq: true,
+	assert: is_space('\u2029') eq: true,
+	assert: is_space('\u202F') eq: true,
+	assert: is_space('\u205F') eq: true,
+	assert: is_space('\u3000') eq: true,
+	assert: is_space('　') eq: true,
+
+	assert: is_space(-1) eq: false,
+	assert: is_space(0) eq: false,
+	assert: is_space(max) eq: false,
+	assert: is_space('a') eq: false,
+	assert: is_space('.') eq: false,
+	assert: is_space('食') eq: false
+}
+
+type category [range]
+
+type range [
+	.min code_point, // inclusive
+	.max code_point, // inclusive
+]
+
+func contains(cat category, c code_point) bool {
+	if: c < 255 true: {
+		// If c is small, just do a linear search,
+		// since it is likely to terminate quickly.
+		for: 0 to: cat.length - 1 do: (i){
+			if: cat[i].min > c true: {
+				return: false
+			},
+			if: c <= cat[i].max true: {
+				return: true
+			}
+		},
+		return: false
+	},
+
+	i := span#binary_search(cat, (r){ r.min > c }),
+	return: i > 0 && { c <= cat[i - 1].max }
+}
+
+test contains {
+	assert: contains([], 1) eq: false,
+
+	assert: contains([[.min 1, .max 1]], 0) eq: false,
+	assert: contains([[.min 1, .max 1]], 1) eq: true,
+	assert: contains([[.min 1, .max 1]], 2) eq: false,
+
+	assert: contains([[.min 1, .max 2]], 0) eq: false,
+	assert: contains([[.min 1, .max 2]], 1) eq: true,
+	assert: contains([[.min 1, .max 2]], 2) eq: true,
+	assert: contains([[.min 1, .max 2]], 3) eq: false,
+
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 0) eq: false,
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 1) eq: true,
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 2) eq: true,
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 3) eq: false,
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 4) eq: false,
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 5) eq: true,
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 6) eq: true,
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 7) eq: true,
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 8) eq: true,
+	assert: contains([[.min 1, .max 2], [.min 5, .max 8]], 9) eq: false,
+
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 0000) eq: false,
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 1000) eq: true,
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 2000) eq: true,
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 3000) eq: false,
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 4000) eq: false,
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 5000) eq: true,
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 6000) eq: true,
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 7000) eq: true,
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 8000) eq: true,
+	assert: contains([[.min 1000, .max 2000], [.min 5000, .max 8000]], 9000) eq: false
+}
