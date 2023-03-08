@@ -1,0 +1,393 @@
+Import "basic"
+import "collection/dynamic_array"
+import "collection/span"
+import "option"
+import "print"
+import "unicode/code_point"
+
+// Returns the number of bytes in the UTF-8 encoding of c.
+Func size(c code_point) int {
+	if: c < 0x80 true: {
+		return: 1
+	},
+	if: c < 0x800 true: {
+		return: 2
+	},
+	if: c < 0x10000 true: {
+		return: 3
+	},
+	return: 4
+}
+
+// Adds the UTF-8 encoding of c to the beginning of s
+// and returns the encoding size in bytes.
+//
+// If c is an invalid code point (negative, too large, or a UTF-16 surrogate),
+// encode encodes the replacement code point, U+FFFD, instead.
+//
+// If s is not large enough to hold the encoding, encode panics.
+Func encode(s S : (S, &uint8) span#span, c code_point) int {
+	x := int32 :: c,
+	if: x < 0 true: {
+		return: encode_replacement(s)
+	},
+	if: x < 0x80 true: {
+		s[0] := uint8 :: x,
+		return: 1
+	},
+	if: x < 0x800 true: {
+		// 110xxxxx 10xxxxxx
+		s[0] := uint8 :: (x >> 6) & 0x1F | 0xC0,
+		s[1] := uint8 :: x & 0x3F | 0x80,
+		return: 2
+	},
+	if: x < 0x10000 true: {
+		// The 3-byte encoding contains the UTF-16 surrogates.
+		// These are invalid and encoded as replacement runes.
+		if: min_surrogate <= x && { x <= max_surrogate } true: {
+			return: encode_replacement(s)
+		},
+		// 1110xxxx 10xxxxxx 10xxxxxx
+		s[0] := uint8 :: (x >> 12) & 0x0F | 0xE0,
+		s[1] := uint8 :: (x >> 6) & 0x3F | 0x80,
+		s[2] := uint8 :: x & 0x3F | 0x80,
+		return: 3
+	},
+	if: c > code_point#max true: {
+		return: encode_replacement(s)
+	},
+	// 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+	s[0] := uint8 :: (x >> 18) & 0x07 | 0xF0,
+	s[1] := uint8 :: (x >> 12) & 0x3F | 0x80,
+	s[2] := uint8 :: (x >> 6) & 0x3F | 0x80,
+	s[3] := uint8 :: x & 0x3F | 0x80,
+	return: 4
+}
+
+func encode_replacement(s S : (S, &uint8) span#span) int {
+	// U+FFFD
+	s[0] := 0xEF,
+	s[1] := 0xBF,
+	s[2] := 0xBD,
+	return: 3
+}
+
+test encode_1 {
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, 0) eq: 1,
+	assert: a ordered: [0, 0, 0, 0],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, 'a') eq: 1,
+	assert: a ordered: ['a', 0, 0, 0],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, 0x7F) eq: 1,
+	assert: a ordered: [0x7F, 0, 0, 0]
+}
+
+test encode_2 {
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, 0x80) eq: 2,
+	assert: a ordered: [0xC2, 0x80, 0, 0],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, 0x7FF) eq: 2,
+	assert: a ordered: [0xDF, 0xBF, 0, 0],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, 'á') eq: 2,
+	assert: a ordered: [0xC3, 0xA1, 0, 0]
+}
+
+test encode_3 {
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, 0x800) eq: 3,
+	assert: a ordered: [0xE0, 0xA0, 0x80, 0],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, 0xFFFF) eq: 3,
+	assert: a ordered: [0xEF, 0xBF, 0xBF, 0],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, '☺') eq: 3,
+	assert: a ordered: [0xE2, 0x98, 0xBA, 0],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, '\uFFFD') eq: 3,
+	assert: a ordered: [0xEF, 0xBF, 0xBD, 0]
+}
+
+test encode_4 {
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, 0x10000) eq: 4,
+	assert: a ordered: [0xF0, 0x90, 0x80, 0x80],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, code_point#max) eq: 4,
+	assert: a ordered: [0xF4, 0x8F, 0xBF, 0xBF],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, '🂡') eq: 4,
+	assert: a ordered: [0xF0, 0x9F, 0x82, 0xA1]
+}
+
+test encode_error {
+	replacement := [uint8] :: [0xEF, 0xBF, 0xBD, 0],
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, -1) eq: 3,
+	assert: a ordered: replacement,
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, code_point#min_surrogate) eq: 3,
+	assert: a ordered: replacement,
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	assert: encode(a, code_point#max_surrogate) eq: 3,
+	assert: a ordered: replacement,
+
+	a := [uint8] :: new(4, uint8 :: 0),
+	too_big := code_point :: ((int32 :: code_point#max) + 1),
+	assert: encode(a, too_big) eq: 3,
+	assert: a ordered: replacement
+}
+
+// Appends the UTF-8 encoding of c to the back of s.
+Func append:(s S : { push_back:(S, uint8) }, c code_point) {
+	u := [uint8] :: new(4, uint8 :: 0),
+	for: 0 to: encode(u, c) - 1 do: (i){
+		s push_back: u[i]
+	}
+}
+
+test append {
+	da := uint8 dynamic_array :: new(),
+	da append: 'a',
+	assert: da ordered: ['a'],
+	da append: 'b',
+	assert: da ordered: ['a', 'b'],
+	da append: 'c',
+	assert: da ordered: ['a', 'b', 'c'],
+
+	da := uint8 dynamic_array :: new(),
+	da append: 'á',
+	assert: da ordered: [0xC3, 0xA1],
+
+	da := uint8 dynamic_array :: new(),
+	da append: '☺',
+	assert: da ordered: [0xE2, 0x98, 0xBA],
+
+	da := uint8 dynamic_array :: new(),
+	da append: '🂡',
+	assert: da ordered: [0xF0, 0x9F, 0x82, 0xA1],
+
+	da := uint8 dynamic_array :: new(),
+	da append: -1,
+	assert: da ordered: [0xEF, 0xBF, 0xBD] // U+FFFD
+}
+
+// Returns the number of code points in s.
+// This function takes O(n) time for a span of n elements.
+Func length(s S : (S, uint8) span#span) int {
+	n := 0,
+	while: { s.length > 0 } true: {
+		cs := decode_first(s),
+		s := s[cs.size, s.length],
+		++n
+	},
+	return: n
+}
+
+// The encoding length, indexed by the upper 5 bits of a header byte.
+const length := [int] :: [
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	2, 2, 2, 2,
+	3, 3,
+	4,
+	0,
+]
+
+// The header byte mask, indexed by encoding length.
+const mask := [uint8] :: [0, 0x7F, 0x1F, 0x0F, 0x07]
+
+// The minimum value, indexed by encoding length.
+const min := [int32] :: [0, 0, 0x80, 0x800, 0x10000]
+
+// The minimum and maximum UTF-16 surrogate values.
+const min_surrogate := int32 :: (int32 :: code_point#min_surrogate)
+const max_surrogate := int32 :: (int32 :: code_point#max_surrogate)
+
+// Returns the lower 6 bits of b if it is a continuation byte,
+// otherwise it calls err() with [.code code_point#replacement, .size 1].
+func bad?(b uint8, err ([.code code_point, .size int]){!}) int32 {
+	return: (b & 0xC0) = 0x80 true? {
+		int32 :: b & 0x3F
+	} false? {
+		err([.code code_point#replacement, .size 1])
+	}
+}
+
+// Returns the code point at the beginning of s and its encoding size in bytes.
+//
+// If s is empty, it returns U+FFFD (the replacement code point) and a size of 0.
+// If the bytes are invalid UTF-8, it returns U+FFFD and size 1.
+Func decode_first(s S : (S, uint8) span#span) [.code code_point, .size int] {
+	if: s.length = 0 true: {
+		return: [.code code_point#replacement, .size 0]
+	},
+	n := length[int :: s[0] >> 3],
+	c := int32 :: s[0] & mask[n],
+	if: n = 1 true: {
+		return: [.code code_point :: c, .size 1]
+	},
+	if: n = 0 || { n > s.length } true: {
+		return: [.code code_point#replacement, .size 1]
+	},
+	c := (c << 6) | (s[1] bad? return),
+	if: n > 2 true: {
+		c := (c << 6) | (s[2] bad? return),
+		if: n > 3 true: {
+			c := (c << 6) | (s[3] bad? return),
+			if: (code_point :: c) > code_point#max true: {
+				return: [.code code_point#replacement, .size 1]
+			}
+		} else: { min_surrogate <= c && { c <= max_surrogate } } true: {
+			// The 3-byte encoding contains the UTF-16 surrogates.
+			return: [.code code_point#replacement, .size 1]
+		}
+	},
+	if: c < min[n] true: {
+		return: [.code code_point#replacement, .size 1]
+	},
+	return: [.code code_point :: c, .size n]
+}
+
+test decode_first {
+	assert: decode_first("") eq: [.code code_point#replacement, .size 0],
+	assert: decode_first("hello") eq: [.code 'h', .size 1],
+	assert: decode_first("áá") eq: [.code 'á', .size 2],
+	assert: decode_first("☺☹") eq: [.code '☺', .size 3],
+	assert: decode_first("🂡🂡") eq: [.code '🂡', .size 4],
+
+	// U+0000
+	assert: decode_first([uint8] :: [0x0]) eq: [.code 0x0, .size 1],
+
+	// U+FFFD — the replacement character.
+	assert: decode_first([uint8] :: [0xEF, 0xBF, 0xBD]) eq: [.code code_point#replacement, .size 3],
+
+	// U+10FFFF — largest codepoint.
+	assert: decode_first([uint8] :: [0xF4, 0x8F, 0xBF, 0xBF]) eq: [.code code_point#max, .size 4]
+}
+
+test decode_first_bad_start_byte {
+	// 10xx xxxx is invalid
+	assert: decode_first([uint8] :: [0x80]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0x81]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0x8F]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xB0]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xB1]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xBF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0x90]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0x91]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0x9F]) eq: [.code code_point#replacement, .size 1],
+
+	// 0xFF is an invalid start byte.
+	assert: decode_first([uint8] :: [0xFF, 0x8F, 0xBF, 0xBF, 0xBF, 0xBF]) eq: [.code code_point#replacement, .size 1]
+}
+
+test decode_first_bad_continuation {
+	assert: decode_first([uint8] :: [0xB0, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xE0, 0xFF, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xE0, 0x8F, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xF0, 0xFF, 0xFF, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xF0, 0x8F, 0xFF, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xF0, 0x8F, 0x8F, 0xFF]) eq: [.code code_point#replacement, .size 1]
+}
+
+test decode_first_missing_continuation {
+	assert: decode_first([uint8] :: [0xB0]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xD0]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xD0, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xF0]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xF0, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_first([uint8] :: [0xF0, 0xFF, 0xFF]) eq: [.code code_point#replacement, .size 1]
+}
+
+test decode_first_overlongs {
+	// 'a' encoded in 4 bytes.
+	assert: decode_first([uint8] :: [0xF0, 0x80, 0x81, 0xA1]) eq: [.code code_point#replacement, .size 1],
+	// 'a' encoded in 3 bytes.
+	assert: decode_first([uint8] :: [0xE0, 0x81, 0xA1]) eq: [.code code_point#replacement, .size 1],
+	// € (3 bytes) encoded in 4 bytes.
+	assert: decode_first([uint8] :: [0xF0, 0x82, 0x82, 0xAC]) eq: [.code code_point#replacement, .size 1]
+}
+
+test decode_first_surrogates {
+	// U+D7FF
+	assert: decode_first([uint8] :: [0xED, 0x9F, 0xBF]) eq: [.code 0xD7FF, .size 3],
+	// U+D800
+	assert: decode_first([uint8] :: [0xED, 0xA0, 0x80]) eq: [.code code_point#replacement, .size 1],
+	// U+DFFF
+	assert: decode_first([uint8] :: [0xED, 0xBF, 0xBF]) eq: [.code code_point#replacement, .size 1],
+	// // U+E000
+	assert: decode_first([uint8] :: [0xEE, 0x80, 0x80]) eq: [.code 0xE000, .size 3]
+}
+
+test decode_first_too_large {
+	assert: decode_first([uint8] :: [0xF4, 0x9F, 0xBF, 0xBF]) eq: [.code code_point#replacement, .size 1]
+}
+
+// Returns the code point at the end of s and its encoding size in bytes.
+//
+// If s is empty, it returns U+FFFD (the replacement code point) and a size of 0.
+// If the bytes are invalid UTF-8, it returns U+FFFD and size 1.
+Func decode_last(s S : (S, uint8) span#span) [.code code_point, .size int] {
+	if: s.length = 0 true: {
+		return: [.code code_point#replacement, .size 0]
+	},
+	n := 0,
+	i := s.length - 1,
+	while: { n < 4 && { i >= 0 } } true: {
+		if: (s[i] & 0xC0) = 0x80 false: {
+			return: decode_first(s[i, s.length])
+		},
+		++n,
+		--i
+	},
+	return: [.code code_point#replacement, .size 1]
+}
+
+test decode_last {
+	assert: decode_last("") eq: [.code code_point#replacement, .size 0],
+	assert: decode_last("hello") eq: [.code 'o', .size 1],
+	assert: decode_last("áá") eq: [.code 'á', .size 2],
+	assert: decode_last("☺☹") eq: [.code '☹', .size 3],
+	assert: decode_last("🂡🂡") eq: [.code '🂡', .size 4],
+
+	// U+0000
+	assert: decode_last([uint8] :: [0x0]) eq: [.code 0x0, .size 1],
+
+	// U+FFFD — the replacement character.
+	assert: decode_last([uint8] :: [0xEF, 0xBF, 0xBD]) eq: [.code code_point#replacement, .size 3],
+
+	// U+10FFFF — largest codepoint.
+	assert: decode_last([uint8] :: [0xF4, 0x8F, 0xBF, 0xBF]) eq: [.code code_point#max, .size 4],
+
+	// Bad continuation bytes.
+	assert: decode_last([uint8] :: [0xB0, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_last([uint8] :: [0xE0, 0xFF, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_last([uint8] :: [0xE0, 0x8F, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_last([uint8] :: [0xF0, 0xFF, 0xFF, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_last([uint8] :: [0xF0, 0x8F, 0xFF, 0xFF]) eq: [.code code_point#replacement, .size 1],
+	assert: decode_last([uint8] :: [0xF0, 0x8F, 0x8F, 0xFF]) eq: [.code code_point#replacement, .size 1]
+}
+
+func add:(buf print#buffer, x [.code code_point, .size int]) {
+	buf ++ "[.code " ++ x.code ++ ", .size " ++ x.size ++ "]"
+}
+
+func =(a, b [.code code_point, .size int]) bool {
+	return: a.code = b.code && { a.size = b.size }
+}
