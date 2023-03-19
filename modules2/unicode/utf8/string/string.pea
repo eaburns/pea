@@ -1,0 +1,351 @@
+Import "basic"
+import "collection/dynamic_array"
+import "collection/span"
+import "option"
+import "print"
+import "unicode/code_point"
+import "unicode/utf8"
+
+const rk_base := uint32 :: 16777619
+
+// Returns the index of the first occurrence of substr in s
+// or none if substr is not a substring of s.
+Func index(s S : (S, uint8) span#span, substr S) int option {
+	// Rabin-Karp based on
+	// https://medium.com/swlh/rabin-karp-algorithm-using-polynomial-hashing-and-modular-arithmetic-437627b37db6,
+	// using rk_base as the base (prime number from Go implementation),
+	// and using max_uint32 as Q (just relying on overflow).
+	if: s.length < substr.length true: {
+		return: none()
+	},
+
+	// m = rk_base^(n.length-1)
+	m := uint32 :: 1,
+	for: 1 to: substr.length - 1 do: (_){
+		m *= rk_base
+	},
+
+	hh := uint32 :: 0,
+	hn := uint32 :: 0,
+	for: 0 to: substr.length - 1 do: (i){
+		hh := hh*rk_base + (uint32 :: s[i]),
+		hn := hn*rk_base + (uint32 :: substr[i])
+	},
+	i := 0,
+	forever: {
+		if: hh = hn && { span#eq(s[i, i + substr.length], substr) } true: {
+			return: some(i)
+		},
+		if: i + substr.length >= s.length true: {
+			return: none()
+		},
+		hh -= m*(uint32 :: s[i]),
+		hh *= rk_base,
+		hh += (uint32 :: s[i + substr.length]),
+		++i
+	}
+}
+
+test index {
+	assert: index("", "") eq: some(0),
+	assert: index("xyz", "") eq: some(0),
+	assert: index("xyz", "x") eq: some(0),
+	assert: index("xyz", "y") eq: some(1),
+	assert: index("xyz", "z") eq: some(2),
+	assert: index("xyz", "y") eq: some(1),
+	assert: index("xyz", "yz") eq: some(1),
+	assert: index("xyz", "xyz") eq: some(0),
+	assert: index("abcdef123def", "def") eq: some("abc".length),
+	assert: index("abcdef☺☹123def", "☺☹") eq: some("abcdef".length),
+	assert: index("abcdef☺☹123def", "123") eq: some("abcdef☺☹".length),
+
+	assert: index("", "xyz") eq: none(),
+	assert: index("abc", "x") eq: none(),
+	assert: index("abc", "ba") eq: none(),
+	assert: index("abc", "xyz") eq: none(),
+	assert: index("abcdef123def", "xyz") eq: none(),
+	assert: index("abcdef☺☹123def", "xyz") eq: none(),
+	assert: index("abcdef123def", "☺☹") eq: none(),
+
+	// Make sure it works with [uint8] too.
+	assert: index([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['b', 'c']) eq: some(1),
+	assert: index([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['n']) eq: none()
+}
+
+// Returns whether s contains substr as a substring.
+Func contains(s S : (S, uint8) span#span, substr S) bool {
+	return: index(s, substr) != none()
+}
+
+test contains {
+	assert: contains("", "") eq: true,
+	assert: contains("xyz", "") eq: true,
+	assert: contains("xyz", "x") eq: true,
+	assert: contains("xyz", "y") eq: true,
+	assert: contains("xyz", "z") eq: true,
+	assert: contains("xyz", "y") eq: true,
+	assert: contains("xyz", "yz") eq: true,
+	assert: contains("xyz", "xyz") eq: true,
+	assert: contains("abcdef123def", "def") eq: true,
+	assert: contains("abcdef☺☹123def", "☺☹") eq: true,
+	assert: contains("abcdef☺☹123def", "123") eq: true,
+
+	assert: contains("", "xyz") eq: false,
+	assert: contains("abc", "x") eq: false,
+	assert: contains("abc", "ba") eq: false,
+	assert: contains("abc", "xyz") eq: false,
+	assert: contains("abcdef123def", "xyz") eq: false,
+	assert: contains("abcdef☺☹123def", "xyz") eq: false,
+	assert: contains("abcdef123def", "☺☹") eq: false,
+
+	// Make sure it works with [uint8] too.
+	assert: contains([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['b', 'c']) eq: true,
+	assert: contains([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['n']) eq: false
+}
+
+// Returns the number of non-overlapping occurrences of substr in s.
+// If substr is empty, it returns the number of Unicode code points in s,
+// interpreted as a UTF-8-encoded text.
+Func count(s S : (S, uint8) span#span, substr S) int {
+	if: substr.length = 0 true: {
+		return: utf8#length(s)
+	},
+	n := 0,
+	option#while: { index(s, substr) } some: (i){
+		++n,
+		s := s[i + substr.length, s.length]
+	},
+	return: n
+}
+
+test count_empty_substr {
+	assert: count("", "") eq: 0,
+	assert: count("a", "") eq: 1,
+	assert: count("☺", "") eq: 1,
+	assert: count("hello", "") eq: 5,
+	assert: count("こんにちは", "") eq: 5,
+	assert: count("今日は", "") eq: 3
+}
+
+test count_zero {
+	assert: count("", "a") eq: 0,
+	assert: count("", "aa") eq: 0,
+	assert: count("", "こんにちは") eq: 0,
+	assert: count("bcd", "a") eq: 0,
+	assert: count("abcd", "aa") eq: 0,
+	assert: count("今日は", "こんにちは") eq: 0,
+	assert: count("こんにち", "こんにちは") eq: 0,
+	assert: count("んにちは", "こんにちは") eq: 0
+}
+
+test count_one {
+	assert: count("a", "a") eq: 1,
+	assert: count("aa", "aa") eq: 1,
+	assert: count("bcda", "a") eq: 1,
+	assert: count("xyzaabc", "aa") eq: 1,
+	assert: count("こんにちは", "こんにちは") eq: 1,
+	assert: count("こんにちは、みんな", "こんにちは") eq: 1,
+	assert: count("みんな、こんにちは", "こんにちは") eq: 1
+}
+
+test count_multiple {
+	assert: count("aaa", "a") eq: 3,
+	assert: count("a.a.a", "a") eq: 3,
+	assert: count("aa.aa.aa", "aa") eq: 3,
+	assert: count("aaaaaa", "aa") eq: 3,
+	assert: count("☺☺☺☺", "☺") eq: 4,
+	assert: count("☺☹☺☹☺☹☺", "☺") eq: 4,
+	assert: count("☹☺☹☺☹☺☹☺☹", "☺") eq: 4,
+	assert: count("☹☺☹☺☹☺☹☺☹", "☺☹") eq: 4,
+	assert: count("☹☺☹☺☹☺☹☺", "☺☹") eq: 3,
+	assert: count("こんにちはこんにちは", "こんにちは") eq: 2
+}
+
+// TODO: use this type and make functions for:
+// 	string(S) S delimiter
+// 	code_point(code_point) S delimiter
+// 	max(S delimiter, n int) S delimiter
+// Type S delimiter (S){[.i int, .length int]}
+//
+// Func split(s S : (S, uint8) span#span, next D : ::(D)delimiter) [S]
+
+Func split(s S : (S, uint8) span#span, next (S){[.i int, .length int]}) [S] {
+	splits := S dynamic_array :: new(),
+	forever: {
+		n := next(s),
+		if: n.i = 0 && { n.length = 0 } true: {
+			// Always move by at least 1 code point.
+			cs := utf8#decode_first(s),
+			n.i := cs.size
+		},
+		if: n.i = s.length && { n.length = 0 } true: {
+			splits push_back: s[0, n.i],
+			return: new(splits.length, (i int){ splits[i] })
+		},
+		splits push_back: s[0, n.i],
+		s := s[min(n.i + n.length, s.length), s.length]
+	}
+}
+
+// Returns an array of all slices of s separated by instances of substr.
+// If substr is empty, s is split after each code point.
+Func split(s S : (S, uint8) span#span, substr S) [S] {
+	return: split(s, substr, -1)
+}
+
+// Returns an array of at most max slices of s separated by instances of substr.
+// If max is ≥ 0, only max occurrences of the delimeter are matched.
+// If substr is empty, s is split after each code point.
+Func split(s S : (S, uint8) span#span, substr S, max int) [S] {
+	next := (tail S){
+		index(tail, substr) none? {
+			[.i tail.length, .length 0]
+		} some? (i){
+			[.i i, .length substr.length]
+		}
+	},
+	if: max < 0 true: {
+		return: split(s, next)
+	},
+	n := 0,
+	return: split(s, (tail S){
+		n >= max true? {
+			[.i tail.length, .length 0]
+		} false? {
+			++n,
+			next(tail)
+		}
+	})
+}
+
+test split {
+	assert: split("a·b·c·d·e", "·") ordered: ["a", "b", "c", "d", "e"],
+	assert: split("a·b·c·d·e·", "·") ordered: ["a", "b", "c", "d", "e", ""],
+	assert: split("a·b·c·d·e·", "") ordered: ["a", "·", "b", "·", "c", "·", "d", "·", "e", "·"]
+}
+
+test split_n_empty_substr {
+	assert: split("", "", -1) ordered: [""],
+	assert: split("", "", 0) ordered: [""],
+	assert: split("", "", 1) ordered: [""],
+	assert: split("", "", 2) ordered: [""],
+
+	assert: split("a", "", -1) ordered: ["a"],
+	assert: split("a", "", 0) ordered: ["a"],
+	assert: split("a", "", 1) ordered: ["a"],
+	assert: split("a", "", 2) ordered: ["a"],
+
+	assert: split("abc", "", -1) ordered: ["a", "b", "c"],
+	assert: split("abc", "", 0) ordered: ["abc"],
+	assert: split("abc", "", 1) ordered: ["a", "bc"],
+	assert: split("abc", "", 2) ordered: ["a", "b", "c"],
+	assert: split("abc", "", 3) ordered: ["a", "b", "c"],
+	assert: split("abc", "", 4) ordered: ["a", "b", "c"],
+
+	assert: split("☹☺☹☺", "", -1) ordered: ["☹", "☺", "☹", "☺"],
+	assert: split("☹☺☹☺", "", 0) ordered: ["☹☺☹☺"],
+	assert: split("☹☺☹☺", "", 1) ordered: ["☹", "☺☹☺"],
+	assert: split("☹☺☹☺", "", 2) ordered: ["☹", "☺", "☹☺"],
+	assert: split("☹☺☹☺", "", 3) ordered: ["☹", "☺", "☹", "☺"],
+	assert: split("☹☺☹☺", "", 4) ordered: ["☹", "☺", "☹", "☺"]
+}
+
+test split_n_singleton_substr {
+	assert: split("", "a", -1) ordered: [""],
+	assert: split("", "a", 0) ordered: [""],
+	assert: split("", "a", 1) ordered: [""],
+	assert: split("", "a", 2) ordered: [""],
+
+	assert: split("a", "a", -1) ordered: ["", ""],
+	assert: split("a", "a", 0) ordered: ["a"],
+	assert: split("a", "a", 1) ordered: ["", ""],
+	assert: split("a", "a", 2) ordered: ["", ""],
+
+	assert: split("abc", "a", -1) ordered: ["", "bc"],
+	assert: split("abc", "a", 0) ordered: ["abc"],
+	assert: split("abc", "a", 1) ordered: ["", "bc"],
+	assert: split("abc", "a", 2) ordered: ["", "bc"],
+
+	assert: split("bc", "a", -1) ordered: ["bc"],
+	assert: split("bc", "a", 0) ordered: ["bc"],
+	assert: split("bc", "a", 1) ordered: ["bc"],
+	assert: split("bc", "a", 2) ordered: ["bc"],
+	assert: split("bc", "a", 3) ordered: ["bc"],
+
+	assert: split("bac", "a", -1) ordered: ["b", "c"],
+	assert: split("bac", "a", 0) ordered: ["bac"],
+	assert: split("bac", "a", 1) ordered: ["b", "c"],
+	assert: split("bac", "a", 2) ordered: ["b", "c"],
+
+	assert: split("abac", "a", -1) ordered: ["", "b", "c"],
+	assert: split("abac", "a", 0) ordered: ["abac"],
+	assert: split("abac", "a", 1) ordered: ["", "bac"],
+	assert: split("abac", "a", 2) ordered: ["", "b", "c"],
+	assert: split("abac", "a", 3) ordered: ["", "b", "c"],
+
+	assert: split("abaca", "a", -1) ordered: ["", "b", "c", ""],
+	assert: split("abaca", "a", 0) ordered: ["abaca"],
+	assert: split("abaca", "a", 1) ordered: ["", "baca"],
+	assert: split("abaca", "a", 2) ordered: ["", "b", "ca"],
+	assert: split("abaca", "a", 3) ordered: ["", "b", "c", ""],
+	assert: split("abaca", "a", 4) ordered: ["", "b", "c", ""],
+
+	assert: split("a☺a☹a", "a", -1) ordered: ["", "☺", "☹", ""],
+	assert: split("a☺a☹a", "a", 0) ordered: ["a☺a☹a"],
+	assert: split("a☺a☹a", "a", 1) ordered: ["", "☺a☹a"],
+	assert: split("a☺a☹a", "a", 2) ordered: ["", "☺", "☹a"],
+	assert: split("a☺a☹a", "a", 3) ordered: ["", "☺", "☹", ""],
+	assert: split("a☺a☹a", "a", 4) ordered: ["", "☺", "☹", ""]
+}
+
+test split_n {
+	assert: split("", "···", -1) ordered: [""],
+	assert: split("", "···", 0) ordered: [""],
+	assert: split("", "···", 1) ordered: [""],
+	assert: split("", "···", 2) ordered: [""],
+
+	assert: split("···", "···", -1) ordered: ["", ""],
+	assert: split("···", "···", 0) ordered: ["···"],
+	assert: split("···", "···", 1) ordered: ["", ""],
+	assert: split("···", "···", 2) ordered: ["", ""],
+
+	assert: split("···bc", "···", -1) ordered: ["", "bc"],
+	assert: split("···bc", "···", 0) ordered: ["···bc"],
+	assert: split("···bc", "···", 1) ordered: ["", "bc"],
+	assert: split("···bc", "···", 2) ordered: ["", "bc"],
+
+	assert: split("bc", "···", -1) ordered: ["bc"],
+	assert: split("bc", "···", 0) ordered: ["bc"],
+	assert: split("bc", "···", 1) ordered: ["bc"],
+	assert: split("bc", "···", 2) ordered: ["bc"],
+	assert: split("bc", "···", 3) ordered: ["bc"],
+
+	assert: split("b···c", "···", -1) ordered: ["b", "c"],
+	assert: split("b···c", "···", 0) ordered: ["b···c"],
+	assert: split("b···c", "···", 1) ordered: ["b", "c"],
+	assert: split("b···c", "···", 2) ordered: ["b", "c"],
+
+	assert: split("···b···c", "···", -1) ordered: ["", "b", "c"],
+	assert: split("···b···c", "···", 0) ordered: ["···b···c"],
+	assert: split("···b···c", "···", 1) ordered: ["", "b···c"],
+	assert: split("···b···c", "···", 2) ordered: ["", "b", "c"],
+	assert: split("···b···c", "···", 3) ordered: ["", "b", "c"],
+
+	assert: split("···b···c···", "···", -1) ordered: ["", "b", "c", ""],
+	assert: split("···b···c···", "···", 0) ordered: ["···b···c···"],
+	assert: split("···b···c···", "···", 1) ordered: ["", "b···c···"],
+	assert: split("···b···c···", "···", 2) ordered: ["", "b", "c···"],
+	assert: split("···b···c···", "···", 3) ordered: ["", "b", "c", ""],
+	assert: split("···b···c···", "···", 4) ordered: ["", "b", "c", ""],
+
+	assert: split("···☺···☹···", "···", -1) ordered: ["", "☺", "☹", ""],
+	assert: split("···☺···☹···", "···", 0) ordered: ["···☺···☹···"],
+	assert: split("···☺···☹···", "···", 1) ordered: ["", "☺···☹···"],
+	assert: split("···☺···☹···", "···", 2) ordered: ["", "☺", "☹···"],
+	assert: split("···☺···☹···", "···", 3) ordered: ["", "☺", "☹", ""],
+	assert: split("···☺···☹···", "···", 4) ordered: ["", "☺", "☹", ""]
+}
+
+Func trim_space(s S : (S, uint8) span#span) S {
+	panic("unimplemented")
+}
