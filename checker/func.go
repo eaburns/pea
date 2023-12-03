@@ -553,7 +553,7 @@ func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *Candida
 
 func (f *Select) eq(other Func) bool {
 	o, ok := other.(*Select)
-	return ok && f.N == o.N && f.Struct == o.Struct && f.Field == o.Field
+	return ok && f.T != nil && o.T != nil && eqType(f.T, o.T) && f.N == o.N
 }
 
 func (f *Switch) arity() int { return len(f.T.Parms) }
@@ -701,7 +701,7 @@ func eqCase(a, b *CaseDef) bool {
 
 func (f *Switch) eq(other Func) bool {
 	o, ok := other.(*Switch)
-	if !ok || !eqType(f.Union, o.Union) || len(f.Cases) != len(o.Cases) || len(f.T.Parms) != len(o.T.Parms) {
+	if !ok || f.T == nil || o.T == nil || !eqType(f.T, o.T) || len(f.Cases) != len(o.Cases) || len(f.T.Parms) != len(o.T.Parms) {
 		return false
 	}
 	for i := range f.Cases {
@@ -709,12 +709,7 @@ func (f *Switch) eq(other Func) bool {
 			return false
 		}
 	}
-	for i := range f.T.Parms {
-		if !eqType(f.T.Parms[i], o.T.Parms[i]) {
-			return false
-		}
-	}
-	return eqType(f.T.Ret, o.T.Ret)
+	return true
 }
 
 func (f *Builtin) arity() int { return len(f.Parms) }
@@ -775,7 +770,7 @@ func (f *idFunc) ret() TypePattern                                            { 
 func (f *idFunc) parm(i int) TypePattern                                      { return pattern(f.funcType.Parms[i]) }
 func (f *idFunc) sub([]*TypeParm, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
-// eq should never be called; it's used to check equality of FuncInst ifaces.
-// FuncInst ifaces should never have an idFunc, since it is a temporary,
-// bookkeeping type only used inside overload resolution.
-func (*idFunc) eq(Func) bool { panic("impossible") }
+func (f *idFunc) eq(o Func) bool {
+	g, ok := o.(*idFunc)
+	return ok && f.id == g.id
+}
