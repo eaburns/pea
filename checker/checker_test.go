@@ -1126,71 +1126,71 @@ func TestConversions(t *testing.T) {
 			src:  "func f(x int, y [.]) { y := x }",
 		},
 
-		{src: "func f(x int) { int :: x }"},
-		{src: "func f(x int) { int8 :: x }"},
-		{src: "func f(x int) { int16 :: x }"},
-		{src: "func f(x int) { int32 :: x }"},
-		{src: "func f(x int) { int64 :: x }"},
-		{src: "func f(x int) { uint :: x }"},
-		{src: "func f(x int) { uint8 :: x }"},
-		{src: "func f(x int) { uint16 :: x }"},
-		{src: "func f(x int) { uint32 :: x }"},
-		{src: "func f(x int) { uint64 :: x }"},
-		{src: "func f(x int) { float32 :: x }"},
-		{src: "func f(x int) { float64 :: x }"},
-		{src: "type num int	func f(x int) { num :: x }"},
-		{src: "func f(x int8) { int :: x }"},
-		{src: "func f(x int8) { int8 :: x }"},
-		{src: "func f(x int8) { int16 :: x }"},
-		{src: "func f(x int8) { int32 :: x }"},
-		{src: "func f(x int8) { int64 :: x }"},
-		{src: "func f(x int8) { uint :: x }"},
-		{src: "func f(x int8) { uint8 :: x }"},
-		{src: "func f(x int8) { uint16 :: x }"},
-		{src: "func f(x int8) { uint32 :: x }"},
-		{src: "func f(x int8) { uint64 :: x }"},
-		{src: "func f(x int8) { float32 :: x }"},
-		{src: "func f(x int8) { float64 :: x }"},
-		{src: "type num int	func f(x int8) { num :: x }"},
-		{src: "func f(x int16) { int :: x }"},
-		{src: "func f(x int16) { int8 :: x }"},
-		{src: "func f(x int16) { int16 :: x }"},
-		{src: "func f(x int16) { int32 :: x }"},
-		{src: "func f(x int16) { int64 :: x }"},
-		{src: "func f(x int16) { uint :: x }"},
-		{src: "func f(x int16) { uint8 :: x }"},
-		{src: "func f(x int16) { uint16 :: x }"},
-		{src: "func f(x int16) { uint32 :: x }"},
-		{src: "func f(x int16) { uint64 :: x }"},
-		{src: "func f(x int16) { float32 :: x }"},
-		{src: "func f(x int16) { float64 :: x }"},
-		{src: "type num int	func f(x int16) { num :: x }"},
-		{src: "func f(x int32) { int :: x }"},
-		{src: "func f(x int32) { int8 :: x }"},
-		{src: "func f(x int32) { int16 :: x }"},
-		{src: "func f(x int32) { int32 :: x }"},
-		{src: "func f(x int32) { int64 :: x }"},
-		{src: "func f(x int32) { uint :: x }"},
-		{src: "func f(x int32) { uint8 :: x }"},
-		{src: "func f(x int32) { uint16 :: x }"},
-		{src: "func f(x int32) { uint32 :: x }"},
-		{src: "func f(x int32) { uint64 :: x }"},
-		{src: "func f(x int32) { float32 :: x }"},
-		{src: "func f(x int32) { float64 :: x }"},
-		{src: "type num int	func f(x int32) { num :: x }"},
-		{src: "func f(x int64) { int :: x }"},
-		{src: "func f(x int64) { int8 :: x }"},
-		{src: "func f(x int64) { int16 :: x }"},
-		{src: "func f(x int64) { int32 :: x }"},
-		{src: "func f(x int64) { int64 :: x }"},
-		{src: "func f(x int64) { uint :: x }"},
-		{src: "func f(x int64) { uint8 :: x }"},
-		{src: "func f(x int64) { uint16 :: x }"},
-		{src: "func f(x int64) { uint32 :: x }"},
-		{src: "func f(x int64) { uint64 :: x }"},
-		{src: "func f(x int64) { float32 :: x }"},
-		{src: "func f(x int64) { float64 :: x }"},
-		{src: "type num int	func f(x int64) { num :: x }"},
+		{src: "func f(x int) { _ := int :: x }"},
+		{src: "func f(x int) { _ := int8 :: x }"},
+		{src: "func f(x int) { _ := int16 :: x }"},
+		{src: "func f(x int) { _ := int32 :: x }"},
+		{src: "func f(x int) { _ := int64 :: x }"},
+		{src: "func f(x int) { _ := uint :: x }"},
+		{src: "func f(x int) { _ := uint8 :: x }"},
+		{src: "func f(x int) { _ := uint16 :: x }"},
+		{src: "func f(x int) { _ := uint32 :: x }"},
+		{src: "func f(x int) { _ := uint64 :: x }"},
+		{src: "func f(x int) { _ := float32 :: x }"},
+		{src: "func f(x int) { _ := float64 :: x }"},
+		{src: "type num int	func f(x int) { _ := num :: x }"},
+		{src: "func f(x int8) { _ := int :: x }"},
+		{src: "func f(x int8) { _ := int8 :: x }"},
+		{src: "func f(x int8) { _ := int16 :: x }"},
+		{src: "func f(x int8) { _ := int32 :: x }"},
+		{src: "func f(x int8) { _ := int64 :: x }"},
+		{src: "func f(x int8) { _ := uint :: x }"},
+		{src: "func f(x int8) { _ := uint8 :: x }"},
+		{src: "func f(x int8) { _ := uint16 :: x }"},
+		{src: "func f(x int8) { _ := uint32 :: x }"},
+		{src: "func f(x int8) { _ := uint64 :: x }"},
+		{src: "func f(x int8) { _ := float32 :: x }"},
+		{src: "func f(x int8) { _ := float64 :: x }"},
+		{src: "type num int	func f(x int8) { _ := num :: x }"},
+		{src: "func f(x int16) { _ := int :: x }"},
+		{src: "func f(x int16) { _ := int8 :: x }"},
+		{src: "func f(x int16) { _ := int16 :: x }"},
+		{src: "func f(x int16) { _ := int32 :: x }"},
+		{src: "func f(x int16) { _ := int64 :: x }"},
+		{src: "func f(x int16) { _ := uint :: x }"},
+		{src: "func f(x int16) { _ := uint8 :: x }"},
+		{src: "func f(x int16) { _ := uint16 :: x }"},
+		{src: "func f(x int16) { _ := uint32 :: x }"},
+		{src: "func f(x int16) { _ := uint64 :: x }"},
+		{src: "func f(x int16) { _ := float32 :: x }"},
+		{src: "func f(x int16) { _ := float64 :: x }"},
+		{src: "type num int	func f(x int16) { _ := num :: x }"},
+		{src: "func f(x int32) { _ := int :: x }"},
+		{src: "func f(x int32) { _ := int8 :: x }"},
+		{src: "func f(x int32) { _ := int16 :: x }"},
+		{src: "func f(x int32) { _ := int32 :: x }"},
+		{src: "func f(x int32) { _ := int64 :: x }"},
+		{src: "func f(x int32) { _ := uint :: x }"},
+		{src: "func f(x int32) { _ := uint8 :: x }"},
+		{src: "func f(x int32) { _ := uint16 :: x }"},
+		{src: "func f(x int32) { _ := uint32 :: x }"},
+		{src: "func f(x int32) { _ := uint64 :: x }"},
+		{src: "func f(x int32) { _ := float32 :: x }"},
+		{src: "func f(x int32) { _ := float64 :: x }"},
+		{src: "type num int	func f(x int32) { _ := num :: x }"},
+		{src: "func f(x int64) { _ := int :: x }"},
+		{src: "func f(x int64) { _ := int8 :: x }"},
+		{src: "func f(x int64) { _ := int16 :: x }"},
+		{src: "func f(x int64) { _ := int32 :: x }"},
+		{src: "func f(x int64) { _ := int64 :: x }"},
+		{src: "func f(x int64) { _ := uint :: x }"},
+		{src: "func f(x int64) { _ := uint8 :: x }"},
+		{src: "func f(x int64) { _ := uint16 :: x }"},
+		{src: "func f(x int64) { _ := uint32 :: x }"},
+		{src: "func f(x int64) { _ := uint64 :: x }"},
+		{src: "func f(x int64) { _ := float32 :: x }"},
+		{src: "func f(x int64) { _ := float64 :: x }"},
+		{src: "type num int	func f(x int64) { _ := num :: x }"},
 
 		// Converting TO uintref only works from explicit or implicit ref types.
 		// This is to prevent accidentally converting a variable of type int,
@@ -1198,27 +1198,27 @@ func TestConversions(t *testing.T) {
 		// to that variable to uintref.
 		{
 			src: `
-				func f(x T) { uintref :: (&T :: x) }
+				func f(x T) { _ := uintref :: (&T :: x) }
 			`,
 		},
 		{
 			src: `
 				type xyz &int
-				func f(x xyz) { uintref :: x }
+				func f(x xyz) { _ := uintref :: x }
 			`,
 		},
 		{
 			src: `
 				type xyz abc
 				type abc &int
-				func f(x xyz) { uintref :: x }
+				func f(x xyz) { _ := uintref :: x }
 			`,
 		},
 		{
 			// We cannot convert x (an int) to uintref,
 			// only references can be converted.
 			src: `
-				func f(x int) { uintref :: x }
+				func f(x int) { _ := uintref :: x }
 			`,
 			err: "cannot convert x \\(type int\\) to uintref",
 		},
@@ -1227,176 +1227,176 @@ func TestConversions(t *testing.T) {
 			// This is not the _value_ stored in x,
 			// but the address of the variable x itself.
 			src: `
-				func f(x int) { uintref :: (&int :: x) }
+				func f(x int) { _ := uintref :: (&int :: x) }
 			`,
 		},
 
 		// Convert from uintref to other numeric types is fine.
-		{src: "func f(x uintref) { int :: x }"},
-		{src: "func f(x uintref) { int8 :: x }"},
-		{src: "func f(x uintref) { int16 :: x }"},
-		{src: "func f(x uintref) { int32 :: x }"},
-		{src: "func f(x uintref) { int64 :: x }"},
-		{src: "func f(x uintref) { uint :: x }"},
-		{src: "func f(x uintref) { uint8 :: x }"},
-		{src: "func f(x uintref) { uint16 :: x }"},
-		{src: "func f(x uintref) { uint32 :: x }"},
-		{src: "func f(x uintref) { uint64 :: x }"},
-		{src: "func f(x uintref) { float32 :: x }"},
-		{src: "func f(x uintref) { float64 :: x }"},
+		{src: "func f(x uintref) { _ := int :: x }"},
+		{src: "func f(x uintref) { _ := int8 :: x }"},
+		{src: "func f(x uintref) { _ := int16 :: x }"},
+		{src: "func f(x uintref) { _ := int32 :: x }"},
+		{src: "func f(x uintref) { _ := int64 :: x }"},
+		{src: "func f(x uintref) { _ := uint :: x }"},
+		{src: "func f(x uintref) { _ := uint8 :: x }"},
+		{src: "func f(x uintref) { _ := uint16 :: x }"},
+		{src: "func f(x uintref) { _ := uint32 :: x }"},
+		{src: "func f(x uintref) { _ := uint64 :: x }"},
+		{src: "func f(x uintref) { _ := float32 :: x }"},
+		{src: "func f(x uintref) { _ := float64 :: x }"},
 
-		{src: "func f(x uint) { int :: x }"},
-		{src: "func f(x uint) { int8 :: x }"},
-		{src: "func f(x uint) { int16 :: x }"},
-		{src: "func f(x uint) { int32 :: x }"},
-		{src: "func f(x uint) { int64 :: x }"},
-		{src: "func f(x uint) { uint :: x }"},
-		{src: "func f(x uint) { uint8 :: x }"},
-		{src: "func f(x uint) { uint16 :: x }"},
-		{src: "func f(x uint) { uint32 :: x }"},
-		{src: "func f(x uint) { uint64 :: x }"},
-		{src: "func f(x uint) { float32 :: x }"},
-		{src: "func f(x uint) { float64 :: x }"},
-		{src: "type num int	func f(x uint) { num :: x }"},
-		{src: "func f(x uint8) { int :: x }"},
-		{src: "func f(x uint8) { int8 :: x }"},
-		{src: "func f(x uint8) { int16 :: x }"},
-		{src: "func f(x uint8) { int32 :: x }"},
-		{src: "func f(x uint8) { int64 :: x }"},
-		{src: "func f(x uint8) { uint :: x }"},
-		{src: "func f(x uint8) { uint8 :: x }"},
-		{src: "func f(x uint8) { uint16 :: x }"},
-		{src: "func f(x uint8) { uint32 :: x }"},
-		{src: "func f(x uint8) { uint64 :: x }"},
-		{src: "func f(x uint8) { float32 :: x }"},
-		{src: "func f(x uint8) { float64 :: x }"},
-		{src: "type num int	func f(x uint8) { num :: x }"},
-		{src: "func f(x uint16) { int :: x }"},
-		{src: "func f(x uint16) { int8 :: x }"},
-		{src: "func f(x uint16) { int16 :: x }"},
-		{src: "func f(x uint16) { int32 :: x }"},
-		{src: "func f(x uint16) { int64 :: x }"},
-		{src: "func f(x uint16) { uint :: x }"},
-		{src: "func f(x uint16) { uint8 :: x }"},
-		{src: "func f(x uint16) { uint16 :: x }"},
-		{src: "func f(x uint16) { uint32 :: x }"},
-		{src: "func f(x uint16) { uint64 :: x }"},
-		{src: "func f(x uint16) { float32 :: x }"},
-		{src: "func f(x uint16) { float64 :: x }"},
-		{src: "type num int	func f(x uint16) { num :: x }"},
-		{src: "func f(x uint32) { int :: x }"},
-		{src: "func f(x uint32) { int8 :: x }"},
-		{src: "func f(x uint32) { int16 :: x }"},
-		{src: "func f(x uint32) { int32 :: x }"},
-		{src: "func f(x uint32) { int64 :: x }"},
-		{src: "func f(x uint32) { uint :: x }"},
-		{src: "func f(x uint32) { uint8 :: x }"},
-		{src: "func f(x uint32) { uint16 :: x }"},
-		{src: "func f(x uint32) { uint32 :: x }"},
-		{src: "func f(x uint32) { uint64 :: x }"},
-		{src: "func f(x uint32) { float32 :: x }"},
-		{src: "func f(x uint32) { float64 :: x }"},
-		{src: "type num int	func f(x uint32) { num :: x }"},
-		{src: "func f(x uint64) { int :: x }"},
-		{src: "func f(x uint64) { int8 :: x }"},
-		{src: "func f(x uint64) { int16 :: x }"},
-		{src: "func f(x uint64) { int32 :: x }"},
-		{src: "func f(x uint64) { int64 :: x }"},
-		{src: "func f(x uint64) { uint :: x }"},
-		{src: "func f(x uint64) { uint8 :: x }"},
-		{src: "func f(x uint64) { uint16 :: x }"},
-		{src: "func f(x uint64) { uint32 :: x }"},
-		{src: "func f(x uint64) { uint64 :: x }"},
-		{src: "func f(x uint64) { float32 :: x }"},
-		{src: "func f(x uint64) { float64 :: x }"},
-		{src: "type num int	func f(x uint64) { num :: x }"},
-		{src: "func f(x float32) { int :: x }"},
-		{src: "func f(x float32) { int8 :: x }"},
-		{src: "func f(x float32) { int16 :: x }"},
-		{src: "func f(x float32) { int32 :: x }"},
-		{src: "func f(x float32) { int64 :: x }"},
-		{src: "func f(x float32) { uint :: x }"},
-		{src: "func f(x float32) { uint8 :: x }"},
-		{src: "func f(x float32) { uint16 :: x }"},
-		{src: "func f(x float32) { uint32 :: x }"},
-		{src: "func f(x float32) { uint64 :: x }"},
-		{src: "func f(x float32) { float32 :: x }"},
-		{src: "func f(x float32) { float64 :: x }"},
-		{src: "type num int	func f(x float32) { num :: x }"},
-		{src: "func f(x float64) { int :: x }"},
-		{src: "func f(x float64) { int8 :: x }"},
-		{src: "func f(x float64) { int16 :: x }"},
-		{src: "func f(x float64) { int32 :: x }"},
-		{src: "func f(x float64) { int64 :: x }"},
-		{src: "func f(x float64) { uint :: x }"},
-		{src: "func f(x float64) { uint8 :: x }"},
-		{src: "func f(x float64) { uint16 :: x }"},
-		{src: "func f(x float64) { uint32 :: x }"},
-		{src: "func f(x float64) { uint64 :: x }"},
-		{src: "func f(x float64) { float32 :: x }"},
-		{src: "func f(x float64) { float64 :: x }"},
-		{src: "type num int	func f(x float64) { num :: x }"},
-		{src: "type num int	func f(x num) { int :: x }"},
-		{src: "type num int	func f(x num) { int8 :: x }"},
-		{src: "type num int	func f(x num) { int16 :: x }"},
-		{src: "type num int	func f(x num) { int32 :: x }"},
-		{src: "type num int	func f(x num) { int64 :: x }"},
-		{src: "type num int	func f(x num) { uint :: x }"},
-		{src: "type num int	func f(x num) { uint8 :: x }"},
-		{src: "type num int	func f(x num) { uint16 :: x }"},
-		{src: "type num int	func f(x num) { uint32 :: x }"},
-		{src: "type num int	func f(x num) { uint64 :: x }"},
-		{src: "type num int	func f(x num) { float32 :: x }"},
-		{src: "type num int	func f(x num) { float64 :: x }"},
-		{src: "type num1 int		type num2 int		func f(x num1) { num2 :: x }"},
+		{src: "func f(x uint) { _ := int :: x }"},
+		{src: "func f(x uint) { _ := int8 :: x }"},
+		{src: "func f(x uint) { _ := int16 :: x }"},
+		{src: "func f(x uint) { _ := int32 :: x }"},
+		{src: "func f(x uint) { _ := int64 :: x }"},
+		{src: "func f(x uint) { _ := uint :: x }"},
+		{src: "func f(x uint) { _ := uint8 :: x }"},
+		{src: "func f(x uint) { _ := uint16 :: x }"},
+		{src: "func f(x uint) { _ := uint32 :: x }"},
+		{src: "func f(x uint) { _ := uint64 :: x }"},
+		{src: "func f(x uint) { _ := float32 :: x }"},
+		{src: "func f(x uint) { _ := float64 :: x }"},
+		{src: "type num int	func f(x uint) { _ := num :: x }"},
+		{src: "func f(x uint8) { _ := int :: x }"},
+		{src: "func f(x uint8) { _ := int8 :: x }"},
+		{src: "func f(x uint8) { _ := int16 :: x }"},
+		{src: "func f(x uint8) { _ := int32 :: x }"},
+		{src: "func f(x uint8) { _ := int64 :: x }"},
+		{src: "func f(x uint8) { _ := uint :: x }"},
+		{src: "func f(x uint8) { _ := uint8 :: x }"},
+		{src: "func f(x uint8) { _ := uint16 :: x }"},
+		{src: "func f(x uint8) { _ := uint32 :: x }"},
+		{src: "func f(x uint8) { _ := uint64 :: x }"},
+		{src: "func f(x uint8) { _ := float32 :: x }"},
+		{src: "func f(x uint8) { _ := float64 :: x }"},
+		{src: "type num int	func f(x uint8) { _ := num :: x }"},
+		{src: "func f(x uint16) { _ := int :: x }"},
+		{src: "func f(x uint16) { _ := int8 :: x }"},
+		{src: "func f(x uint16) { _ := int16 :: x }"},
+		{src: "func f(x uint16) { _ := int32 :: x }"},
+		{src: "func f(x uint16) { _ := int64 :: x }"},
+		{src: "func f(x uint16) { _ := uint :: x }"},
+		{src: "func f(x uint16) { _ := uint8 :: x }"},
+		{src: "func f(x uint16) { _ := uint16 :: x }"},
+		{src: "func f(x uint16) { _ := uint32 :: x }"},
+		{src: "func f(x uint16) { _ := uint64 :: x }"},
+		{src: "func f(x uint16) { _ := float32 :: x }"},
+		{src: "func f(x uint16) { _ := float64 :: x }"},
+		{src: "type num int	func f(x uint16) { _ := num :: x }"},
+		{src: "func f(x uint32) { _ := int :: x }"},
+		{src: "func f(x uint32) { _ := int8 :: x }"},
+		{src: "func f(x uint32) { _ := int16 :: x }"},
+		{src: "func f(x uint32) { _ := int32 :: x }"},
+		{src: "func f(x uint32) { _ := int64 :: x }"},
+		{src: "func f(x uint32) { _ := uint :: x }"},
+		{src: "func f(x uint32) { _ := uint8 :: x }"},
+		{src: "func f(x uint32) { _ := uint16 :: x }"},
+		{src: "func f(x uint32) { _ := uint32 :: x }"},
+		{src: "func f(x uint32) { _ := uint64 :: x }"},
+		{src: "func f(x uint32) { _ := float32 :: x }"},
+		{src: "func f(x uint32) { _ := float64 :: x }"},
+		{src: "type num int	func f(x uint32) { _ := num :: x }"},
+		{src: "func f(x uint64) { _ := int :: x }"},
+		{src: "func f(x uint64) { _ := int8 :: x }"},
+		{src: "func f(x uint64) { _ := int16 :: x }"},
+		{src: "func f(x uint64) { _ := int32 :: x }"},
+		{src: "func f(x uint64) { _ := int64 :: x }"},
+		{src: "func f(x uint64) { _ := uint :: x }"},
+		{src: "func f(x uint64) { _ := uint8 :: x }"},
+		{src: "func f(x uint64) { _ := uint16 :: x }"},
+		{src: "func f(x uint64) { _ := uint32 :: x }"},
+		{src: "func f(x uint64) { _ := uint64 :: x }"},
+		{src: "func f(x uint64) { _ := float32 :: x }"},
+		{src: "func f(x uint64) { _ := float64 :: x }"},
+		{src: "type num int	func f(x uint64) { _ := num :: x }"},
+		{src: "func f(x float32) { _ := int :: x }"},
+		{src: "func f(x float32) { _ := int8 :: x }"},
+		{src: "func f(x float32) { _ := int16 :: x }"},
+		{src: "func f(x float32) { _ := int32 :: x }"},
+		{src: "func f(x float32) { _ := int64 :: x }"},
+		{src: "func f(x float32) { _ := uint :: x }"},
+		{src: "func f(x float32) { _ := uint8 :: x }"},
+		{src: "func f(x float32) { _ := uint16 :: x }"},
+		{src: "func f(x float32) { _ := uint32 :: x }"},
+		{src: "func f(x float32) { _ := uint64 :: x }"},
+		{src: "func f(x float32) { _ := float32 :: x }"},
+		{src: "func f(x float32) { _ := float64 :: x }"},
+		{src: "type num int	func f(x float32) { _ := num :: x }"},
+		{src: "func f(x float64) { _ := int :: x }"},
+		{src: "func f(x float64) { _ := int8 :: x }"},
+		{src: "func f(x float64) { _ := int16 :: x }"},
+		{src: "func f(x float64) { _ := int32 :: x }"},
+		{src: "func f(x float64) { _ := int64 :: x }"},
+		{src: "func f(x float64) { _ := uint :: x }"},
+		{src: "func f(x float64) { _ := uint8 :: x }"},
+		{src: "func f(x float64) { _ := uint16 :: x }"},
+		{src: "func f(x float64) { _ := uint32 :: x }"},
+		{src: "func f(x float64) { _ := uint64 :: x }"},
+		{src: "func f(x float64) { _ := float32 :: x }"},
+		{src: "func f(x float64) { _ := float64 :: x }"},
+		{src: "type num int	func f(x float64) { _ := num :: x }"},
+		{src: "type num int	func f(x num) { _ := int :: x }"},
+		{src: "type num int	func f(x num) { _ := int8 :: x }"},
+		{src: "type num int	func f(x num) { _ := int16 :: x }"},
+		{src: "type num int	func f(x num) { _ := int32 :: x }"},
+		{src: "type num int	func f(x num) { _ := int64 :: x }"},
+		{src: "type num int	func f(x num) { _ := uint :: x }"},
+		{src: "type num int	func f(x num) { _ := uint8 :: x }"},
+		{src: "type num int	func f(x num) { _ := uint16 :: x }"},
+		{src: "type num int	func f(x num) { _ := uint32 :: x }"},
+		{src: "type num int	func f(x num) { _ := uint64 :: x }"},
+		{src: "type num int	func f(x num) { _ := float32 :: x }"},
+		{src: "type num int	func f(x num) { _ := float64 :: x }"},
+		{src: "type num1 int		type num2 int		func f(x num1) { _ := num2 :: x }"},
 		{
-			src: "func f(x string) { int :: x }",
+			src: "func f(x string) { _ := int :: x }",
 			err: "cannot convert",
 		},
 
-		{src: "func f(x [uint8]) { string :: x }"},
-		{src: "type str [uint8]	func f(x str) { string :: x }"},
+		{src: "func f(x [uint8]) { _ := string :: x }"},
+		{src: "type str [uint8]	func f(x str) { _ := string :: x }"},
 
-		{src: "func f(x int) { &int :: x }"},
+		{src: "func f(x int) { _ := &int :: x }"},
 
-		{src: "func f(x &int) { int :: x }"},
+		{src: "func f(x &int) { _ := int :: x }"},
 
-		{src: "func f(x [.x int]) { [.x int] :: x }"},
-		{src: "type t [.x int]	func f(x t) { [.x int] :: x }"},
-		{src: "type t [.x int]	func f(x [.x int]) { t :: x }"},
-		{src: "type t [.x int]	type u [.x int]	func f(x u) { t :: x }"},
+		{src: "func f(x [.x int]) { _ := [.x int] :: x }"},
+		{src: "type t [.x int]	func f(x t) { _ := [.x int] :: x }"},
+		{src: "type t [.x int]	func f(x [.x int]) { _ := t :: x }"},
+		{src: "type t [.x int]	type u [.x int]	func f(x u) { _ := t :: x }"},
 
 		{
 			name: "union subset conversion literal is subset 1",
 			src: `
 				type a_or_b [a?, b? int]
-				func f(x [a?]) { a_or_b :: x }
+				func f(x [a?]) { _ := a_or_b :: x }
 			`,
 		},
 		{
 			name: "union subset conversion literal is subset 2",
 			src: `
 				type a_or_b [a?, b? int]
-				func f(x [b? int]) { a_or_b :: x }
+				func f(x [b? int]) { _ := a_or_b :: x }
 			`,
 		},
 		{
 			name: "union subset conversion literal is superset 1",
 			src: `
-				func f(x [a?]) { [a?, b? int] :: x }
+				func f(x [a?]) { _ := [a?, b? int] :: x }
 			`,
 		},
 		{
 			name: "union subset conversion literal is superset 2",
 			src: `
-				func f(x [b? int]) { [a?, b? int] :: x }
+				func f(x [b? int]) { _ := [a?, b? int] :: x }
 			`,
 		},
 		{
 			name: "union subset conversion fails case name mismatch",
 			src: `
 				type a_or_b [a?, b? int]
-				func f(x [c? float32]) { a_or_b :: x }
+				func f(x [c? float32]) { _ := a_or_b :: x }
 			`,
 			err: `cannot convert x \(type \[c\? float32\]\) to a_or_b`,
 		},
@@ -1404,7 +1404,7 @@ func TestConversions(t *testing.T) {
 			name: "union subset conversion fails case type mismatch",
 			src: `
 				type a_or_b [a?, b? int]
-				func f(x [b? float32]) { a_or_b :: x }
+				func f(x [b? float32]) { _ := a_or_b :: x }
 			`,
 			err: `cannot convert x \(type \[b\? float32\]\) to a_or_b`,
 		},
@@ -1412,7 +1412,7 @@ func TestConversions(t *testing.T) {
 			name: "union subset conversion fails typed untyped case mismatch 1",
 			src: `
 				type a_or_b [a?, b? int]
-				func f(x [b?]) { a_or_b :: x }
+				func f(x [b?]) { _ := a_or_b :: x }
 			`,
 			err: `cannot convert x \(type \[b\?\]\) to a_or_b`,
 		},
@@ -1420,7 +1420,7 @@ func TestConversions(t *testing.T) {
 			name: "union subset conversion fails typed untyped case mismatch 2",
 			src: `
 				type a_or_b [a?, b? int]
-				func f(x [a? int]) { a_or_b :: x }
+				func f(x [a? int]) { _ := a_or_b :: x }
 			`,
 			err: `cannot convert x \(type \[a\? int\]\) to a_or_b`,
 		},
@@ -1428,7 +1428,7 @@ func TestConversions(t *testing.T) {
 			name: "union subset conversion fails superset",
 			src: `
 				type a_or_b [a?, b? int]
-				func f(x [a?, b? int, c?]) { a_or_b :: x }
+				func f(x [a?, b? int, c?]) { _ := a_or_b :: x }
 			`,
 			err: `cannot convert x \(type \[a\?, b\? int, c\?\]\) to a_or_b`,
 		},
@@ -1436,7 +1436,7 @@ func TestConversions(t *testing.T) {
 			name: "union subset conversion ok reference added",
 			src: `
 				type a_or_b [a?, b? int]
-				func f(x &[a?]) { &a_or_b :: x }
+				func f(x &[a?]) { _ := &a_or_b :: x }
 			`,
 		},
 		{
@@ -1455,7 +1455,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				type a [a?]
 				type a_or_b [a?, b? int]
-				func f(x a) { a_or_b :: x }
+				func f(x a) { _ := a_or_b :: x }
 			`,
 		},
 		{
@@ -1471,7 +1471,7 @@ func TestConversions(t *testing.T) {
 
 		{
 			name: "explicit conversion of an explicit conversion is ok",
-			src:  "func f(x int) { int :: (&int :: x) }",
+			src:  "func f(x int) { _ := int :: (&int :: x) }",
 		},
 		{
 			name: "no implicit conversion of an explicit conversion",
@@ -1483,7 +1483,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				var x int
 				func x()
-				func f() { int :: x }
+				func f() { _ := int :: x }
 			`,
 		},
 		{
@@ -1491,7 +1491,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				var x int
 				func x()
-				func f() { &int :: x }
+				func f() { _ := &int :: x }
 			`,
 		},
 		{
@@ -1499,7 +1499,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				var x int
 				func x()
-				func f() { uint8 :: (int :: x) }
+				func f() { _ := uint8 :: (int :: x) }
 			`,
 		},
 		{
@@ -1507,7 +1507,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				type foo bar
 				type bar string
-				func f(x foo) bar {return: x}
+				func f(x foo) bar { return: x }
 			`,
 			err: `cannot implicitly convert x \(type foo\) to bar`,
 		},
@@ -1516,14 +1516,14 @@ func TestConversions(t *testing.T) {
 			src: `
 				type foo bar
 				type bar string
-				func f(x foo) bar {return: bar :: x}
+				func f(x foo) bar { return: bar :: x }
 			`,
 		},
 		{
 			name: "explicit conversion literal to def type",
 			src: `
 				type foo string
-				func f() foo {return: foo :: "hello"}
+				func f() foo { return: foo :: "hello" }
 			`,
 		},
 		{
@@ -1531,7 +1531,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				type foo string
 				type bar string
-				func f(x foo) bar {return: bar :: x}
+				func f(x foo) bar { return: bar :: x }
 			`,
 		},
 		{
@@ -1539,7 +1539,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				type foo string
 				type bar string
-				func f(x foo) {&bar :: (&foo :: x)}
+				func f(x foo) { _ := &bar :: (&foo :: x) }
 			`,
 		},
 		{
@@ -1547,7 +1547,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				type foo &string
 				type bar string
-				func f(x foo) {&bar :: x}
+				func f(x foo) { _ := &bar :: x }
 			`,
 		},
 		{
@@ -1555,7 +1555,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				type foo string
 				type bar &string
-				func f(x &foo) {bar :: x}
+				func f(x &foo) { _ := bar :: x }
 			`,
 		},
 		{
@@ -1563,7 +1563,7 @@ func TestConversions(t *testing.T) {
 			src: `
 				type foo &bar
 				type bar string
-				func f(x foo) &bar {return: x}
+				func f(x foo) &bar { return: x }
 			`,
 			err: `cannot implicitly convert x \(type foo\) to &bar`,
 		},
@@ -1572,13 +1572,13 @@ func TestConversions(t *testing.T) {
 			src: `
 				type foo &bar
 				type bar string
-				func f(x foo) &bar {return: &bar :: x}
+				func f(x foo) &bar { return: &bar :: x }
 			`,
 		},
 		{
 			name: "user-defined conversion",
 			src: `
-				func f(x int) string {return: string :: x}
+				func f(x int) string { return: string :: x }
 				func ::(_ int) string
 			`,
 		},
@@ -1586,7 +1586,7 @@ func TestConversions(t *testing.T) {
 			name: "arg adl user-defined convert",
 			src: `
 				import "foo"
-				func f(x foo#t) string {return: string :: x}
+				func f(x foo#t) string { return: string :: x }
 			`,
 			otherMods: []testMod{
 				{
@@ -1603,7 +1603,7 @@ func TestConversions(t *testing.T) {
 			name: "ret adl user-defined convert",
 			src: `
 				import "foo"
-				func f(x string) foo#t {return: foo#t :: x}
+				func f(x string) foo#t { return: foo#t :: x }
 			`,
 			otherMods: []testMod{
 				{
@@ -1620,7 +1620,7 @@ func TestConversions(t *testing.T) {
 			name: "arg and ret adl user-defined convert",
 			src: `
 				import "foo"
-				func f(x foo#t) foo#u {return: foo#u :: x}
+				func f(x foo#t) foo#u { return: foo#u :: x }
 			`,
 			otherMods: []testMod{
 				{
@@ -1638,7 +1638,7 @@ func TestConversions(t *testing.T) {
 		{
 			name: "user-defined conversion and conversion call return value",
 			src: `
-				func f() string {return: string :: x()}
+				func f() string { return: string :: x() }
 				func x() &int
 				func ::(_ int) string
 			`,
@@ -1646,7 +1646,7 @@ func TestConversions(t *testing.T) {
 		{
 			name: "user-defined conversion implicitly converts the arg",
 			src: `
-				func f(x point) string {return: string :: x}
+				func f(x point) string { return: string :: x }
 				type point [.x int, .y int]
 				func ::(_ [.x int, .y int]) string
 			`,
@@ -1654,7 +1654,7 @@ func TestConversions(t *testing.T) {
 		{
 			name: "user-defined conversion implicitly converts the retutrn",
 			src: `
-				func f(x int) point {return: point :: x}
+				func f(x int) point { return: point :: x }
 				type point [.x int, .y int]
 				func ::(_ int) [.x int, .y int]
 			`,
@@ -1662,7 +1662,7 @@ func TestConversions(t *testing.T) {
 		{
 			name: "user-defined conversion implicitly converts the arg and retutrn",
 			src: `
-				func f(x [.x int, .y int]) point {return: point :: x}
+				func f(x [.x int, .y int]) point { return: point :: x }
 				type point [.x int, .y int]
 				func ::(_ point) [.x int, .y int]
 			`,
@@ -1670,7 +1670,7 @@ func TestConversions(t *testing.T) {
 		{
 			name: "user-defined conversion overrides built-in",
 			src: `
-				func f(x string) string {return: string :: x}
+				func f(x string) string { return: string :: x }
 				func ::(_ string) string
 			`,
 			// We don't test here that it actually _overrides_.
@@ -1680,7 +1680,7 @@ func TestConversions(t *testing.T) {
 		{
 			name: "ambiguous user-defined conversion",
 			src: `
-				func f(x int) string {return: string :: x}
+				func f(x int) string { return: string :: x }
 				func ::(_ int) string
 				func ::(_ int) string
 			`,
@@ -1689,7 +1689,7 @@ func TestConversions(t *testing.T) {
 		{
 			name: "ambiguous user-defined conversion because implicit arg convert",
 			src: `
-				func f(x point) string {return: string :: x}
+				func f(x point) string { return: string :: x }
 				type point [.x int, .y int]
 				func ::(_ point) string
 				func ::(_ [.x int, .y int]) string
@@ -1699,7 +1699,7 @@ func TestConversions(t *testing.T) {
 		{
 			name: "ambiguous user-defined conversion because implicit ret convert",
 			src: `
-				func f(x int) point {return: point :: x}
+				func f(x int) point { return: point :: x }
 				type point [.x int, .y int]
 				func ::(_ int) point
 				func ::(_ int) [.x int, .y int]
@@ -6219,7 +6219,7 @@ func TestSwitchArgumentInference(t *testing.T) {
 func TestCaptureParm(t *testing.T) {
 	const src = `
 		var x := (int){} :: (i int){
-			{i + i + i}
+			{ i + i + i }
 		}
 	`
 	mod, errs := check("test", []string{src}, nil)
@@ -6229,7 +6229,7 @@ func TestCaptureParm(t *testing.T) {
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
 	bOuter := x.Expr.(*Call).Args[1].(*BlockLit)
-	bInner := bOuter.Exprs[0].(*BlockLit)
+	bInner := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))
 	}
@@ -6251,7 +6251,7 @@ func TestCaptureCapture(t *testing.T) {
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
 	bOuter := x.Expr.(*Call).Args[1].(*BlockLit)
-	bMid := bOuter.Exprs[0].(*BlockLit)
+	bMid := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bMid.Caps) != 1 {
 		t.Fatalf("got %d mid caps, expected 1", len(bMid.Caps))
 	}
@@ -6281,7 +6281,7 @@ func TestCaptureOnCall(t *testing.T) {
 	t.Log(mod)
 	x := findVarDef(t, "x", mod)
 	bOuter := x.Expr.(*Call).Args[1].(*BlockLit)
-	bInner := bOuter.Exprs[0].(*BlockLit)
+	bInner := bOuter.Exprs[0].(*Convert).Expr.(*BlockLit)
 	if len(bInner.Caps) != 1 {
 		t.Fatalf("got %d caps, expected 1", len(bInner.Caps))
 	}

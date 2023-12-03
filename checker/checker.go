@@ -1282,8 +1282,8 @@ func checkAndConvertExpr(x scope, parserExpr parser.Expr, pat TypePattern) (Expr
 }
 
 // newLocals indicates whether new local variables may be created.
-// pat is the type pattern for the last expression.
-func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat TypePattern) ([]Expr, []Error) {
+// lastPattern is the type pattern for the last expression in the list.
+func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, lastPattern TypePattern) ([]Expr, []Error) {
 	var errs []Error
 	var exprs []Expr
 	for i, parserExpr := range parserExprs {
@@ -1301,24 +1301,16 @@ func checkExprs(x scope, newLocals bool, parserExprs []parser.Expr, pat TypePatt
 				continue
 			}
 		}
-		var expr Expr
-		var es []Error
-		if i == len(parserExprs)-1 && pat.isGroundType() && !isEmptyStruct(pat.groundType()) {
-			expr, es = checkExpr(x, parserExpr, pat)
-			if expr != nil && !neverReturns(expr) {
-				var err *ConvertExprError
-				if expr, _, err = convertExpr(x, expr, pat, implicit); err != nil {
-					es = append(es, err)
-				}
-			}
-		} else {
-			expr, es = checkExpr(x, parserExpr, any())
+		pat := any()
+		if i == len(parserExprs)-1 {
+			pat = lastPattern
 		}
-		if i < len(parserExprs)-1 {
-			// Remove noisy top-level conversions for all but the last expression.
-			// The last expression must keep the conversion,
-			// because it may be the result expression of a block.
-			expr = removeOuterConverts(expr)
+		expr, es := checkExpr(x, parserExpr, pat)
+		if expr != nil && !neverReturns(expr) {
+			var err *ConvertExprError
+			if expr, _, err = convertExpr(x, expr, pat, implicit); err != nil {
+				es = append(es, err)
+			}
 		}
 		if len(es) > 0 {
 			errs = append(errs, es...)
