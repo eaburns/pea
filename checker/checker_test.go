@@ -5835,6 +5835,10 @@ func TestOverloadResolution(t *testing.T) {
 			}
 			var src string
 			if test.ret != "" {
+				// TODO: var def should use explicit conversion.
+				// The syntax is very confusing here, but this is an _implicit_ conversion.
+				// The reason is that the `%s ::` is not a conversion expression,
+				// it is currently part of the var def syntax.
 				src = fmt.Sprintf("%s\nvar zz := %s :: %s\n", test.src, test.ret, test.call)
 			} else {
 				src = fmt.Sprintf("%s\nvar zz := (){} :: { _ := (%s) }\n", test.src, test.call)
