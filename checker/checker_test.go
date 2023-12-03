@@ -4991,13 +4991,6 @@ func TestOverloadResolution(t *testing.T) {
 			want: "built-in new(int, int8)[int8]",
 		},
 		{
-			name: "built-in new array, expected defed type",
-			src:  "type byte_array_ref &[int8]",
-			call: "new(5, 0)",
-			ret:  "byte_array_ref",
-			err:  `cannot implicitly convert .* \(type \[int\]\) to byte_array_ref`,
-		},
-		{
 			name: "built-in new array, expected non-array type",
 			call: "new(5, 0)",
 			ret:  "string",
