@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/eaburns/pea/parser"
 )
@@ -25,5 +26,9 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	p.Files[0].Print(os.Stdout, parser.PrintLocs(p.Files[0]))
+	file := p.Files[0]
+	if dir, err := os.Getwd(); err == nil {
+		file.P = strings.TrimPrefix(file.P, dir+"/")
+	}
+	p.Files[0].Print(os.Stdout, parser.PrintLocs(file))
 }
