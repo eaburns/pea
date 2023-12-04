@@ -23,6 +23,8 @@ type Parser struct {
 	// TrimErrorPathPrefix is trimmed from path names
 	// in parse error messages.
 	TrimErrorPathPrefix string
+	// All comments sorted by their start location.
+	comments []Comment
 	offs                int
 }
 
@@ -92,6 +94,8 @@ func (p *Parser) Parse(path string, r io.Reader) error {
 		return parseError{path: path, loc: perr, text: _p.text, fail: t}
 	}
 	_, file := _FileAction(_p, 0)
+	file.Comments = p.comments
+	p.comments = nil
 	file.P = path
 	for i, r := range data {
 		if r == '\n' {
@@ -358,4 +362,32 @@ func l(p *_Parser, s, e int) loc.Loc {
 	}
 	offs := p.data.(*Parser).offs
 	return loc.Loc{offs + s, offs + e}
+}
+
+// comment adds a comment to the parser if it is not already there
+// and returns text.
+func comment(_p *_Parser, text string, s, e int) string {
+	p := _p.data.(*Parser)
+	s += p.offs
+	e += p.offs
+	for _, c := range p.comments {
+		if c.L[0] == s {
+			return text
+		}
+	}
+	if n := len(p.comments); n > 0 && p.comments[n-1].L[0] > s {
+		// Comments are always added in order.
+		// In the face of backtracking, comment()
+		// can be called multiple times with the same comment.
+		// But it should never be called with _different_ comments,
+		// so we should either find the comment and return above,
+		// or we have not yet parsed up to s, and the comment
+		// goes on to the end.
+		panic("impossible")
+	}
+	p.comments = append(p.comments, Comment{
+		Text: text,
+		L: loc.Loc{s, e},
+	})
+	return text
 }

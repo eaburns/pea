@@ -5,6 +5,8 @@ import "github.com/eaburns/pea/loc"
 type File struct {
 	Imports []*Import
 	Defs    []Def
+	// All comments sorted by their start location.
+	Comments []Comment
 
 	P      string
 	NLs    []int
@@ -263,3 +265,11 @@ type Ident struct {
 
 func (i Ident) Loc() loc.Loc   { return i.L }
 func (i Ident) String() string { return i.Name }
+
+type Comment struct {
+	Text string
+	L    loc.Loc
+}
+
+func (c Comment) Loc() loc.Loc   { return c.L }
+func (c Comment) String() string { return c.Text }

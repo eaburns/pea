@@ -532,6 +532,15 @@ L <- r:. &{isLetter(r)}
 O <- [*/%+\-^=!<>&|~@$]
 _ "" <- (SPACE / LINE_COMMENT / BLOCK_COMMENT)*
 SPACE <- r:. &{isSpace(r)}
-LINE_COMMENT <- "//" (!"\n" .)*
-BLOCK_COMMENT <- "/*" (BLOCK_COMMENT / (!"*/" .))* "*/"
+
+LINE_COMMENT <- text:("//" (!"\n" .)*)  {
+	return string(comment(parser, text, start, end))
+}
+
+BLOCK_COMMENT <- text:("/*" (NEST_BLOCK_COMMENT / (!"*/" .))* "*/") {
+	return string(comment(parser, text, start, end))
+}
+
+NEST_BLOCK_COMMENT <- "/*" (NEST_BLOCK_COMMENT / (!"*/" .))* "*/"
+
 EOF <- !.

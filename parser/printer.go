@@ -60,6 +60,7 @@ func print(w io.Writer, tree printer, opts ...PrintOpt) (err error) {
 func (f *File) print(pc *config) {
 	pc.p("File{")
 	pc.field("Path", f.P)
+	pc.field("Comments", f.Comments)
 	pc.field("Imports", f.Imports)
 	pc.field("Defs", f.Defs)
 	pc.p("\n}")
@@ -312,6 +313,11 @@ func (t TypeVar) print(pc *config) {
 func (i Ident) print(pc *config) {
 	pc.p("Id(%s)", i.Name)
 	pc.loc(i.L)
+}
+
+func (c Comment) print(pc *config) {
+	pc.p("Comment(%s)", c.Text)
+	pc.loc(c.L)
 }
 
 func (pc *config) loc(l loc.Loc) {
