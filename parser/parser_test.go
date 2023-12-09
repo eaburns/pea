@@ -214,7 +214,10 @@ func TestExpr(t *testing.T) {
 			&ArrayLit{
 				Exprs: []Expr{
 					&Call{
-						Fun: Ident{Name: "foo?"},
+						Fun: Ident{
+							Name:  "foo?",
+							Parts: []Ident{{Name: "foo?"}},
+						},
 						Args: []Expr{
 							Ident{Name: "x"},
 							&IntLit{Text: "6"},
@@ -358,7 +361,10 @@ func TestExpr(t *testing.T) {
 		{
 			`x foo? y`,
 			&Call{
-				Fun: Ident{Name: "foo?"},
+				Fun: Ident{
+					Name:  "foo?",
+					Parts: []Ident{{Name: "foo?"}},
+				},
 				Args: []Expr{
 					Ident{Name: "x"},
 					Ident{Name: "y"},
@@ -369,8 +375,11 @@ func TestExpr(t *testing.T) {
 			`x bar#foo? y`,
 			&Call{
 				Fun: &ModSel{
-					Mod:  Ident{Name: "bar"},
-					Name: Ident{Name: "foo?"},
+					Mod: Ident{Name: "bar"},
+					Name: Ident{
+						Name:  "foo?",
+						Parts: []Ident{{Name: "foo?"}},
+					},
 				},
 				Args: []Expr{
 					Ident{Name: "x"},
@@ -381,7 +390,14 @@ func TestExpr(t *testing.T) {
 		{
 			`x foo? y bar? z baz? a`,
 			&Call{
-				Fun: Ident{Name: "foo?bar?baz?"},
+				Fun: Ident{
+					Name: "foo?bar?baz?",
+					Parts: []Ident{
+						{Name: "foo?"},
+						{Name: "bar?"},
+						{Name: "baz?"},
+					},
+				},
 				Args: []Expr{
 					Ident{Name: "x"},
 					Ident{Name: "y"},
@@ -393,7 +409,10 @@ func TestExpr(t *testing.T) {
 		{
 			`x() foo? y`,
 			&Call{
-				Fun: Ident{Name: "foo?"},
+				Fun: Ident{
+					Name:  "foo?",
+					Parts: []Ident{{Name: "foo?"}},
+				},
 				Args: []Expr{
 					&Call{Fun: Ident{Name: "x"}},
 					Ident{Name: "y"},
@@ -403,7 +422,10 @@ func TestExpr(t *testing.T) {
 		{
 			`a foo: x`,
 			&Call{
-				Fun: Ident{Name: "foo:"},
+				Fun: Ident{
+					Name:  "foo:",
+					Parts: []Ident{{Name: "foo:"}},
+				},
 				Args: []Expr{
 					Ident{Name: "a"},
 					Ident{Name: "x"},
@@ -414,8 +436,11 @@ func TestExpr(t *testing.T) {
 			`a bar#foo: x`,
 			&Call{
 				Fun: &ModSel{
-					Mod:  Ident{Name: "bar"},
-					Name: Ident{Name: "foo:"},
+					Mod: Ident{Name: "bar"},
+					Name: Ident{
+						Name:  "foo:",
+						Parts: []Ident{{Name: "foo:"}},
+					},
 				},
 				Args: []Expr{
 					Ident{Name: "a"},
@@ -426,7 +451,14 @@ func TestExpr(t *testing.T) {
 		{
 			`a foo: x bar: y baz: z`,
 			&Call{
-				Fun: Ident{Name: "foo:bar:baz:"},
+				Fun: Ident{
+					Name: "foo:bar:baz:",
+					Parts: []Ident{
+						{Name: "foo:"},
+						{Name: "bar:"},
+						{Name: "baz:"},
+					},
+				},
 				Args: []Expr{
 					Ident{Name: "a"},
 					Ident{Name: "x"},
@@ -439,7 +471,10 @@ func TestExpr(t *testing.T) {
 		{
 			`foo: x`,
 			&Call{
-				Fun: Ident{Name: "foo:"},
+				Fun: Ident{
+					Name:  "foo:",
+					Parts: []Ident{{Name: "foo:"}},
+				},
 				Args: []Expr{
 					Ident{Name: "x"},
 				},
@@ -449,8 +484,11 @@ func TestExpr(t *testing.T) {
 			`bar#foo: x`,
 			&Call{
 				Fun: &ModSel{
-					Mod:  Ident{Name: "bar"},
-					Name: Ident{Name: "foo:"},
+					Mod: Ident{Name: "bar"},
+					Name: Ident{
+						Name:  "foo:",
+						Parts: []Ident{{Name: "foo:"}},
+					},
 				},
 				Args: []Expr{
 					Ident{Name: "x"},
@@ -460,7 +498,14 @@ func TestExpr(t *testing.T) {
 		{
 			`foo: x bar: y baz: z`,
 			&Call{
-				Fun: Ident{Name: "foo:bar:baz:"},
+				Fun: Ident{
+					Name: "foo:bar:baz:",
+					Parts: []Ident{
+						{Name: "foo:"},
+						{Name: "bar:"},
+						{Name: "baz:"},
+					},
+				},
 				Args: []Expr{
 					Ident{Name: "x"},
 					Ident{Name: "y"},
@@ -471,12 +516,21 @@ func TestExpr(t *testing.T) {
 		{
 			`foo: x bar: (y baz: z)`,
 			&Call{
-				Fun: Ident{Name: "foo:bar:"},
+				Fun: Ident{
+					Name: "foo:bar:",
+					Parts: []Ident{
+						{Name: "foo:"},
+						{Name: "bar:"},
+					},
+				},
 				Args: []Expr{
 					Ident{Name: "x"},
 					&SubExpr{
 						Expr: &Call{
-							Fun: Ident{Name: "baz:"},
+							Fun: Ident{
+								Name:  "baz:",
+								Parts: []Ident{{Name: "baz:"}},
+							},
 							Args: []Expr{
 								Ident{Name: "y"},
 								Ident{Name: "z"},

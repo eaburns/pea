@@ -186,6 +186,7 @@ func nary(l loc.Loc, mod *Ident, nameArgs []nameArg) *Call {
 	var args []Expr
 	for _, nameArg := range nameArgs {
 		name.Name += nameArg.name.Name
+		name.Parts = append(name.Parts, nameArg.name)
 		args = append(args, nameArg.arg)
 	}
 	var fun Expr = name

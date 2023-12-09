@@ -274,7 +274,14 @@ func (tv TypeVar) String() string { return tv.Name }
 
 type Ident struct {
 	Name string
-	L    loc.Loc
+
+	// Parts contains elements of Name,
+	// if it was composed of multiple
+	// colon words or question words.
+	Parts []Ident
+
+	// L is the location spanning the entire identifier.
+	L loc.Loc
 }
 
 func (i Ident) Loc() loc.Loc   { return i.L }
