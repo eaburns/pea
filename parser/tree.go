@@ -45,12 +45,16 @@ type TypeDef struct {
 	L         loc.Loc
 }
 
-type Type interface{}
+type Type interface {
+	Loc() loc.Loc
+}
 
 type RefType struct {
 	Type Type
 	L    loc.Loc
 }
+
+func (t *RefType) Loc() loc.Loc { return t.L }
 
 type NamedType struct {
 	Args []Type
@@ -59,15 +63,21 @@ type NamedType struct {
 	L    loc.Loc
 }
 
+func (t *NamedType) Loc() loc.Loc { return t.L }
+
 type ArrayType struct {
 	ElemType Type
 	L        loc.Loc
 }
 
+func (t *ArrayType) Loc() loc.Loc { return t.L }
+
 type StructType struct {
 	Fields []FieldDef
 	L      loc.Loc
 }
+
+func (t *StructType) Loc() loc.Loc { return t.L }
 
 type FieldDef struct {
 	Name Ident
@@ -80,6 +90,8 @@ type UnionType struct {
 	L     loc.Loc
 }
 
+func (t *UnionType) Loc() loc.Loc { return t.L }
+
 type CaseDef struct {
 	Name Ident
 	Type Type // nil if an un-typed case
@@ -91,6 +103,8 @@ type FuncType struct {
 	Ret   Type // nil if no return
 	L     loc.Loc
 }
+
+func (t *FuncType) Loc() loc.Loc { return t.L }
 
 type IfaceDef struct {
 	Exp       bool
