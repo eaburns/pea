@@ -352,6 +352,18 @@ loop:
 	return len(s0) - len(s)
 }
 
+func source(p *_Parser, s, e int) string {
+	s += countLeadingSpaceAndComments(p.text[s:])
+	for {
+		r, w := utf8.DecodeLastRuneInString(p.text[:e])
+		if !unicode.IsSpace(r) {
+			break
+		}
+		e -= w
+	}
+	return p.text[s:e]
+}
+
 func l(p *_Parser, s, e int) loc.Loc {
 	s += countLeadingSpaceAndComments(p.text[s:])
 	for {

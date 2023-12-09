@@ -20297,7 +20297,11 @@ func _CharLitAction(parser *_Parser, start int) (int, *Expr) {
 		}
 		node = func(
 			start, end int, data string) Expr {
-			return Expr(&CharLit{Rune: interpRune(data), L: l(parser, start, end)})
+			return Expr(&CharLit{
+				Source: source(parser, start, end),
+				Rune:   interpRune(data),
+				L:      l(parser, start, end),
+			})
 		}(
 			start0, pos, label0)
 	}
@@ -20784,7 +20788,12 @@ func _InterpStrAction(parser *_Parser, start int) (int, *Expr) {
 		}
 		node = func(
 			start, end int, data string) Expr {
-			return Expr(&StrLit{Raw: false, Data: data, L: l(parser, start, end)})
+			return Expr(&StrLit{
+				Source: source(parser, start, end),
+				Raw:    false,
+				Data:   data,
+				L:      l(parser, start, end),
+			})
 		}(
 			start0, pos, label0)
 	}
@@ -21727,7 +21736,12 @@ func _RawStrAction(parser *_Parser, start int) (int, *Expr) {
 		}
 		node = func(
 			start, end int, data string) Expr {
-			return Expr(&StrLit{Raw: true, Data: data, L: l(parser, start, end)})
+			return Expr(&StrLit{
+				Source: source(parser, start, end),
+				Raw:    true,
+				Data:   data,
+				L:      l(parser, start, end),
+			})
 		}(
 			start0, pos, label0)
 	}

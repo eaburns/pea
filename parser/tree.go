@@ -236,16 +236,18 @@ type BlockLit struct {
 func (b *BlockLit) Loc() loc.Loc { return b.L }
 
 type CharLit struct {
-	Rune rune
-	L    loc.Loc
+	Source string // source text
+	Rune   rune
+	L      loc.Loc
 }
 
 func (c *CharLit) Loc() loc.Loc { return c.L }
 
 type StrLit struct {
-	Raw  bool
-	Data string
-	L    loc.Loc
+	Raw    bool
+	Source string // source text
+	Data   string
+	L      loc.Loc
 }
 
 func (s *StrLit) Loc() loc.Loc { return s.L }

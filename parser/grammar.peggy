@@ -468,13 +468,22 @@ FuncParmNames <-
 	}
 
 CharLit "character" <- _ data:(['] !"\n" (Esc / "\\'" / [^']) [']) {
-	return Expr(&CharLit{Rune: interpRune(data), L: l(parser, start, end)})
+	return Expr(&CharLit{
+		Source: source(parser, start, end),
+		Rune: interpRune(data),
+		L: l(parser, start, end),
+	})
 }
 
 StrLit "string" <- InterpStr / RawStr
 
 InterpStr <- _ ["] data:(!"\n" (Esc / "\\\"" { return "\"" }/ [^"]))* ["] {
-	return Expr(&StrLit{Raw: false, Data: data, L: l(parser, start, end)})
+	return Expr(&StrLit{
+		Source: source(parser, start, end),
+		Raw: false,
+		Data: data,
+		L: l(parser, start, end),
+	})
 }
 
 Esc <-
@@ -487,7 +496,12 @@ Esc <-
 	"\\U" x2:(X X X X X X X X) { return string(interpHex(x2)) }
 
 RawStr <- _ [`] data:("\\`" / [^`])* [`] {
-	return Expr(&StrLit{Raw: true, Data: data, L: l(parser, start, end)})
+	return Expr(&StrLit{
+		Source: source(parser, start, end),
+		Raw: true,
+		Data: data,
+		L: l(parser, start, end),
+	})
 }
 
 NumLit "number" <- FloatLit / HexLit / DecLit
