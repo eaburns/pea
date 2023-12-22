@@ -299,14 +299,59 @@ func f() {
 		`//
 func f() {
 	for: 0
-		to: 10 do: y
+	to: 10 do: y
 }
 `,
 		`//
 func f() {
 	for: 0
-		to: 10
-		do: y
+	to: 10
+	do: y
+}
+`,
+		`//
+func f() {
+	if:
+		foo
+	then:
+		baz
+	else:
+		qux
+}
+`,
+		`//
+func f() {
+	if:
+		foo |
+			bar
+	then:
+		baz
+	else:
+		qux
+}
+`,
+		`//
+func f() {
+	if: foo |
+		bar
+	then: {
+		baz
+	} else: {
+		qux
+	}
+}
+`,
+		`//
+func f() {
+	if:
+		//
+		foo |
+			bar
+	then: {
+		baz
+	} else: {
+		qux
+	}
 }
 `,
 	}
@@ -836,10 +881,10 @@ func foo() {
 	[
 		.x
 			foo: 5
-				bar: 6,
+			bar: 6,
 		.y
 			baz: 3.14
-				qux: 7
+			qux: 7
 	]
 }
 `,
@@ -883,7 +928,7 @@ func foo() {
 func foo() {
 	[x?
 		foo: 5
-			bar: 6
+		bar: 6
 	]
 }
 `,
@@ -892,7 +937,7 @@ func foo() {
 	[
 		x?
 			foo: 5
-				bar: 6
+			bar: 6
 	]
 }
 `,
@@ -1096,10 +1141,10 @@ func TestReproduceBadStructIndentation(t *testing.T) {
 	tests := []string{`//
 test foo {
 	assert: (nanosecond + nanosecond)*(int64 :: int#max_uint32)
-		equals: (duration :: [
-			.s (int64 :: int#max_uint32)*(int64 :: 2)/1.0e9,
-			.ns uint32 :: (int64 :: int#max_uint32)*(int64 :: 2)%2.0e9
-		])
+	equals: (duration :: [
+		.s (int64 :: int#max_uint32)*(int64 :: 2)/1.0e9,
+		.ns uint32 :: (int64 :: int#max_uint32)*(int64 :: 2)%2.0e9
+	])
 }
 `}
 	for _, src := range tests {

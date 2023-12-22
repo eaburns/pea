@@ -725,17 +725,12 @@ func printKQCall(p *printer, mod *parser.Ident, id parser.Ident, e *parser.Call,
 	for i := range args {
 		if i == 0 {
 			printModAndIdent(p, mod, id.Parts[i])
-			if len(id.Parts) == len(e.Args) {
-			// This withLineBreaksAllowed is not here to actually allow breaks,
-			// but it adds a level of indentation.
-			p = p.withLineBreaksAllowed()
-			}
 		} else {
 			printSpace(p)
 			printIdent(p, id.Parts[i])
 		}
 		printSpace(p)
-		printExpr(p.withLineBreaksDisallowed(), args[i])
+		printExpr(p.withLineBreaksAllowed(), args[i])
 	}
 }
 

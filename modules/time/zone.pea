@@ -39,39 +39,39 @@ func utc(p point) civil {
 
 test point_to_civil {
 	assert: civil(epoch, UTC)
-		equals: civil(1970, 1, 1),
+	equals: civil(1970, 1, 1),
 
 	assert: civil(epoch + nanosecond, UTC)
-		equals: civil(1970, 1, 1, 0, 0, 0, 1),
+	equals: civil(1970, 1, 1, 0, 0, 0, 1),
 
 	assert: civil(epoch + second, UTC)
-		equals: civil(1970, 1, 1, 0, 0, 1, 0),
+	equals: civil(1970, 1, 1, 0, 0, 1, 0),
 
 	assert: civil(epoch + 24*hour, UTC)
-		equals: civil(1970, 1, 2, 0, 0, 0, 0),
+	equals: civil(1970, 1, 2, 0, 0, 0, 0),
 
 	assert: civil(epoch - nanosecond, UTC)
-		equals: civil(1970, 1, 1, 0, 0, 0, -1),
+	equals: civil(1970, 1, 1, 0, 0, 0, -1),
 
 	assert: civil(epoch - second, UTC)
-		equals: civil(1970, 1, 1, 0, 0, -1),
+	equals: civil(1970, 1, 1, 0, 0, -1),
 
 	assert: civil(epoch - 24*hour, UTC)
-		equals: civil(1969, 12, 31, 0, 0, 0),
+	equals: civil(1969, 12, 31, 0, 0, 0),
 
 	assert: civil(max_point, UTC)
-		equals: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)),
+	equals: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)),
 
 	// Clamped to max_point.
 	assert: civil(infinite_point, UTC)
-		equals: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)),
+	equals: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)),
 
 	assert: civil(min_point, UTC)
-		equals: civil(-292277022657, 1, 27, 8, 29, 52, 0),
+	equals: civil(-292277022657, 1, 27, 8, 29, 52, 0),
 
 	// Clamped to min_point.
 	assert: civil(negative_infinite_point, UTC)
-		equals: civil(-292277022657, 1, 27, 8, 29, 52, 0)
+	equals: civil(-292277022657, 1, 27, 8, 29, 52, 0)
 }
 
 // Returns the absolute time point for the civil time in a time zone.
@@ -144,46 +144,46 @@ func utc(c civil) point {
 
 test civil_to_point {
 	assert: point(civil(-292277022657, 1, 27, 8, 29, 52, 0), UTC)
-		equals: min_point,
+	equals: min_point,
 
 	assert: point(civil(1970, 1, 1), UTC)
-		equals: epoch,
+	equals: epoch,
 
 	assert: point(civil(1970, 1, 1, 0, 0, 0, 1), UTC)
-		equals: epoch + nanosecond,
+	equals: epoch + nanosecond,
 
 	assert: point(civil(1970, 1, 1, 0, 0, 1, 0), UTC)
-		equals: epoch + second,
+	equals: epoch + second,
 
 	assert: point(civil(1970, 1, 2, 0, 0, 0, 0), UTC)
-		equals: epoch + 24*hour,
+	equals: epoch + 24*hour,
 
 	c := civil(1970, 1, 1, 0, 0, 0, -1),
 	assert: point(civil(1970, 1, 1, 0, 0, 0, -1), UTC)
-		equals: epoch - nanosecond,
+	equals: epoch - nanosecond,
 
 	assert: point(civil(1970, 1, 1, 0, 0, -1), UTC)
-		equals: epoch - second,
+	equals: epoch - second,
 
 	assert: point(civil(1969, 12, 31, 0, 0, 0), UTC)
-		equals: epoch - 24*hour,
+	equals: epoch - 24*hour,
 
 	assert: point(civil(-1, 0, 0, 0, 0, 0), UTC)
-		equals: epoch - 62201520000*second,
+	equals: epoch - 62201520000*second,
 
 	assert: point(civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)), UTC)
-		equals: max_point,
+	equals: max_point,
 
 	// Too large for finite points.
 	assert: point(civil(292277026597, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)), UTC)
-		equals: infinite_point,
+	equals: infinite_point,
 
 	assert: point(civil(-292277022657, 1, 27, 8, 29, 52, 0), UTC)
-		equals: min_point,
+	equals: min_point,
 
 	// Too small for finite points.
 	assert: point(civil(-292277022658, 1, 27, 8, 29, 52, 0), UTC)
-		equals: negative_infinite_point
+	equals: negative_infinite_point
 }
 
 // Need to print points for the civil_to_point test.

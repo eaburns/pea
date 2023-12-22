@@ -12,29 +12,29 @@ func main() {
 type u [one?, two?, three?, four?, five?, six?, seven?, eight?]
 func print(u u) {
 	if: u
-		one: { print_int(1) }
-		two: { print_int(2) }
-		three: { print_int(3) }
-		four: { print_int(4) }
-		five: { print_int(5) }
-		six: { print_int(6) }
-		seven: { print_int(7) },
+	one: { print_int(1) }
+	two: { print_int(2) }
+	three: { print_int(3) }
+	four: { print_int(4) }
+	five: { print_int(5) }
+	six: { print_int(6) }
+	seven: { print_int(7) },
 	if: u
-		seven: { print_int(7) }
-		six: { print_int(6) }
-		five: { print_int(5) }
-		four: { print_int(4) }
-		three: { print_int(3) }
-		two: { print_int(2) }
-		one: { print_int(1) },
+	seven: { print_int(7) }
+	six: { print_int(6) }
+	five: { print_int(5) }
+	four: { print_int(4) }
+	three: { print_int(3) }
+	two: { print_int(2) }
+	one: { print_int(1) },
 	if: u
-		three: { print_int(3) }
-		four: { print_int(4) }
-		one: { print_int(1) }
-		two: { print_int(2) }
-		seven: { print_int(7) }
-		five: { print_int(5) }
-		six: { print_int(6) }
+	three: { print_int(3) }
+	four: { print_int(4) }
+	one: { print_int(1) }
+	two: { print_int(2) }
+	seven: { print_int(7) }
+	five: { print_int(5) }
+	six: { print_int(6) }
 }
 
 func print_int(_ int)
