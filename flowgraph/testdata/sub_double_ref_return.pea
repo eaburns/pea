@@ -4,14 +4,14 @@ func main() {
 	print(foo(str_ref))
 }
 
-func foo(s S) &S : bar(S)S {
+func foo(s S) &S : { bar(S)S } {
 	// When &string is substituted for S, we get &&string here,
 	// but bar is built-in [](string, int, int)string,
 	// so we are converting string to &S=&&string.
 	// This is normally not OK, but for iface substitution.
-	return: &S :: bar(s),
+	return: &S :: bar(s)
 }
 
-func bar(s string)string {
+func bar(s string) string {
 	return: s
 }

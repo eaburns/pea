@@ -4,19 +4,19 @@
 // 3
 func main() {
 	x := int result :: [ok? 5],
-	x ok? (n){print_int(n)} err? (s){print(s)},
+	x ok? (n){ print_int(n) } err? (s){ print(s) },
 	print("\n"),
 
 	x := [err? "expected"],
-	x ok? (n){print_int(n)} err? (s){print(s)},
+	x ok? (n){ print_int(n) } err? (s){ print(s) },
 	print("\n"),
 
 	y := (int, uint) result :: [ok? 6],
-	y ok? (n){print_int(n)} err? (u){print_int(int :: u)},
+	y ok? (n){ print_int(n) } err? (u){ print_int(int :: u) },
 	print("\n"),
 
 	y := [err? 3],
-	y ok? (n){print_int(n)} err? (u){print_int(int :: u)},
+	y ok? (n){ print_int(n) } err? (u){ print_int(int :: u) }
 }
 
 type (T, E) result [ok? T, err? E]

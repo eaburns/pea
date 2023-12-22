@@ -20,7 +20,7 @@ Func _lookup_host(host string) [addr] or_error {
 	for: addrs each: (addr){
 		if: (seen at: addr put: true) none: {
 			addrs[i] := addr,
-			++i,
+			++i
 		}
 	},
 	return: ok(addrs[0, i])

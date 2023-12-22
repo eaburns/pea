@@ -21,7 +21,7 @@ Func group() group {
 		.mutex sys#thread#mutex(),
 		.cond sys#thread#condition(),
 		.errors ring_buffer#new(),
-		.count 0,
+		.count 0
 	]
 }
 
@@ -32,11 +32,11 @@ Func add:(gr group, f (){error option}) {
 	++gr.count,
 	unlock: gr.mutex,
 
-	sys#thread#new((){
+	sys#thread#new({
 		err_opt := f(),
 
 		lock: gr.mutex,
-		if: err_opt some: (err) {
+		if: err_opt some: (err){
 			gr.errors push_back: err
 		},
 		--gr.count,
@@ -54,9 +54,9 @@ Func add:(gr group, f (){error option}) {
 //
 // Wait may be called repeatedly.
 // If wait returns none(), all threads are complete.
-Func wait(gr group)error option {
+Func wait(gr group) error option {
 	lock: gr.mutex,
-	while: {gr.errors.length = 0 && gr.count > 0} do: {
+	while: { gr.errors.length = 0 && gr.count > 0 } do: {
 		wait: gr.cond with: gr.mutex
 	},
 	ret := pop_front(gr.errors),
@@ -67,13 +67,13 @@ Func wait(gr group)error option {
 test group_wait_ok {
 	gr := group(),
 	results := [0, 0, 0, 0, 0],
-	for: 0 to: results.length-1 do: (i){
+	for: 0 to: results.length - 1 do: (i){
 		gr add: {
 			for: 0 to: i do: (_){
-				++results[i],
+				++results[i]
 			},
-			error option :: none(),
-		},
+			error option :: none()
+		}
 	},
 	assert_none: wait(gr),
 	assert: results equals: [1, 2, 3, 4, 5]
@@ -84,34 +84,34 @@ test group_wait_errors {
 	for: 0 to: 6 do: (i){
 		gr add: {
 			error option :: error(print#string(i))
-		},
+		}
 	},
 	results := string vector :: new(),
-	while: {wait(gr)} some: (err) {
+	while: { wait(gr) } some: (err){
 		results push_back: message(err)
 	},
-	assert: results unordered_elements: ["0", "1", "2", "3", "4", "5", "6"],
+	assert: results unordered_elements: ["0", "1", "2", "3", "4", "5", "6"]
 }
 
 test group_wait_errors_and_non_errors {
 	gr := group(),
 	for: 0 to: 6 do: (i){
 		gr add: {
-			 i % 2 = 0 true? {
+			i%2 = 0 true? {
 				error option :: error(print#string(i))
 			} false? {
 				none()
 			}
-		},
+		}
 	},
 	results := string vector :: new(),
-	while: {wait(gr)} some: (err) {
+	while: { wait(gr) } some: (err){
 		results push_back: message(err)
 	},
-	assert: results unordered_elements: ["0", "2", "4", "6"],
+	assert: results unordered_elements: ["0", "2", "4", "6"]
 }
 
 // TODO: move is_some  to be exported in option.pea.
 func is_some(o error option) bool {
-	return: o none? {false} some? (_){true}
+	return: o none? { false } some? (_){ true }
 }

@@ -21,9 +21,9 @@ type u [none?, int? int, string? string]
 func print(x u) {
 	x none? {
 		print("<None>")
-	} int? (i int) {
+	} int? (i int){
 		print_int(i)
-	} string? (s string) {
+	} string? (s string){
 		print(s)
 	}
 }

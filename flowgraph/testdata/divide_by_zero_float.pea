@@ -3,5 +3,5 @@
 func main() {
 	x := float64 :: 1.5,
 	y := float64 :: 0.0,
-	x / y
+	x/y
 }

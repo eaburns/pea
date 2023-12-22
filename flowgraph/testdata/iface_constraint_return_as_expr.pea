@@ -7,12 +7,12 @@ func foo() int {
 	bar(return5)
 }
 
-func bar(f (){!})! {
-	f(),
+func bar(f (){!}) ! {
+	f()
 }
 
 // Makes the caller return 5.
-func return5()! : return:(int)! {
+func return5() ! : { return:(int)! } {
 	return: 5
 }
 

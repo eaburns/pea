@@ -34,10 +34,10 @@ test parse_error {
 	// Go's regexp package is permissive on character classes;
 	// it allows these, treating them in a relatively reasonable way.
 	assert: compile("[]a]") error: "empty character class",
-	assert: compile("[-a]") error: "bad range" ,
+	assert: compile("[-a]") error: "bad range",
 	assert: compile("[a-]") error: "bad range",
 	assert: compile("[^-a]") error: "bad range",
-	assert: compile("[a-b-c]") error: "bad range",
+	assert: compile("[a-b-c]") error: "bad range"
 }
 
 test find_simple {
@@ -83,7 +83,7 @@ test find_simple {
 	re := must(compile("^x(y)z")),
 	assert: exec(re, "abcxyz123") equals: [],
 	re := must(compile("x(y)z$")),
-	assert: exec(re, "abcxyz123") equals: [],
+	assert: exec(re, "abcxyz123") equals: []
 }
 
 test empty {
@@ -97,7 +97,7 @@ test empty {
 	assert: exec(re, "a") equals: [0, 0, 0, 0, 0, 0, 0, 0],
 
 	re := must(compile("(?:(?:(?:)|a)*)")),
-	assert: exec(re, "a") equals: [0, 0],
+	assert: exec(re, "a") equals: [0, 0]
 }
 
 test subexpr_match {
@@ -107,7 +107,7 @@ test subexpr_match {
 	assert: exec(re, "b") equals: [0, 0, 0, 0],
 
 	// Prefers to match longer b on [0, 1] over first-branch (a*) on [0, 0].
-	assert: exec(re, [.longest true, .full false], "b") equals: [0, 1, -1, -1],
+	assert: exec(re, [.longest true, .full false], "b") equals: [0, 1, -1, -1]
 }
 
 test find_first_or_longest {
@@ -124,7 +124,7 @@ test find_first_or_longest {
 
 	re := must(compile("((a)|(a))|((a*)|(a))")),
 	assert: exec(re, "aa") equals: [0, 1, 0, 1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1],
-	assert: exec(re, longest, "aa") equals: [0, 2, -1, -1, -1, -1, -1, -1, 0, 2, 0, 2, -1, -1],
+	assert: exec(re, longest, "aa") equals: [0, 2, -1, -1, -1, -1, -1, -1, 0, 2, 0, 2, -1, -1]
 }
 
 test find_partial_or_full {
@@ -139,12 +139,12 @@ test find_partial_or_full {
 	assert: exec(re, "abcxyz") equals: [0, 3],
 	assert: exec(re, full, "abcxyz") equals: [],
 	assert: exec(re, "123abcxyz") equals: [3, 6],
-	assert: exec(re, full, "123abcxyz") equals: [],
+	assert: exec(re, full, "123abcxyz") equals: []
 }
 
 test full_match {
 	re := must(compile("h.*o")),
-	assert: exec(re, [.longest false, .full true], "hello world") equals: [],
+	assert: exec(re, [.longest false, .full true], "hello world") equals: []
 }
 
 test find_containers {
@@ -164,7 +164,7 @@ test find_containers {
 	assert: exec(re, ring_buffer#new([uint8 :: '\xe2', '\x98', '\xba'])) equals: [0, 3],
 	assert: exec(re, ['☺']) equals: [0, 1],
 	assert: exec(re, vector#new(['☺'])) equals: [0, 1],
-	assert: exec(re, ring_buffer#new(['☺'])) equals: [0, 1],
+	assert: exec(re, ring_buffer#new(['☺'])) equals: [0, 1]
 }
 
 test do_not_consume_caller_argument {
@@ -174,7 +174,7 @@ test do_not_consume_caller_argument {
 	re := must(compile("ab")),
 	v := vector#new(['a', 'b', 'c']),
 	assert: exec(re, v) equals: [0, 2],
-	assert: v equals: vector#new(['a', 'b', 'c']),
+	assert: v equals: vector#new(['a', 'b', 'c'])
 }
 
 // TODO: move vector = and printing to the vector module.
@@ -182,21 +182,21 @@ func =(a rune vector, b rune vector) bool {
 	if: a.length != b.length then: {
 		return: false
 	},
-	for: 0 to: a.length-1 do: (i) {
+	for: 0 to: a.length - 1 do: (i){
 		if: a[i] != b[i] then: {
 			return: false
 		}
 	},
 	return: true
 }
-func print(p print#printer, v X vector) print#printer :
+func print(p print#printer, v X vector) print#printer : {
 	++(print#printer, X)print#printer
-{
+} {
 	p ++ "[",
 	first := true,
-	for: v each: (r) {
+	for: v each: (r){
 		if: first then: {
-			first := false,
+			first := false
 		} else: {
 			p ++ ", "
 		},

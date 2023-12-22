@@ -13,12 +13,12 @@ Func print(p printer, b bool) printer {
 		p ++ "true"
 	} false? {
 		p ++ "false"
-	},
+	}
 }
 
 test print_bool {
 	assert_true: string(true) = "true",
-	assert_true: string(false) = "false",
+	assert_true: string(false) = "false"
 }
 
 // Implemnets print#printable for an ordering.
@@ -35,20 +35,20 @@ Func print(p printer, o ordering) printer {
 test print_ordering {
 	assert_true: string(less) = "less",
 	assert_true: string(equal) = "equal",
-	assert_true: string(greater) = "greater",
+	assert_true: string(greater) = "greater"
 }
 
 // Adds the string representation of the array
 // to the printer and returns the printer.
-Func print(p printer, a [T]) printer : ++(printer, T)printer {
+Func print(p printer, a [T]) printer : { ++(printer, T)printer } {
 	p ++ "[",
-	for: 0 to: a.length - 1 do: (i) {
+	for: 0 to: a.length - 1 do: (i){
 		if: i > 0 then: {
 			p ++ ", "
 		},
 		p ++ a[i]
 	},
-	return: p ++ "]",
+	return: p ++ "]"
 }
 
 test print_array {
@@ -57,7 +57,7 @@ test print_array {
 	assert_true: string([1, 2]) = "[1, 2]",
 	assert_true: string(["hello", "world"]) = "[hello, world]",
 	assert_true: string([[1, 2, 3], [4, 5, 6]]) = "[[1, 2, 3], [4, 5, 6]]",
-	assert_true: string([[[1, 2, 3], [4, 5, 6], []]]) = "[[[1, 2, 3], [4, 5, 6], []]]",
+	assert_true: string([[[1, 2, 3], [4, 5, 6], []]]) = "[[[1, 2, 3], [4, 5, 6], []]]"
 }
 
 // Adds the string representation to the printer and returns the printer.
@@ -72,10 +72,10 @@ func add_uint64(p printer, u uint64) printer {
 	bs := [uint8] :: new(20, uint8 :: 0),
 	i := bs.length - 1,
 	while: { u >= 10 } do: {
-		u_next := u / 10,
+		u_next := u/10,
 		bs[i] := uint8 :: u - u_next*10 + '0',
 		u := u_next,
-		--i,
+		--i
 	},
 	bs[i] := uint8 :: u + '0',
 	add_bytes(p, bs[i, bs.length]),
@@ -86,7 +86,7 @@ test print_uint64 {
 	assert_true: string(uint64 :: 0) = "0",
 	assert_true: string(uint64 :: 1) = "1",
 	assert_true: string(uint64 :: 12345) = "12345",
-	assert_true: string(uint64 :: 18446744073709551615) = "18446744073709551615",
+	assert_true: string(uint64 :: 18446744073709551615) = "18446744073709551615"
 }
 
 // Adds the string representation to the printer and returns the printer.
@@ -112,7 +112,7 @@ test print_int64 {
 	assert_true: string(int64 :: 12345) = "12345",
 	assert_true: string(int64 :: -12345) = "-12345",
 	assert_true: string(int64 :: 9223372036854775807) = "9223372036854775807",
-	assert_true: string(int64 :: -9223372036854775808) = "-9223372036854775808",
+	assert_true: string(int64 :: -9223372036854775808) = "-9223372036854775808"
 }
 
 // This test checks for a regression in the compiler
@@ -122,9 +122,8 @@ test print_int64_return_copy {
 	p := printer :: new(),
 	q := p ++ 5,
 	q ++ "boo",
-	assert_true: string(p) = "5boo",
+	assert_true: string(p) = "5boo"
 }
-
 
 const max_float64 := float64 :: 1.797693134862315708145274237317043567981e+308
 const max_pos_exp := float64 :: 1.0e7
@@ -148,88 +147,88 @@ Func print(p printer, f float64) printer {
 	},
 	if: f < 0 then: {
 		p ++ "-",
-		f := -f,
+		f := -f
 	},
 	e := 0,
 	if: f >= max_pos_exp then: {
 		if: f >= 1.0e256 then: {
-			f := f / 1.0e256,
-			e := e + 256,
+			f := f/1.0e256,
+			e := e + 256
 		},
 		if: f >= 1.0e128 then: {
-			f := f / 1.0e128,
-			e := e + 128,
+			f := f/1.0e128,
+			e := e + 128
 		},
 		if: f >= 1.0e64 then: {
-			f := f / 1.0e64,
-			e := e + 64,
+			f := f/1.0e64,
+			e := e + 64
 		},
 		if: f >= 1.0e32 then: {
-			f := f / 1.0e32,
-			e := e + 32,
+			f := f/1.0e32,
+			e := e + 32
 		},
 		if: f >= 1.0e16 then: {
-			f := f / 1.0e16,
-			e := e + 16,
+			f := f/1.0e16,
+			e := e + 16
 		},
 		if: f >= 1.0e8 then: {
-			f := f / 1.0e8,
-			e := e + 8,
+			f := f/1.0e8,
+			e := e + 8
 		},
 		if: f >= 1.0e4 then: {
-			f := f / 1.0e4,
-			e := e + 4,
+			f := f/1.0e4,
+			e := e + 4
 		},
 		if: f >= 1.0e2 then: {
-			f := f / 1.0e2,
-			e := e + 2,
+			f := f/1.0e2,
+			e := e + 2
 		},
 		if: f >= 1.0e1 then: {
-			f := f / 1.0e1,
-			e := e + 1,
-		},
+			f := f/1.0e1,
+			e := e + 1
+		}
 	},
 	if: f > 0 && f <= max_neg_exp then: {
 		if: f < 1.0e-255 then: {
-			f := f * 1.0e256,
-			e := e - 256,
+			f := f*1.0e256,
+			e := e - 256
 		},
 		if: f < 1.0e-127 then: {
-			f := f * 1.0e128,
-			e := e - 128,
+			f := f*1.0e128,
+			e := e - 128
 		},
 		if: f < 1.0e-63 then: {
-			f := f * 1.0e64,
-			e := e - 64,
+			f := f*1.0e64,
+			e := e - 64
 		},
 		if: f < 1.0e-31 then: {
-			f := f * 1.0e32,
-			e := e - 32,
+			f := f*1.0e32,
+			e := e - 32
 		},
 		if: f < 1.0e-15 then: {
-			f := f * 1.0e16,
-			e := e - 16,
+			f := f*1.0e16,
+			e := e - 16
 		},
 		if: f < 1.0e-7 then: {
-			f := f * 1.0e8,
-			e := e - 8,
+			f := f*1.0e8,
+			e := e - 8
 		},
 		if: f < 1.0e-3 then: {
-			f := f * 1.0e4,
-			e := e - 4,
+			f := f*1.0e4,
+			e := e - 4
 		},
 		if: f < 1.0e-1 then: {
-			f := f * 1.0e2,
-			e := e - 2,
+			f := f*1.0e2,
+			e := e - 2
 		},
 		if: f < 1.0e0 then: {
-			f := f * 1.0e1,
-			e := e - 1,
-		},
+			f := f*1.0e1,
+			e := e - 1
+		}
 	},
 
 	i := uint32 :: f,
-	r := (f - (float64 :: i)) * 1.0e9,
+	r := (f - (float64 :: i))*1.0e9,
 	d := uint32 :: r,
 
 	// rounding
@@ -241,9 +240,9 @@ Func print(p printer, f float64) printer {
 			i := i + 1,
 			if: e != 0 && i >= 10 then: {
 				++e,
-				i := 1,
-			},
-		},
+				i := 1
+			}
+		}
 	},
 
 	p ++ i,
@@ -262,25 +261,25 @@ Func print(p printer, f float64) printer {
 
 func add_fraction(p printer, u uint32) {
 	width := 9,
-	while: {u % 10 = 0 && {width > 0}} do: {
-		u := u / 10.0,
-		--width,
+	while: { u%10 = 0 && { width > 0 } } do: {
+		u := u/10.0,
+		--width
 	},
 	buf := [uint8] :: new(16, uint8 :: 0),
 	i := buf.length,
-	while: {width > 0} do: {
+	while: { width > 0 } do: {
 		--i,
 		--width,
-		buf[i] := (uint8 :: u % 10) + '0',
-		u := u / 10.0,
+		buf[i] := (uint8 :: u%10) + '0',
+		u := u/10.0
 	},
 	add_bytes(p, buf[i, buf.length])
 }
 
 test print_float64 {
-	assert_true: string(0.0 / 0.0) = "NaN",
-	assert_true: string(1.0 / 0.0) = "Inf",
-	assert_true: string(-1.0 / 0.0) = "-Inf",
+	assert_true: string(0.0/0.0) = "NaN",
+	assert_true: string(1.0/0.0) = "Inf",
+	assert_true: string(-1.0/0.0) = "-Inf",
 	assert_true: string(0.05) = "0.05",
 	assert_true: string(5.04e8) = "5.04e8",
 	assert_true: string(0.000000001) = "0.000000001",
@@ -292,37 +291,37 @@ test print_float64 {
 	assert_true: string(-1) = "-1",
 	assert_true: string(3.14) = "3.14",
 	assert_true: string(-3.14) = "-3.14",
-	assert_true: string(1.0 / 2.0) = "0.5",
-	assert_true: string(1.0 / 4.0) = "0.25",
-	assert_true: string(1.0 / 8.0) = "0.125",
-	assert_true: string(1.0 / 3.0) = "0.333333333",
-	assert_true: string(4.0 / 3.0) = "1.333333333",
-	assert_true: string(2.0 / 3.0) = "0.666666667",
-	assert_true: string(5.0 / 3.0) = "1.666666667",
+	assert_true: string(1.0/2.0) = "0.5",
+	assert_true: string(1.0/4.0) = "0.25",
+	assert_true: string(1.0/8.0) = "0.125",
+	assert_true: string(1.0/3.0) = "0.333333333",
+	assert_true: string(4.0/3.0) = "1.333333333",
+	assert_true: string(2.0/3.0) = "0.666666667",
+	assert_true: string(5.0/3.0) = "1.666666667",
 	assert_true: string(float64 :: 4294967295) = "4.294967295e9",
 	assert_true: string(-(float64 :: 4294967295)) = "-4.294967295e9",
 	assert_true: string(max_float64) = "1.797693135e308",
 	assert_true: string(max_float64*2.0) = "Inf",
 	assert_true: string(-max_float64) = "-1.797693135e308",
-	assert_true: string(-max_float64*2.0) = "-Inf",
+	assert_true: string(-max_float64*2.0) = "-Inf"
 }
 
 // Adds the string representation of the pointer value to the printer
 // and returns the printer.
-Func print(p printer, t T pointer) printer : ++(printer, T) printer {
+Func print(p printer, t T pointer) printer : { ++(printer, T)printer } {
 	return: p ++ *t
 }
 
 test print_pointer {
 	assert_true: string(&1) = "1",
-	assert_true: string(&"hello") = "hello",
+	assert_true: string(&"hello") = "hello"
 }
 
 // Adds the string representation of the option to the printer
 // and returns the printer.
-Func print(p printer, o T option) printer : ++(printer, T)printer {
+Func print(p printer, o T option) printer : { ++(printer, T)printer } {
 	return: o some? (t){
-		p ++ "some(" ++ t ++ ")",
+		p ++ "some(" ++ t ++ ")"
 	} none? {
 		p ++ "none()"
 	}
@@ -334,21 +333,21 @@ test print_option {
 	assert_true: string(some([1, 2, 3])) = "some([1, 2, 3])",
 	assert_true: string(int option :: none()) = "none()",
 	assert_true: string(string option :: none()) = "none()",
-	assert_true: string([int] option :: none()) = "none()",
+	assert_true: string([int] option :: none()) = "none()"
 }
 
 // Adds the error's message to the printer
 // and returns the printer.
 Func print(p printer, err error) printer {
-	return: p ++ message(err),
+	return: p ++ message(err)
 }
 
 // Adds the string representation of the or_error to the printer
 // and returns the printer.
-Func print(p printer, t_or T or_error) printer : ++(printer, T)printer {
+Func print(p printer, t_or T or_error) printer : { ++(printer, T)printer } {
 	return: t_or ok? (t){
 		p ++ "ok(" ++ t ++ ")"
-	} error? (e) {
+	} error? (e){
 		p ++ "error(" ++ e ++ ")"
 	}
 }
@@ -356,5 +355,5 @@ Func print(p printer, t_or T or_error) printer : ++(printer, T)printer {
 test print_or_error {
 	assert_true: string(int or_error :: error("oops")) = "error(oops)",
 	assert_true: string(ok(1)) = "ok(1)",
-	assert_true: string(ok("Hello, World!")) = "ok(Hello, World!)",
+	assert_true: string(ok("Hello, World!")) = "ok(Hello, World!)"
 }

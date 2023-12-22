@@ -12,7 +12,7 @@ func o_trunc() int32
 func o_excl() int32
 func o_directory() int32
 
-func fstat(fd int32, is_dir &int32)int32
+func fstat(fd int32, is_dir &int32) int32
 func open(path string, flags int32, perm int32) int32
 func unlink(path string) int32
 func fdopendir(fd int32, dir &DIR) int32
@@ -87,7 +87,7 @@ Func open(path string) entry open_result {
 	return: [ok? [dir? [.fd internal#descriptor :: fd, .dir dir]]]
 }
 
-type _file  sys#io#descriptor
+type _file sys#io#descriptor
 
 // Opens a file at a local file system path with given options.
 Func open_file(path string, opts open_options) file open_result {
@@ -156,7 +156,7 @@ Func close(d dir) error option {
 // Reads the next entry from a directory.
 Func read_dir(d dir) read_dir_result {
 	ent := "",
-	while: {ent = "" || ent = "." || ent = ".."} do: {
+	while: { ent = "" || ent = "." || ent = ".." } do: {
 		buf := [uint8] :: [],
 		res := readdir(d.dir, buf),
 		if: res < 0 then: {

@@ -4,7 +4,7 @@ func main() {
 	head := push(head, 3),
 	head := push(head, 2),
 	head := push(head, 1),
-	for: head each: (i) {
+	for: head each: (i){
 		print_int(i)
 	}
 }

@@ -1,5 +1,5 @@
 // abcxyz
 func main() {
 	print("abc"),
-	print(`xyz`),
+	print(`xyz`)
 }

@@ -1,13 +1,13 @@
 // 5
 func main() {
-	print_int(foo((){5}))
+	print_int(foo({ 5 }))
 }
 
 func foo(x (){int}) int {
 	return: call_x()
 }
 
-func call_x()int : x()int {
+func call_x() int : { x()int } {
 	return: x()
 }
 

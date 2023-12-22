@@ -34,7 +34,7 @@ Func -(a point, b point) duration { return: a.d - b.d }
 
 test point_subtraction {
 	assert: (epoch + second) - epoch equals: second,
-	assert: epoch - (epoch + second) equals: -second,
+	assert: epoch - (epoch + second) equals: -second
 }
 
 // Returns the result of comparing a = b, a != b, a < b, a <= b, a > b, or a >= b.
@@ -46,38 +46,38 @@ Func >=(a point, b point) bool { return: a.d >= b.d }
 
 test point_comparison {
 	assert_true: epoch = epoch,
-	assert_true: epoch+second = epoch+second,
-	assert_false: epoch+second = epoch-second,
+	assert_true: epoch + second = epoch + second,
+	assert_false: epoch + second = epoch - second,
 
 	assert_false: epoch != epoch,
-	assert_false: epoch+second != epoch+second,
-	assert_true: epoch+second != epoch-second,
+	assert_false: epoch + second != epoch + second,
+	assert_true: epoch + second != epoch - second,
 
 	assert_false: epoch < epoch,
-	assert_false: epoch+second < epoch+second,
-	assert_true: epoch < epoch+second,
-	assert_true: epoch-second < epoch,
+	assert_false: epoch + second < epoch + second,
+	assert_true: epoch < epoch + second,
+	assert_true: epoch - second < epoch,
 
 	assert_true: epoch <= epoch,
-	assert_true: epoch+second <= epoch+second,
-	assert_true: epoch <= epoch+second,
-	assert_true: epoch-second <= epoch,
-	assert_false: epoch+second <= epoch,
-	assert_false: epoch <= epoch-second,
+	assert_true: epoch + second <= epoch + second,
+	assert_true: epoch <= epoch + second,
+	assert_true: epoch - second <= epoch,
+	assert_false: epoch + second <= epoch,
+	assert_false: epoch <= epoch - second,
 
 	assert_false: epoch > epoch,
-	assert_false: epoch+second > epoch+second,
-	assert_false: epoch > epoch+second,
-	assert_false: epoch-second > epoch,
-	assert_true: epoch+second > epoch,
-	assert_true: epoch > epoch-second,
+	assert_false: epoch + second > epoch + second,
+	assert_false: epoch > epoch + second,
+	assert_false: epoch - second > epoch,
+	assert_true: epoch + second > epoch,
+	assert_true: epoch > epoch - second,
 
 	assert_true: epoch >= epoch,
-	assert_true: epoch+second >= epoch+second,
-	assert_false: epoch >= epoch+second,
-	assert_false: epoch-second >= epoch,
-	assert_false: epoch >= epoch+second,
-	assert_false: epoch-second >= epoch,
+	assert_true: epoch + second >= epoch + second,
+	assert_false: epoch >= epoch + second,
+	assert_false: epoch - second >= epoch,
+	assert_false: epoch >= epoch + second,
+	assert_false: epoch - second >= epoch
 }
 
 // point doesn't implement a +=(printer, point)printer function.
@@ -90,10 +90,10 @@ test point_as_string {
 	assert: print#string(t - epoch) equals: "8760h1s",
 
 	// Seconds from epoch — "Unix seconds"
-	assert: print#string(int64 :: (t - epoch) / second) equals: "31536001",
+	assert: print#string(int64 :: (t - epoch)/second) equals: "31536001",
 
 	// Miliseconds from epoch — "Unix milliseconds"
-	assert: print#string(int64 :: (t - epoch) / millisecond) equals: "31536001000",
+	assert: print#string(int64 :: (t - epoch)/millisecond) equals: "31536001000"
 
 	// and so-forth…
 }

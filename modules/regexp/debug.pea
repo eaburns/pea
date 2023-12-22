@@ -7,9 +7,9 @@ import "print"
 Func print(p print#printer, re regexp) print#printer {
 	p ++ "source: " ++ re.source ++ "\n"
 		++ "prog:\n",
-	for: 0 to: re.prog.length-1 do: (i) {
+	for: 0 to: re.prog.length - 1 do: (i){
 		instr := re.prog[i],
-		p ++ "\t" ++ i ++ ": " ++ instr ++ "\n",
+		p ++ "\t" ++ i ++ ": " ++ instr ++ "\n"
 	},
 	return: p
 }
@@ -17,9 +17,9 @@ Func print(p print#printer, re regexp) print#printer {
 func print(p print#printer, instrs instruction ring_buffer) print#printer {
 	p ++ "[",
 	first := true,
-	for: instrs each: (instr) {
+	for: instrs each: (instr){
 		if: first then: {
-			first := false,
+			first := false
 		} else: {
 			p ++ ", "
 		},
@@ -31,7 +31,7 @@ func print(p print#printer, instrs instruction ring_buffer) print#printer {
 func print(p print#printer, instr instruction) print#printer {
 	return: instr nop? {
 		p ++ "nop"
-	} rune? (r) {
+	} rune? (r){
 		p ++ "rune " ++ r
 	} any? {
 		p ++ "any"

@@ -6,7 +6,7 @@ func main() {
 	z := &int :: (int :: x), // address of a copy of x
 
 	// y holds the address of x.
-	(uintref :: (&int :: y)) =  (uintref :: (&int :: x)) false? {
+	(uintref :: (&int :: y)) = (uintref :: (&int :: x)) false? {
 		print("fail")
 	} true? {
 		print("pass")

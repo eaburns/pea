@@ -12,7 +12,7 @@ type T _channel &[
 	.has_value_cond sys#thread#condition,
 	.has_space_cond sys#thread#condition,
 	.limit int, // 0=unlimited, <0=closed.
-	.data T ring_buffer
+	.data T ring_buffer,
 ]
 
 func .closed(ch T channel) bool { return: ch.limit < 0 }
@@ -36,8 +36,8 @@ Func channel(limit int) T channel {
 		.mutex sys#thread#mutex(),
 		.has_value_cond sys#thread#condition(),
 		.has_space_cond sys#thread#condition(),
-		.limit limit < 0 true? {0} false? {limit},
-		.data ring_buffer#new(),
+		.limit limit < 0 true? { 0 } false? { limit },
+		.data ring_buffer#new()
 	]
 }
 
@@ -52,14 +52,14 @@ Func close:(ch T channel) {
 	ch.limit := -1, // closed
 	broadcast: ch.has_space_cond,
 	broadcast: ch.has_value_cond,
-	unlock: ch.mutex,
+	unlock: ch.mutex
 }
 
 // Sends t to the channel.
 // Sending to a closed channel causes a runtime panic.
 Func send:(ch T channel, t T) {
 	lock: ch.mutex,
-	while: {ch.limit > 0 && {ch.data.length >= ch.limit}} do: {
+	while: { ch.limit > 0 && { ch.data.length >= ch.limit } } do: {
 		wait: ch.has_space_cond with: ch.mutex
 	},
 	if: ch.closed then: {
@@ -68,7 +68,7 @@ Func send:(ch T channel, t T) {
 	},
 	ch.data push_back: t,
 	signal: ch.has_value_cond,
-	unlock: ch.mutex,
+	unlock: ch.mutex
 }
 
 // Sends t to the channel.
@@ -81,7 +81,7 @@ Func <-(ch T channel, t T) {
 // or none() if there are no values and the channel is closed.
 Func receive(ch T channel) T option {
 	lock: ch.mutex,
-	while: {!ch.closed && {ch.data.length = 0}} do: {
+	while: { !ch.closed && { ch.data.length = 0 } } do: {
 		wait: ch.has_value_cond with: ch.mutex
 	},
 	ret := pop_front(ch.data),
@@ -98,14 +98,14 @@ Func <-(ch T channel) T option {
 
 test channel {
 	ch := int channel :: channel(),
-	sys#thread#new((){
+	sys#thread#new({
 		for: 0 to: 9 do: (i){
 			ch <- i
 		},
 		close: ch
 	}),
 	next := 0,
-	while: {<-ch} some: (received){
+	while: { <-ch } some: (received){
 		assert: received equals: next,
 		++next
 	},

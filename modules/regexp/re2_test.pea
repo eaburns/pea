@@ -80,22 +80,22 @@ test re2_exhaustive {
 }
 
 func run_re2_tests(path string) {
-	f := sys#fs#open_file(path) error? (e){panic(message(e))},
+	f := sys#fs#open_file(path) error? (e){ panic(message(e)) },
 	in := io#read_buffer(f),
 
 	in_strings := false,
 	strs := string vector :: new(),
 	forever: {
-		read_line(in) ok? (line) {
+		read_line(in) ok? (line){
 			if: line = "strings" then: {
 				if: in_strings then: {
-					panic("unexpected strings"),
+					panic("unexpected strings")
 				},
 				in_strings := true,
 				clear: strs
 			} else: line = "regexps" then: {
 				if: !in_strings then: {
-					panic("unexpected regexps"),
+					panic("unexpected regexps")
 				},
 				in_strings := false
 			} else: line.length > 0 && line[0] = '#' then: {
@@ -104,24 +104,24 @@ func run_re2_tests(path string) {
 				// print test name.
 				print#print("name: " ++ line ++ "\n")
 			} else: in_strings then: {
-				if: line.length < 2 || line[0] != '"' || line[line.length-1] != '"' then: {
+				if: line.length < 2 || line[0] != '"' || line[line.length - 1] != '"' then: {
 					panic("malformed string: [" + line + "]")
 				},
-				str := line[1, line.length-1], // strip "
+				str := line[1, line.length - 1], // strip "
 				str := unescape(str),
 				strs push_back: str
 			} else: {
-				if: line.length < 2 || line[0] != '"' || line[line.length-1] != '"' then: {
+				if: line.length < 2 || line[0] != '"' || line[line.length - 1] != '"' then: {
 					panic("malformed regexp: [" + line + "]")
 				},
-				regexp := line[1, line.length-1], // strip "
+				regexp := line[1, line.length - 1], // strip "
 				regexp := unescape(regexp),
-				run_regexp(in, regexp, strs),
+				run_regexp(in, regexp, strs)
 			}
 		} end? {
 			close(f),
 			return()
-		} error? (err) {
+		} error? (err){
 			panic(message(err.error))
 		}
 	},
@@ -131,27 +131,27 @@ func run_re2_tests(path string) {
 func unescape(str string) string {
 	p := print#printer :: new(),
 	esc := false,
-	for: 0 to: str.length-1 do: (i){
+	for: 0 to: str.length - 1 do: (i){
 		b := str[i],
 		if: esc && b = (uint8 :: '\\') then: {
 			esc := false,
-			print#add_byte(p, b),
+			print#add_byte(p, b)
 		} else: b = (uint8 :: '\\') then: {
-			esc := true,
+			esc := true
 		} else: esc then: {
 			esc := false,
 			if: b = 'n' then: {
-				print#add_byte(p, '\n'),
+				print#add_byte(p, '\n')
 			} else: b = '\\' then: {
-				print#add_byte(p, '\\'),
+				print#add_byte(p, '\\')
 			} else: b = '"' then: {
-				print#add_byte(p, '"'),
+				print#add_byte(p, '"')
 			} else: {
 				panic(print#string("unknown escape: " ++ b))
 			}
 		} else: {
-			print#add_byte(p, b),
-		},
+			print#add_byte(p, b)
+		}
 	},
 	return: print#string(p)
 }
@@ -161,64 +161,64 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector) {
 	if:
 		// non-greedy.
 		string#contains(regexp, "*?") ||
-		string#contains(regexp, "+?") ||
-		string#contains(regexp, "??") ||
-		// bad unterminated non-cap group?
-		string#contains(regexp, "(?:|") ||
-		// bad char classes
-		string#contains(regexp, `[]`) ||
-		{string#contains(regexp, `[-`)} ||
-		{string#contains(regexp, `[^-`)} ||
-		{string#contains(regexp, `-]`)} ||
-		{string#contains(regexp, `[a-b-c]`)} ||
-		// flags
-		string#contains(regexp, "(?i") ||
-		string#contains(regexp, "(?m") ||
-		string#contains(regexp, "(?s") ||
-		string#contains(regexp, "(?U") ||
-		// repetition
-		string#contains(regexp, "{") ||
-		// Perl classes
-		string#contains(regexp, "[:") ||
-		// unsupported escapes
-		{string#contains(regexp, `\A`)} ||
-		{string#contains(regexp, `\B`)} ||
-		{string#contains(regexp, `\C`)} ||
-		{string#contains(regexp, `\D`)} ||
-		{string#contains(regexp, `\P`)} ||
-		{string#contains(regexp, `\S`)} ||
-		{string#contains(regexp, `\W`)} ||
-		{string#contains(regexp, `\b`)} ||
-		{string#contains(regexp, `\d`)} ||
-		{string#contains(regexp, `\p`)} ||
-		{string#contains(regexp, `\s`)} ||
-		{string#contains(regexp, `\w`)} ||
-		{string#contains(regexp, `\z`)} ||
-		// hex
-		{string#contains(regexp, `\x`)} ||
-		// octal
-		{string#contains(regexp, `\0`)} ||
-		{string#contains(regexp, `\1`)} ||
-		{string#contains(regexp, `\2`)} ||
-		{string#contains(regexp, `\3`)} ||
-		{string#contains(regexp, `\4`)} ||
-		{string#contains(regexp, `\5`)} ||
-		{string#contains(regexp, `\6`)} ||
-		{string#contains(regexp, `\7`)} ||
-		{string#contains(regexp, `\8`)} ||
-		{string#contains(regexp, `\9`)}
-	then: {
-		for: strs each: (str){
-			if: read_line(in) end: {
-				panic("unexpected end of input")
-			} error: (err){
-				panic(message(err.error))
+			string#contains(regexp, "+?") ||
+			string#contains(regexp, "??") ||
+			// bad unterminated non-cap group?
+			string#contains(regexp, "(?:|") ||
+			// bad char classes
+			string#contains(regexp, `[]`) ||
+			{ string#contains(regexp, `[-`) } ||
+			{ string#contains(regexp, `[^-`) } ||
+			{ string#contains(regexp, `-]`) } ||
+			{ string#contains(regexp, `[a-b-c]`) } ||
+			// flags
+			string#contains(regexp, "(?i") ||
+			string#contains(regexp, "(?m") ||
+			string#contains(regexp, "(?s") ||
+			string#contains(regexp, "(?U") ||
+			// repetition
+			string#contains(regexp, "{") ||
+			// Perl classes
+			string#contains(regexp, "[:") ||
+			// unsupported escapes
+			{ string#contains(regexp, `\A`) } ||
+			{ string#contains(regexp, `\B`) } ||
+			{ string#contains(regexp, `\C`) } ||
+			{ string#contains(regexp, `\D`) } ||
+			{ string#contains(regexp, `\P`) } ||
+			{ string#contains(regexp, `\S`) } ||
+			{ string#contains(regexp, `\W`) } ||
+			{ string#contains(regexp, `\b`) } ||
+			{ string#contains(regexp, `\d`) } ||
+			{ string#contains(regexp, `\p`) } ||
+			{ string#contains(regexp, `\s`) } ||
+			{ string#contains(regexp, `\w`) } ||
+			{ string#contains(regexp, `\z`) } ||
+			// hex
+			{ string#contains(regexp, `\x`) } ||
+			// octal
+			{ string#contains(regexp, `\0`) } ||
+			{ string#contains(regexp, `\1`) } ||
+			{ string#contains(regexp, `\2`) } ||
+			{ string#contains(regexp, `\3`) } ||
+			{ string#contains(regexp, `\4`) } ||
+			{ string#contains(regexp, `\5`) } ||
+			{ string#contains(regexp, `\6`) } ||
+			{ string#contains(regexp, `\7`) } ||
+			{ string#contains(regexp, `\8`) } ||
+			{ string#contains(regexp, `\9`) }
+		then: {
+			for: strs each: (str){
+				if: read_line(in) end: {
+					panic("unexpected end of input")
+				} error: (err){
+					panic(message(err.error))
+				}
 			},
+			return()
 		},
-		return()
-	},
-	re := compile(regexp) ok? (re){re} error? (e){
-		panic(print#string("failed to compile [" ++ regexp ++ "]: " ++ message(e))),
+	re := compile(regexp) ok? (re){ re } error? (e){
+		panic(print#string("failed to compile [" ++ regexp ++ "]: " ++ message(e)))
 	},
 	for: strs each: (str){
 		line := read_line(in) ok? (line){
@@ -231,7 +231,7 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector) {
 
 		wants := string#split(line, ";"),
 		if: wants.length != 4 then: {
-			panic(print#string("malformed matches: [" ++ line ++ "]")),
+			panic(print#string("malformed matches: [" ++ line ++ "]"))
 		},
 
 		full_match := wants[0],
@@ -240,8 +240,8 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector) {
 		if: want != got then: {
 			print("full match:\n"),
 			print#print("regexp=[" ++ regexp ++ "], str=[" ++ str ++ "]\n"),
-			print#print("	got=" ++ got ++ ", want=" ++  want ++ "\n"),
-			panic("fail"),
+			print#print("	got=" ++ got ++ ", want=" ++ want ++ "\n"),
+			panic("fail")
 		},
 
 		partial_match := wants[1],
@@ -250,8 +250,8 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector) {
 		if: want != got then: {
 			print("partial match:\n"),
 			print#print("regexp=[" ++ regexp ++ "], str=[" ++ str ++ "]\n"),
-			print#print("	got=" ++ got ++ ", want=" ++  want ++ "\n"),
-			panic("fail"),
+			print#print("	got=" ++ got ++ ", want=" ++ want ++ "\n"),
+			panic("fail")
 		},
 
 		longest_full_match := wants[2],
@@ -260,8 +260,8 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector) {
 		if: want != got then: {
 			print("longest, full match:\n"),
 			print#print("regexp=[" ++ regexp ++ "], str=[" ++ str ++ "]\n"),
-			print#print("	got=" ++ got ++ ", want=" ++  want ++ "\n"),
-			panic("fail"),
+			print#print("	got=" ++ got ++ ", want=" ++ want ++ "\n"),
+			panic("fail")
 		},
 
 		longest_partial_match := wants[3],
@@ -270,9 +270,9 @@ func run_regexp(in io#read_buffer, regexp string, strs string vector) {
 		if: want != got then: {
 			print("longest, partial match:\n"),
 			print#print("regexp=[" ++ regexp ++ "], str=[" ++ str ++ "]\n"),
-			print#print("	got=" ++ got ++ ", want=" ++  want ++ "\n"),
-			panic("fail"),
-		},
+			print#print("	got=" ++ got ++ ", want=" ++ want ++ "\n"),
+			panic("fail")
+		}
 	}
 }
 
@@ -286,11 +286,11 @@ func parse_want(s string) [int64] {
 	for: pairs each: (pair){
 		fs := string#split(pair, "-"),
 		if: fs.length != 2 then: {
-			panic(print#string("malformed expectation: " ++ s)),
+			panic(print#string("malformed expectation: " ++ s))
 		},
-		want[n+0] := parse_int64_or_empty(fs[0]),
-		want[n+1] := parse_int64_or_empty(fs[1]),
-		n += 2,
+		want[n + 0] := parse_int64_or_empty(fs[0]),
+		want[n + 1] := parse_int64_or_empty(fs[1]),
+		n += 2
 	},
 	return: want
 }
@@ -300,8 +300,8 @@ func parse_int64_or_empty(x string) int64 {
 		return: -1
 	},
 	return: int#parse_uint64(x) ok? (i){
-		int64:: i
+		int64 :: i
 	} error? (e){
-		panic(print#string("bad int: " ++ x)),
+		panic(print#string("bad int: " ++ x))
 	}
 }

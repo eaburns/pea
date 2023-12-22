@@ -32,20 +32,20 @@ test printer_add_byte {
 
 	add_byte(p, 'c'),
 	assert_true: p.n = 3,
-	assert_true: p.data[0, p.n] = ['a', 'b', 'c'],
+	assert_true: p.data[0, p.n] = ['a', 'b', 'c']
 }
 
 test printer_add_byte_grow {
-	bs := [uint8] :: new(min_printer_len*2, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len*2, (i int){ uint8 :: i + '0' }),
 
 	p := printer :: new(),
 	n := 0,
-	for: bs each: (b) {
+	for: bs each: (b){
 		add_byte(p, b),
 		++n,
 		assert_true: p.n = n,
 		assert_true: p.n <= p.data.length,
-		assert_true: p.data[0, p.n] = bs[0, n],
+		assert_true: p.data[0, p.n] = bs[0, n]
 	}
 }
 
@@ -54,8 +54,8 @@ Func add_bytes(p printer, bs [uint8]) {
 	if: p.n + bs.length >= p.data.length then: {
 		grow(p, bs.length)
 	},
-	d := p.data[p.n, p.n+bs.length],
-	for: 0 to: bs.length - 1 do: (i) {
+	d := p.data[p.n, p.n + bs.length],
+	for: 0 to: bs.length - 1 do: (i){
 		d[i] := bs[i]
 	},
 	p.n := p.n + bs.length
@@ -77,27 +77,27 @@ test printer_add_bytes {
 
 	add_bytes(p, []),
 	assert_true: p.n = 6,
-	assert_true: p.data[0, p.n] = ['a', 'b', 'c', 'd', 'e', 'f'],
+	assert_true: p.data[0, p.n] = ['a', 'b', 'c', 'd', 'e', 'f']
 }
 
 test printer_add_bytes_grow {
-	bs := [uint8] :: new(min_printer_len-1, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len - 1, (i int){ uint8 :: i + '0' }),
 	p := printer :: new(),
 	add_bytes(p, bs),
 	assert_true: p.n = bs.length,
 	assert_true: p.data[0, p.n] = bs,
 
-	bs := [uint8] :: new(min_printer_len, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len, (i int){ uint8 :: i + '0' }),
 	p := printer :: new(),
 	add_bytes(p, bs),
 	assert_true: p.n = bs.length,
 	assert_true: p.data[0, p.n] = bs,
 
-	bs := [uint8] :: new(min_printer_len+1, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len + 1, (i int){ uint8 :: i + '0' }),
 	p := printer :: new(),
 	add_bytes(p, bs),
 	assert_true: p.n = bs.length,
-	assert_true: p.data[0, p.n] = bs,
+	assert_true: p.data[0, p.n] = bs
 }
 
 // Adds a string to the end of a printer's string.
@@ -105,8 +105,8 @@ Func add_string(p printer, s string) {
 	if: p.n + s.length >= p.data.length then: {
 		grow(p, s.length)
 	},
-	d := p.data[p.n, p.n+s.length],
-	for: 0 to: s.length - 1 do: (i) {
+	d := p.data[p.n, p.n + s.length],
+	for: 0 to: s.length - 1 do: (i){
 		d[i] := s[i]
 	},
 	p.n := p.n + s.length
@@ -128,40 +128,40 @@ test printer_add_string {
 
 	add_string(p, ""),
 	assert_true: p.n = 6,
-	assert_true: p.data[0, p.n] = ['a', 'b', 'c', 'd', 'e', 'f'],
+	assert_true: p.data[0, p.n] = ['a', 'b', 'c', 'd', 'e', 'f']
 }
 
 test printer_add_string_grow {
-	bs := [uint8] :: new(min_printer_len-1, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len - 1, (i int){ uint8 :: i + '0' }),
 	str := string :: bs,
 	p := printer :: new(),
 	add_string(p, str),
 	assert_true: p.n = str.length,
 	assert_true: p.data[0, p.n] = bs,
 
-	bs := [uint8] :: new(min_printer_len, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len, (i int){ uint8 :: i + '0' }),
 	str := string :: bs,
 	p := printer :: new(),
 	add_string(p, str),
 	assert_true: p.n = str.length,
 	assert_true: p.data[0, p.n] = bs,
 
-	bs := [uint8] :: new(min_printer_len+1, (i int){uint8 :: i + '0'}),
+	bs := [uint8] :: new(min_printer_len + 1, (i int){ uint8 :: i + '0' }),
 	str := string :: bs,
 	p := printer :: new(),
 	add_string(p, str),
 	assert_true: p.n = str.length,
-	assert_true: p.data[0, p.n] = bs,
+	assert_true: p.data[0, p.n] = bs
 }
 
 func grow(p printer, delta int) {
 	min := p.n + delta,
 	len := p.data.length + 1,
-	while: {len < min} do: {
-		len := len * 2
+	while: { len < min } do: {
+		len := len*2
 	},
 	data := [uint8] :: new(len, uint8 :: 0),
-	for: 0 to: p.n - 1 do: (i) {
+	for: 0 to: p.n - 1 do: (i){
 		data[i] := p.data[i]
 	},
 	p.data := data
@@ -193,7 +193,7 @@ test printer_reset_bytes {
 	assert_true: orig = ['a', 'b', 'c'],
 	add_bytes(p, ['x', 'y', 'z']),
 	// Modifying p doesn't modify the array returned from reset.
-	assert_true: orig = ['a', 'b', 'c'],
+	assert_true: orig = ['a', 'b', 'c']
 }
 
 // Returns the printer's string and resets the printer to empty.
@@ -215,7 +215,7 @@ test printer_reset_string {
 	add_bytes(p, ['a', 'b', 'c']),
 	assert_true: string(p) = "abc",
 	assert_true: p.n = 0,
-	assert_true: p.data = new(min_printer_len, uint8 :: 0),
+	assert_true: p.data = new(min_printer_len, uint8 :: 0)
 }
 
 test printer_copy {
@@ -228,5 +228,5 @@ test printer_copy {
 	assert_true: p0.data = new(min_printer_len, uint8 :: 0),
 	assert_true: p0.n = 0,
 	assert_true: p1.data = new(min_printer_len, uint8 :: 0),
-	assert_true: p1.n = 0,
+	assert_true: p1.n = 0
 }

@@ -9,17 +9,17 @@ func main() {
 	print("\n"),
 	print128((uint128 :: 1) << 100),
 	print("\n"),
-	print128(^(uint128 :: 0)),
+	print128(^(uint128 :: 0))
 }
 
 func print128(u uint128) {
 	bs := [uint8] :: new(128, uint8 :: 0),
 	i := bs.length - 1,
 	while: { u >= 10 } true: {
-		u_next := u / 10,
+		u_next := u/10,
 		bs[i] := uint8 :: u - u_next*10 + '0',
 		u := u_next,
-		i := i - 1,
+		i := i - 1
 	},
 	bs[i] := uint8 :: u + '0',
 	print(string :: bs[i, bs.length])
@@ -29,7 +29,7 @@ type bool := [false?, true?]
 const true := bool :: [true?]
 const false := bool :: [false?]
 
-func >=(a, b uint128)bool {
+func >=(a, b uint128) bool {
 	return: a <=> b greater? { true } equal? { true } _? { false }
 }
 

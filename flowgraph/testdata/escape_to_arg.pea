@@ -10,7 +10,7 @@ func foo_no_inline() {
 }
 
 func bar_no_inline(p &int) {
-	x := &p,
+	x := &p
 }
 
 var x := int pointer :: &y

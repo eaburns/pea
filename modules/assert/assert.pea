@@ -2,15 +2,15 @@ Import "basic"
 import "print"
 
 // Panics of a is not equal to b by the = function.
-Func assert:equals:(a T, b T) : { =(T, T) bool, ++(print#printer, T)print#printer } {
+Func assert:equals:(a T, b T) : { =(T, T)bool, ++(print#printer, T)print#printer } {
 	if: !(a = b) then: {
 		panic(print#string(a ++ " != " ++ b ++ " expected equal"))
 	}
 }
 
 // Panics if o is the some? case.
-Func assert_none:(o T option) : ++(print#printer, T)print#printer {
-	if: o some: (t T) {
+Func assert_none:(o T option) : { ++(print#printer, T)print#printer } {
+	if: o some: (t T){
 		panic(print#string("got " ++ o ++ " wanted none()"))
 	}
 }
@@ -20,9 +20,9 @@ Func assert_none:(o T option) : ++(print#printer, T)print#printer {
 // is not equal to b.
 Func assert:some:(o T option, b T) : {
 	++(print#printer, T)print#printer,
-	=(T, T) bool,
+	=(T, T)bool
 } {
-	if: o some: (a T) {
+	if: o some: (a T){
 		if: !(a = b) then: {
 			panic(print#string(o ++ " != some(" ++ b ++ ")"))
 		}
@@ -32,7 +32,7 @@ Func assert:some:(o T option, b T) : {
 }
 
 // Panics if o is not the some? case.
-Func assert_some:(o T option) : ++(print#printer, T)print#printer {
+Func assert_some:(o T option) : { ++(print#printer, T)print#printer } {
 	if: o none: {
 		panic(print#string(o ++ " != some(...)"))
 	}
@@ -55,12 +55,12 @@ Func assert_ok:(o T or_error) {
 // Panics if o is the error? case.
 Func assert:ok:(o T or_error, want T) : {
 	=(T, T)bool,
-	++(print#printer, T)print#printer,
+	++(print#printer, T)print#printer
 } {
-	if: o ok: (got) {
+	if: o ok: (got){
 		if: !(got = want) then: {
-			panic(print#string("got " ++ got ++ " ++ wanted " ++ want)),
-		},
+			panic(print#string("got " ++ got ++ " ++ wanted " ++ want))
+		}
 	} error: (e){
 		panic(print#string("got error " ++ e ++ " ++ wanted OK"))
 	}
@@ -74,7 +74,7 @@ Func assert_error:(o error option) {
 }
 
 // Panics if o is the ok? case.
-Func assert_error:(o T or_error) : ++(print#printer, T)print#printer {
+Func assert_error:(o T or_error) : { ++(print#printer, T)print#printer } {
 	if: o ok: (t){
 		panic(print#string("got " ++ t ++ " ++ wanted an error"))
 	}
@@ -96,7 +96,7 @@ Func assert:error:(o error option, msg string) {
 // Panics if o is the ok? case
 // or if the error? case value's message
 // is not equal to msg.
-Func assert:error:(o T or_error, msg string) : ++(print#printer, T)print#printer {
+Func assert:error:(o T or_error, msg string) : { ++(print#printer, T)print#printer } {
 	if: o ok: (t){
 		panic(print#string("got " ++ t ++ " ++ wanted an error"))
 	} error: (e){
@@ -108,21 +108,21 @@ Func assert:error:(o T or_error, msg string) : ++(print#printer, T)print#printer
 
 // We don't use the second argument, but we need an argument to define T.
 // TODO: remove this hack if we ever allow iface declarations to define type parms.
-func array(c C, _ [T]) [T] : for:each:(C, (T){}) {
+func array(c C, _ [T]) [T] : { for:each:(C, (T){}) } {
 	i := 0,
 	array := [T] :: [],
-	for: c each: (t) {
+	for: c each: (t){
 		if: i >= array.length then: {
-			array2 := [T] :: new((array.length + 1) * 2, t),
-			for: 0 to: array.length - 1 do: (j) {
+			array2 := [T] :: new((array.length + 1)*2, t),
+			for: 0 to: array.length - 1 do: (j){
 				array2[j] := array[j]
 			},
-			array := array2,
+			array := array2
 		},
 		array[i] := t,
-		++i,
+		++i
 	},
-	return: array[0, i],
+	return: array[0, i]
 }
 
 // Panics if the the number of elements in c is not want.length,
@@ -130,8 +130,8 @@ func array(c C, _ [T]) [T] : for:each:(C, (T){}) {
 // is not equal to the ith element of want.
 Func assert:elements:(c C, want [T]) : {
 	for:each:(C, (T){}),
-	=(T,T)bool,
-	++(print#printer, T)print#printer,
+	=(T, T)bool,
+	++(print#printer, T)print#printer
 } {
 	got := array(c, want),
 	if: got != want then: {
@@ -142,8 +142,8 @@ Func assert:elements:(c C, want [T]) : {
 // Panics if the elements in c are not a permutation of the elements in want.
 Func assert:unordered_elements:(c C, want [T]) : {
 	for:each:(C, (T){}),
-	=(T,T)bool,
-	++(print#printer, T)print#printer,
+	=(T, T)bool,
+	++(print#printer, T)print#printer
 } {
 	got := array(c, want),
 	unmatch := quadratic_unmatched(got, want),
@@ -151,24 +151,24 @@ Func assert:unordered_elements:(c C, want [T]) : {
 		return()
 	},
 	p := print#new() ++ "got elements " ++ got ++ " wanted " ++ want,
-	for: unmatch.left each: (i) {
-		p ++ "\n	element "  ++ i ++ " (" ++ got[i] ++ ") unexpected",
+	for: unmatch.left each: (i){
+		p ++ "\n	element " ++ i ++ " (" ++ got[i] ++ ") unexpected"
 	},
-	for: unmatch.right each: (i) {
-		p ++ "\n	expected element "  ++ i ++ " (" ++ want[i] ++ ") unmatched",
+	for: unmatch.right each: (i){
+		p ++ "\n	expected element " ++ i ++ " (" ++ want[i] ++ ") unmatched"
 	},
 	panic(print#string(p))
 }
 
-func quadratic_unmatched(left [T], right [T]) [.left [int], .right [int]] : =(T, T)bool {
+func quadratic_unmatched(left [T], right [T]) [.left [int], .right [int]] : { =(T, T)bool } {
 	left_matched := [bool] :: new(left.length, false),
 	right_matched := [bool] :: new(right.length, false),
-	for: 0 to: left.length-1 do: (i) {
+	for: 0 to: left.length - 1 do: (i){
 		j := 0,
-		while: {j < right.length && !left_matched[i]} do: {
+		while: { j < right.length && !left_matched[i] } do: {
 			if: !right_matched[j] && left[i] = right[j] then: {
 				left_matched[i] := true,
-				right_matched[j] := true,
+				right_matched[j] := true
 			},
 			++j
 		}
@@ -176,20 +176,20 @@ func quadratic_unmatched(left [T], right [T]) [.left [int], .right [int]] : =(T,
 
 	i := 0,
 	left_unmatched := [int] :: new(left.length, -1),
-	for: 0 to: left_matched.length-1 do: (j) {
+	for: 0 to: left_matched.length - 1 do: (j){
 		if: !left_matched[j] then: {
 			left_unmatched[i] := j,
-			++i,
+			++i
 		}
 	},
 	left_unmatched := left_unmatched[0, i],
 
 	i := 0,
 	right_unmatched := [int] :: new(right.length, -1),
-	for: 0 to: right_matched.length-1 do: (j) {
+	for: 0 to: right_matched.length - 1 do: (j){
 		if: !right_matched[j] then: {
 			right_unmatched[i] := j,
-			++i,
+			++i
 		}
 	},
 	right_unmatched := right_unmatched[0, i],
@@ -216,5 +216,5 @@ test unordered_elements {
 	assert: quadratic_unmatched([int] :: [], [6, 7, 8]) equals: [.left [], .right [0, 1, 2]],
 	assert: quadratic_unmatched([1, 2, 3], [6, 7, 8]) equals: [.left [0, 1, 2], .right [0, 1, 2]],
 	assert: quadratic_unmatched([5, 6, 7], [6, 7, 8]) equals: [.left [0], .right [2]],
-	assert: quadratic_unmatched([4, 5, 6], [6, 7, 8]) equals: [.left [0, 1], .right [1, 2]],
+	assert: quadratic_unmatched([4, 5, 6], [6, 7, 8]) equals: [.left [0, 1], .right [1, 2]]
 }

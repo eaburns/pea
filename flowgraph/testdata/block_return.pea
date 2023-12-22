@@ -5,5 +5,5 @@ func main() {
 }
 
 func g_no_inline() (){string} {
-	return: {"Hello, World!"}
+	return: { "Hello, World!" }
 }

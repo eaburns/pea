@@ -3,7 +3,7 @@ func main() {
 	foo(&[.x int] :: [.x 5])
 }
 
-func foo(s S) : bar(&S) {
+func foo(s S) : { bar(&S) } {
 	// When substituting &string for S, this becomes &&string.
 	// While &&string itself is invalid, &S is ok even when S=&string,
 	// becasue it behaves like a named type.
@@ -16,4 +16,3 @@ func bar(x &x_int_ref) {
 }
 
 func print_int(_ int)
-

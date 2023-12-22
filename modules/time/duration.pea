@@ -47,7 +47,7 @@ Const infinite_duration := duration :: [.s 1, .ns (uint32 :: 1) << 31]
 Const min_duration := duration :: [.s min_int64, .ns 0]
 
 // The maximum representable, finite duration.
-Const max_duration := duration :: [.s max_int64, .ns ns_per_sec-1]
+Const max_duration := duration :: [.s max_int64, .ns ns_per_sec - 1]
 
 // Zero duration.
 Const zero_duration := duration :: [.s 0, .ns 0]
@@ -77,7 +77,7 @@ Func is_infinite(d duration) bool {
 
 // Returns the result of a=b.
 Func =(a duration, b duration) bool {
-	return: a.s = b.s && {a.ns = b.ns}
+	return: a.s = b.s && { a.ns = b.ns }
 }
 
 // Returns the result of a<b.
@@ -93,7 +93,7 @@ Func <(a duration, b duration) bool {
 
 // Returns the result of a<=b.
 Func <=(a duration, b duration) bool {
-	return: a = b || {a < b}
+	return: a = b || { a < b }
 }
 
 // Returns the result of a>b.
@@ -109,27 +109,27 @@ Func >(a duration, b duration) bool {
 
 // Returns the result of a>=b.
 Func >=(a duration, b duration) bool {
-	return: a = b || {a > b}
+	return: a = b || { a > b }
 }
 
 test duration_comparison {
 	assert_true: second = second,
 	assert_true: nanosecond = nanosecond,
 	assert_true: 20*millisecond = 20*millisecond,
-	assert_true: second = ((int64 :: 1.0e9) * nanosecond),
+	assert_true: second = ((int64 :: 1.0e9)*nanosecond),
 	assert_false: second = minute,
 	assert_false: 2*minute = minute,
 	assert_false: 20*nanosecond = nanosecond,
-	assert_false: second = ((int64 :: 1.0e8) * nanosecond),
+	assert_false: second = ((int64 :: 1.0e8)*nanosecond),
 
 	assert_false: second != second,
 	assert_false: nanosecond != nanosecond,
 	assert_false: 20*millisecond != 20*millisecond,
-	assert_false: second != ((int64 :: 1.0e9) * nanosecond),
+	assert_false: second != ((int64 :: 1.0e9)*nanosecond),
 	assert_true: second != minute,
 	assert_true: 2*minute != minute,
 	assert_true: 20*nanosecond != nanosecond,
-	assert_true: second != ((int64 :: 1.0e8) * nanosecond),
+	assert_true: second != ((int64 :: 1.0e8)*nanosecond),
 
 	assert_true: millisecond < second,
 	assert_true: nanosecond < millisecond,
@@ -169,7 +169,7 @@ test duration_comparison {
 	assert_true: millisecond >= nanosecond,
 	assert_true: 2*nanosecond >= nanosecond,
 	assert_true: 200*minute >= 20*minute,
-	assert_true: second >= second,
+	assert_true: second >= second
 }
 
 Func -(a duration) duration {
@@ -181,10 +181,10 @@ Func -(a duration) duration {
 		return: a
 	},
 	if: a.ns = 0 then: {
-		a.s := -a.s,
+		a.s := -a.s
 	} else: {
 		a.s := -a.s - 1,
-		a.ns := ns_per_sec - a.ns,
+		a.ns := ns_per_sec - a.ns
 	},
 	return: a
 }
@@ -193,9 +193,9 @@ test negate {
 	neg_infinite_duration := duration :: [.s -1, .ns (uint32 :: 1) << 31],
 	assert: -infinite_duration equals: neg_infinite_duration,
 	assert: -neg_infinite_duration equals: infinite_duration,
-	assert: -nanosecond equals: [.s -1, .ns ns_per_sec-1],
-	assert: -microsecond equals: [.s -1, .ns ns_per_sec-1.0e3],
-	assert: -millisecond equals: [.s -1, .ns ns_per_sec-1.0e6],
+	assert: -nanosecond equals: [.s -1, .ns ns_per_sec - 1],
+	assert: -microsecond equals: [.s -1, .ns ns_per_sec - 1.0e3],
+	assert: -millisecond equals: [.s -1, .ns ns_per_sec - 1.0e6],
 	assert: -second equals: [.s -1, .ns 0],
 	// -1.5 seconds.
 	assert: -(duration :: [.s 1, .ns 5.0e8]) equals: [.s -2, .ns 5.0e8],
@@ -205,7 +205,7 @@ test negate {
 	assert: -(min_duration + 5*nanosecond) equals: infinite_duration,
 
 	assert: -second equals: [.s -1, .ns 0],
-	assert: - -second equals: second,
+	assert: - -second equals: second
 }
 
 // Returns the result of a+b.
@@ -254,25 +254,25 @@ test plus {
 	assert: second + nanosecond equals: [.s 1, .ns 1],
 	assert: second + second equals: [.s 2, .ns 0],
 	assert: (duration :: [.s 0, .ns 5.0e8]) + [.s 0, .ns 5.0e8] equals: second,
-	assert: (duration :: [.s 1, .ns 5.0e8]) + [.s 0, .ns 5.0e8] equals: second+second,
-	assert: (duration :: [.s 0, .ns 5.0e8]) + [.s 1, .ns 5.0e8] equals: second+second,
-	assert: (duration :: [.s 1, .ns 5.0e8]) + [.s 1, .ns 5.0e8] equals: second+second+second,
+	assert: (duration :: [.s 1, .ns 5.0e8]) + [.s 0, .ns 5.0e8] equals: second + second,
+	assert: (duration :: [.s 0, .ns 5.0e8]) + [.s 1, .ns 5.0e8] equals: second + second,
+	assert: (duration :: [.s 1, .ns 5.0e8]) + [.s 1, .ns 5.0e8] equals: second + second + second,
 
 	assert: nanosecond + -nanosecond equals: zero_duration,
-	assert: second + -nanosecond equals: [.s 0, .ns ns_per_sec-1],
+	assert: second + -nanosecond equals: [.s 0, .ns ns_per_sec - 1],
 	assert: second + -second equals: [.s 0, .ns 0],
 	assert: second + -minute equals: [.s -59, .ns 0],
 	assert: nanosecond + -minute equals: [.s -60, .ns 1],
 	assert: second + -(duration :: [.s 0, .ns 5.0e8]) equals: [.s 0, .ns 5.0e8],
 	assert: second + -(duration :: [.s 1, .ns 5.0e8]) equals: [.s -1, .ns 5.0e8],
-	assert: nanosecond + -(duration :: [.s 0, .ns 5.0e8]) equals: [.s -1, .ns (uint32 :: 5.0e8)+1],
+	assert: nanosecond + -(duration :: [.s 0, .ns 5.0e8]) equals: [.s -1, .ns (uint32 :: 5.0e8) + 1],
 
-	assert: second+second equals: 2*second,
-	assert: 2*second-second equals: second,
-	assert: second+(1000*millisecond) equals: 2*second,
-	assert: 2*second-(1000*millisecond) equals: second,
-	assert: second+(500*millisecond) equals: 1500*millisecond,
-	assert: second-(500*millisecond) equals: 500*millisecond,
+	assert: second + second equals: 2*second,
+	assert: 2*second - second equals: second,
+	assert: second + (1000*millisecond) equals: 2*second,
+	assert: 2*second - (1000*millisecond) equals: second,
+	assert: second + (500*millisecond) equals: 1500*millisecond,
+	assert: second - (500*millisecond) equals: 500*millisecond,
 
 	x := second,
 	x += second,
@@ -280,7 +280,7 @@ test plus {
 
 	x := second,
 	x -= 500*millisecond,
-	assert: x equals: 500*millisecond,
+	assert: x equals: 500*millisecond
 }
 
 // Returns the result of a-b.
@@ -326,7 +326,7 @@ test minus {
 	assert: max_duration - -nanosecond equals: infinite_duration,
 
 	assert: nanosecond - nanosecond equals: zero_duration,
-	assert: second - nanosecond equals: [.s 0, .ns ns_per_sec-1],
+	assert: second - nanosecond equals: [.s 0, .ns ns_per_sec - 1],
 	assert: second - second equals: zero_duration,
 	assert: (duration :: [.s 0, .ns 5.0e8]) - [.s 0, .ns 5.0e8] equals: zero_duration,
 	assert: (duration :: [.s 1, .ns 5.0e8]) - [.s 0, .ns 5.0e8] equals: second,
@@ -334,8 +334,8 @@ test minus {
 	assert: (duration :: [.s 1, .ns 5.0e8]) - [.s 1, .ns 5.0e8] equals: zero_duration,
 
 	assert: (duration :: [.s 2, .ns 0]) - second equals: second,
-	assert: (duration :: [.s 3, .ns 0]) - second equals: second+second,
-	assert: millisecond - microsecond equals: [.s 0, .ns (uint32 :: 1.0e6)-1.0e3],
+	assert: (duration :: [.s 3, .ns 0]) - second equals: second + second,
+	assert: millisecond - microsecond equals: [.s 0, .ns (uint32 :: 1.0e6) - 1.0e3],
 
 	assert: nanosecond - -nanosecond equals: [.s 0, .ns 2],
 	assert: second - -nanosecond equals: [.s 1, .ns 1],
@@ -343,7 +343,7 @@ test minus {
 	assert: second - -minute equals: [.s 61, .ns 0],
 	assert: nanosecond - -minute equals: [.s 60, .ns 1],
 	assert: second - -(duration :: [.s 0, .ns 5.0e8]) equals: [.s 1, .ns 5.0e8],
-	assert: second - -(duration :: [.s 1, .ns 5.0e8]) equals: [.s 2, .ns 5.0e8],
+	assert: second - -(duration :: [.s 1, .ns 5.0e8]) equals: [.s 2, .ns 5.0e8]
 }
 
 // Returns the result of a*b.
@@ -363,14 +363,14 @@ Func *(a duration, b int64) duration {
 	},
 	if: a.s = min_int64 then: {
 		if: b < 0 then: {
-			return: infinite_duration,
+			return: infinite_duration
 		} else: {
-			return: -infinite_duration,
+			return: -infinite_duration
 		}
 	},
 
-	aabs := a.s < 0 true? {-a} false? {a},
-	babs := int64 :: b < 0 true? {-b} false? {b},
+	aabs := a.s < 0 true? { -a } false? { a },
+	babs := int64 :: b < 0 true? { -b } false? { b },
 
 	carry := int64 :: 0,
 	ns := int64 :: aabs.ns,
@@ -380,7 +380,7 @@ Func *(a duration, b int64) duration {
 		// Won't overflow:
 		//   aabs.ns < 1e9 -- invariant
 		//   babs < 1e9 -- if condition
-		ns *= babs,
+		ns *= babs
 	} else: {
 		//   n*b
 		//   n*(b+x-x)
@@ -393,21 +393,21 @@ Func *(a duration, b int64) duration {
 		//   aabs.ns < 1e9 -- invariant
 		//   q = babs / 1e9 < 1e9
 		//   babs - q*1e9 < 1e9 -- remainder(b/1e9)
-		q := babs / 1.0e9,
-		carry := ns * q,
-		ns *= (babs - q*(int64 :: 1.0e9)),
+		q := babs/1.0e9,
+		carry := ns*q,
+		ns *= (babs - q*(int64 :: 1.0e9))
 	},
 	if: ns >= 1.0e9 then: {
 		// carry is 0 or ≤2⁶⁴/1e9, so this add can't overflow.
 		carry += (int64 :: ns/1.0e9),
-		ns %= 1.0e9,
+		ns %= 1.0e9
 	},
 	s := aabs.s*babs,
 
 	// b!=0 is handled above
-	if: s / babs != aabs.s || {s > 0 && {carry > max_int64 - s}} then: {
+	if: s/babs != aabs.s || { s > 0 && { carry > max_int64 - s } } then: {
 		// saturate overflow.
-		if: a.s < 0 && {b > 0} || {a.s > 0 && {b < 0}} then: {
+		if: a.s < 0 && { b > 0 } || { a.s > 0 && { b < 0 } } then: {
 			return: -infinite_duration
 		} else: {
 			return: infinite_duration
@@ -415,7 +415,7 @@ Func *(a duration, b int64) duration {
 	},
 
 	r := duration :: [.s s + carry, .ns uint32 :: ns],
-	if: a.s < 0 && {b > 0} || {a.s >= 0 && {b < 0}} then: {
+	if: a.s < 0 && { b > 0 } || { a.s >= 0 && { b < 0 } } then: {
 		r := -r
 	},
 	return: r
@@ -426,52 +426,52 @@ Func *(a int, b duration) duration { return: b*(int64 :: a) }
 Func *(a duration, b int) duration { return: a*(int64 :: b) }
 
 test times {
-	assert: infinite_duration * 2 equals: infinite_duration,
-	assert: infinite_duration * -1 equals: -infinite_duration,
-	assert: -infinite_duration * 2 equals: -infinite_duration,
-	assert: -infinite_duration * -1 equals: infinite_duration,
+	assert: infinite_duration*2 equals: infinite_duration,
+	assert: infinite_duration* -1 equals: -infinite_duration,
+	assert: -infinite_duration*2 equals: -infinite_duration,
+	assert: -infinite_duration* -1 equals: infinite_duration,
 
-	assert: nanosecond * 2 equals: [.s 0, .ns 2],
-	assert: nanosecond * -2 equals: [.s -1, .ns ns_per_sec-2],
-	assert: -nanosecond * 2 equals: [.s -1, .ns ns_per_sec-2],
-	assert: -nanosecond * -2 equals: [.s 0, .ns 2],
+	assert: nanosecond*2 equals: [.s 0, .ns 2],
+	assert: nanosecond* -2 equals: [.s -1, .ns ns_per_sec - 2],
+	assert: -nanosecond*2 equals: [.s -1, .ns ns_per_sec - 2],
+	assert: -nanosecond* -2 equals: [.s 0, .ns 2],
 
-	assert: second * 2 equals: [.s 2, .ns 0],
-	assert: (second+nanosecond) * 2 equals: [.s 2, .ns 2],
-	assert: (second+nanosecond) * -2 equals: [.s -3, .ns ns_per_sec-2],
+	assert: second*2 equals: [.s 2, .ns 0],
+	assert: (second + nanosecond)*2 equals: [.s 2, .ns 2],
+	assert: (second + nanosecond)* -2 equals: [.s -3, .ns ns_per_sec - 2],
 
-	assert: min_duration * -1 equals: infinite_duration,
-	assert: min_duration * 0 equals: zero_duration,
-	assert: min_duration * 1 equals: min_duration,
-	assert: min_duration * 2 equals: -infinite_duration,
-	assert: max_duration * -1 equals: -max_duration,
-	assert: max_duration * 0 equals: zero_duration,
-	assert: max_duration * 1 equals: max_duration,
-	assert: max_duration * 2 equals: infinite_duration,
+	assert: min_duration* -1 equals: infinite_duration,
+	assert: min_duration*0 equals: zero_duration,
+	assert: min_duration*1 equals: min_duration,
+	assert: min_duration*2 equals: -infinite_duration,
+	assert: max_duration* -1 equals: -max_duration,
+	assert: max_duration*0 equals: zero_duration,
+	assert: max_duration*1 equals: max_duration,
+	assert: max_duration*2 equals: infinite_duration,
 
-	assert: second*(int :: 2) equals: second+second,
-	assert: second*(int64 :: 2) equals: second+second,
-	assert: 2*second equals: second+second,
-	assert: (int64::2)*second equals: second+second,
+	assert: second*(int :: 2) equals: second + second,
+	assert: second*(int64 :: 2) equals: second + second,
+	assert: 2*second equals: second + second,
+	assert: (int64 :: 2)*second equals: second + second,
 	assert: 1500*millisecond equals: [.s 1, .ns 5.0e8],
-	assert: second+(500*millisecond) equals: 1500*millisecond,
+	assert: second + (500*millisecond) equals: 1500*millisecond,
 
-	assert: nanosecond * (int64 :: 2.0e9) equals: second * 2,
-	assert: nanosecond * (int64 :: 10.0e9) equals: second * 10,
-	assert: (nanosecond+nanosecond) * (int64 :: 10.0e9) equals: second * 20,
+	assert: nanosecond*(int64 :: 2.0e9) equals: second*2,
+	assert: nanosecond*(int64 :: 10.0e9) equals: second*10,
+	assert: (nanosecond + nanosecond)*(int64 :: 10.0e9) equals: second*20,
 
 	// Gracefully handle would-be overflow of uint32 nanoseconds.
-	assert: (nanosecond+nanosecond) * (int64 :: int#max_uint32)
+	assert: (nanosecond + nanosecond)*(int64 :: int#max_uint32)
 		equals: (duration :: [
-			.s (int64 :: int#max_uint32)*(int64 :: 2) / 1.0e9,
-			.ns uint32 :: (int64 :: int#max_uint32)*(int64 :: 2) % 2.0e9,
+			.s (int64 :: int#max_uint32)*(int64 :: 2)/1.0e9,
+			.ns uint32 :: (int64 :: int#max_uint32)*(int64 :: 2)%2.0e9
 		]),
 
 	// 9007199254740993 is the first int that cannot be represented by float64.
 	// To demonstrate that an implementation that multiplies
 	// by converting to float64 would give an incorrect result.
 	not_float64able := duration :: [.s 9007199254740993, .ns 0],
-	assert: not_float64able * 1 equals: not_float64able
+	assert: not_float64able*1 equals: not_float64able
 }
 
 func float64(d duration) float64 {
@@ -483,14 +483,14 @@ func float64(d duration) float64 {
 // For example:
 // 	time#second / time#nanosecond // number of nanoseconds in a second.
 Func /(a duration, b duration) float64 {
-	return: float64(a) / float64(b)
+	return: float64(a)/float64(b)
 }
 
 test duration_division {
 	assert: minute/second equals: 60,
 	assert: second/millisecond equals: 1000,
 	assert: second/(500*millisecond) equals: 2,
-	assert: (500*millisecond)/second equals: 0.5,
+	assert: (500*millisecond)/second equals: 0.5
 }
 
 // Adds the string representation of the duration
@@ -519,9 +519,9 @@ test duration_division {
 Func print(p print#printer, d duration) print#printer {
 	if: is_infinite(d) then: {
 		if: d.s < 0 then: {
-			p ++ "-",
+			p ++ "-"
 		},
-		return: p ++ "infinity",
+		return: p ++ "infinity"
 	},
 	if: d.s = 0 then: {
 		if: d < zero_duration then: {
@@ -545,36 +545,36 @@ Func print(p print#printer, d duration) print#printer {
 
 	s := uint64 :: 0,
 	if: d.s >= 0 then: {
-		s := uint64 :: d.s,
+		s := uint64 :: d.s
 	} else: {
 		p ++ "-",
 		if: d.s = min_int64 then: {
-			s := (uint64 :: max_int64)+1,
+			s := (uint64 :: max_int64) + 1
 		} else: {
 			s := uint64 :: -d.s
 		},
 		if: d.ns > 0 then: {
 			--s,
-			d.ns := ns_per_sec - d.ns,
-		},
+			d.ns := ns_per_sec - d.ns
+		}
 	},
 	if: s >= 3600 then: {
 		h := s/3600,
 		s -= h*3600,
-		p ++ h ++ "h",
+		p ++ h ++ "h"
 	},
 	if: s >= 60 then: {
 		m := s/60,
 		s -= m*60,
-		p ++ m ++ "m",
+		p ++ m ++ "m"
 	},
 	if: s > 0 || d.ns > 0 then: {
 		p ++ s,
 		if: d.ns > 0 then: {
-			f := print#string((float64 :: d.ns) / (float64 :: ns_per_sec)),
-			p ++ f[1,f.length], // trim leading 0.
+			f := print#string((float64 :: d.ns)/(float64 :: ns_per_sec)),
+			p ++ f[1, f.length] // trim leading 0.
 		},
-		p ++ "s",
+		p ++ "s"
 	},
 	return: p
 }
@@ -592,15 +592,15 @@ test duration_string {
 	assert: print#string(1*hour) equals: "1h",
 	assert: print#string(2*nanosecond) equals: "2ns",
 	assert: print#string(2*microsecond) equals: "2μs",
-	assert: print#string(2*microsecond+500*nanosecond) equals: "2.5μs",
+	assert: print#string(2*microsecond + 500*nanosecond) equals: "2.5μs",
 	assert: print#string(2*millisecond) equals: "2ms",
 	assert: print#string(2*millisecond + 500*microsecond) equals: "2.5ms",
 	assert: print#string(2*second) equals: "2s",
-	assert: print#string(2*second+500*millisecond) equals: "2.5s",
+	assert: print#string(2*second + 500*millisecond) equals: "2.5s",
 	assert: print#string(2*minute) equals: "2m",
-	assert: print#string(2*minute+30*second) equals: "2m30s",
+	assert: print#string(2*minute + 30*second) equals: "2m30s",
 	assert: print#string(2*hour) equals: "2h",
-	assert: print#string(2*hour+30*minute) equals: "2h30m",
+	assert: print#string(2*hour + 30*minute) equals: "2h30m",
 	assert: print#string(2*hour + 3*minute + 4*second + 500*millisecond) equals: "2h3m4.5s",
 	assert: print#string(2*millisecond + 500*microsecond) equals: "2.5ms",
 	assert: print#string(2*microsecond + 500*nanosecond) equals: "2.5μs",
@@ -618,8 +618,8 @@ test duration_string {
 	assert: print#string(-2*hour - 3*minute - 4*second - 500*millisecond) equals: "-2h3m4.5s",
 
 	assert: print#string(5*second + 30*nanosecond) equals: "5.00000003s",
-	assert: print#string(86401*second+30*nanosecond) equals: "24h1.00000003s",
+	assert: print#string(86401*second + 30*nanosecond) equals: "24h1.00000003s",
 
 	assert: print#string(max_duration) equals: "2562047788015215h30m7.999999999s",
-	assert: print#string(min_duration) equals: "-2562047788015215h30m8s",
+	assert: print#string(min_duration) equals: "-2562047788015215h30m8s"
 }

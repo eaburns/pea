@@ -8,7 +8,7 @@ func foo() int {
 }
 
 // Makes the caller return 5.
-func return5()! : return:(int)! {
+func return5() ! : { return:(int)! } {
 	return: 5
 }
 

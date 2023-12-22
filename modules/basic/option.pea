@@ -15,11 +15,11 @@ Func none() T option {
 // Returns whether two options are equal.
 // They are equal if they are either both the none? case,
 // or they are both the some? case with = some? values.
-Func =(a T option, b T option) bool : =(T, T)bool {
-	if: a some: (a_val) {
-		if: b some: (b_val) {
+Func =(a T option, b T option) bool : { =(T, T)bool } {
+	if: a some: (a_val){
+		if: b some: (b_val){
 			return: a_val = b_val
-		},
+		}
 	} none: {
 		if: b none: {
 			return: true
@@ -36,13 +36,13 @@ test option_equals {
 	assert_false: some(5) = none(),
 	assert_false: (int option :: none()) = some(5),
 	assert_false: some(5) = some(6),
-	assert_false: some("Hello") = some("Good-bye"),
+	assert_false: some("Hello") = some("Good-bye")
 }
 
 // Continually calls cond() until it returns an option in the none? case.
 // Each time cond() returns a some? case, f is called with the some? value.
 Func while:some:(cond (){T option}, f (T){}) {
-	if: cond() some: (t) {
+	if: cond() some: (t){
 		f(t),
 		while: cond some: f
 	}
@@ -50,15 +50,15 @@ Func while:some:(cond (){T option}, f (T){}) {
 
 test while_some {
 	iters := 0,
-	while: {int option :: none()} some: (_){++iters},
+	while: { int option :: none() } some: (_){ ++iters },
 	assert_true: iters = 0,
 
 	iters := 0,
-	while: {iters < 10 true? {some(iters)} false? {none()}} some: (i){
+	while: { iters < 10 true? { some(iters) } false? { none() } } some: (i){
 		assert_true: i = iters,
 		++iters
 	},
-	assert_true: iters = 10,
+	assert_true: iters = 10
 }
 
 // Continually calls cond() until it returns an option in the some? case.
@@ -72,13 +72,12 @@ Func while:none:(cond (){T option}, f (){}) {
 
 test while_none {
 	iters := 0,
-	while: {int option :: some(1)} none: (){++iters},
+	while: { int option :: some(1) } none: { ++iters },
 	assert_true: iters = 0,
 
 	iters := 0,
-	while: {iters < 10 true? {int option :: none()} false? {some(iters)}} none: (){
+	while: { iters < 10 true? { int option :: none() } false? { some(iters) } } none: {
 		++iters
 	},
-	assert_true: iters = 10,
+	assert_true: iters = 10
 }
-

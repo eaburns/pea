@@ -48,24 +48,24 @@ type char_class := char_range vector
 type char_range [.start rune, .end rune]
 
 type instruction [
-	nop?,	// no operation
-	rune? rune,	// match the given rune
-	any?,	// any character
-	begin?,	// beginning of input
-	end?,	// end of input
-	class? int,	// char class index in prog
-	nclass? int,	// negated char class index in prog
-	jmp? int,	// jump instruction offset
-	fork? int,	// fork to (+1 is high priority, +n is low)
-	rfork? int,	// reverse-prio fork to (+n is high priority, +1 is low)
-	save? int,	// save position to sub-group index
+	nop?, // no operation
+	rune? rune, // match the given rune
+	any?, // any character
+	begin?, // beginning of input
+	end?, // end of input
+	class? int, // char class index in prog
+	nclass? int, // negated char class index in prog
+	jmp? int, // jump instruction offset
+	fork? int, // fork to (+1 is high priority, +n is low)
+	rfork? int, // reverse-prio fork to (+n is high priority, +1 is low)
+	save? int, // save position to sub-group index
 	match?,
 ]
 
 // Returns the compiled regular expression or an error.
 Func compile(src string) regexp or_error {
 	src0 := src,
-	re := choice(src, 0) ok? (re){re} error? (e){
+	re := choice(src, 0) ok? (re){ re } error? (e){
 		return: error(e)
 	},
 	re := group_prog(re),
@@ -75,11 +75,11 @@ Func compile(src string) regexp or_error {
 }
 
 func choice(src &string, depth int) regexp or_error {
-	left := concat(src, depth) ok? (re){re} error? (e){
+	left := concat(src, depth) ok? (re){ re } error? (e){
 		return: error(e)
 	},
 	if: peek(src) != '|' then: {
-		return: ok(left),
+		return: ok(left)
 	},
 	if: is_empty(left) then: {
 		return: error("unexpected |")
@@ -93,7 +93,7 @@ func choice(src &string, depth int) regexp or_error {
 }
 
 func concat(src &string, depth int) regexp or_error {
-	left := repeat(src, depth) ok? (re){re} error? (e){
+	left := repeat(src, depth) ok? (re){ re } error? (e){
 		return: error(e)
 	},
 	if: is_empty(left) then: {
@@ -107,7 +107,7 @@ func concat(src &string, depth int) regexp or_error {
 }
 
 func repeat(src &string, depth int) regexp or_error {
-	re := term(src, depth) ok? (re){re} error? (e){
+	re := term(src, depth) ok? (re){ re } error? (e){
 		return: error(e)
 	},
 	if: is_empty(re) then: {
@@ -124,7 +124,7 @@ func repeat(src &string, depth int) regexp or_error {
 func term(src &string, depth int) regexp or_error {
 	r := peek(src),
 	if: r = eof then: {
-		return: ok(empty()),
+		return: ok(empty())
 	} else: r = '|' then: {
 		return: ok(empty())
 	} else: r = ')' then: {
@@ -152,7 +152,7 @@ func term(src &string, depth int) regexp or_error {
 	} else: r = '[' then: {
 		return: char_class(src)
 	} else: r = '\\' then: {
-		r := escape(src) ok? (r){r} error? (e){return: error(e)}
+		r := escape(src) ok? (r){ r } error? (e){ return: error(e) }
 	},
 	return: ok(op_prog([rune? r]))
 }
@@ -164,13 +164,13 @@ func group(src &string, depth int) regexp or_error {
 		if: next(src) != ':' then: {
 			return: error("expected :")
 		},
-		cap := false,
+		cap := false
 	},
-	re := choice(src, depth+1) ok? (re){re} error? (e){
+	re := choice(src, depth + 1) ok? (re){ re } error? (e){
 		return: error(e)
 	},
 	if: next(src) != ')' then: {
-		return: error("unclosed ("),
+		return: error("unclosed (")
 	},
 	if: cap then: {
 		return: ok(group_prog(re))
@@ -179,7 +179,7 @@ func group(src &string, depth int) regexp or_error {
 		// This flags the regexp as non-empty.
 		// Otherwise, an empty (?:) can appear empty,
 		// since it has no save instructions, like () does.
-		re.prog push_back: [nop?],
+		re.prog push_back: [nop?]
 	},
 	return: ok(re)
 }
@@ -193,14 +193,14 @@ func char_class(src &string) regexp or_error {
 	},
 	p := rune :: -1,
 	class := char_class :: vector#new(),
-	while: {src.length > 0} do: {
+	while: { src.length > 0 } do: {
 		r := next(src),
 		if: r = ']' then: {
 			if: p >= 0 then: {
-				class push_back: [.start p, .end p],
+				class push_back: [.start p, .end p]
 			},
 			if: class.length = 0 then: {
-				return: error("empty character class"),
+				return: error("empty character class")
 			},
 			return: ok(char_class_prog(op, class))
 		} else: r = '-' then: {
@@ -209,46 +209,46 @@ func char_class(src &string) regexp or_error {
 			},
 			r := next(src),
 			if: r = '\\' then: {
-				r := escape(src) ok? (r){r} error? (e){return: error(e)}
+				r := escape(src) ok? (r){ r } error? (e){ return: error(e) }
 			},
 			if: p >= r then: {
-				return: error("bad range"),
+				return: error("bad range")
 			},
 			class push_back: [.start p, .end r],
 			p := -1
 		} else: {
 			if: r = '\\' then: {
-				r := escape(src) ok? (r){r} error? (e){return: error(e)},
+				r := escape(src) ok? (r){ r } error? (e){ return: error(e) }
 			},
 			if: p >= 0 then: {
-				class push_back: [.start p, .end p],
+				class push_back: [.start p, .end p]
 			},
-			p := r,
-		},
+			p := r
+		}
 	},
 	return: error("unclosed [")
 }
 
 func choice_prog(left regexp, right regexp) regexp {
-	left.prog push_front: [fork? left.prog.length+2],
-	left.prog push_back: [jmp? right.prog.length+1],
+	left.prog push_front: [fork? left.prog.length + 2],
+	left.prog push_back: [jmp? right.prog.length + 1],
 	return: cat_prog(left, right)
 }
 
 func cat_prog(left regexp, right regexp) regexp {
-	for: 0 to: right.prog.length-1 do: (i) {
-		if: right.prog[i] save: (s) {
+	for: 0 to: right.prog.length - 1 do: (i){
+		if: right.prog[i] save: (s){
 			right.prog[i] := [save? s + 2*left.ncap]
-		} class: (c) {
+		} class: (c){
 			right.prog[i] := [class? c + left.class.length]
-		} nclass: (c) {
+		} nclass: (c){
 			right.prog[i] := [nclass? c + left.class.length]
 		},
 		left.prog push_back: right.prog[i]
 	},
 	left.ncap += right.ncap,
 	// TODO: add vector#append(vector, vector)
-	for: right.class each: (c) {
+	for: right.class each: (c){
 		left.class push_back: c
 	},
 	return: left
@@ -258,10 +258,10 @@ func rep_prog(re regexp, op rune) regexp {
 	if: op = '+' then: {
 		re.prog push_back: [rfork? -re.prog.length]
 	} else: op = '*' then: {
-		re.prog push_front: [fork? re.prog.length+2],
-		re.prog push_back: [rfork? -re.prog.length+1],
+		re.prog push_front: [fork? re.prog.length + 2],
+		re.prog push_back: [rfork? -re.prog.length + 1]
 	} else: op = '?' then: {
-		re.prog push_front: [fork? re.prog.length+1],
+		re.prog push_front: [fork? re.prog.length + 1]
 	} else: {
 		panic("impossible")
 	},
@@ -269,10 +269,10 @@ func rep_prog(re regexp, op rune) regexp {
 }
 
 func group_prog(re regexp) regexp {
-	for: 0 to: re.prog.length-1 do: (i) {
-		if: re.prog[i] save: (s) {
+	for: 0 to: re.prog.length - 1 do: (i){
+		if: re.prog[i] save: (s){
 			re.prog[i] := [save? s + 2]
-		},
+		}
 	},
 	re.prog push_front: [save? 0],
 	re.prog push_back: [save? 1],
@@ -302,14 +302,14 @@ func empty() regexp {
 		.source "",
 		.prog ring_buffer#new(),
 		.class vector#new(),
-		.ncap 0,
+		.ncap 0
 	]
 }
 
 func peek(src string) rune {
 	return: utf8#decode(src) none? {
 		rune :: -1
-	} some? (rw) {
+	} some? (rw){
 		rw.rune
 	}
 }
@@ -317,7 +317,7 @@ func peek(src string) rune {
 func next(src &string) rune {
 	return: utf8#decode(src) none? {
 		rune :: -1
-	} some? (rw) {
+	} some? (rw){
 		src := src[rw.width, src.length],
 		rw.rune
 	}
@@ -340,13 +340,13 @@ func escape(src &string) rune or_error {
 	} else: r = 'r' then: {
 		return: ok('\x0D')
 	} else: (rune :: 33) <= r && r <= 64 ||
-		{ (rune :: 91) <= r && r <=  96 } ||
-		{ (rune :: 123) <= r && r <=  126 } then: {
+		{ (rune :: 91) <= r && r <= 96 } ||
+		{ (rune :: 123) <= r && r <= 126 } then: {
 		// These are the ASCII punctuation ranges.
 		// TODO: handle escaping other unicode punctuation.
 		return: ok(r)
 	},
-	return: error("unknown escape sequence"),
+	return: error("unknown escape sequence")
 }
 
 // Options to exec().
@@ -354,14 +354,14 @@ Type exec_options [
 	// Return the longest match instead of the first match.
 	.longest bool,
 	// Returns a match only if it matches the entire input.
-	.full bool
+	.full bool,
 ]
 
 // Returns the default exec_options.
 Func default() exec_options {
 	return: [
 		.longest false,
-		.full false,
+		.full false
 	]
 }
 
@@ -408,7 +408,7 @@ Func read(s &S) read_result : {
 // would return the first rune decoded and the number of its utf8 bytes.
 // However, the read function for an array of runes
 // would return the 0th element and the width 1, since each rune is 1 index.
-Func exec(re regexp, opts exec_options, s S) [int64] : read(&S)read_result {
+Func exec(re regexp, opts exec_options, s S) [int64] : { read(&S)read_result } {
 	return: exec(vm(re, opts), s)
 }
 
@@ -416,7 +416,7 @@ Func exec(re regexp, opts exec_options, s S) [int64] : read(&S)read_result {
 // returns the indices of s that match a regular expression
 // and its capturing subexpressions
 // using the default exec_options.
-Func exec(re regexp, s S) [int64] : read(&S)read_result {
+Func exec(re regexp, s S) [int64] : { read(&S)read_result } {
 	return: exec(re, default(), s)
 }
 
@@ -450,36 +450,36 @@ func vm(re regexp, opts exec_options) vm {
 		.run ring_buffer#new(),
 		.next_run ring_buffer#new(),
 		.free_mem vector#new(),
-		.match [],
+		.match []
 	]
 }
 
-func exec(vm vm, s S) [int64] : read(&S)read_result {
+func exec(vm vm, s S) [int64] : { read(&S)read_result } {
 	vm read: s, // prime next_rune and next_width.
 	vm add_thread: [.pc 0, .mem new_mem(vm)],
 	forever: {
 		vm read: s,
 		swap(vm.run, vm.next_run),
-		while: {pop_front(vm.run)} some: (t) {
-			vm step: t,
+		while: { pop_front(vm.run) } some: (t){
+			vm step: t
 		},
 		if: vm.cur_rune = eof || vm.match != [] && vm.next_run.length = 0 then: {
 			return: vm.match
 		},
 		if: vm.match = [] && !vm.opts.full then: {
-			vm add_thread: [.pc 0, .mem new_mem(vm)],
-		},
+			vm add_thread: [.pc 0, .mem new_mem(vm)]
+		}
 	},
 	panic("impossible"),
 	return: []
 }
 
-func read:(vm vm, s &S) : read(&S)read_result {
+func read:(vm vm, s &S) : { read(&S)read_result } {
 	vm.cur_rune := vm.next_rune,
 	vm.at += (int64 :: vm.next_width),
-	read(s) rune? (rw) {
+	read(s) rune? (rw){
 		vm.next_rune := rw.rune,
-		vm.next_width := rw.width,
+		vm.next_width := rw.width
 	} end? {
 		vm.next_rune := eof,
 		vm.next_width := 0
@@ -491,11 +491,11 @@ func step:(vm vm, t thread) {
 		if: vm.opts.full && (t.mem[0] > 0 || vm.cur_rune != eof) then: {
 			// This match isn't full, so discard it.
 			vm.free_mem push_back: t.mem,
-			return(),
+			return()
 		},
 		if: !vm.opts.longest then: {
 			// For first match, terminate all lower-priority threads.
-			while: {pop_front(vm.run)} some: (t) {
+			while: { pop_front(vm.run) } some: (t){
 				vm.free_mem push_back: t.mem
 			}
 		},
@@ -506,7 +506,7 @@ func step:(vm vm, t thread) {
 		if: t.mem[0] <= vm.match[0] && t.mem[1] > vm.match[1] then: {
 			vm.free_mem push_back: vm.match,
 			vm.match := t.mem,
-			return(),
+			return()
 		},
 		vm.free_mem push_back: t.mem,
 		return()
@@ -514,7 +514,7 @@ func step:(vm vm, t thread) {
 		if: vm.cur_rune != r then: {
 			vm.free_mem push_back: t.mem,
 			return()
-		},
+		}
 	} any: {
 		if: vm.cur_rune = '\n' || vm.cur_rune = eof then: {
 			vm.free_mem push_back: t.mem,
@@ -531,17 +531,17 @@ func step:(vm vm, t thread) {
 			return()
 		}
 	},
-	vm add_thread: [.pc t.pc+1, .mem t.mem],
+	vm add_thread: [.pc t.pc + 1, .mem t.mem]
 }
 
 func class_accepts(r rune, class char_class, neg bool) bool {
 	if: r = eof then: {
 		return: false
 	},
-	for: class each: (range) {
+	for: class each: (range){
 		if: range.start <= r && r <= range.end then: {
 			return: !neg
-		},
+		}
 	},
 	return: neg
 }
@@ -553,37 +553,37 @@ func add_thread:(vm vm, t thread) {
 	},
 	vm.seen[t.pc] := vm.at,
 	if: vm.re.prog[t.pc] nop: {
-		vm add_thread: [.pc t.pc+1, .mem t.mem],
+		vm add_thread: [.pc t.pc + 1, .mem t.mem],
 		return()
 	} jmp: (delta){
-		vm add_thread: [.pc t.pc+delta, .mem t.mem],
+		vm add_thread: [.pc t.pc + delta, .mem t.mem],
 		return()
 	} fork: (delta){
 		mem2 := clone_mem(vm, t.mem),
-		vm add_thread: [.pc t.pc+1, .mem t.mem],
-		vm add_thread: [.pc t.pc+delta, .mem mem2],
+		vm add_thread: [.pc t.pc + 1, .mem t.mem],
+		vm add_thread: [.pc t.pc + delta, .mem mem2],
 		return()
 	} rfork: (delta){
 		mem2 := clone_mem(vm, t.mem),
-		vm add_thread: [.pc t.pc+delta, .mem t.mem],
-		vm add_thread: [.pc t.pc+1, .mem mem2],
+		vm add_thread: [.pc t.pc + delta, .mem t.mem],
+		vm add_thread: [.pc t.pc + 1, .mem mem2],
 		return()
 	} save: (i){
 		t.mem[i] := vm.at,
-		vm add_thread: [.pc t.pc+1, .mem t.mem],
+		vm add_thread: [.pc t.pc + 1, .mem t.mem],
 		return()
 	} begin: {
 		if: vm.cur_rune != eof then: {
-			vm.free_mem push_back: t.mem,
+			vm.free_mem push_back: t.mem
 		} else: {
-			vm add_thread: [.pc t.pc+1, .mem t.mem],
+			vm add_thread: [.pc t.pc + 1, .mem t.mem]
 		},
 		return()
 	} end: {
 		if: vm.next_rune != eof then: {
-			vm.free_mem push_back: t.mem,
+			vm.free_mem push_back: t.mem
 		} else: {
-			vm add_thread: [.pc t.pc+1, .mem t.mem],
+			vm add_thread: [.pc t.pc + 1, .mem t.mem]
 		},
 		return()
 	},

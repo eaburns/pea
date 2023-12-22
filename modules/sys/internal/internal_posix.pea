@@ -18,7 +18,7 @@ func strerror_r(errno int32, buf [uint8])
 Func errno_error(errno int32) error {
 	buf := [uint8] :: new(128, uint8 :: 0),
 	strerror_r(errno, buf),
-	for: 0 to: buf.length do: (i) {
+	for: 0 to: buf.length do: (i){
 		if: buf[i] = 0 then: {
 			return: new(string :: buf[0, i])
 		}

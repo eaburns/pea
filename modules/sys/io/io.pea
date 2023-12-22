@@ -17,5 +17,5 @@ test pipe {
 	must(write(pipe.write, written)),
 	assert_ok: close(pipe.write),
 	assert: must(io#read_all(pipe.read)) equals: written,
-	assert_ok: close(pipe.read),
+	assert_ok: close(pipe.read)
 }

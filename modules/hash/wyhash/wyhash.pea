@@ -27,13 +27,13 @@ const salt := [uint64] :: [
 	0xe7037ed1a0b428db,
 	0x8ebc6af09c88c6e3,
 	0x589965cc75374cc3,
-	0x1d8e4e27c47d124f,
+	0x1d8e4e27c47d124f
 ]
 
 Func hash(seed uint64, data T) uint64 : {
-	[](T, int) uint8,
+	[](T, int)uint8,
 	[](T, int, int)T,
-	.length(T) int,
+	.length(T)int
 } {
 	len0 := uint64 :: data.length,
 	state := seed ^ salt[0],
@@ -53,33 +53,33 @@ Func hash(seed uint64, data T) uint64 : {
 			state := cs0 ^ cs1,
 			ds0 := mix(e ^ salt[3], f ^ state2),
 			ds1 := mix(g ^ salt[4], h ^ state2),
-			state2 := ds0 ^ ds1,
-		} while: {data.length > 64},
-		state := state ^ state2,
+			state2 := ds0 ^ ds1
+		} while: { data.length > 64 },
+		state := state ^ state2
 	},
-	while: {data.length > 16} do: {
+	while: { data.length > 16 } do: {
 		a := consume64(data),
 		b := consume64(data),
-		state := mix(a ^ salt[1], b ^ state),
+		state := mix(a ^ salt[1], b ^ state)
 	},
 	a := uint64 :: 0,
 	b := uint64 :: 0,
 	if: data.length > 8 then: {
 		a := load64(data),
-		b := load64(data[data.length - 8, data.length]),
+		b := load64(data[data.length - 8, data.length])
 	} else: {
 		if: data.length > 3 then: {
 			a := load32(data),
-			b := load32(data[data.length - 4, data.length]),
+			b := load32(data[data.length - 4, data.length])
 		} else: {
 			if: data.length > 0 then: {
 				a := (uint64 :: data[0]) << 16 |
 					(uint64 :: data[data.length >> 1]) << 8 |
 					(uint64 :: data[data.length - 1]),
-				b := 0,
+				b := 0
 			} else: {
 				a := 0,
-				b := 0,
+				b := 0
 			}
 		}
 	},
@@ -98,17 +98,17 @@ test hash {
 	assert: hash(0, "aaaa") equals: 6646112255271966632,
 	assert: hash(0, [uint8] :: ['a', 'a', 'a', 'a']) equals: 6646112255271966632,
 	assert: hash(0, "third_party|wyhash|64") equals: 3702018632387611330,
-	assert: hash(0, "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789") equals: 9245411362605796064,
+	assert: hash(0, "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789") equals: 9245411362605796064
 }
 
-func load32(data T) uint64 : [](T, int) uint8 {
+func load32(data T) uint64 : { [](T, int)uint8 } {
 	return: (uint64 :: data[0]) |
 		(uint64 :: data[1]) << 8 |
 		(uint64 :: data[2]) << 16 |
 		(uint64 :: data[3]) << 24
 }
 
-func load64(data T) uint64 : [](T, int) uint8 {
+func load64(data T) uint64 : { [](T, int)uint8 } {
 	return: (uint64 :: data[0]) |
 		(uint64 :: data[1]) << 8 |
 		(uint64 :: data[2]) << 16 |
@@ -120,9 +120,9 @@ func load64(data T) uint64 : [](T, int) uint8 {
 }
 
 func consume64(data &T) uint64 : {
-	[](T, int) uint8,
+	[](T, int)uint8,
 	[](T, int, int)T,
-	.length(T) int,
+	.length(T)int
 } {
 	u := load64(data),
 	data := data[8, data.length],
@@ -147,10 +147,10 @@ func mul64to128(a uint64, b uint64) [.hi uint64, .lo uint64] {
 	a_hi := a >> 32,
 	b_lo := b & 0xFFFFFFFF,
 	b_hi := b >> 32,
-	lo_lo := a_lo * b_lo,
-	hi_lo := a_hi * b_lo,
-	lo_hi := a_lo * b_hi,
-	hi_hi := a_hi * b_hi,
+	lo_lo := a_lo*b_lo,
+	hi_lo := a_hi*b_lo,
+	lo_hi := a_lo*b_hi,
+	hi_hi := a_hi*b_hi,
 	cross := (lo_lo >> 32) + (hi_lo & 0xFFFFFFFF) + lo_hi,
 	upper := (hi_lo >> 32) + (cross >> 32) + hi_hi,
 	lower := (cross << 32) | (lo_lo & 0xFFFFFFFF),
@@ -178,5 +178,5 @@ test mul64to128 {
 	assert: mul64to128(18446744073709551615, 2) equals: [.hi 1, .lo 18446744073709551614],
 	assert: mul64to128(18446744073709551615, 100) equals: [.hi 99, .lo 18446744073709551516],
 	assert: mul64to128(100, 18446744073709551615) equals: [.hi 99, .lo 18446744073709551516],
-	assert: mul64to128(18446744073709551615, 18446744073709551615) equals: [.hi 18446744073709551614, .lo 1],
+	assert: mul64to128(18446744073709551615, 18446744073709551615) equals: [.hi 18446744073709551614, .lo 1]
 }

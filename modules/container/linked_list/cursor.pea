@@ -39,18 +39,18 @@ test front {
 	l push_back: "Hello",
 	assert: l.front.value some: "Hello",
 	l push_back: "World",
-	assert: l.front.value some: "Hello",
+	assert: l.front.value some: "Hello"
 }
 
 // Returns a cursor pointing to the back element of the linked_list,
 // or the empty cursor if the linked_list is empty.
 Func .back(l T linked_list) T cursor {
 	return: l.head some? (h){
-		t := h.prev some? (t){t} none? {panic("impossible")},
+		t := h.prev some? (t){ t } none? { panic("impossible") },
 		T cursor :: [.list l, .node some(t)]
 	} none? {
 		T cursor :: [.list l, .node none()]
-	},
+	}
 }
 
 test back {
@@ -59,7 +59,7 @@ test back {
 	l push_back: "Hello",
 	assert: l.back.value some: "Hello",
 	l push_back: "World",
-	assert: l.back.value some: "World",
+	assert: l.back.value some: "World"
 }
 
 // Advances the cursor to point to the next element of the linked_list.
@@ -68,7 +68,7 @@ test back {
 // Advancing an empty cursor makes the cursor point to
 // the front element of the linked_list or remain empty if the list is empty.
 Func advance:(c &T cursor) {
-	if: c.node some: (n) {
+	if: c.node some: (n){
 		if: same_node(n.next, c.list.head) then: {
 			c.node := none()
 		} else: {
@@ -98,7 +98,6 @@ test advance {
 	advance: cur,
 	assert: cur.value some: "Hello",
 
-
 	l push_back: "World",
 
 	cur := l.front,
@@ -125,7 +124,7 @@ test advance {
 	advance: cur,
 	assert_none: cur.value,
 	advance: cur,
-	assert: cur.value some: "Hello",
+	assert: cur.value some: "Hello"
 }
 
 // Reverses the cursor to point to the preceding element of the linked_list.
@@ -138,7 +137,7 @@ Func reverse:(c &T cursor) {
 		c.node := none(),
 		return()
 	},
-	if: c.node some: (n) {
+	if: c.node some: (n){
 		c.node := n.prev
 	} none: {
 		c := c.list.back
@@ -190,7 +189,7 @@ test reverse {
 	reverse: cur,
 	assert: cur.value some: "Hello",
 	reverse: cur,
-	assert_none: cur.value,
+	assert_none: cur.value
 }
 
 test advance_and_reverse {
@@ -226,7 +225,7 @@ test advance_and_reverse {
 	reverse: cur,
 	assert: cur.value some: "Hello",
 	advance: cur,
-	assert: cur.value some: "World",
+	assert: cur.value some: "World"
 }
 
 // Removes the element at the cursor from the linked_list and
@@ -241,7 +240,7 @@ test advance_and_reverse {
 Func remove_and_advance:(c &T cursor) {
 	if: c.node none: {
 		c := c.list.front
-	} some: (n) {
+	} some: (n){
 		if: same_node(n.next, c.list.head) then: {
 			c.node := none()
 		} else: {
@@ -250,14 +249,14 @@ Func remove_and_advance:(c &T cursor) {
 		if: same_node(some(n), c.list.head) then: {
 			c.list.head := c.node
 		},
-		remove(c.list, n),
+		remove(c.list, n)
 	}
 }
 
 test remove_and_advance_empty_list {
 	l := int linked_list :: new(),
 	remove_and_advance: l.front,
-	assert: l elements: [int] :: [],
+	assert: l elements: [int] :: []
 }
 
 test remove_and_advance_empty_cursor {
@@ -273,7 +272,7 @@ test remove_and_advance_empty_cursor {
 
 	remove_and_advance: c,
 	assert: c.value some: 1,
-	assert: l elements: [1, 2, 3],
+	assert: l elements: [1, 2, 3]
 }
 
 test remove_and_advance {
@@ -287,7 +286,7 @@ test remove_and_advance {
 
 	remove_and_advance: c,
 	assert: c.value some: 3,
-	assert: l elements: [1, 3],
+	assert: l elements: [1, 3]
 }
 
 test remove_and_advance_front {
@@ -300,7 +299,7 @@ test remove_and_advance_front {
 
 	remove_and_advance: c,
 	assert: c.value some: 2,
-	assert: l elements: [2, 3],
+	assert: l elements: [2, 3]
 }
 
 test remove_and_advance_back {
@@ -313,7 +312,7 @@ test remove_and_advance_back {
 
 	remove_and_advance: c,
 	assert_none: c.value,
-	assert: l elements: [1, 2],
+	assert: l elements: [1, 2]
 }
 
 test remove_and_advance_last {
@@ -324,7 +323,7 @@ test remove_and_advance_last {
 
 	remove_and_advance: c,
 	assert_none: c.value,
-	assert: l elements: [int] :: [],
+	assert: l elements: [int] :: []
 }
 
 // Removes the element at the cursor from the linked_list and
@@ -339,21 +338,21 @@ test remove_and_advance_last {
 Func remove_and_reverse:(c &T cursor) {
 	if: c.node none: {
 		c := c.list.back
-	} some: (n) {
+	} some: (n){
 		if: same_node(some(n), c.list.head) then: {
 			c.node := none(),
-			c.list.head := n.next,
+			c.list.head := n.next
 		} else: {
 			c.node := n.prev
 		},
-		remove(c.list, n),
+		remove(c.list, n)
 	}
 }
 
 test remove_and_reverse_empty_list {
 	l := int linked_list :: new(),
 	remove_and_reverse: l.front,
-	assert: l elements: [int] :: [],
+	assert: l elements: [int] :: []
 }
 
 test remove_and_reverse_empty_cursor {
@@ -367,7 +366,7 @@ test remove_and_reverse_empty_cursor {
 
 	remove_and_reverse: c,
 	assert: c.value some: 3,
-	assert: l elements: [1, 2, 3],
+	assert: l elements: [1, 2, 3]
 }
 
 test remove_and_reverse {
@@ -381,7 +380,7 @@ test remove_and_reverse {
 
 	remove_and_reverse: c,
 	assert: c.value some: 1,
-	assert: l elements: [1, 3],
+	assert: l elements: [1, 3]
 }
 
 test remove_and_reverse_front {
@@ -394,7 +393,7 @@ test remove_and_reverse_front {
 
 	remove_and_reverse: c,
 	assert_none: c.value,
-	assert: l elements: [2, 3],
+	assert: l elements: [2, 3]
 }
 
 test remove_and_reverse_back {
@@ -407,7 +406,7 @@ test remove_and_reverse_back {
 
 	remove_and_reverse: c,
 	assert: c.value some: 2,
-	assert: l elements: [1, 2],
+	assert: l elements: [1, 2]
 }
 
 test remove_and_reverse_last {
@@ -418,23 +417,23 @@ test remove_and_reverse_last {
 
 	remove_and_reverse: c,
 	assert_none: c.value,
-	assert: l elements: [int] :: [],
+	assert: l elements: [int] :: []
 }
 
 // Inserts t into the linked_list before the element pointed to be the cursor.
 // If the cursor is the empty cursor then t is inserted at the back of the list.
 Func before:insert:(c T cursor, t T) {
-	n := c.node some? (n){n} none? {
+	n := c.node some? (n){ n } none? {
 		c.list push_back: t,
 		return()
 	},
 	m := T node :: [.value t, .prev n.prev, .next some(n)],
-	n.prev some? (p){p.next := some(m)} none? {panic("impossible")},
+	n.prev some? (p){ p.next := some(m) } none? { panic("impossible") },
 	n.prev := some(m),
 	if: same_node(some(n), c.list.head) then: {
-		c.list.head := some(m),
+		c.list.head := some(m)
 	},
-	++c.list.len,
+	++c.list.len
 }
 
 test before_insert_empty_list {
@@ -442,7 +441,7 @@ test before_insert_empty_list {
 	c := l.front,
 	before: l.front insert: 1,
 	assert: l elements: [1],
-	assert: l.length equals: 1,
+	assert: l.length equals: 1
 }
 
 test before_insert_front {
@@ -494,14 +493,14 @@ test before_insert_end {
 // Inserts t into the linked_list after the element pointed to be the cursor.
 // If the cursor is the empty cursor then t is inserted at the front of the list.
 Func after:insert:(c T cursor, t T) {
-	m := c.node some? (n){n} none? {
+	m := c.node some? (n){ n } none? {
 		c.list push_front: t,
 		return()
 	},
 	n := T node :: [.value t, .prev c.node, .next m.next],
-	m.next some? (x){x.prev := some(n)} none? {panic("impossible")},
+	m.next some? (x){ x.prev := some(n) } none? { panic("impossible") },
 	m.next := some(n),
-	++c.list.len,
+	++c.list.len
 }
 
 test after_insert_empty_list {
@@ -509,7 +508,7 @@ test after_insert_empty_list {
 	c := l.front,
 	after: l.front insert: 1,
 	assert: l.length equals: 1,
-	assert: l elements: [1],
+	assert: l elements: [1]
 }
 
 test after_insert_front {
@@ -542,7 +541,7 @@ test after_insert_back {
 	l push_back: 3,
 	after: l.back insert: 4,
 	assert: l.length equals: 4,
-	assert: l elements: [1, 2, 3, 4],
+	assert: l elements: [1, 2, 3, 4]
 }
 
 test after_insert_end {

@@ -65,16 +65,16 @@ func _listener(network string, service string) listener or_error {
 	port := uint16 :: 42,
 	ret := getsockname(int32 :: fd, ip, port),
 	if: ret < 0 then: {
-		return: error(sys#internal#errno_error(-ret)),
+		return: error(sys#internal#errno_error(-ret))
 	},
 	return: ok(listener :: [
 		.fd sys#io#descriptor :: fd,
-		.addr addr(ip, port),
+		.addr addr(ip, port)
 	])
 }
 
 func _addr(l listener) addr {
-	return: l.addr,
+	return: l.addr
 }
 
 func _close(l listener) error option {
@@ -92,25 +92,25 @@ func stream(fd sys#io#descriptor) stream or_error {
 	local_port := uint16 :: 42,
 	ret := getsockname(int32 :: fd, local_ip, local_port),
 	if: ret < 0 then: {
-		return: error(sys#internal#errno_error(-ret)),
+		return: error(sys#internal#errno_error(-ret))
 	},
 	remote_ip := sys#net#ip#addr(42, 42, 42, 42),
 	remote_port := uint16 :: 42,
 	ret := getpeername(int32 :: fd, remote_ip, remote_port),
 	if: ret < 0 then: {
-		return: error(sys#internal#errno_error(-ret)),
+		return: error(sys#internal#errno_error(-ret))
 	},
 	return: ok(stream :: [
 		.fd fd,
 		.local [.network [ip? local_ip], .port local_port],
-		.remote [.network [ip? remote_ip], .port remote_port],
+		.remote [.network [ip? remote_ip], .port remote_port]
 	])
 }
 
 func _accept(l listener) stream or_error {
 	fd := accept(int32 :: l.fd),
 	if: fd < 0 then: {
-		return: error(sys#internal#errno_error(-fd)),
+		return: error(sys#internal#errno_error(-fd))
 	},
 	return: stream(sys#io#descriptor :: fd)
 }

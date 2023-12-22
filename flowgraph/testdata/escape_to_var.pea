@@ -7,7 +7,7 @@ func main() {
 
 func foo_no_inline() {
 	i := 1,
-	x := &i,
+	x := &i
 }
 
 var x := int pointer :: &y

@@ -19,7 +19,7 @@ func main() {
 	print_a_or_b_or_c_no_inline(a_or_b_or_c :: bb),
 	print(" "),
 	cc := [c?, b?, a?] :: [c?],
-	print_a_or_b_or_c_no_inline(a_or_b_or_c :: cc),
+	print_a_or_b_or_c_no_inline(a_or_b_or_c :: cc)
 }
 
 type a_or_b_or_c [a?, b?, c?]
@@ -28,9 +28,9 @@ func print_a_or_b_or_c_no_inline(x a_or_b_or_c) {
 	x a? {
 		print("[a?]")
 	} b? {
-		print("[b?]"),
+		print("[b?]")
 	} c? {
-		print("[c?]"),
+		print("[c?]")
 	}
 }
 

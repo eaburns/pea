@@ -15,23 +15,23 @@ Func !(b bool) bool {
 
 test not {
 	assert_false: !true,
-	assert_true: !false,
+	assert_true: !false
 }
 
 // Returns whether two booleans have the same value.
 Func =(a bool, b bool) bool {
-	return: a true? {b} false? {!b}
+	return: a true? { b } false? { !b }
 }
 
 test bool_equal {
 	assert_true: true = true,
 	assert_true: false = false,
 	assert_false: true = false,
-	assert_false: false = true,
+	assert_false: false = true
 }
 
 // Returns whether two values are not equal for any type implementing =.
-Func !=(a, b T) bool : =(T, T) bool {
+Func !=(a, b T) bool : { =(T, T)bool } {
 	return: !(a = b)
 }
 
@@ -39,63 +39,63 @@ test bool_not_equal {
 	assert_false: true != true,
 	assert_false: false != false,
 	assert_true: true != false,
-	assert_true: false != true,
+	assert_true: false != true
 }
 
 // Returns whether both arguments are true.
 // This is non-lazy &&; both arguments are always evaluated.
 Func &&(a bool, b bool) bool {
-	return: a true? {b} false? {false}
+	return: a true? { b } false? { false }
 }
 
 test and {
 	assert_false: false && false,
 	assert_false: false && true,
 	assert_false: true && false,
-	assert_true: true && true,
+	assert_true: true && true
 }
 
 // Returns whether a and b() are both true.
 // This is the lazy-version of &&; b() is called if and only if a is true.
 Func &&(a bool, b (){bool}) bool {
-	return: a true? {b()} false? {false}
+	return: a true? { b() } false? { false }
 }
 
 test lazy_and {
-	assert_false: false && {false},
-	assert_false: false && {true},
-	assert_false: true && {false},
-	assert_true: true && {true},
+	assert_false: false && { false },
+	assert_false: false && { true },
+	assert_false: true && { false },
+	assert_true: true && { true },
 
-	assert_false: false && {panic("fail"), false},
+	assert_false: false && { panic("fail"), false }
 }
 
 // Returns whether at least on of the arguments is true.
 // This is non-lazy ||; both arguments are always evaluated.
 Func ||(a bool, b bool) bool {
-	return: a true? {a} false? {b}
+	return: a true? { a } false? { b }
 }
 
 test or {
 	assert_false: false || false,
 	assert_true: false || true,
 	assert_true: true || false,
-	assert_true: true || true,
+	assert_true: true || true
 }
 
 // Returns whether at least one of a or b() is true.
 // This is the lazy-version of ||; b() is called if and only if a is false.
 Func ||(a bool, b (){bool}) bool {
-	return: a true? {true} false? {b()}
+	return: a true? { true } false? { b() }
 }
 
 test lazy_or {
-	assert_false: false || {false},
-	assert_true: false || {true},
-	assert_true: true || {false},
-	assert_true: true || {true},
+	assert_false: false || { false },
+	assert_true: false || { true },
+	assert_true: true || { false },
+	assert_true: true || { true },
 
-	assert_true: true || {panic("fail"), false},
+	assert_true: true || { panic("fail"), false }
 }
 
 // Calls t() if cond is true.
@@ -105,12 +105,12 @@ Func if:then:(cond bool, t (){}) {
 
 test if_then {
 	called := false,
-	if: true then: {called := true},
+	if: true then: { called := true },
 	assert_true: called,
 
 	called := false,
-	if: false then: {called := true},
-	assert_false: called,
+	if: false then: { called := true },
+	assert_false: called
 }
 
 // Calls t() if cond is true, otherwise calls f().
@@ -121,15 +121,15 @@ Func if:then:else:(cond bool, t (){}, f (){}) {
 test if_then_else {
 	thenCalled := false,
 	elseCalled := false,
-	if: true then: {thenCalled := true} else: {elseCalled := true},
+	if: true then: { thenCalled := true } else: { elseCalled := true },
 	assert_true: thenCalled,
 	assert_false: elseCalled,
 
 	thenCalled := false,
 	elseCalled := false,
-	if: false then: {thenCalled := true} else: {elseCalled := true},
+	if: false then: { thenCalled := true } else: { elseCalled := true },
 	assert_false: thenCalled,
-	assert_true: elseCalled,
+	assert_true: elseCalled
 }
 
 // Continually calls cond() until it returns false.
@@ -143,12 +143,12 @@ Func while:do:(cond (){bool}, f (){}) {
 
 test while_do {
 	iters := 0,
-	while: {false} do: {++iters},
+	while: { false } do: { ++iters },
 	assert_true: iters = 0,
 
 	iters := 0,
-	while: {iters < 10} do: {++iters},
-	assert_true: iters = 10,
+	while: { iters < 10 } do: { ++iters },
+	assert_true: iters = 10
 }
 
 // Calls f(), then continually calls cond() until it returns false.
@@ -162,10 +162,10 @@ Func do:while:(f (){}, cond (){bool}) {
 
 test do_while {
 	iters := 0,
-	do: {++iters} while: {false},
+	do: { ++iters } while: { false },
 	assert_true: iters = 1,
 
 	iters := 0,
-	do: {++iters} while: {iters < 10},
-	assert_true: iters = 10,
+	do: { ++iters } while: { iters < 10 },
+	assert_true: iters = 10
 }

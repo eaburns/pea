@@ -9,18 +9,18 @@ func main() {
 }
 
 func f_no_inline() string {
-	return: g_no_inline({return: "Hello, World"})
+	return: g_no_inline({ return: "Hello, World" })
 }
 
 func g_no_inline(f (){}) string {
-	return: h_no_inline(f, {return: "fail g"})
+	return: h_no_inline(f, { return: "fail g" })
 }
 
-func h_no_inline(f (){}, g() {}) string {
-	return: i_no_inline(f, g, {return: "fail h"})
+func h_no_inline(f (){}, g (){}) string {
+	return: i_no_inline(f, g, { return: "fail h" })
 }
 
-func i_no_inline(f (){}, g (){}, h () {}) string {
+func i_no_inline(f (){}, g (){}, h (){}) string {
 	// long returns from f_no_inline, which skips over
 	// the itself-long-returning function h_no_inline,
 	// and long-returning function g_no_inline.

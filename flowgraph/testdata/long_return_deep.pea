@@ -4,7 +4,7 @@ func main() {
 }
 
 func foo() string {
-	bar({return: "Hello, World!"}),
+	bar({ return: "Hello, World!" }),
 	return: "fail"
 }
 

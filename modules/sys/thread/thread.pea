@@ -15,16 +15,16 @@ Func unlock:(mu mutex) { unlock(mu) }
 test lock_unlock {
 	mu := mutex(),
 	lock(mu),
-	unlock(mu),
+	unlock(mu)
 }
 
 test new_thread {
 	passed := false,
 	mu := mutex(),
-	new((){
+	new({
 		lock(mu),
 		passed := true,
-		unlock(mu),
+		unlock(mu)
 	}),
 	while: {
 		lock(mu),
@@ -34,7 +34,7 @@ test new_thread {
 	} do: {
 		// nothing
 	},
-	assert_true: passed,
+	assert_true: passed
 }
 
 // A condition allows threads to wait until an event occurs.
@@ -85,29 +85,28 @@ test cond_wait_signal {
 	passed := false,
 	mu := mutex(),
 	cond := condition(),
-	new((){
+	new({
 		lock(mu),
 		passed := true,
 		signal(cond),
-		unlock(mu),
+		unlock(mu)
 	}),
 	lock(mu),
-	while: {!passed} do: { wait(cond, mu) },
-	assert_true: passed,
+	while: { !passed } do: { wait(cond, mu) },
+	assert_true: passed
 }
 
 test cond_wait_broadcast {
 	passed := false,
 	mu := mutex(),
 	cond := condition(),
-	new((){
+	new({
 		lock(mu),
 		passed := true,
 		broadcast(cond),
-		unlock(mu),
+		unlock(mu)
 	}),
 	lock(mu),
-	while: {!passed} do: { wait(cond, mu) },
-	assert_true: passed,
+	while: { !passed } do: { wait(cond, mu) },
+	assert_true: passed
 }
-

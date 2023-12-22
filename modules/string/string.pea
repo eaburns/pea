@@ -9,39 +9,39 @@ const rk_base := uint32 :: 16777619
 Func index(h S, n S) int option : {
 	.length(S)int,
 	[](S, int)uint8,
-	[](S, int, int) S,
+	[](S, int, int)S,
 	=(S, S)bool
 } {
 	// Rabin-Karp based on https://medium.com/swlh/rabin-karp-algorithm-using-polynomial-hashing-and-modular-arithmetic-437627b37db6,
 	// using rk_base as the base (prime number from Go implementation),
 	// and using max_uint32 as Q (just rely on overflow).
 	if: h.length < n.length then: {
-		return: none(),
+		return: none()
 	},
 
 	// m = rk_base^(n.length-1)
 	m := uint32 :: 1,
-	for: 1 to: n.length-1 do: (_){
-		m *= rk_base,
+	for: 1 to: n.length - 1 do: (_){
+		m *= rk_base
 	},
 
 	hh := uint32 :: 0,
 	hn := uint32 :: 0,
-	for: 0 to: n.length-1 do: (i) {
+	for: 0 to: n.length - 1 do: (i){
 		hh := hh*rk_base + (uint32 :: h[i]),
-		hn := hn*rk_base + (uint32 :: n[i]),
+		hn := hn*rk_base + (uint32 :: n[i])
 	},
 	i := 0,
 	forever: {
-		if: hh = hn && {h[i,i+n.length] = n} then: {
-			return: some(i),
+		if: hh = hn && { h[i, i + n.length] = n } then: {
+			return: some(i)
 		},
-		if: i+n.length >= h.length then: {
+		if: i + n.length >= h.length then: {
 			return: none()
 		},
 		hh -= m*(uint32 :: h[i]),
 		hh *= rk_base,
-		hh += (uint32 :: h[i+n.length]),
+		hh += (uint32 :: h[i + n.length]),
 		++i
 	},
 	panic("unreachable"),
@@ -69,19 +69,19 @@ test index {
 	assert_none: index("abcdef☺☹123def", "xyz"),
 	assert_none: index("abcdef123def", "☺☹"),
 
- 	// Make sure it works with [uint8] too.
+	// Make sure it works with [uint8] too.
 	assert: index([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['b', 'c']) some: 1,
-	assert_none: index([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['n']),
+	assert_none: index([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['n'])
 }
 
 // Returns whether h contains n as a substring.
 Func contains(h S, n S) bool : {
 	.length(S)int,
 	[](S, int)uint8,
-	[](S, int, int) S,
+	[](S, int, int)S,
 	=(S, S)bool
 } {
-	return: index(h, n) some? (_){true} none? {false}
+	return: index(h, n) some? (_){ true } none? { false }
 }
 
 test contains {
@@ -105,9 +105,9 @@ test contains {
 	assert_false: contains("abcdef☺☹123def", "xyz"),
 	assert_false: contains("abcdef123def", "☺☹"),
 
- 	// Make sure it works with [uint8] too.
+	// Make sure it works with [uint8] too.
 	assert_true: contains([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['b', 'c']),
-	assert_false: contains([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['n']),
+	assert_false: contains([uint8 :: 'a', 'b', 'c', 'd', 'e', 'f'], ['n'])
 }
 
 // Returns the number of non-overlapping occurrences of sub in s.
@@ -116,22 +116,22 @@ test contains {
 Func count(s S, sub S) int : {
 	.length(S)int,
 	[](S, int)uint8,
-	[](S, int, int) S,
+	[](S, int, int)S,
 	=(S, S)bool
 } {
 	n := 0,
 	if: sub.length = 0 then: {
-		while: {utf8#consume(s)} some: (_) {
+		while: { utf8#consume(s) } some: (_){
 			++n
 		},
-		return: n+1,
+		return: n + 1
 	},
-	while: {index(s, sub)} some: (i) {
+	while: { index(s, sub) } some: (i){
 		++n,
-		if: i+sub.length > s.length then: {
+		if: i + sub.length > s.length then: {
 			return: n
 		},
-		s := s[i+sub.length, s.length],
+		s := s[i + sub.length, s.length]
 	},
 	return: n
 }
@@ -164,7 +164,7 @@ test count {
 	assert: count("abcdefabcab", "abc") equals: 2,
 
 	assert: count("abcdefabcab", "a☺bc") equals: 0,
-	assert: count("abcdefa☺bcab", "a☺bc") equals: 1,
+	assert: count("abcdefa☺bcab", "a☺bc") equals: 1
 }
 
 // Returns an array of slices of s for all substrings split by occurrences of delim.
@@ -173,26 +173,26 @@ test count {
 Func split(s S, delim S) [S] : {
 	.length(S)int,
 	[](S, int)uint8,
-	[](S, int, int) S,
+	[](S, int, int)S,
 	=(S, S)bool
 } {
 	n := 0,
 	if: delim.length = 0 then: {
-		fields := [S] :: new(count(s, delim)-1, s[0, 0]),
+		fields := [S] :: new(count(s, delim) - 1, s[0, 0]),
 		i := 0,
 		utf8#for: s runes: (_ rune, w int){
-			fields[n] := s[i, i+w],
+			fields[n] := s[i, i + w],
 			i += w,
-			++n,
+			++n
 		},
 		return: fields
 	},
 
-	fields := [S] :: new(count(s, delim)+1, s[0, 0]),
-	while: {index(s, delim)} some: (i) {
+	fields := [S] :: new(count(s, delim) + 1, s[0, 0]),
+	while: { index(s, delim) } some: (i){
 		fields[n] := s[0, i],
 		++n,
-		s := s[i+delim.length, s.length],
+		s := s[i + delim.length, s.length]
 	},
 	fields[n] := s,
 	return: fields
@@ -224,5 +224,5 @@ test split {
 	assert: split("abc☺xyz", "☺") equals: ["abc", "xyz"],
 	assert: split("☺abc☺☺xyz☺", "☺") equals: ["", "abc", "", "xyz", ""],
 	assert: split("abc☺☺☺xyz", "☺☺☺") equals: ["abc", "xyz"],
-	assert: split("☺☺☺abc☺☺☺☺☺☺xyz☺☺☺", "☺☺☺") equals: ["", "abc", "", "xyz", ""],
+	assert: split("☺☺☺abc☺☺☺☺☺☺xyz☺☺☺", "☺☺☺") equals: ["", "abc", "", "xyz", ""]
 }

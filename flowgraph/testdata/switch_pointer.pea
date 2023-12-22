@@ -9,7 +9,7 @@ func main() {
 func print(x string_pointer) {
 	x none? {
 		print("<None>")
-	} some? (s &string) {
+	} some? (s &string){
 		print(s)
 	}
 }

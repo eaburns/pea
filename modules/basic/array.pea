@@ -7,47 +7,47 @@ Func new(n int, f (int){T}) [T] {
 		return: []
 	},
 	a := new(n, f(0)),
-	for: 1 to: n - 1 do: (i) {
+	for: 1 to: n - 1 do: (i){
 		a[i] := f(i)
 	},
 	return: a
 }
 
 test array_new_func {
-	a := [int] :: new(0, (_ int){1}),
+	a := [int] :: new(0, (_ int){ 1 }),
 	assert_true: a.length = 0,
 
-	a := [int] :: new(1, (_ int){1}),
+	a := [int] :: new(1, (_ int){ 1 }),
 	assert_true: a.length = 1,
 	assert_true: a[0] = 1,
 
-	a := [int] :: new(3, (_ int){1}),
+	a := [int] :: new(3, (_ int){ 1 }),
 	assert_true: a.length = 3,
 	assert_true: a[0] = 1,
 	assert_true: a[1] = 1,
 	assert_true: a[2] = 1,
 
-	a := [int] :: new(3, (i int){i}),
+	a := [int] :: new(3, (i int){ i }),
 	assert_true: a.length = 3,
 	assert_true: a[0] = 0,
 	assert_true: a[1] = 1,
 	assert_true: a[2] = 2,
 
-	a := [int] :: new(3, (i int){-1-i}),
+	a := [int] :: new(3, (i int){ -1 - i }),
 	assert_true: a.length = 3,
 	assert_true: a[0] = -1,
 	assert_true: a[1] = -2,
-	assert_true: a[2] = -3,
+	assert_true: a[2] = -3
 }
 
 // Returns whether two arrays are equal.
 // Two arrays are equal if the have the same length,
 // and for every index i, the corresponding elements are =.
-Func =(a [T], b [T]) bool : =(T, T) bool {
+Func =(a [T], b [T]) bool : { =(T, T)bool } {
 	if: a.length != b.length then: {
 		return: false
 	},
-	for: 0 to: a.length - 1 do: (i) {
+	for: 0 to: a.length - 1 do: (i){
 		if: !(a[i] = b[i]) then: {
 			return: false
 		}
@@ -67,15 +67,15 @@ test array_equal {
 	assert_false: [1, 2] = [1],
 	assert_false: [1, 2, 3] = [4, 2, 3],
 	assert_false: [1, 2, 3] = [1, 4, 3],
-	assert_false: [1, 2, 3] = [1, 2, 4],
+	assert_false: [1, 2, 3] = [1, 2, 4]
 }
 
 // Returns whether an array is less than another.
 // Less is determined lexically: array a is less than b if,
 // * for some 0 ≤ i < a.length, a[i] < b[i], and for all 0 ≤ j < i, a[j] = b[j],
 // * or for all 0 ≤ i < a.length, a[i] = b[i] and a.length < b.length.
-Func <(a [T], b [T]) bool : <(T,T)bool {
-	for: 0 to: a.length - 1 do: (i) {
+Func <(a [T], b [T]) bool : { <(T, T)bool } {
+	for: 0 to: a.length - 1 do: (i){
 		if: i >= b.length then: {
 			return: false
 		},
@@ -98,15 +98,15 @@ test array_less {
 	assert_true: ([int] :: []) < [1],
 	assert_true: [1] < [2],
 	assert_true: [1] < [1, 1],
-	assert_true: [1, 5, 6] < [1, 7, 8],
+	assert_true: [1, 5, 6] < [1, 7, 8]
 }
 
 // Returns whether an array is greater than another.
 // Greater is determined lexically: array a is greater than b if,
 // * for some 0 ≤ i < a.length, a[i] > b[i], and for all 0 ≤ j < i, a[j] = b[j],
 // * or for all 0 ≤ i < a.length, a[i] = b[i] and a.length > b.length.
-Func >(a [T], b [T]) bool : >(T,T)bool {
-	for: 0 to: a.length - 1 do: (i) {
+Func >(a [T], b [T]) bool : { >(T, T)bool } {
+	for: 0 to: a.length - 1 do: (i){
 		if: i >= b.length then: {
 			return: true
 		},
@@ -129,24 +129,24 @@ test array_greater {
 	assert_true: [1] > ([int] :: []),
 	assert_true: [2] > [1],
 	assert_true: [1, 1] > [1],
-	assert_true: [1, 7, 8] > [1, 5, 6],
+	assert_true: [1, 7, 8] > [1, 5, 6]
 }
 
 // Returns whether an array is < or = to another.
-Func <=(a [T], b [T]) bool : { <(T,T)bool, =(T, T)bool } {
-	return: a < b || {a = b}
+Func <=(a [T], b [T]) bool : { <(T, T)bool, =(T, T)bool } {
+	return: a < b || { a = b }
 }
 
 // Returns whether an array is > or = to another.
-Func >=(a [T], b [T]) bool : { >(T,T)bool, =(T, T)bool } {
-	return: a > b || {a = b}
+Func >=(a [T], b [T]) bool : { >(T, T)bool, =(T, T)bool } {
+	return: a > b || { a = b }
 }
 
 // Sets all elements of a to t.
 Func fill:with:(a [T], t T) {
-	for: 0 to: a.length-1 do: (i) {
+	for: 0 to: a.length - 1 do: (i){
 		a[i] := t
-	},
+	}
 }
 
 test fill_with {
@@ -162,13 +162,13 @@ test fill_with {
 	fill: a with: 0,
 	assert_true: a[0] = 0,
 	assert_true: a[1] = 0,
-	assert_true: a[2] = 0,
+	assert_true: a[2] = 0
 }
 
 // Copies elements from b into a up to the minimim of their lengths.
 Func copy:from:(a [T], b [T]) {
-	for: 0 to: min(a.length, b.length)-1 do: (i) {
-		a[i] := b[i],
+	for: 0 to: min(a.length, b.length) - 1 do: (i){
+		a[i] := b[i]
 	}
 }
 
@@ -197,7 +197,7 @@ test array_copy_to {
 	a := [0, 2],
 	copy: a from: b,
 	assert_true: a[0] = 0,
-	assert_true: a[1] = 2,
+	assert_true: a[1] = 2
 }
 
 // Returns a copy of the array.
@@ -205,7 +205,7 @@ Func copy(a [T]) [T] {
 	if: a.length = 0 then: {
 		return: []
 	},
-	return: new(a.length, (i int) { a[i] })
+	return: new(a.length, (i int){ a[i] })
 }
 
 test array_copy {
@@ -230,7 +230,7 @@ test array_copy {
 	c[2] := 2,
 	assert_true: a[0] = 1,
 	assert_true: a[1] = 2,
-	assert_true: a[2] = 3,
+	assert_true: a[2] = 3
 }
 
 // Returns the concatenation of two arrays.
@@ -242,13 +242,13 @@ Func +(a [T], b [T]) [T] {
 		return: copy(a)
 	},
 	c := [T] :: new(a.length + b.length, a[0]),
-	for: 1 to: a.length - 1 do: (i) {
-		c[i] := a[i],
+	for: 1 to: a.length - 1 do: (i){
+		c[i] := a[i]
 	},
 	j := a.length,
-	for: 0 to: b.length - 1 do: (i) {
+	for: 0 to: b.length - 1 do: (i){
 		c[j] := b[i],
-		j := j + 1,
+		j := j + 1
 	},
 	return: c
 }
@@ -261,27 +261,27 @@ test array_plus {
 	assert_true: [1] + [2] = [1, 2],
 	assert_true: [1, 2] + [3] = [1, 2, 3],
 	assert_true: [1] + [2, 3] = [1, 2, 3],
-	assert_true: [1, 2] + [3, 4] = [1, 2, 3, 4],
+	assert_true: [1, 2] + [3, 4] = [1, 2, 3, 4]
 }
 
 // Calls f(a[i]) for each element of the arra
 //  in order of increasing index, i.
 Func for:each:(a [T], f (T){}) {
-	for: 0 to: a.length - 1 do: (i) {
+	for: 0 to: a.length - 1 do: (i){
 		f(a[i])
 	}
 }
 
 test array_for_each {
 	i := 0,
-	for: [int] :: [] each: (_) { ++i },
+	for: [int] :: [] each: (_){ ++i },
 	assert_true: i = 0,
 
 	i := 0,
 	array := ["Hello", ", ", "World", "!"],
-	for: array each: (elem) {
+	for: array each: (elem){
 		assert_true: elem = array[i],
 		++i
 	},
-	assert_true: i = array.length,
+	assert_true: i = array.length
 }

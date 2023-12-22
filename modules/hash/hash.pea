@@ -6,7 +6,7 @@ import "print"
 // TODO: create new hash.state for each init.
 const state := uint64 :: 19840923
 
-Func hash(t T) uint64 : +=(hasher, T)hasher {
+Func hash(t T) uint64 : { +=(hasher, T)hasher } {
 	h := hasher :: new(),
 	h += t,
 	return: h.state
@@ -16,7 +16,7 @@ test hash {
 	// Just a quick test that this compiles and something does a reasonable thing.
 	// Copied from hash/wyhash tests:
 	assert: hash("AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789")
-	equals: wyhash#hash(state, "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"),
+		equals: wyhash#hash(state, "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQrStUvWxYz0123456789")
 }
 
 Type hasher (&[.state uint64])
@@ -49,7 +49,7 @@ Func +=(h hasher, data string) hasher {
 }
 
 Func +=(h hasher, data bool) hasher {
-	return: mix(h, uint64 :: data true? {1} false? {0})
+	return: mix(h, uint64 :: data true? { 1 } false? { 0 })
 }
 
 /*
@@ -87,11 +87,10 @@ Func +=(h hasher, data int16) hasher { return: mix(h, uint64 :: data) }
 Func +=(h hasher, data int32) hasher { return: mix(h, uint64 :: data) }
 Func +=(h hasher, data int64) hasher { return: mix(h, uint64 :: data) }
 
-Func +=(h hasher, o T option) hasher : +=(hasher, T)hasher {
-	return: o none? { mix(h, 0) } some? (t) { h += t }
+Func +=(h hasher, o T option) hasher : { +=(hasher, T)hasher } {
+	return: o none? { mix(h, 0) } some? (t){ h += t }
 }
 
-Func +=(h hasher, p T pointer) hasher : +=(hasher, T)hasher {
+Func +=(h hasher, p T pointer) hasher : { +=(hasher, T)hasher } {
 	return: h += *p
 }
-

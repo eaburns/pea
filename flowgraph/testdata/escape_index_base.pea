@@ -8,7 +8,7 @@ func main() {
 
 func foo_no_inline() {
 	s := [&int] :: [1, 3],
-	a := &s,
+	a := &s
 }
 
 var a := [&int] pointer :: &(&[&int] :: [y, y])

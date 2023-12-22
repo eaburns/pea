@@ -12,14 +12,14 @@ func main() {
 }
 
 func f_no_inline() {
-	g_no_inline(),
+	g_no_inline()
 }
 
 func g_no_inline() int {
-	x := (){
-		return: 1,
+	x := {
+		return: 1
 	},
 	return: 2
 }
 
-var x := (){} :: (){}
+var x := (){} :: {}

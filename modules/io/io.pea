@@ -49,7 +49,7 @@ Type write_result [
 Func error?(res write_result, e (error){int}) int {
 	return: res.error none? {
 		res.n
-	} some? (err) {
+	} some? (err){
 		e(err)
 	}
 }
@@ -62,26 +62,26 @@ Func must(res write_result) int {
 
 // Reads until buf is full.
 // It is an error if exactly buf.length bytes are not read.
-Func read_full(r R, buf [uint8])error option : read(R, [uint8])read_result {
+Func read_full(r R, buf [uint8]) error option : { read(R, [uint8])read_result } {
 	total := 0,
-	while: {total < buf.length} do: {
+	while: { total < buf.length } do: {
 		read(r, buf[total, buf.length]) ok? (n){
-			total += n,
+			total += n
 		} end? {
 			return: error("unexpected end-of-input")
-		} error? (err) {
+		} error? (err){
 			return: error(err)
-		},
+		}
 	},
 	return: none()
 }
 
 // Reads from a reader until its end
 // and returns an array of all bytes read.
-Func read_all(r R) [uint8] or_error : read(R, [uint8]) read_result {
+Func read_all(r R) [uint8] or_error : { read(R, [uint8])read_result } {
 	total := 0,
 	buf := [uint8] :: new(128, uint8 :: 0),
-	while: {true} do: {
+	while: { true } do: {
 		read(r, buf[total, buf.length]) ok? (n){
 			total := total + n
 		} error? (e){
@@ -91,7 +91,7 @@ Func read_all(r R) [uint8] or_error : read(R, [uint8]) read_result {
 		},
 		if: total = buf.length then: {
 			buf2 := [uint8] :: new(buf.length*2, uint8 :: 0),
-			for: 0 to: total do: (i) {
+			for: 0 to: total do: (i){
 				buf2[i] := buf[i]
 			},
 			buf := buf2

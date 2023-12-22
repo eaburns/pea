@@ -9,7 +9,7 @@ func main() {
 
 func foo_no_inline(x &int pointer) {
 	i := 1,
-	x := &i,
+	x := &i
 }
 
 Type T pointer := T _pointer

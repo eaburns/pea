@@ -4,22 +4,22 @@
 // 56
 func main() {
 	foo(),
-	bar(),
+	bar()
 }
 
 func foo() {
-	x := (){5},
-	print_x(),
+	x := { 5 },
+	print_x()
 }
 
 func bar() {
-	x := (){6},
+	x := { 6 },
 	{
-		print_x(),
+		print_x()
 	}()
 }
 
-func print_x() : x()int {
+func print_x() : { x()int } {
 	print_int(x())
 }
 

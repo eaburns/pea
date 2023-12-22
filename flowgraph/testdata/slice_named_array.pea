@@ -9,7 +9,7 @@ func main() {
 	a[5, 5],
 	a[0, 5],
 	a[1, 4],
-	print("ok"),
+	print("ok")
 }
 
 type foo [int]

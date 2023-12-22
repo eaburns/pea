@@ -2,7 +2,7 @@
 Func swap(a &T, b &T) {
 	t := T :: a,
 	a := b,
-	b := t,
+	b := t
 }
 
 test swap {
@@ -16,5 +16,5 @@ test swap {
 	b := [4, 5, 6],
 	swap(a, b),
 	assert_true: a = [4, 5, 6],
-	assert_true: b = [1, 2, 3],
+	assert_true: b = [1, 2, 3]
 }

@@ -1,6 +1,6 @@
 // Returns a if a < b, otherwise b.
-Func min(a &T, b &T) &T : <(T, T) bool {
-	return: a < b true? {a} false? {b}
+Func min(a &T, b &T) &T : { <(T, T)bool } {
+	return: a < b true? { a } false? { b }
 }
 
 test min {
@@ -12,12 +12,12 @@ test min {
 	// b if a and b are equal.
 	a := 1,
 	b := 1,
-	assert_true: (uintref :: (&int :: min(a, b))) = (uintref :: (&int :: b)),
+	assert_true: (uintref :: (&int :: min(a, b))) = (uintref :: (&int :: b))
 }
 
 // Returns b if a < b, otherwise b.
-Func max(a &T, b &T) &T : <(T, T) bool {
-	return: a < b true? {b} false? {a}
+Func max(a &T, b &T) &T : { <(T, T)bool } {
+	return: a < b true? { b } false? { a }
 }
 
 test max {
@@ -29,5 +29,5 @@ test max {
 	// b if a and b are equal.
 	a := 1,
 	b := 1,
-	assert_true: (uintref :: (&int :: min(a, b))) = (uintref :: (&int :: b)),
+	assert_true: (uintref :: (&int :: min(a, b))) = (uintref :: (&int :: b))
 }

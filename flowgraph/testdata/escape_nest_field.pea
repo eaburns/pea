@@ -8,7 +8,7 @@ func main() {
 
 func foo_no_inline() {
 	s := [.z [.x int, .xx int], .y int] :: [.z [.x 1, .xx 2], .y 3],
-	x := &s.z.x,
+	x := &s.z.x
 }
 
 var x := int pointer :: &y

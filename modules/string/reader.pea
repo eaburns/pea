@@ -9,7 +9,7 @@ Type S reader := S _reader
 type S _reader &[.str S]
 
 // Returns a new reader, reading from s.
-Func reader(s S)S reader : { .length(S)int, [](S, int)uint8 } {
+Func reader(s S) S reader : { .length(S)int, [](S, int)uint8 } {
 	return: [.str s]
 }
 
@@ -17,20 +17,20 @@ Func reader(s S)S reader : { .length(S)int, [](S, int)uint8 } {
 // This function never returns the error? case.
 // This function never returns short reads,
 // unless there are insufficient bytes remaining in the string.
-Func read(r S reader, d [uint8])io#read_result : {
+Func read(r S reader, d [uint8]) io#read_result : {
 	.length(S)int,
 	[](S, int)uint8,
-	[](S, int, int)S,
+	[](S, int, int)S
 } {
 	if: r.str.length = 0 then: {
 		return: [end?]
 	},
 	n := min(r.str.length, d.length),
-	for: 0 to: n-1 do: (i){
-		d[i] := r.str[i],
+	for: 0 to: n - 1 do: (i){
+		d[i] := r.str[i]
 	},
 	r.str := r.str[n, r.str.length],
-	return: [ok? n],
+	return: [ok? n]
 }
 
 test reader {
@@ -51,7 +51,7 @@ test reader {
 	fill: buf with: 0,
 	assert: read(r, buf) ok: 1,
 	assert: buf equals: [uint8 :: 'r', 0, 0, 0, 0],
-	assert_end: read(r, buf),
+	assert_end: read(r, buf)
 }
 
 // TODO: make assert:ok: and assert_end: exported functions of io.

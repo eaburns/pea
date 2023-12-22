@@ -10,75 +10,75 @@ const perm := [int] :: [19, 16, 11, 10, 17, 21, 2, 7, 12, 6, 24, 14, 23, 0, 5, 1
 test insert_in_order {
 	i := 1,
 	m := (string, int) tree_map :: new(),
-	for: letters each: (letter) {
+	for: letters each: (letter){
 		assert_none: (m at: letter put: i),
 		check_invariants(m),
-		++i,
+		++i
 	},
 	assert: m elements: [
-  		[.key "a", .val 1],
-  		[.key "b", .val 2],
-  		[.key "c", .val 3],
-  		[.key "d", .val 4],
-  		[.key "e", .val 5],
-  		[.key "f", .val 6],
-  		[.key "g", .val 7],
-  		[.key "h", .val 8],
-  		[.key "i", .val 9],
-  		[.key "j", .val 10],
-  		[.key "k", .val 11],
-  		[.key "l", .val 12],
-  		[.key "m", .val 13],
-  		[.key "n", .val 14],
-  		[.key "o", .val 15],
-  		[.key "p", .val 16],
-  		[.key "q", .val 17],
-  		[.key "r", .val 18],
-  		[.key "s", .val 19],
-  		[.key "t", .val 20],
-  		[.key "u", .val 21],
-  		[.key "v", .val 22],
-  		[.key "w", .val 23],
-  		[.key "x", .val 24],
-  		[.key "y", .val 25],
-  		[.key "z", .val 26],
-	],
+		[.key "a", .val 1],
+		[.key "b", .val 2],
+		[.key "c", .val 3],
+		[.key "d", .val 4],
+		[.key "e", .val 5],
+		[.key "f", .val 6],
+		[.key "g", .val 7],
+		[.key "h", .val 8],
+		[.key "i", .val 9],
+		[.key "j", .val 10],
+		[.key "k", .val 11],
+		[.key "l", .val 12],
+		[.key "m", .val 13],
+		[.key "n", .val 14],
+		[.key "o", .val 15],
+		[.key "p", .val 16],
+		[.key "q", .val 17],
+		[.key "r", .val 18],
+		[.key "s", .val 19],
+		[.key "t", .val 20],
+		[.key "u", .val 21],
+		[.key "v", .val 22],
+		[.key "w", .val 23],
+		[.key "x", .val 24],
+		[.key "y", .val 25],
+		[.key "z", .val 26]
+	]
 }
 
 test insert_random_order {
 	m := (string, int) tree_map :: new(),
-	for: perm each: (i) {
-		assert_none: (m at: letters[i] put: i+1),
-		check_invariants(m),
+	for: perm each: (i){
+		assert_none: (m at: letters[i] put: i + 1),
+		check_invariants(m)
 	},
 	assert: m elements: [
-  		[.key "a", .val 1],
-  		[.key "b", .val 2],
-  		[.key "c", .val 3],
-  		[.key "d", .val 4],
-  		[.key "e", .val 5],
-  		[.key "f", .val 6],
-  		[.key "g", .val 7],
-  		[.key "h", .val 8],
-  		[.key "i", .val 9],
-  		[.key "j", .val 10],
-  		[.key "k", .val 11],
-  		[.key "l", .val 12],
-  		[.key "m", .val 13],
-  		[.key "n", .val 14],
-  		[.key "o", .val 15],
-  		[.key "p", .val 16],
-  		[.key "q", .val 17],
-  		[.key "r", .val 18],
-  		[.key "s", .val 19],
-  		[.key "t", .val 20],
-  		[.key "u", .val 21],
-  		[.key "v", .val 22],
-  		[.key "w", .val 23],
-  		[.key "x", .val 24],
-  		[.key "y", .val 25],
-  		[.key "z", .val 26],
-	],
+		[.key "a", .val 1],
+		[.key "b", .val 2],
+		[.key "c", .val 3],
+		[.key "d", .val 4],
+		[.key "e", .val 5],
+		[.key "f", .val 6],
+		[.key "g", .val 7],
+		[.key "h", .val 8],
+		[.key "i", .val 9],
+		[.key "j", .val 10],
+		[.key "k", .val 11],
+		[.key "l", .val 12],
+		[.key "m", .val 13],
+		[.key "n", .val 14],
+		[.key "o", .val 15],
+		[.key "p", .val 16],
+		[.key "q", .val 17],
+		[.key "r", .val 18],
+		[.key "s", .val 19],
+		[.key "t", .val 20],
+		[.key "u", .val 21],
+		[.key "v", .val 22],
+		[.key "w", .val 23],
+		[.key "x", .val 24],
+		[.key "y", .val 25],
+		[.key "z", .val 26]
+	]
 }
 
 test find {
@@ -100,7 +100,7 @@ test find {
 	assert: find(m, "f") some: 6,
 	assert_none: find(m, ""),
 	assert_none: find(m, "1"),
-	assert_none: find(m, "zzz"),
+	assert_none: find(m, "zzz")
 }
 
 test delete_not_found {
@@ -111,7 +111,7 @@ test delete_not_found {
 	m at: "a" put: 1,
 	assert_none: (m delete: "zzz"),
 	assert: m elements: [[.key "a", .val 1]],
-	check_invariants(m),
+	check_invariants(m)
 }
 
 test delete_only_value {
@@ -120,40 +120,40 @@ test delete_only_value {
 	assert: m elements: [[.key "a", .val 1]],
 	assert: (m delete: "a") some: 1,
 	assert: m elements: [[.key string, .val int]] :: [],
-	check_invariants(m),
+	check_invariants(m)
 }
 
 test delete_one {
 	i := 1,
-	for: letters each: (letter) {
+	for: letters each: (letter){
 		j := 1,
 		m := (string, int) tree_map :: new(),
-		for: letters each: (letter) {
+		for: letters each: (letter){
 			m at: letter put: j,
-			++j,
+			++j
 		},
 		print_tree(m),
 		assert: (m delete: letter) some: i,
 		++i,
-		check_invariants(m),
-	},
+		check_invariants(m)
+	}
 }
 
 test delete_all {
 	i := 1,
 	m := (string, int) tree_map :: new(),
-	for: letters each: (letter) {
+	for: letters each: (letter){
 		m at: letter put: i,
-		++i,
+		++i
 	},
 	print_tree(m),
 	i := 1,
-	for: letters each: (letter) {
+	for: letters each: (letter){
 		assert: (m delete: letter) some: i,
 		++i,
-		check_invariants(m),
+		check_invariants(m)
 	},
-	assert: m elements: [[.key string, .val int]] :: [],
+	assert: m elements: [[.key string, .val int]] :: []
 }
 
 test for_each {
@@ -170,20 +170,20 @@ test for_each {
 		[.key "c", .val 3],
 		[.key "d", .val 4],
 		[.key "e", .val 5],
-		[.key "f", .val 6],
-	],
+		[.key "f", .val 6]
+	]
 }
 
-func print(p print#printer, a [.key K, .val V])print#printer : {
+func print(p print#printer, a [.key K, .val V]) print#printer : {
 	++(print#printer, K)print#printer,
-	++(print#printer, V)print#printer,
+	++(print#printer, V)print#printer
 } {
 	return: p ++ "[.key " ++ a.key ++ ", .val " ++ a.val ++ "]"
 }
 
-func =(a [.key K, .val V], b [.key K, .val V])bool : {
+func =(a [.key K, .val V], b [.key K, .val V]) bool : {
 	=(K, K)bool,
-	=(V, V)bool,
+	=(V, V)bool
 } {
 	return: a.key = b.key && a.val = b.val
 }
@@ -198,17 +198,17 @@ test rotate_left {
 			[
 				.n 1,
 				.keys [[.k 1, .v 1], x, x, x],
-				.kids [],
+				.kids []
 			],
 			[
 				.n 3,
 				.keys [[.k 6, .v 6], [.k 7, .v 7], [.k 8, .v 8], x],
-				.kids [],
+				.kids []
 			],
 			empty,
 			empty,
-			empty,
-		],
+			empty
+		]
 	],
 	rotate_left: n at: 0,
 	m := (int, int) node :: [
@@ -218,17 +218,17 @@ test rotate_left {
 			[
 				.n 2,
 				.keys [[.k 1, .v 1], [.k 5, .v 5], x, x],
-				.kids [],
+				.kids []
 			],
 			[
 				.n 2,
 				.keys [[.k 7, .v 7], [.k 8, .v 8], x, x],
-				.kids [],
+				.kids []
 			],
 			empty,
 			empty,
-			empty,
-		],
+			empty
+		]
 	],
 	if: m != n then: {
 		print("got\n"),
@@ -249,16 +249,16 @@ test rotate_right {
 			[
 				.n 3,
 				.keys [[.k 1, .v 1], [.k 2, .v 2], [.k 3, .v 3]],
-				.kids [],
+				.kids []
 			],
 			[
 				.n 1,
 				.keys [[.k 6, .v 6], x, x],
-				.kids [],
+				.kids []
 			],
 			empty,
-			empty,
-		],
+			empty
+		]
 	],
 	rotate_right: n at: 0,
 	m := (int, int) node :: [
@@ -268,16 +268,16 @@ test rotate_right {
 			[
 				.n 2,
 				.keys [[.k 1, .v 1], [.k 2, .v 2], x],
-				.kids [],
+				.kids []
 			],
 			[
 				.n 2,
 				.keys [[.k 5, .v 5], [.k 6, .v 6], x],
-				.kids [],
+				.kids []
 			],
 			empty,
-			empty,
-		],
+			empty
+		]
 	],
 	if: m != n then: {
 		print("got\n"),
@@ -298,16 +298,16 @@ test merge {
 			[
 				.n 1,
 				.keys [[.k 1, .v 1], x, x],
-				.kids [],
+				.kids []
 			],
 			[
 				.n 1,
 				.keys [[.k 6, .v 6], x, x],
-				.kids [],
+				.kids []
 			],
 			empty,
-			empty,
-		],
+			empty
+		]
 	],
 	merge: n at: 0,
 	m := (int, int) node :: [
@@ -317,12 +317,12 @@ test merge {
 			[
 				.n 3,
 				.keys [[.k 1, .v 1], [.k 5, .v 5], [.k 6, .v 6]],
-				.kids [],
+				.kids []
 			],
 			empty,
 			empty,
-			empty,
-		],
+			empty
+		]
 	],
 	if: m != n then: {
 		print("got\n"),
@@ -350,21 +350,21 @@ func check_invariants(m (K, V) tree_map, n (K, V) node, root bool, min K option,
 } {
 	if: !root && n.n < m.min_keys then: {
 		print_tree(m),
-		panic(print#string("node has too few keys: " ++ n.n ++ " < " ++ m.min_keys)),
+		panic(print#string("node has too few keys: " ++ n.n ++ " < " ++ m.min_keys))
 	},
-	if: min some: (min) {
-		for: n.keys[0, n.n] each: (kv) {
+	if: min some: (min){
+		for: n.keys[0, n.n] each: (kv){
 			if: !m.pred(min, kv.k) then: {
 				print_tree(m),
-				panic(print#string(kv.k ++ " <= " ++ min)),
+				panic(print#string(kv.k ++ " <= " ++ min))
 			}
 		}
 	},
-	if: max some: (max) {
-		for: n.keys[0, n.n] each: (kv) {
+	if: max some: (max){
+		for: n.keys[0, n.n] each: (kv){
 			if: !m.pred(kv.k, max) then: {
 				print_tree(m),
-				panic(print#string(kv.k ++ " >= " ++ max)),
+				panic(print#string(kv.k ++ " >= " ++ max))
 			}
 		}
 	},
@@ -372,82 +372,83 @@ func check_invariants(m (K, V) tree_map, n (K, V) node, root bool, min K option,
 		return: 1
 	},
 	prev := n.keys[0].k,
-	for: n.keys[1, n.n] each: (kv) {
+	for: n.keys[1, n.n] each: (kv){
 		if: !m.pred(prev, kv.k) then: {
 			print_tree(m),
-			panic(print#string(prev ++ " >= " ++ kv.k)),
+			panic(print#string(prev ++ " >= " ++ kv.k))
 		},
-		prev := kv.k,
+		prev := kv.k
 	},
 	depth := 0,
 	if: n.kids.length > 0 then: {
-		for: 0 to: n.n do: (i) {
-			min := i > 0 true? {some(n.keys[i-1].k)} false? {none()},
-			max := i < n.n true? {some(n.keys[i].k)} false? {none()},
+		for: 0 to: n.n do: (i){
+			min := i > 0 true? { some(n.keys[i - 1].k) } false? { none() },
+			max := i < n.n true? { some(n.keys[i].k) } false? { none() },
 			d := check_invariants(m, n.kids[i], false, min, max),
 			if: i = 0 then: {
-				depth := d,
+				depth := d
 			} else: {
 				if: d != depth then: {
 					print_tree(m),
-					panic("unbalanced"),
+					panic("unbalanced")
 				}
 			}
 		}
 	},
-	return: depth + 1,
+	return: depth + 1
 }
 
 func count(n (K, V) node) int {
 	num := n.n,
 	if: n.n > 0 && n.kids.length > 0 then: {
-		for: n.kids[0, n.n+1] each: (k) {
-			num := num + count(k),
-		},
+		for: n.kids[0, n.n + 1] each: (k){
+			num := num + count(k)
+		}
 	},
-	return: num,
+	return: num
 }
 
 func print_tree(m (K, V) tree_map) : {
 	++(print#printer, K)print#printer,
-	++(print#printer, V)print#printer,
+	++(print#printer, V)print#printer
 } {
 	print#print("size=" ++ m.n ++ "\n"),
-	print_node(m.root, 0),
+	print_node(m.root, 0)
 }
 
 func print_node(n (K, V) node, depth int) : {
 	++(print#printer, K)print#printer,
-	++(print#printer, V)print#printer,
+	++(print#printer, V)print#printer
 } {
 	indent := {
-		for: 0 to: depth-1 do: (_) {
-			print("      "),
+		for: 0 to: depth - 1 do: (_){
+			print("      ")
 		}
 	},
 	if: n.kids.length = 0 then: {
-		for: 0 to: n.n - 1 do: (i) {
+		for: 0 to: n.n - 1 do: (i){
 			indent(),
-			print#print("[" ++ n.keys[i].k ++ " = " ++ n.keys[i].v ++ "]\n"),
-		},
+			print#print("[" ++ n.keys[i].k ++ " = " ++ n.keys[i].v ++ "]\n")
+		}
 	} else: {
-		for: 0 to: n.n - 1 do: (i) {
-			print_node(n.kids[i], depth+1),
+		for: 0 to: n.n - 1 do: (i){
+			print_node(n.kids[i], depth + 1),
 			indent(),
-			print#print("[" ++ n.keys[i].k ++ " = " ++ n.keys[i].v ++ "]\n"),
+			print#print("[" ++ n.keys[i].k ++ " = " ++ n.keys[i].v ++ "]\n")
 		},
-		print_node(n.kids[n.n], depth+1),
+		print_node(n.kids[n.n], depth + 1),
 		if: n.n = 0 then: {
-			indent(), print("[]\n"),
-		},
+			indent(),
+			print("[]\n")
+		}
 	},
 	print("\n")
 }
 
-func =(a (K, V) node, b (K, V) node)bool : { =(K, K)bool, =(V, V)bool } {
+func =(a (K, V) node, b (K, V) node) bool : { =(K, K)bool, =(V, V)bool } {
 	return: a.n = b.n &&
 		a.keys[0, a.n] = b.keys[0, b.n] &&
-		(a.kids.length = 0 || { a.kids[0, a.n+1] = b.kids[0, b.n+1] })
+		(a.kids.length = 0 || { a.kids[0, a.n + 1] = b.kids[0, b.n + 1] })
 }
 
 func =(a [.k K, .v V], b [.k K, .v V]) bool : { =(K, K)bool, =(V, V)bool } {

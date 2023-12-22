@@ -2,10 +2,10 @@
 func main() {
 	zero := 0,
 	a := [int pointer] :: new(10, &zero),
-	for: 0 to: a.length - 1 do: (i int) {
+	for: 0 to: a.length - 1 do: (i int){
 		a[i] := &i
 	},
-	for: 0 to: a.length - 1 do: (i int) {
+	for: 0 to: a.length - 1 do: (i int){
 		print_int(*a[i])
 	}
 }
@@ -15,14 +15,14 @@ type T _pointer &T
 Func &(t &T) T pointer { return: T pointer :: t }
 Func *(t T pointer) &T { return: &T :: t }
 
-Func for:to:do:(start int, end int, f (int) {}) {
+Func for:to:do:(start int, end int, f (int){}) {
 	if: start <= end true: {
 		f(start),
 		for: start + 1 to: end do: f
 	}
 }
 
-Func <=(a, b T) [false?, true?] : <=>(T, T)[less?, equal?, greater?] {
+Func <=(a, b T) [false?, true?] : { <=>(T, T)[less?, equal?, greater?] } {
 	return: a <=> b greater? { [false?, true?] :: [false?] } _? { [true?] }
 }
 

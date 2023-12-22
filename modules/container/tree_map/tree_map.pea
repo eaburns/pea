@@ -37,7 +37,7 @@ Func new() (K, V) tree_map : { <(K, K)bool, =(K, K)bool } {
 		// new kids arrays.
 		.empty empty,
 		.pred (<),
-		.eq (=),
+		.eq (=)
 	]
 }
 
@@ -75,8 +75,8 @@ Func at:put:(m (K, V) tree_map, k K, v V) V option {
 		m.n := 1,
 		m.root := [
 			.n 1,
-			.keys new(m.max_keys+1, [.k k, .v v]),
-			.kids [],
+			.keys new(m.max_keys + 1, [.k k, .v v]),
+			.kids []
 		],
 		return: none()
 	},
@@ -87,15 +87,15 @@ Func at:put:(m (K, V) tree_map, k K, v V) V option {
 	} split? (split){
 		new_root := (K, V) node :: [
 			.n 1,
-			.keys new(m.max_keys+1, split.med),
-			.kids new(m.max_keys+2, m.empty),
+			.keys new(m.max_keys + 1, split.med),
+			.kids new(m.max_keys + 2, m.empty)
 		],
 		new_root.kids[0] := m.root,
 		new_root.kids[1] := split.right,
-		m.root := new_root,
+		m.root := new_root
 	},
 	++m.n,
-	return: none(),
+	return: none()
 }
 
 type (K, V) upsert_result [
@@ -113,18 +113,18 @@ func upsert(m (K, V) tree_map, n (K, V) node, k K, v V) (K, V) upsert_result {
 	},
 	if: n.kids.length = 0 then: {
 		insert: n key: [.k k, .v v] at: i,
-		++n.n,
+		++n.n
 	} else: {
 		upsert(m, n.kids[i], k, v) split? (split){
 			i := find_key_index(m, n, split.med.k),
 			insert: n key: split.med at: i,
-			insert: n kid: split.right at: i+1,
-			++n.n,
+			insert: n kid: split.right at: i + 1,
+			++n.n
 		} ok? {
 			return: [ok?]
 		} prev? (v){
 			return: [prev? v]
-		},
+		}
 	},
 	if: n.n > m.max_keys then: {
 		return: split_node(m, n)
@@ -133,17 +133,17 @@ func upsert(m (K, V) tree_map, n (K, V) node, k K, v V) (K, V) upsert_result {
 }
 
 func split_node(m (K, V) tree_map, n (K, V) node) (K, V) upsert_result {
-	pivot := n.n / 2,
+	pivot := n.n/2,
 	med := n.keys[pivot],
 	right := (K, V) node :: [
 		.n n.n - pivot - 1,
-		.keys new(m.max_keys+1, med),
-		.kids [],
+		.keys new(m.max_keys + 1, med),
+		.kids []
 	],
-	copy: n.keys[pivot+1, n.n] to: right.keys,
+	copy: n.keys[pivot + 1, n.n] to: right.keys,
 	if: n.kids.length > 0 then: {
-		right.kids := new(m.max_keys+2, m.empty),
-		copy: n.kids[pivot+1, n.n+1] to: right.kids,
+		right.kids := new(m.max_keys + 2, m.empty),
+		copy: n.kids[pivot + 1, n.n + 1] to: right.kids
 	},
 	n.n := pivot,
 	return: [split? [.med med, .right right]]
@@ -156,7 +156,7 @@ Func delete:(m (K, V) tree_map, k K) V option {
 		return: none()
 	},
 	if: m.root.n = 0 && { m.root.kids.length > 0 } then: {
-		m.root := m.root.kids[0],
+		m.root := m.root.kids[0]
 	},
 	--m.n,
 	return: v
@@ -170,44 +170,44 @@ func delete(m (K, V) tree_map, n (K, V) node, k K) V option {
 			return: none()
 		},
 		v := n.keys[i].v,
-		shift_left: n.keys from: i to:  n.n-1,
+		shift_left: n.keys from: i to: n.n - 1,
 		--n.n,
-		return: some(v),
+		return: some(v)
 	},
 
 	v := V option :: none(),
 	if: i < n.n && { m.eq(n.keys[i].k, k) } then: {
 		v := some(n.keys[i].v),
-		n.keys[i] := pop_last(m, n.kids[i]),
+		n.keys[i] := pop_last(m, n.kids[i])
 	} else: {
-		v := delete(m, n.kids[i], k),
+		v := delete(m, n.kids[i], k)
 	},
 	if: n.kids[i].n < m.min_keys then: {
-		fixup(m, n, i),
+		fixup(m, n, i)
 	},
 	return: v
 }
 
 func pop_last(m (K, V) tree_map, n (K, V) node) [.k K, .v V] {
 	if: n.kids.length = 0 then: {
-		kv := n.keys[n.n-1],
+		kv := n.keys[n.n - 1],
 		--n.n,
 		return: kv
 	},
 	kv := pop_last(m, n.kids[n.n]),
 	if: n.kids[n.n].n < m.min_keys then: {
-		fixup(m, n, n.n),
+		fixup(m, n, n.n)
 	},
 	return: kv
 }
 
 func fixup(m (K, V) tree_map, n (K, V) node, i int) {
-	if: i < n.n && { n.kids[i+1].n > m.min_keys } then: {
+	if: i < n.n && { n.kids[i + 1].n > m.min_keys } then: {
 		rotate_left: n at: i,
 		return()
 	},
-	if: i > 0 && { n.kids[i-1].n > m.min_keys } then: {
-		rotate_right: n at:  i-1,
+	if: i > 0 && { n.kids[i - 1].n > m.min_keys } then: {
+		rotate_right: n at: i - 1,
 		return()
 	},
 	merge: n at: i
@@ -215,32 +215,32 @@ func fixup(m (K, V) tree_map, n (K, V) node, i int) {
 
 func rotate_left:at:(n (K, V) node, i int) {
 	left := n.kids[i],
-	right := n.kids[i+1],
+	right := n.kids[i + 1],
 
 	left.keys[left.n] := n.keys[i],
 	++left.n,
 
 	n.keys[i] := right.keys[0],
-	shift_left: right.keys from: 0 to: right.n-1,
+	shift_left: right.keys from: 0 to: right.n - 1,
 
 	if: right.kids.length > 0 then: {
 		left.kids[left.n] := right.kids[0],
-		shift_left: right.kids from: 0 to: right.n,
+		shift_left: right.kids from: 0 to: right.n
 	},
-	--right.n,
+	--right.n
 }
 
 func rotate_right:at:(n (K, V) node, i int) {
 	left := n.kids[i],
-	right := n.kids[i+1],
+	right := n.kids[i + 1],
 
 	insert: right key: n.keys[i] at: 0,
 	if: left.kids.length > 0 then: {
-		insert: right kid: left.kids[left.n] at: 0,
+		insert: right kid: left.kids[left.n] at: 0
 	},
 	++right.n,
 	--left.n,
-	n.keys[i] := left.keys[left.n],
+	n.keys[i] := left.keys[left.n]
 }
 
 func merge:at:(n (K, V) node, i int) {
@@ -248,25 +248,25 @@ func merge:at:(n (K, V) node, i int) {
 		--i
 	},
 	left := n.kids[i],
-	right := n.kids[i+1],
+	right := n.kids[i + 1],
 
 	left.keys[left.n] := n.keys[i],
-	copy: right.keys[0, right.n] to: left.keys[left.n+1, left.keys.length],
+	copy: right.keys[0, right.n] to: left.keys[left.n + 1, left.keys.length],
 	if: right.kids.length > 0 then: {
-		copy: right.kids[0, right.n+1] to: left.kids[left.n+1, left.kids.length],
+		copy: right.kids[0, right.n + 1] to: left.kids[left.n + 1, left.kids.length]
 	},
 	left.n := left.n + right.n + 1,
 
 	n.kids[i] := left,
-	shift_left: n.keys from: i to: n.n-1,
-	shift_left: n.kids from: i+1 to: n.n,
+	shift_left: n.keys from: i to: n.n - 1,
+	shift_left: n.kids from: i + 1 to: n.n,
 	--n.n
 }
 
 func find_key_index(m (K, V) tree_map, n (K, V) node, k K) int {
-	for: 0 to: n.n-1 do: (i) {
+	for: 0 to: n.n - 1 do: (i){
 		if: !m.pred(n.keys[i].k, k) then: {
-			return: i,
+			return: i
 		}
 	},
 	return: n.n
@@ -280,43 +280,43 @@ Func for:each:(m (K, V) tree_map, f ([.key K, .val V]){}) {
 
 func for:each:(n (K, V) node, f ([.key K, .val V]){}) {
 	if: n.kids.length = 0 then: {
-		for: n.keys[0, n.n] each: (kv) {
+		for: n.keys[0, n.n] each: (kv){
 			f([.key kv.k, .val kv.v])
 		}
 	} else: {
-		for: 0 to: n.n - 1 do: (i) {
+		for: 0 to: n.n - 1 do: (i){
 			for: n.kids[i] each: f,
 			kv := n.keys[i],
-			f([.key kv.k, .val kv.v]),
+			f([.key kv.k, .val kv.v])
 		},
-		for: n.kids[n.n] each: f,
+		for: n.kids[n.n] each: f
 	}
 }
 
 func insert:key:at:(n (K, V) node, kv [.k K, .v V], i int) {
-	shift_right: n.keys from: i to: n.n-1,
-	n.keys[i] := kv,
+	shift_right: n.keys from: i to: n.n - 1,
+	n.keys[i] := kv
 }
 
 func insert:kid:at:(n (K, V) node, kid (K, V) node, i int) {
 	shift_right: n.kids from: i to: n.n,
-	n.kids[i] := kid,
+	n.kids[i] := kid
 }
 
 func shift_right:from:to:(xs [X], start int, end int) {
-	for: end down_to: start do: (i) {
-		xs[i+1] := xs[i]
+	for: end down_to: start do: (i){
+		xs[i + 1] := xs[i]
 	}
 }
 
 func shift_left:from:to:(xs [X], start int, end int) {
-	for: start to: end do: (i) {
-		xs[i] := xs[i+1]
+	for: start to: end do: (i){
+		xs[i] := xs[i + 1]
 	}
 }
 
 func copy:to:(src [X], dst [X]) {
-	for: src.length - 1 down_to: 0 do: (i) {
+	for: src.length - 1 down_to: 0 do: (i){
 		dst[i] := src[i]
 	}
 }

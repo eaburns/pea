@@ -23,7 +23,7 @@ test ordering_equality {
 	assert_false: equal = less,
 	assert_false: equal = greater,
 	assert_false: greater = less,
-	assert_false: greater = equal,
+	assert_false: greater = equal
 }
 
 // Returns the comparison of two orderings.
@@ -47,7 +47,7 @@ test ordering_spaceship {
 	assert_true: (equal <=> greater) = less,
 	assert_true: (greater <=> less) = greater,
 	assert_true: (greater <=> equal) = greater,
-	assert_true: (greater <=> greater) = equal,
+	assert_true: (greater <=> greater) = equal
 }
 
 // Returns whether a is less than b for any type T implementing <=>.
@@ -109,5 +109,5 @@ test ordering_comparison_operators {
 	assert_false: equal >= greater,
 	assert_true: greater >= less,
 	assert_true: greater >= equal,
-	assert_true: greater >= greater,
+	assert_true: greater >= greater
 }

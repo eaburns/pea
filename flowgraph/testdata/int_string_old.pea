@@ -48,21 +48,28 @@ This was the original version. The difference between this and the new one is th
 func main() {
 	u := uint64 :: 990,
 	while: { u < (uint64 :: 1000) } do: {
-		print("0x"), print(string(u, 16)),
-		print("\t"), print(string(u)),
-		print("\t0"), print(string(u, 8)),
-		print("\t0b"), print(string(u, 2)),
+		print("0x"),
+		print(string(u, 16)),
+		print("\t"),
+		print(string(u)),
+		print("\t0"),
+		print(string(u, 8)),
+		print("\t0b"),
+		print(string(u, 2)),
 		print("\n"),
-		u := u + 1,
+		u := u + 1
 	},
 	i := -16,
 	while: { i <= 16 } do: {
 		print(string(i, 16)),
-		print("\t"), print(string(i)),
-		print("\t"), print(string(i, 8)),
-		print("\t"), print(string(i, 2)),
+		print("\t"),
+		print(string(i)),
+		print("\t"),
+		print(string(i, 8)),
+		print("\t"),
+		print(string(i, 2)),
 		print("\n"),
-		i := i + 1,
+		i := i + 1
 	}
 }
 
@@ -85,11 +92,11 @@ Func if:then:else:(cond bool, t (){}, f (){}) {
 }
 
 Func &&(a bool, b bool) bool {
-	return: a true? {b} false? {false}
+	return: a true? { b } false? { false }
 }
 
 Func ||(a bool, b bool) bool {
-	return: a true? {a} false? {b}
+	return: a true? { a } false? { b }
 }
 
 Func for:to:do:(start int, end int, f (int){}) {
@@ -108,7 +115,7 @@ Func while:do:(cond (){bool}, f (){}) {
 
 Func zero() uint8 { return: 0 }
 
-Func new(n int) [T] : zero() T {
+Func new(n int) [T] : { zero()T } {
 	return: new(n, T :: zero())
 }
 
@@ -130,7 +137,7 @@ Func string(i int64) string {
 
 Func string(i int64, base uint) string {
 	if: i < 0 then: {
-		return: string(uint64 :: -i, base, true),
+		return: string(uint64 :: -i, base, true)
 	},
 	return: string(uint64 :: i, base)
 }
@@ -155,27 +162,27 @@ Func string(u uint64, base uint, neg bool) string {
 	bytes := [uint8] :: new(max_int_string_bytes),
 	i := bytes.length - 1,
 	while: { !(u < b) } do: {
-		u_next := u / b,
-		bytes[i] := digits[int :: u - u_next * b],
+		u_next := u/b,
+		bytes[i] := digits[int :: u - u_next*b],
 		u := u_next,
-		i := i - 1,
+		i := i - 1
 	},
 	bytes[i] := digits[int :: u],
 	if: neg then: {
 		i := i - 1,
-		bytes[i] := '-',
+		bytes[i] := '-'
 	},
 	return: string(bytes[i, bytes.length])
 }
 
-Func <(a, b T) bool : <=>(T, T)ordering {
+Func <(a, b T) bool : { <=>(T, T)ordering } {
 	return: a <=> b less? { bool :: [true?] } _? { [false?] }
 }
 
-Func <=(a, b T) bool : <=>(T, T)ordering {
+Func <=(a, b T) bool : { <=>(T, T)ordering } {
 	return: a <=> b greater? { bool :: [false?] } _? { [true?] }
 }
 
-Func >(a, b T) bool : <=>(T, T)ordering {
+Func >(a, b T) bool : { <=>(T, T)ordering } {
 	return: a <=> b greater? { bool :: [true?] } _? { [false?] }
 }

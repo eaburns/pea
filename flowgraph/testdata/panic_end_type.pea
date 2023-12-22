@@ -1,8 +1,8 @@
 // Panic: pass
 func main() {
-	print(foo([false?], {panic("pass")})),
+	print(foo([false?], { panic("pass") }))
 }
 
-func foo(cond [false?, true?], on_false (){!})string{
-	return: cond true? {"true"} false? on_false
+func foo(cond [false?, true?], on_false (){!}) string {
+	return: cond true? { "true" } false? on_false
 }

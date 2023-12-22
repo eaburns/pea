@@ -10,7 +10,7 @@ Type T ring_buffer := T _ring_buffer
 type T _ring_buffer &[
 	.n int,
 	.start int,
-	.end int,	// exclusive
+	.end int, // exclusive
 	.data [T],
 ]
 
@@ -21,7 +21,7 @@ Func new() T ring_buffer {
 
 test new {
 	r := int ring_buffer :: new(),
-	assert: r.length equals: 0,
+	assert: r.length equals: 0
 }
 
 // Returns a new ring buffer with elements copied from ts.
@@ -32,7 +32,7 @@ Func new(ts [T]) T ring_buffer {
 test new_array {
 	r := int ring_buffer :: new([0, 1, 2, 3]),
 	assert: r.length equals: 4,
-	assert: r elements: [0, 1, 2, 3],
+	assert: r elements: [0, 1, 2, 3]
 }
 
 test new_array_copies_array {
@@ -42,7 +42,7 @@ test new_array_copies_array {
 	r[1] := 9,
 	r[2] := 8,
 	r[3] := 7,
-	assert: a elements: [0, 1, 2, 3],
+	assert: a elements: [0, 1, 2, 3]
 }
 
 // Returns the number of elements in the ring_buffer.
@@ -67,7 +67,7 @@ Func [](r T ring_buffer, i int) &T {
 test index {
 	r := string ring_buffer :: new(),
 	for: ["zero", "one", "two", "three", "four", "five", "six"] each: (s){
-		r push_back: s,
+		r push_back: s
 	},
 	assert: r[0] equals: "zero",
 	assert: r[1] equals: "one",
@@ -75,7 +75,7 @@ test index {
 	assert: r[3] equals: "three",
 	assert: r[4] equals: "four",
 	assert: r[5] equals: "five",
-	assert: r[6] equals: "six",
+	assert: r[6] equals: "six"
 }
 
 // Returns a slice of the ring_buffer from start (inclusive) to end (exclusive).
@@ -108,7 +108,7 @@ test slice {
 	assert: r[0, 4] elements: ["Hello", ",", " ", "World"],
 	assert: r[1, 5] elements: [",", " ", "World", "!"],
 	assert: r[1, 4] elements: [",", " ", "World"],
-	assert: r[0, 5] elements: ["Hello", ",", " ", "World", "!"],
+	assert: r[0, 5] elements: ["Hello", ",", " ", "World", "!"]
 }
 
 // Returns the 0th element of the ring_buffer if it is not empty.
@@ -122,7 +122,7 @@ Func .front(r T ring_buffer) T option {
 
 test front {
 	assert_none: (int ring_buffer :: new()).front,
-	assert: (int ring_buffer :: new([0, 1, 2])).front some: 0,
+	assert: (int ring_buffer :: new([0, 1, 2])).front some: 0
 }
 
 // Returns the (n-1th)th element of the ring_buffer if it is not empty,
@@ -137,7 +137,7 @@ Func .back(r T ring_buffer) T option {
 
 test back {
 	assert_none: (int ring_buffer :: new()).back,
-	assert: (int ring_buffer :: new([0, 1, 2])).back some: 2,
+	assert: (int ring_buffer :: new([0, 1, 2])).back some: 2
 }
 
 // Inserts an element onto the front of the ring_buffer.
@@ -150,15 +150,15 @@ Func push_front:(r T ring_buffer, t T) {
 	},
 	r.start := prev(r, r.start),
 	r.data[r.start] := t,
-	++r.n,
+	++r.n
 }
 
 test push_front {
 	r := int ring_buffer :: new(),
-	for: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] each: (i) {
-		r push_front: i,
+	for: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] each: (i){
+		r push_front: i
 	},
-	assert: r elements: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+	assert: r elements: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
 }
 
 // Inserts an element onto the back of the ring_buffer.
@@ -171,15 +171,15 @@ Func push_back:(r T ring_buffer, t T) {
 	},
 	r.data[r.end] := t,
 	r.end := next(r, r.end),
-	++r.n,
+	++r.n
 }
 
 test push_back {
 	r := int ring_buffer :: new(),
-	for: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] each: (i) {
-		r push_back: i,
+	for: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] each: (i){
+		r push_back: i
 	},
-	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 }
 
 // Appends all elements of ts onto the back of the ring_buffer.
@@ -193,27 +193,27 @@ Func append:(r T ring_buffer, ts C) : { .length(C)int, [](C, int)T } {
 	if: ts.length = 0 then: {
 		return()
 	},
-	if: r.n+ts.length > r.data.length then: {
+	if: r.n + ts.length > r.data.length then: {
 		grow(r, ts[0], ts.length)
 	},
-	assert_true: r.n+ts.length <= r.data.length,
+	assert_true: r.n + ts.length <= r.data.length,
 	r.n += ts.length,
 	n := 0,
 	if: r.start <= r.end then: {
 		n := min(r.data.length - r.end, ts.length),
-		for: 0 to: n-1 do: (i){
+		for: 0 to: n - 1 do: (i){
 			r.data[r.end] := ts[i],
 			++r.end
 		},
 		if: n >= ts.length then: {
-			return(), // done
+			return() // done
 		},
-		r.end := 0, // wrap
+		r.end := 0 // wrap
 	},
-	for: n to: ts.length-1 do: (i){
+	for: n to: ts.length - 1 do: (i){
 		r.data[r.end] := ts[i],
 		++r.end
-	},
+	}
 }
 
 test append {
@@ -237,7 +237,7 @@ test append {
 	r append: [3, 4, 5, 6, 7],
 	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7],
 	r append: ([int] :: []),
-	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7],
+	assert: r elements: [0, 1, 2, 3, 4, 5, 6, 7]
 }
 
 test append_wraps_around {
@@ -247,7 +247,7 @@ test append_wraps_around {
 		.end 6,
 		//  [] 0  1  2  3  4  5  6  7  8
 		//           s           e
-		.data [0, 0, 1, 2, 3, 4, 0, 0, 0],
+		.data [0, 0, 1, 2, 3, 4, 0, 0, 0]
 	],
 	r append: [5, 6, 7, 8, 9],
 	/*
@@ -264,34 +264,34 @@ test append_wraps_around {
 	assert: r.n equals: 9,
 	assert: r.start equals: 2,
 	assert: r.end equals: 2,
-	assert: r.data equals: [8, 9, 1, 2, 3, 4, 5, 6, 7],
+	assert: r.data equals: [8, 9, 1, 2, 3, 4, 5, 6, 7]
 }
 
 func grow(r T ring_buffer, t T, delta int) {
-	n := (r.data.length+1) * 2,
-	while: {n < r.n+delta} do: {
-		n *= 2,
+	n := (r.data.length + 1)*2,
+	while: { n < r.n + delta } do: {
+		n *= 2
 	},
 	data := [T] :: new(n, t),
-	start := data.length / 4,
+	start := data.length/4,
 	end := start,
 	assert_true: data.length - start > r.n,
 	if: r.n > 0 then: {
 		if: r.start < r.end then: {
-			for: r.start to: r.end - 1 do: (i) {
+			for: r.start to: r.end - 1 do: (i){
 				data[end] := r.data[i],
-				++end,
-			},
-		} else: {
-			for: r.start to: r.data.length-1 do: (i) {
-				data[end] := r.data[i],
-				++end,
-			},
-			for: 0 to: r.end-1 do: (i) {
-				data[end] := r.data[i],
-				++end,
+				++end
 			}
-		},
+		} else: {
+			for: r.start to: r.data.length - 1 do: (i){
+				data[end] := r.data[i],
+				++end
+			},
+			for: 0 to: r.end - 1 do: (i){
+				data[end] := r.data[i],
+				++end
+			}
+		}
 	},
 	r.start := start,
 	r.end := end,
@@ -323,7 +323,7 @@ test pop_front {
 	assert: pop_front(r) some: 2,
 	assert: r.length equals: 0,
 	assert_none: pop_front(r),
-	assert: r.length equals: 0,
+	assert: r.length equals: 0
 }
 
 // Removes and returns the (n-1)th element of the ring_buffer if any,
@@ -352,7 +352,7 @@ test pop_back {
 	assert: pop_back(r) some: 0,
 	assert: r.length equals: 0,
 	assert_none: pop_back(r),
-	assert: r.length equals: 0,
+	assert: r.length equals: 0
 }
 
 test push_pop_front_back {
@@ -376,7 +376,7 @@ test push_pop_front_back {
 	assert: pop_front(r) some: "one",
 	assert: r elements: [string] :: [],
 	assert_none: pop_front(r),
-	assert: r elements: [string] :: [],
+	assert: r elements: [string] :: []
 }
 
 // Calls f for each element of the ring_buffer,
@@ -387,15 +387,15 @@ Func for:each:(r T ring_buffer, f (T){}) {
 		return()
 	},
 	if: r.start < r.end then: {
-		for: r.start to: r.end-1 do: (i) {
-		 	f(r.data[i]),
+		for: r.start to: r.end - 1 do: (i){
+			f(r.data[i])
 		}
 	} else: {
-		for: r.start to: r.data.length-1 do: (i) {
-		 	f(r.data[i]),
+		for: r.start to: r.data.length - 1 do: (i){
+			f(r.data[i])
 		},
-		for: 0 to: r.end-1 do: (i) {
-		 	f(r.data[i]),
+		for: 0 to: r.end - 1 do: (i){
+			f(r.data[i])
 		}
 	}
 }

@@ -1,6 +1,6 @@
 // 0123456789
 func main() {
-	for: 0 to: 9 do: (i int) {
+	for: 0 to: 9 do: (i int){
 		print_int(i)
 	}
 }
@@ -12,7 +12,7 @@ func for:to:do:(start int, end int, f (int){}) {
 	}
 }
 
-Func <=(a, b T) [false?, true?] : <=>(T, T)[less?, equal?, greater?] {
+Func <=(a, b T) [false?, true?] : { <=>(T, T)[less?, equal?, greater?] } {
 	return: a <=> b greater? { [false?, true?] :: [false?] } _? { [true?] }
 }
 

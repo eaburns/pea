@@ -4,7 +4,7 @@ func main() {
 	y := &int :: three,
 	y := 4,
 	print_int(x),
-	print_int(y),
+	print_int(y)
 }
 
 var three := int :: 3

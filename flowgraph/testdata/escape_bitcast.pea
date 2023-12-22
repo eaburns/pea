@@ -5,13 +5,13 @@ func main() {
 	print_int(x.x),
 	print(", .y "),
 	print_int(x.y),
-	print("]"),
+	print("]")
 }
 
 func foo_no_inline() {
 	u := u :: [.x 10, .y 10],
 	// This will end up as a bit-cast, that escapes.
-	x := t :: u,
+	x := t :: u
 }
 
 type t &[.x int, .y int]

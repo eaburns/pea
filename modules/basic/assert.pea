@@ -11,4 +11,3 @@ Func assert_false:(cond bool) {
 		panic("got true, expected false")
 	}
 }
-

@@ -14,16 +14,16 @@ Type read_buffer (&[
 const default_buf_size := int :: 8192
 
 // Returns a new read_buffer, reading from r.
-Func read_buffer(r R) read_buffer : read(R, [uint8])read_result {
-	return: read_buffer(r, new(default_buf_size, uint8 :: 0)),
+Func read_buffer(r R) read_buffer : { read(R, [uint8])read_result } {
+	return: read_buffer(r, new(default_buf_size, uint8 :: 0))
 }
 
 // Returns a new read_buffer, reading from r, using the given buffer.
-Func read_buffer(r R, buf [uint8]) read_buffer : read(R, [uint8])read_result {
-	return: [.p 0, .n 0, .data buf, .read (d [uint8]){read(r, d)}]
+Func read_buffer(r R, buf [uint8]) read_buffer : { read(R, [uint8])read_result } {
+	return: [.p 0, .n 0, .data buf, .read (d [uint8]){ read(r, d) }]
 }
 
-Func read(r read_buffer, d [uint8])read_result {
+Func read(r read_buffer, d [uint8]) read_result {
 	if: r.p = r.n then: {
 		r.read(r.data) ok? (n){
 			r.p := 0,
@@ -35,7 +35,7 @@ Func read(r read_buffer, d [uint8])read_result {
 		}
 	},
 	n := min(r.n - r.p, d.length),
-	for: 0 to: n-1 do: (i){
+	for: 0 to: n - 1 do: (i){
 		d[i] := r.data[r.p],
 		++r.p
 	},
@@ -64,7 +64,7 @@ test read_buffer {
 	assert: buf[0, 2] equals: [uint8 :: 'a', 'b'],
 	assert: read(r, buf) ok: 1,
 	assert: buf[0, 1] equals: [uint8 :: 'c'],
-	assert_end: read(r, buf),
+	assert_end: read(r, buf)
 }
 
 Type S read_line_result [
@@ -73,9 +73,8 @@ Type S read_line_result [
 	// The end of input was reached; there was nothing left to read.
 	end?,
 	// An error was encounter, .read is the buffer contents and .error the error.
-	error? [.read [uint8], .error error]
+	error? [.read [uint8], .error error],
 ]
-
 
 // Reads the next line from the buffer and returns a copy of it as a string
 // with any trailing newline character removed.
@@ -103,21 +102,21 @@ Func read_line(r read_buffer) string read_line_result {
 // On error, the bytes of the buffer are returned along with the error.
 Func read_line_slice(r read_buffer) [uint8] read_line_result {
 	forever: {
-		for: r.p to: r.n - 1 do: (i) {
+		for: r.p to: r.n - 1 do: (i){
 			if: r.data[i] = '\n' then: {
 				line := r.data[r.p, i],
-				r.p := i+1,
+				r.p := i + 1,
 				return: [ok? line]
-			},
+			}
 		},
-		if: r.p = 0 && {r.n = r.data.length} then: {
+		if: r.p = 0 && { r.n = r.data.length } then: {
 			return: [error? [.read r.data, .error new("line too big")]]
 		},
 
 		if: r.p > 0 then: {
 			copy: r.data from: r.data[r.p, r.n],
 			r.n := r.n - r.p,
-			r.p := 0,
+			r.p := 0
 		},
 
 		r.read(r.data[r.n, r.data.length]) ok? (n){
@@ -131,7 +130,7 @@ Func read_line_slice(r read_buffer) [uint8] read_line_result {
 			return: [ok? line]
 		} error? (err){
 			return: [error? [.read r.data[0, r.n], .error err]]
-		},
+		}
 	},
 	panic("impossible"),
 	return: [end?]
@@ -144,31 +143,31 @@ test read_line {
 	assert: read_line_slice(read_buffer("\nfoo\nbar")) ok: [],
 
 	b := read_buffer("hello\nworld"),
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
-	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l', 'l', 'o'],
+	assert: read_line_slice(b) ok: ['w', 'o', 'r', 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	b := read_buffer("hello\nworld\n"),
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
-	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l', 'l', 'o'],
+	assert: read_line_slice(b) ok: ['w', 'o', 'r', 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	b := read_buffer("\nhello\nworld\n"),
 	assert: read_line_slice(b) ok: [],
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
-	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l', 'l', 'o'],
+	assert: read_line_slice(b) ok: ['w', 'o', 'r', 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	buf := [uint8] :: new("hello\nwo".length, uint8 :: 0),
 	b := read_buffer(string_reader :: [.str "hello\nworld\n"], buf),
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
-	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l', 'l', 'o'],
+	assert: read_line_slice(b) ok: ['w', 'o', 'r', 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	buf := [uint8] :: new("hello\nwo".length, uint8 :: 0),
 	b := read_buffer(string_reader :: [.str "hello\nworld\n"], buf),
-	assert: read_line_slice(b) ok: ['h', 'e', 'l' , 'l', 'o'],
-	assert: read_line_slice(b) ok: ['w', 'o', 'r' , 'l', 'd'],
+	assert: read_line_slice(b) ok: ['h', 'e', 'l', 'l', 'o'],
+	assert: read_line_slice(b) ok: ['w', 'o', 'r', 'l', 'd'],
 	assert_end: read_line_slice(b),
 
 	// Line is too big.
@@ -180,7 +179,7 @@ test read_line {
 			panic(print#string("got error? " ++ msg ++ " expected error? line too big"))
 		},
 		if: err.read != [uint8 :: 'h', 'e', 'l'] then: {
-			panic(print#string("got error? " ++ err.read ++ " ++ expected error? ['h' ++ 'e' ++ 'l']")),
+			panic(print#string("got error? " ++ err.read ++ " ++ expected error? ['h' ++ 'e' ++ 'l']"))
 		}
 	} ok? (l){
 		panic(print#string("got ok? " ++ l ++ ", expected error? line too big"))
@@ -195,31 +194,31 @@ test read_read_line {
 	assert: read(b, d) ok: 1,
 	assert: d equals: ['h'],
 	// The 'h' is consumed by the preceeding read.
-	assert: read_line_slice(b) ok: ['e', 'l' , 'l', 'o'],
+	assert: read_line_slice(b) ok: ['e', 'l', 'l', 'o'],
 	assert: read(b, d) ok: 1,
 	assert: d equals: ['w'],
 	// The 'w' is consumed by the preceeding read.
-	assert: read_line_slice(b) ok: ['o', 'r' , 'l', 'd'],
-	assert_end: read_line_slice(b),
+	assert: read_line_slice(b) ok: ['o', 'r', 'l', 'd'],
+	assert_end: read_line_slice(b)
 }
 
 // A copy of string#reader to break dependencies for tests.
 type string_reader &[.str string]
 
-func read(r string_reader, d [uint8])read_result {
+func read(r string_reader, d [uint8]) read_result {
 	if: r.str.length = 0 then: {
 		return: [end?]
 	},
 	n := min(r.str.length, d.length),
-	for: 0 to: n-1 do: (i){
-		d[i] := r.str[i],
+	for: 0 to: n - 1 do: (i){
+		d[i] := r.str[i]
 	},
 	r.str := r.str[n, r.str.length],
-	return: [ok? n],
+	return: [ok? n]
 }
 
 func read_buffer(s string) read_buffer {
-	return: read_buffer(string_reader :: [.str s]),
+	return: read_buffer(string_reader :: [.str s])
 }
 
 // TODO: make assert:ok: and assert_end: exported functions of io.
@@ -227,7 +226,7 @@ func read_buffer(s string) read_buffer {
 func assert:ok:(res read_result, n int) {
 	res ok? (m){
 		if: m != n then: {
-			panic(print#string("got ok? " ++ m ++ " ++ expected ok? " ++ n)),
+			panic(print#string("got ok? " ++ m ++ " ++ expected ok? " ++ n))
 		}
 	} error? (err){
 		panic(print#string("got error? " ++ err ++ " ++ expected ok? " ++ n))
@@ -247,7 +246,7 @@ func assert_end:(res read_result) {
 func assert:ok:(res [uint8] read_line_result, line [uint8]) {
 	res ok? (l){
 		if: l != line then: {
-			panic(print#string("got ok? " ++ l ++ " ++ expected ok? " ++ line)),
+			panic(print#string("got ok? " ++ l ++ " ++ expected ok? " ++ line))
 		}
 	} error? (err){
 		panic(print#string("got error? " ++ err.error ++ " ++ expected ok? " ++ line))

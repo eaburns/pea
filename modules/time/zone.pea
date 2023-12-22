@@ -9,7 +9,7 @@ Type zone (
 // (Using int instead of [.] to bypass compiler bug in LLVM backend,
 // emitting a type definition `%"time _zone" = type void`,
 // which LLVM rejects for the void type.)
-	int)
+int)
 
 // The UTC time zone.
 Const UTC := zone :: 0
@@ -32,7 +32,7 @@ func utc(p point) civil {
 	ns := int64 :: p.d.ns,
 	if: s < 0 then: {
 		++s,
-		ns := ns - 1.0e9,
+		ns := ns - 1.0e9
 	},
 	return: normal(1970, 1, 1, 0, 0, s, ns)
 }
@@ -60,18 +60,18 @@ test point_to_civil {
 		equals: civil(1969, 12, 31, 0, 0, 0),
 
 	assert: civil(max_point, UTC)
-		equals: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9-1)),
+		equals: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)),
 
 	// Clamped to max_point.
 	assert: civil(infinite_point, UTC)
-		equals: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9-1)),
+		equals: civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)),
 
 	assert: civil(min_point, UTC)
 		equals: civil(-292277022657, 1, 27, 8, 29, 52, 0),
 
 	// Clamped to min_point.
 	assert: civil(negative_infinite_point, UTC)
-		equals: civil(-292277022657, 1, 27, 8, 29, 52, 0),
+		equals: civil(-292277022657, 1, 27, 8, 29, 52, 0)
 }
 
 // Returns the absolute time point for the civil time in a time zone.
@@ -107,12 +107,12 @@ Func point(c civil, z zone) point {
 */
 // Returns the offset from the epoch in days.
 func days_from_epoch_utc(y int64, m int64, d int64) int64 {
-	eyear := m <= 2 true? {y - 1} false? {y},
-	era := (eyear >= 0 true? {eyear} false? {eyear - 399}) / 400,
+	eyear := m <= 2 true? { y - 1 } false? { y },
+	era := (eyear >= 0 true? { eyear } false? { eyear - 399 })/400,
 	yoe := eyear - era*(int64 :: 400),
-	doy := ((int64 :: 153) * (m + (m > 2 true? {int64 :: -3} false? {9})) + 2) / 5 + d - 1,
+	doy := ((int64 :: 153)*(m + (m > 2 true? { int64 :: -3 } false? { 9 })) + 2)/5 + d - 1,
 	doe := yoe*(int64 :: 365) + yoe/4 - yoe/100 + doy,
-	return: era*(int64 :: 146097) + doe - 719468,
+	return: era*(int64 :: 146097) + doe - 719468
 }
 
 func utc(c civil) point {
@@ -127,7 +127,7 @@ func utc(c civil) point {
 		// we add +1 to days before multiplying,
 		// then we subtract off that extra day after the time has been added.
 		return: epoch +
-			(days+1)*day +
+			(days + 1)*day +
 			(int64 :: c.hh)*hour +
 			(int64 :: c.mm)*minute +
 			(int64 :: c.ss)*second +
@@ -171,11 +171,11 @@ test civil_to_point {
 	assert: point(civil(-1, 0, 0, 0, 0, 0), UTC)
 		equals: epoch - 62201520000*second,
 
-	assert: point(civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9-1)), UTC)
+	assert: point(civil(292277026596, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)), UTC)
 		equals: max_point,
 
 	// Too large for finite points.
-	assert: point(civil(292277026597, 12, 04, 15, 30, 7, (int :: 1.0e9-1)), UTC)
+	assert: point(civil(292277026597, 12, 04, 15, 30, 7, (int :: 1.0e9 - 1)), UTC)
 		equals: infinite_point,
 
 	assert: point(civil(-292277022657, 1, 27, 8, 29, 52, 0), UTC)
@@ -183,7 +183,7 @@ test civil_to_point {
 
 	// Too small for finite points.
 	assert: point(civil(-292277022658, 1, 27, 8, 29, 52, 0), UTC)
-		equals: negative_infinite_point,
+		equals: negative_infinite_point
 }
 
 // Need to print points for the civil_to_point test.

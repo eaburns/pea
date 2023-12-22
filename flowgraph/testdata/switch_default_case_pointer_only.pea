@@ -7,5 +7,5 @@ func main() {
 	(&foo :: [none?]) _? { print("_?") },
 	print("\n"),
 	(&foo :: [some? "foo"]) _? { print("_?") },
-	print("\n"),
+	print("\n")
 }

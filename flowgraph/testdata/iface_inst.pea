@@ -6,10 +6,10 @@ type c [.c int]
 func main() {
 	foo(a :: 0),
 	foo(b :: 1),
-	foo(c :: [.c 2]),
+	foo(c :: [.c 2])
 }
 
-func foo(x X) : pr(X) {
+func foo(x X) : { pr(X) } {
 	pr(x)
 }
 

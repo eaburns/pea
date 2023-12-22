@@ -31,7 +31,7 @@ func main() {
 	print_abc_no_inline(abc :: bbb),
 	print(" "),
 	ccc := [c? int, a? string, b?] :: [c? 42],
-	print_abc_no_inline(abc :: ccc),
+	print_abc_no_inline(abc :: ccc)
 }
 
 type abc [a? string, b?, c? int]
@@ -40,13 +40,13 @@ func print_abc_no_inline(x abc) {
 	x a? (s string){
 		print("[a? "),
 		print(s),
-		print("]"),
+		print("]")
 	} b? {
-		print("[b?]"),
+		print("[b?]")
 	} c? (i){
 		print("[c? "),
 		print_int(i),
-		print("]"),
+		print("]")
 	}
 }
 

@@ -5,9 +5,9 @@ func main() {
 	print(*x)
 }
 
-func f_no_inline() (){}{
+func f_no_inline() (){} {
 	str := "Hello, World!",
-	return: {x := &str}
+	return: { x := &str }
 }
 
 var x := string pointer :: &"fail"

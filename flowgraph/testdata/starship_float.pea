@@ -21,33 +21,53 @@
 // Inf32 <=> NaN32 is none
 //
 func main() {
-	print("1.0 <=> 2.0 is "), print(1.0 <=> 2.0),
-	print("2.0 <=> 2.0 is "), print(2.0 <=> 2.0),
-	print("3.0 <=> 2.0 is "), print(3.0 <=> 2.0),
-	print("NaN64 <=> 2.0 is "), print(NaN64 <=> 2.0),
-	print("2.0 <=> NaN64 is "), print(2.0 <=> NaN64),
-	print("-0.0 <=> +0.0 is "), print(-0.0 <=> +0.0),
-	print("-Inf64 <=> +Inf64 is "), print(-Inf64 <=> Inf64),
-	print("+Inf64 <=> -Inf64 is "), print(Inf64 <=> -Inf64),
-	print("NaN64 <=> Inf64 is "), print(NaN64 <=> Inf64),
-	print("Inf64 <=> NaN64 is "), print(Inf64 <=> NaN64),
+	print("1.0 <=> 2.0 is "),
+	print(1.0 <=> 2.0),
+	print("2.0 <=> 2.0 is "),
+	print(2.0 <=> 2.0),
+	print("3.0 <=> 2.0 is "),
+	print(3.0 <=> 2.0),
+	print("NaN64 <=> 2.0 is "),
+	print(NaN64 <=> 2.0),
+	print("2.0 <=> NaN64 is "),
+	print(2.0 <=> NaN64),
+	print("-0.0 <=> +0.0 is "),
+	print(-0.0 <=> +0.0),
+	print("-Inf64 <=> +Inf64 is "),
+	print(-Inf64 <=> Inf64),
+	print("+Inf64 <=> -Inf64 is "),
+	print(Inf64 <=> -Inf64),
+	print("NaN64 <=> Inf64 is "),
+	print(NaN64 <=> Inf64),
+	print("Inf64 <=> NaN64 is "),
+	print(Inf64 <=> NaN64),
 	print("\n"),
-	print("(float32 :: 1.0) <=> 2.0 is "), print((float32 :: 1.0) <=> 2.0),
-	print("(float32 :: 2.0) <=> 2.0 is "), print((float32 :: 2.0) <=> 2.0),
-	print("(float32 :: 3.0) <=> 2.0 is "), print((float32 :: 3.0) <=> 2.0),
-	print("NaN32 <=> 2.0 is "), print(NaN32 <=> 2.0),
-	print("(float32 :: 2.0) <=> NaN32 is "), print((float32 :: 2.0) <=> NaN32),
-	print("(float32 :: -0.0) <=> +0.0 is "), print((float32 :: -0.0) <=> +0.0),
-	print("-Inf32 <=> +Inf32 is "), print(-Inf32 <=> Inf32),
-	print("+Inf32 <=> -Inf32 is "), print(Inf32 <=> -Inf32),
-	print("NaN32 <=> Inf32 is "), print(NaN32 <=> Inf32),
-	print("Inf32 <=> NaN32 is "), print(Inf32 <=> NaN32),
+	print("(float32 :: 1.0) <=> 2.0 is "),
+	print((float32 :: 1.0) <=> 2.0),
+	print("(float32 :: 2.0) <=> 2.0 is "),
+	print((float32 :: 2.0) <=> 2.0),
+	print("(float32 :: 3.0) <=> 2.0 is "),
+	print((float32 :: 3.0) <=> 2.0),
+	print("NaN32 <=> 2.0 is "),
+	print(NaN32 <=> 2.0),
+	print("(float32 :: 2.0) <=> NaN32 is "),
+	print((float32 :: 2.0) <=> NaN32),
+	print("(float32 :: -0.0) <=> +0.0 is "),
+	print((float32 :: -0.0) <=> +0.0),
+	print("-Inf32 <=> +Inf32 is "),
+	print(-Inf32 <=> Inf32),
+	print("+Inf32 <=> -Inf32 is "),
+	print(Inf32 <=> -Inf32),
+	print("NaN32 <=> Inf32 is "),
+	print(NaN32 <=> Inf32),
+	print("Inf32 <=> NaN32 is "),
+	print(Inf32 <=> NaN32)
 }
 
-const NaN64 := float64 :: 0.0 / 0.0
-const Inf64 := float64 :: 1.0 / 0.0
-const NaN32 := float32 :: (float32 :: 0.0) / 0.0
-const Inf32 := float32 :: (float32 :: 1.0) / 0.0
+const NaN64 := float64 :: 0.0/0.0
+const Inf64 := float64 :: 1.0/0.0
+const NaN32 := float32 :: (float32 :: 0.0)/0.0
+const Inf32 := float32 :: (float32 :: 1.0)/0.0
 
 func print(o [less?, equal?, greater?, none?]) {
 	o less? {

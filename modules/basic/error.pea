@@ -33,7 +33,7 @@ Func error(msg string) T or_error {
 // Panics if the case of o is no the error? case,
 // and returns the ok? value if it is the ok? case.
 Func must(o T or_error) T {
-	return: o ok? (t){t} error? (e){panic(message(e))}
+	return: o ok? (t){ t } error? (e){ panic(message(e)) }
 }
 
 // Returns a new error option with the none? case.

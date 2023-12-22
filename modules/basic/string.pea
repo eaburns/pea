@@ -5,7 +5,7 @@ Func =(a string, b string) bool {
 	if: a.length != b.length then: {
 		return: false
 	},
-	for: 0 to: a.length - 1 do: (i) {
+	for: 0 to: a.length - 1 do: (i){
 		if: a[i] != b[i] then: {
 			return: false
 		}
@@ -25,7 +25,7 @@ test string_equal {
 	assert_false: "aaa" = "aa",
 	assert_false: "aaa" = "aaaa",
 	assert_false: "abc" = "cba",
-	assert_false: "こんにちは" = "今日は",
+	assert_false: "こんにちは" = "今日は"
 }
 
 // Returns whether a string is less than another.
@@ -33,7 +33,7 @@ test string_equal {
 // * for some 0 ≤ i < a.length, a[i] < b[i], and for all 0 ≤ j < i, a[j] = b[j],
 // * or for all 0 ≤ i < a.length, a[i] = b[i] and a.length < b.length.
 Func <(a string, b string) bool {
-	for: 0 to: a.length - 1 do: (i) {
+	for: 0 to: a.length - 1 do: (i){
 		if: i >= b.length then: {
 			return: false
 		},
@@ -53,7 +53,7 @@ test string_less {
 	assert_true: "" < "a",
 	assert_true: "a" < "b",
 	assert_true: "a" < "aa",
-	assert_true: "foo bar" < "zoo bar",
+	assert_true: "foo bar" < "zoo bar"
 }
 
 // Returns whether a string is greater than another.
@@ -61,7 +61,7 @@ test string_less {
 // * for some 0 ≤ i < a.length, a[i] > b[i], and for all 0 ≤ j < i, a[j] = b[j],
 // * or for all 0 ≤ i < a.length, a[i] = b[i] and a.length > b.length.
 Func >(a string, b string) bool {
-	for: 0 to: a.length - 1 do: (i) {
+	for: 0 to: a.length - 1 do: (i){
 		if: i >= b.length then: {
 			return: true
 		},
@@ -81,17 +81,17 @@ test string_greater {
 	assert_true: "a" > "",
 	assert_true: "b" > "a",
 	assert_true: "aa" > "a",
-	assert_true: "zoo bar" > "foo bar",
+	assert_true: "zoo bar" > "foo bar"
 }
 
 // Returns whether a string is < or = to another.
 Func <=(a string, b string) bool {
-	return: a < b || {a = b}
+	return: a < b || { a = b }
 }
 
 // Returns whether a string is > or = to another.
 Func >=(a string, b string) bool {
-	return: a > b || {a = b}
+	return: a > b || { a = b }
 }
 
 // Returns the concatenation of two strings.
@@ -103,13 +103,13 @@ Func +(a string, b string) string {
 		return: a
 	},
 	c := [uint8] :: new(a.length + b.length, uint8 :: 0),
-	for: 0 to: a.length - 1 do: (i) {
-		c[i] := a[i],
+	for: 0 to: a.length - 1 do: (i){
+		c[i] := a[i]
 	},
 	j := a.length,
-	for: 0 to: b.length - 1 do: (i) {
+	for: 0 to: b.length - 1 do: (i){
 		c[j] := b[i],
-		j := j + 1,
+		j := j + 1
 	},
 	return: string :: c
 }
@@ -121,5 +121,5 @@ test string_plus {
 	assert_true: "a" + "a" = "aa",
 	assert_true: "a" + "b" = "ab",
 	assert_true: "abc" + "def" = "abcdef",
-	assert_true: "こんにち" + "は" = "こんにちは",
+	assert_true: "こんにち" + "は" = "こんにちは"
 }

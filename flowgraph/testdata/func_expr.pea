@@ -13,7 +13,7 @@ func main() {
 	print("\n"),
 	foo(print_byte, 123),
 	print("\n"),
-	foo((s string){print(s)}, "Bye"),
+	foo((s string){ print(s) }, "Bye"),
 	print("\n"),
 
 	w := print,
@@ -25,13 +25,13 @@ func main() {
 	y := print_byte,
 	y(123),
 	print("\n"),
-	z := (s string){print(s)},
+	z := (s string){ print(s) },
 	z("Bye")
 }
 
-func foo(f (string){}, s string) {f(s)}
-func foo(f (int){}, x int) {f(x)}
-func foo(f (uint8){}, x uint8) {f(x)}
+func foo(f (string){}, s string) { f(s) }
+func foo(f (int){}, x int) { f(x) }
+func foo(f (uint8){}, x uint8) { f(x) }
 
 func print_byte(b uint8) { print_int(int :: b) }
 func print_int(_ int)

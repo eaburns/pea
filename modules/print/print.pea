@@ -21,16 +21,16 @@ Import "basic"
 
 // Returns a new printer containing the concatenation
 // of the string representation of t then u.
-Func ++(t T, u U)printer : { ++(printer, T)printer, ++(printer, U)printer } {
+Func ++(t T, u U) printer : { ++(printer, T)printer, ++(printer, U)printer } {
 	return: (printer :: new()) ++ t ++ u
 }
 
 // Adds the string representation of a printable type to the printer.
-Func ++(p printer, t T)printer : print(printer, T)printer {
+Func ++(p printer, t T) printer : { print(printer, T)printer } {
 	return: print(p, t)
 }
 
 // Returns the default string representation of any printable type.
-Func string(t T)string : ++(printer, T)printer {
+Func string(t T) string : { ++(printer, T)printer } {
 	return: string((printer :: new()) ++ t)
 }

@@ -2,7 +2,7 @@
 func main() {
 	i := 5,
 	++i,
-	print_int(i),
+	print_int(i)
 }
 
 Func ++(t &T : { ::(int)T, +(T, T)T }) { t := t + (T :: 1) }

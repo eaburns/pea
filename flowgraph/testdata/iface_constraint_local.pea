@@ -4,11 +4,11 @@ func main() {
 }
 
 func foo() int {
-	x := (){5},
+	x := { 5 },
 	return: call_x()
 }
 
-func call_x()int : x()int {
+func call_x() int : { x()int } {
 	return: x()
 }
 

@@ -112,27 +112,31 @@ test construct {
 	assert: ct.hour equals: 4,
 	assert: ct.minute equals: 5,
 	assert: ct.second equals: 6,
-	assert: ct.nanosecond equals: 7,
+	assert: ct.nanosecond equals: 7
 }
 
 test arithmetic {
 	// leap year
 	t := civil(2020, 2, 28),
-	assert: civil(t.year, t.month, t.day+1)  equals: civil(2020, 2, 29),
+	assert: civil(t.year, t.month, t.day + 1) equals: civil(2020, 2, 29),
 	t := civil(2020, 1, 29),
-	assert: civil(t.year, t.month+1, t.day)  equals: civil(2020, 2, 29),
+	assert: civil(t.year, t.month + 1, t.day) equals: civil(2020, 2, 29),
 
 	// not a leap year
 	t := civil(2021, 2, 28),
-	assert: civil(t.year, t.month, t.day+1)  equals: civil(2021, 3, 1),
+	assert: civil(t.year, t.month, t.day + 1) equals: civil(2021, 3, 1),
 	t := civil(2021, 1, 29),
-	assert: civil(t.year, t.month+1, t.day)  equals: civil(2021, 3, 1),
+	assert: civil(t.year, t.month + 1, t.day) equals: civil(2021, 3, 1)
 }
 
 // Returns the result of comparing a=b.
 Func =(a civil, b civil) bool {
-	return: a.y = b.y && {a.m = b.m && {a.d = b.d &&
-		{a.hh = b.hh && {a.mm = b.mm && {a.ss = b.ss && {a.nn = b.nn}}}}}}
+	return: a.y = b.y && {
+		a.m = b.m && {
+			a.d = b.d &&
+				{ a.hh = b.hh && { a.mm = b.mm && { a.ss = b.ss && { a.nn = b.nn } } } }
+		}
+	}
 }
 
 test equal {
@@ -143,7 +147,7 @@ test equal {
 	assert_false: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 2, 3, 0, 5, 6, 7),
 	assert_false: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 2, 0, 4, 5, 6, 7),
 	assert_false: civil(1, 2, 3, 4, 5, 6, 7) = civil(1, 0, 3, 4, 5, 6, 7),
-	assert_false: civil(1, 2, 3, 4, 5, 6, 7) = civil(0, 2, 3, 4, 5, 6, 7),
+	assert_false: civil(1, 2, 3, 4, 5, 6, 7) = civil(0, 2, 3, 4, 5, 6, 7)
 }
 
 // Returns the result of comparing a<b.
@@ -241,12 +245,12 @@ test less {
 	assert_true: civil(1, 1, 1, 1, 1, 1, 1) < civil(1, 1, 1, 2, 0, 0, 0),
 	assert_true: civil(1, 1, 1, 1, 1, 1, 1) < civil(1, 1, 1, 1, 2, 0, 0),
 	assert_true: civil(1, 1, 1, 1, 1, 1, 1) < civil(1, 1, 1, 1, 1, 2, 0),
-	assert_true: civil(1, 1, 1, 1, 1, 1, 1) < civil(1, 1, 1, 1, 1, 1, 2),
+	assert_true: civil(1, 1, 1, 1, 1, 1, 1) < civil(1, 1, 1, 1, 1, 1, 2)
 }
 
 // Returns the result of comparing a<=b.
 Func <=(a civil, b civil) bool {
-	return: a < b || {a = b}
+	return: a < b || { a = b }
 }
 
 test less_equal {
@@ -321,7 +325,7 @@ test less_equal {
 	assert_true: civil(1, 1, 1, 1, 1, 1, 1) <= civil(1, 1, 1, 2, 0, 0, 0),
 	assert_true: civil(1, 1, 1, 1, 1, 1, 1) <= civil(1, 1, 1, 1, 2, 0, 0),
 	assert_true: civil(1, 1, 1, 1, 1, 1, 1) <= civil(1, 1, 1, 1, 1, 2, 0),
-	assert_true: civil(1, 1, 1, 1, 1, 1, 1) <= civil(1, 1, 1, 1, 1, 1, 2),
+	assert_true: civil(1, 1, 1, 1, 1, 1, 1) <= civil(1, 1, 1, 1, 1, 1, 2)
 
 }
 
@@ -420,12 +424,12 @@ test greater {
 	assert_true: civil(1, 1, 1, 2, 0, 0, 0) > civil(1, 1, 1, 1, 1, 1, 1),
 	assert_true: civil(1, 1, 1, 1, 2, 0, 0) > civil(1, 1, 1, 1, 1, 1, 1),
 	assert_true: civil(1, 1, 1, 1, 1, 2, 0) > civil(1, 1, 1, 1, 1, 1, 1),
-	assert_true: civil(1, 1, 1, 1, 1, 1, 2) > civil(1, 1, 1, 1, 1, 1, 1),
+	assert_true: civil(1, 1, 1, 1, 1, 1, 2) > civil(1, 1, 1, 1, 1, 1, 1)
 }
 
 // Returns the result of comparing a>=b.
 Func >=(a civil, b civil) bool {
-	return: a > b || {a = b}
+	return: a > b || { a = b }
 }
 
 test greater_equal {
@@ -500,7 +504,7 @@ test greater_equal {
 	assert_true: civil(1, 1, 1, 2, 0, 0, 0) >= civil(1, 1, 1, 1, 1, 1, 1),
 	assert_true: civil(1, 1, 1, 1, 2, 0, 0) >= civil(1, 1, 1, 1, 1, 1, 1),
 	assert_true: civil(1, 1, 1, 1, 1, 2, 0) >= civil(1, 1, 1, 1, 1, 1, 1),
-	assert_true: civil(1, 1, 1, 1, 1, 1, 2) >= civil(1, 1, 1, 1, 1, 1, 1),
+	assert_true: civil(1, 1, 1, 1, 1, 1, 2) >= civil(1, 1, 1, 1, 1, 1, 1)
 }
 
 // Adds a the string representation of a civil time to the printer and returns the printer.
@@ -529,7 +533,7 @@ Func print(p print#printer, c civil) print#printer {
 	if: c.nn = 0 then: {
 		return: p
 	},
-	frac := print#string(((float64 :: c.nanosecond) / 1.0e9)),
+	frac := print#string(((float64 :: c.nanosecond)/1.0e9)),
 	frac := frac[1, frac.length], // trim leading "0"
 	return: p ++ frac
 }
@@ -537,7 +541,7 @@ Func print(p print#printer, c civil) print#printer {
 test print_civil {
 	assert: print#string(civil(2021, 6, 22)) equals: "2021-06-22",
 	assert: print#string(civil(2021, 6, 22, 12, 13, 14)) equals: "2021-06-22T12:13:14",
-	assert: print#string(civil(2021, 6, 22, 12, 13, 14, 5.0e8)) equals: "2021-06-22T12:13:14.5",
+	assert: print#string(civil(2021, 6, 22, 12, 13, 14, 5.0e8)) equals: "2021-06-22T12:13:14.5"
 }
 
 /*
@@ -560,23 +564,23 @@ test print_civil {
 */
 
 func normal(y int64, m int64, d int64, hh int64, mm int64, ss int64, nn int64) civil {
-	if: nn < 0 || {nn >= 1.0e9} then: {
+	if: nn < 0 || { nn >= 1.0e9 } then: {
 		return: n_ns(y, m, d, hh, mm, ss, nn)
 	},
 	nnn := int32 :: nn,
-	if: ss < 0 || {ss >= 60} then: {
+	if: ss < 0 || { ss >= 60 } then: {
 		return: n_sec(y, m, d, hh, mm, ss/60, ss%60, nnn)
 	},
 	nss := int8 :: ss,
-	if: mm < 0 || {mm >= 60} then: {
+	if: mm < 0 || { mm >= 60 } then: {
 		return: n_min(y, m, d, hh, mm/60, mm%60, nss, nnn)
 	},
 	nmm := int8 :: mm,
-	if: hh < 0 || {hh >= 24} then: {
+	if: hh < 0 || { hh >= 24 } then: {
 		return: n_hour(y, m, d, hh/24, hh%24, nmm, nss, nnn)
 	},
 	nhh := int8 :: hh,
-	if: d < 1 || {d > 28 || {m < 1 || {m > 12}}} then: {
+	if: d < 1 || { d > 28 || { m < 1 || { m > 12 } } } then: {
 		return: n_month(y, m, d, 0, nhh, nmm, nss, nnn)
 	},
 	nd := int8 :: d,
@@ -589,7 +593,7 @@ func n_ns(y int64, m int64, d int64, hh int64, mm int64, ss int64, nn int64) civ
 	nn %= 1.0e9,
 	if: nn < 0 then: {
 		--cs,
-		nn += 1.0e9,
+		nn += 1.0e9
 	},
 	cm := ss/60 + cs/60,
 	ss := ss%60 + cs%60,
@@ -601,7 +605,7 @@ func n_sec(y int64, m int64, d int64, hh int64, mm int64, cm int64, ss int64, nn
 	ss %= 60,
 	if: ss < 0 then: {
 		--cm,
-		ss += 60,
+		ss += 60
 	},
 	ch := mm/60 + cm/60,
 	mm := mm%60 + cm%60,
@@ -613,7 +617,7 @@ func n_min(y int64, m int64, d int64, hh int64, ch int64, mm int64, ss int8, nn 
 	mm %= 60,
 	if: mm < 0 then: {
 		--ch,
-		mm += 60,
+		mm += 60
 	},
 	cd := hh/24 + ch/24,
 	hh := hh%24 + ch%24,
@@ -625,7 +629,7 @@ func n_hour(y int64, m int64, d int64, cd int64, hh int64, mm int8, ss int8, nn 
 	hh %= 24,
 	if: hh < 0 then: {
 		--cd,
-		hh += 24,
+		hh += 24
 	},
 	return: n_month(y, m, d, cd, int8 :: hh, mm, ss, nn)
 }
@@ -636,8 +640,8 @@ func n_month(y int64, m int64, d int64, cd int64, hh int8, mm int8, ss int8, nn 
 		m %= 12,
 		if: m <= 0 then: {
 			--y,
-			m += 12,
-		},
+			m += 12
+		}
 	},
 	return: n_day(y, int8 :: m, d, cd, hh, mm, ss, nn)
 }
@@ -645,93 +649,93 @@ func n_month(y int64, m int64, d int64, cd int64, hh int8, mm int8, ss int8, nn 
 func n_day(y int64, m int8, d int64, cd int64, hh int8, mm int8, ss int8, nn int32) civil {
 	ey := y%400,
 	oey := ey,
-	ey += (cd / 146097)*(int64 :: 400),
-	cd := cd % 146097,
+	ey += (cd/146097)*(int64 :: 400),
+	cd := cd%146097,
 	if: cd < 0 then: {
 		ey -= 400,
-		cd += 146097,
+		cd += 146097
 	},
-	ey += (d / 146097)*(int64 :: 400),
+	ey += (d/146097)*(int64 :: 400),
 	d := d%146097 + cd,
 	if: d > 0 then: {
 		if: d > 146097 then: {
 			ey += 400,
-			d -= 146097,
-		},
+			d -= 146097
+		}
 	} else: {
 		// Special handling for the common case
 		// of going to the previous year.
 		// This avoids the loops below in that case.
 		if: d > -365 then: {
 			--ey,
-			d += days_per_year(ey, m),
+			d += days_per_year(ey, m)
 		} else: {
 			ey -= 400,
-			d += 146097,
-		},
+			d += 146097
+		}
 	},
 	if: d > 365 then: {
 		n := days_per_century(ey, m),
-		while: {d > n} do: {
+		while: { d > n } do: {
 			d -= n,
 			ey += 100,
-			n := days_per_century(ey, m),
+			n := days_per_century(ey, m)
 		},
 		n := days_per_4years(ey, m),
-		while: {d > n} do: {
+		while: { d > n } do: {
 			d -= n,
 			ey += 4,
-			n := days_per_4years(ey, m),
+			n := days_per_4years(ey, m)
 		},
 		n := days_per_year(ey, m),
-		while: {d > n} do: {
+		while: { d > n } do: {
 			d -= n,
 			++ey,
-			n := days_per_year(ey, m),
-		},
+			n := days_per_year(ey, m)
+		}
 	},
 	if: d > 28 then: {
 		n := days_per_month(ey, m),
-		while: {d > n} do: {
+		while: { d > n } do: {
 			d -= n,
 			++m,
 			if: m > 12 then: {
 				++ey,
-				m := 1,
+				m := 1
 			},
-			n := days_per_month(ey, m),
-		},
+			n := days_per_month(ey, m)
+		}
 	},
 	y += (ey - oey),
 	return: [.y y, .m m, .d int8 :: d, .hh hh, .mm mm, .ss ss, .nn nn]
 }
 
 func is_leap_year(y int64) bool {
-	return: y%4 = 0 && {y%100 != 0 || {y%400 = 0}}
+	return: y%4 = 0 && { y%100 != 0 || { y%400 = 0 } }
 }
 
 func year_index(y int64, m int8) int64 {
-	return: (((m > 2 true? {y+1} false? {y}) % 400) + 400) % 400
+	return: (((m > 2 true? { y + 1 } false? { y })%400) + 400)%400
 }
 
 func days_per_century(y int64, m int8) int64 {
 	yi := year_index(y, m),
-	return: int64 :: yi = 0 || {yi > 300} true? {36525} false? {36524}
+	return: int64 :: yi = 0 || { yi > 300 } true? { 36525 } false? { 36524 }
 }
 
 func days_per_4years(y int64, m int8) int64 {
 	yi := year_index(y, m),
-	return: int64 :: yi = 0 || {yi > 300 || {(yi - 1) % 100 < 96}} true? {1461} false? {1460}
+	return: int64 :: yi = 0 || { yi > 300 || { (yi - 1)%100 < 96 } } true? { 1461 } false? { 1460 }
 }
 
 func days_per_year(y int64, m int8) int64 {
-	return: int64 :: is_leap_year(m > 2 true? {y+1} false? {y}) true? {366} false? {365}
+	return: int64 :: is_leap_year(m > 2 true? { y + 1 } false? { y }) true? { 366 } false? { 365 }
 }
 
 const month_days := [int] :: [-1, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 func days_per_month(y int64, m int8) int64 {
-	return: int64 :: month_days[int :: m] + (m = 2 && {is_leap_year(y)} true? {1} false? {0})
+	return: int64 :: month_days[int :: m] + (m = 2 && { is_leap_year(y) } true? { 1 } false? { 0 })
 }
 
 test civil_norm {
@@ -893,7 +897,7 @@ test civil_norm {
 	assert: civil(246, -78, 21026, -91348, 6608181, -30306225, 747618454) equals: civil(298, 2, 28, 1, 57, 15, 747618454),
 	assert: civil(-198, 255, -21270, -106032, -934661, -434564391, -264528644) equals: civil(-263, 4, 12, 5, 59, 8, 735471356),
 	assert: civil(198, 8, -15821, 53445, 9558339, -319035282, 919361858) equals: civil(169, 6, 4, 1, 44, 18, 919361858),
-	assert: civil(-28, 213, -50, -155488, -1677001, 491803622, 796598165) equals: civil(-16, 3, 8, 22, 6, 2, 796598165),
+	assert: civil(-28, 213, -50, -155488, -1677001, 491803622, 796598165) equals: civil(-16, 3, 8, 22, 6, 2, 796598165)
 }
 
 // TODO: move pad formatting code to the print package.
@@ -906,16 +910,16 @@ func zero_padN(i int64, width int) zero_pad { return: [.i i, .width width] }
 func print(p print#printer, x zero_pad) print#printer {
 	if: x.i < 0 then: {
 		p ++ "-",
-		x.i := -x.i,
+		x.i := -x.i
 	},
 	tens := int64 :: 10,
-	for: 1 to: x.width-1 do: (_){
+	for: 1 to: x.width - 1 do: (_){
 		if: x.i < tens then: {
 			p ++ "0"
 		},
-		tens := tens * (int64 :: 10),
+		tens := tens*(int64 :: 10)
 	},
-	return: p ++ x.i,
+	return: p ++ x.i
 }
 
 test zero_pad {
@@ -959,5 +963,5 @@ test zero_pad {
 	assert: print#string(zero_padN(-15, 1)) equals: "-15",
 	assert: print#string(zero_padN(-15, 2)) equals: "-15",
 	assert: print#string(zero_padN(-15, 3)) equals: "-015",
-	assert: print#string(zero_padN(-15, 4)) equals: "-0015",
+	assert: print#string(zero_padN(-15, 4)) equals: "-0015"
 }

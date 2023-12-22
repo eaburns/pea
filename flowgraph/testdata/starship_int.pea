@@ -15,23 +15,38 @@
 // (int16 :: 3) <=> 0 is greater
 //
 func main() {
-	print("-1 <=> 2 is "), print(-1 <=> 2),
-	print("1 <=> 2 is "), print(1 <=> 2),
-	print("-2 <=> -1 is "), print(-2 <=> -1),
-	print("(uint8 :: 0) <=> 1 is "), print((uint8 :: 0) <=> 1),
-	print("(int16 :: 2) <=> 3 is "), print((int16 :: 2) <=> 3),
+	print("-1 <=> 2 is "),
+	print(-1 <=> 2),
+	print("1 <=> 2 is "),
+	print(1 <=> 2),
+	print("-2 <=> -1 is "),
+	print(-2 <=> -1),
+	print("(uint8 :: 0) <=> 1 is "),
+	print((uint8 :: 0) <=> 1),
+	print("(int16 :: 2) <=> 3 is "),
+	print((int16 :: 2) <=> 3),
 
-	print("-1 <=> -1 is "), print(-1 <=> -1),
-	print("1 <=> 1 is "), print(1 <=> 1),
-	print("(uint8 :: 2) <=> 2 is "), print((uint8 :: 2) <=> 2),
-	print("(int16 :: 3) <=> 3 is "), print((int16 :: 3) <=> 3),
-	print("(uint64 :: 0) <=> 0 is "), print((uint64 :: 0) <=> 0),
+	print("-1 <=> -1 is "),
+	print(-1 <=> -1),
+	print("1 <=> 1 is "),
+	print(1 <=> 1),
+	print("(uint8 :: 2) <=> 2 is "),
+	print((uint8 :: 2) <=> 2),
+	print("(int16 :: 3) <=> 3 is "),
+	print((int16 :: 3) <=> 3),
+	print("(uint64 :: 0) <=> 0 is "),
+	print((uint64 :: 0) <=> 0),
 
-	print("-1 <=> -2 is "), print(-1 <=> -2),
-	print("2 <=> 1 is "), print(2 <=> 1),
-	print("1 <=> -2 is "), print(1 <=> -2),
-	print("(uint8 :: 2) <=> 1 is "), print((uint8 :: 2) <=> 1),
-	print("(int16 :: 3) <=> 0 is "), print((int16 :: 3) <=> 0),
+	print("-1 <=> -2 is "),
+	print(-1 <=> -2),
+	print("2 <=> 1 is "),
+	print(2 <=> 1),
+	print("1 <=> -2 is "),
+	print(1 <=> -2),
+	print("(uint8 :: 2) <=> 1 is "),
+	print((uint8 :: 2) <=> 1),
+	print("(int16 :: 3) <=> 0 is "),
+	print((int16 :: 3) <=> 0)
 }
 
 func print(o [less?, equal?, greater?]) {

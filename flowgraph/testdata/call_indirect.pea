@@ -5,5 +5,5 @@ func main() {
 	f()
 }
 
-func bar() {print("fail")}
-func foo() {print("Hello, World!")}
+func bar() { print("fail") }
+func foo() { print("Hello, World!") }

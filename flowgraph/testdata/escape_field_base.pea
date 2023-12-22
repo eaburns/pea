@@ -8,7 +8,7 @@ func main() {
 
 func foo_no_inline() {
 	s := point :: [.a 1, .b 3],
-	p := &s,
+	p := &s
 }
 
 type point [.a &int, .b &int]

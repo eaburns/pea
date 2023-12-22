@@ -32,7 +32,7 @@ Func open_options() open_options {
 		.create false,
 		.truncate false,
 		.exclusive false,
-		.permissions 0,
+		.permissions 0
 	]
 }
 
@@ -69,7 +69,7 @@ Func error?(res F open_result, e (error){F}) F {
 
 // Returns the opened file or panics if there was an error.
 Func must(res F open_result) F {
-	return: res error? (e) { panic(print#string(e)) }
+	return: res error? (e){ panic(print#string(e)) }
 }
 
 // The result of reading from a directory.
@@ -101,7 +101,7 @@ Func create_dir(path string) error option {
 
 test create_write_read_delete {
 	path := "./some_test_file",
-	bs := [uint8] :: ['h', 'e', 'l','l', 'o'],
+	bs := [uint8] :: ['h', 'e', 'l', 'l', 'o'],
 
 	w := must(create_file(path)),
 	assert: must(write(w, bs)) equals: bs.length,
@@ -129,7 +129,7 @@ test create_dir_read_remove {
 	ents := [string] :: [],
 	while: {
 		read_dir(r) ok? (ent){
-			ents := new(ents.length + 1, (i int) {
+			ents := new(ents.length + 1, (i int){
 				i < ents.length true? { ents[i] } false? { ent }
 			}),
 			true
@@ -146,7 +146,7 @@ test create_dir_read_remove {
 	assert_ok: remove(path + "a"),
 	assert_ok: remove(path + "b"),
 	assert_ok: remove(path + "c"),
-	assert_ok: remove(path),
+	assert_ok: remove(path)
 }
 
 test open_entry {
@@ -164,12 +164,12 @@ test open_entry {
 
 	ent := open(path + "file") error? (err){ panic(print#string("open failed: " ++ err)) },
 	ent file? (f){
-		close(f),
+		close(f)
 	} dir? (d){
 		close(d),
 		panic("got dir, expected file")
 	},
 
 	assert_ok: remove(path + "file"),
-	assert_ok: remove(path),
+	assert_ok: remove(path)
 }

@@ -29,7 +29,7 @@ Func new() (K, V) hash_map : { hash(K)uint64, =(K, K)bool } {
 test new {
 	m := (string, int) hash_map :: new(),
 	assert: m.length equals: 0,
-	assert_none: find(m, "hello"),
+	assert_none: find(m, "hello")
 }
 
 // Returns the number of key/value bindings in the map.
@@ -41,7 +41,7 @@ Func .length(m (K, V) hash_map) int {
 Func find(m (K, V) hash_map, k K) V option {
 	h := m.hash(k),
 	i := int :: h%(uint64 :: m.buckets.length),
-	for: m.buckets[i] each_entry: (e) {
+	for: m.buckets[i] each_entry: (e){
 		if: m.eq(e.k, k) then: {
 			return: some(e.v)
 		}
@@ -53,7 +53,7 @@ Func find(m (K, V) hash_map, k K) V option {
 Func at:put:(m (K, V) hash_map, k K, v V) V option {
 	h := m.hash(k),
 	i := int :: h%(uint64 :: m.buckets.length),
-	for: m.buckets[i] each_entry: (e) {
+	for: m.buckets[i] each_entry: (e){
 		if: m.eq(e.k, k) then: {
 			old := e.v,
 			e.v := v,
@@ -61,34 +61,33 @@ Func at:put:(m (K, V) hash_map, k K, v V) V option {
 		}
 	},
 
-	if: m.n * 3 > m.buckets.length then: {
+	if: m.n*3 > m.buckets.length then: {
 		grow(m),
-		i := int :: h%(uint64 :: m.buckets.length),
+		i := int :: h%(uint64 :: m.buckets.length)
 	},
-
 	++m.n,
 	append(m.buckets[i], [.k k, .v v]),
 	return: none()
 }
 
 func grow(m (K, V) hash_map) {
-	len := 2 * m.buckets.length,
+	len := 2*m.buckets.length,
 	if: len < 4 then: {
 		len := 4
 	},
-	buckets2 := [(K, V) bucket] :: new(len , (K, V) bucket :: []),
-	for: m.buckets each: (b) {
-		for: b each_entry: (e) {
+	buckets2 := [(K, V) bucket] :: new(len, (K, V) bucket :: []),
+	for: m.buckets each: (b){
+		for: b each_entry: (e){
 			h := m.hash(e.k),
 			i := int :: h%(uint64 :: len),
 			append(buckets2[i], e)
 		}
 	},
-	m.buckets := buckets2,
+	m.buckets := buckets2
 }
 
 func append(b &(K, V) bucket, e (K, V) entry) {
-	for: 0 to: b.length - 1 do: (i) {
+	for: 0 to: b.length - 1 do: (i){
 		if: b[i] none: {
 			b[i] := some(e),
 			return()
@@ -99,7 +98,7 @@ func append(b &(K, V) bucket, e (K, V) entry) {
 		len := 4
 	},
 	b2 := (K, V) bucket :: new(len, (K, V) entry option :: none()),
-	for: 0 to: b.length-1 do: (j) {
+	for: 0 to: b.length - 1 do: (j){
 		b2[j] := b[j]
 	},
 	b2[b.length] := some(e),
@@ -111,7 +110,7 @@ Func delete:(m (K, V) hash_map, k K) V option {
 	h := m.hash(k),
 	i := int :: h%(uint64 :: m.buckets.length),
 	b := m.buckets[i],
-	for: 0 to: b.length - 1 do: (j) {
+	for: 0 to: b.length - 1 do: (j){
 		if: b[j] some: (e){
 			if: m.eq(e.k, k) then: {
 				--m.n,
@@ -127,7 +126,7 @@ test put_find {
 	m := (string, int) hash_map :: new(),
 	m at: "Hello" put: 5,
 	assert: find(m, "Hello") some: 5,
-	assert: m.length equals: 1,
+	assert: m.length equals: 1
 }
 
 test put_delete {
@@ -135,14 +134,14 @@ test put_delete {
 	m at: "Hello" put: 5,
 	assert: (m delete: "Hello") some: 5,
 	assert_none: find(m, "Hello"),
-	assert: m.length equals: 0,
+	assert: m.length equals: 0
 }
 
 test at_put_test0 {
 	// Test regression where bad indexing created a -1 index.
 	m := ([uint8], bool) hash_map :: new(),
 	m at: [127, 0, 0, 1] put: true,
-	m at: [0, 0, 0, 0, 0, 0, 0, 1] put: true,
+	m at: [0, 0, 0, 0, 0, 0, 0, 1] put: true
 	// don't crash
 }
 
@@ -150,14 +149,14 @@ test at_put_test0 {
 // The order in which f is called is nondeterministic.
 Func for:each:(m (K, V) hash_map, f ([.key K, .val V]){}) {
 	for: m.buckets each: (bucket){
-		for: bucket each_entry: (e) {
+		for: bucket each_entry: (e){
 			f([.key e.k, .val e.v])
 		}
 	}
 }
 
 func for:each_entry:(b (K, V) bucket, f ((K, V) entry){}) {
-	for: b each: (e) {
+	for: b each: (e){
 		if: e some: f
 	}
 }

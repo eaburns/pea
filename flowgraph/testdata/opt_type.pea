@@ -6,15 +6,15 @@ This is similar to box_type.pea, but uses an optional, where the boxed value can
 func main() {
 	zero := 0,
 	a := [(&int) opt] :: new(10, some(&int :: zero)),
-	for: 0 to: a.length - 1 do: (i) {
-		if: i % 2 = 0 then: {
+	for: 0 to: a.length - 1 do: (i){
+		if: i%2 = 0 then: {
 			a[i] := none()
 		} else: {
 			a[i] := some(&int :: i)
 		}
 	},
-	for: 0 to: a.length - 1 do: (i) {
-		if: a[i] some: (x) {
+	for: 0 to: a.length - 1 do: (i){
+		if: a[i] some: (x){
 			print_int(x)
 		}
 	}
@@ -26,14 +26,14 @@ Func none() T opt { return: [none?] }
 
 Func if:then:else:(c [false?, true?], t (){}, f (){}) { c true? t false? f }
 
-Func for:to:do:(start int, end int, f (int) {}) {
+Func for:to:do:(start int, end int, f (int){}) {
 	if: start <= end true: {
 		f(start),
 		for: start + 1 to: end do: f
 	}
 }
 
-Func <=(a, b T) [false?, true?] : <=>(T, T)[less?, equal?, greater?] {
+Func <=(a, b T) [false?, true?] : { <=>(T, T)[less?, equal?, greater?] } {
 	return: a <=> b greater? { [false?, true?] :: [false?] } _? { [true?] }
 }
 
