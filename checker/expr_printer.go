@@ -153,6 +153,10 @@ func (x *Cap) printExpr(pr *exprPrinter) {
 	pr.writeExprAndType(x)
 }
 
+func (x *unresolvedID) printExpr(pr *exprPrinter) {
+	pr.writeExprAndType(x)
+}
+
 func (x *ArrayLit) printExpr(pr *exprPrinter) {
 	switch {
 	case len(x.Elems) == 0:
@@ -310,7 +314,7 @@ func allLikelySmall(xs []Expr) bool {
 
 func likelySmall(x Expr) bool {
 	switch x := x.(type) {
-	case *Var, *Local, *Parm, *Cap, *StrLit, *IntLit, *FloatLit:
+	case *Var, *Local, *Parm, *Cap, *unresolvedID, *StrLit, *IntLit, *FloatLit:
 		return true
 	case *Convert:
 		return !x.Explicit && likelySmall(x.Expr)

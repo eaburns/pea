@@ -1149,10 +1149,15 @@ func parseTestPattern(t *testing.T, m *Mod, src string) TypePattern {
 }
 
 func _parseTestPattern(t *testing.T, m *Mod, nextName int, src string) (TypePattern, int) {
+	return __parseTestPattern(t, m, nextName, make(map[string]*TypeParm), src)
+}
+
+// TODO(eaburns): Fix __parseTestPattern mess.
+func __parseTestPattern(t *testing.T, m *Mod, nextName int, parmSet map[string]*TypeParm, src string) (TypePattern, int) {
 	t.Helper()
 	var parms []*TypeParm
-	parmSet := make(map[string]*TypeParm)
 	src2 := ""
+	inParms := make(map[*TypeParm]bool)
 	var prev rune
 	for len(src) > 0 {
 		r, w := utf8.DecodeRuneInString(src)
@@ -1174,11 +1179,15 @@ func _parseTestPattern(t *testing.T, m *Mod, nextName int, src string) (TypePatt
 		if name == "" {
 			name += "uniq" + strconv.Itoa(len(parmSet))
 		}
-		if _, ok := parmSet[name]; !ok {
-			p := &TypeParm{Name: fmt.Sprintf("Z%d", nextName)}
+		p, ok := parmSet[name]
+		if !ok {
+			p = &TypeParm{Name: fmt.Sprintf("Z%d", nextName)}
 			nextName++
 			parmSet[name] = p
+		}
+		if !inParms[p] {
 			parms = append(parms, p)
+			inParms[p] = true
 		}
 		src2 += parmSet[name].Name
 		prev = r

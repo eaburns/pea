@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/eaburns/pea/loc"
@@ -304,12 +305,309 @@ func common(pats ...TypePattern) TypePattern {
 	return pat
 }
 
+// isection returns the intersection of type patterns a and b,
+// that share the same type parameters.
+// The type patterns are specified by a shared list of TypeParms, tparms,
+// and the two pattern's types, a and b.
+// The returned type pattern is given by its separate parameters and type.
+// The return parameters always begin with the input, tparms,
+// with possibly additional parameters appended.
+//
+// If there is no intersection, the input type parameters are returned with a nil type.
+//
+// The intersection of [.] and any type is [.].
+//
+// The intersection of two literal ref patterns, is the literal ref pattern
+// of the intersection of the element patterns.
+//
+// The intersection of two literal array patterns is the array
+// of the intersection of the element patterns.
+//
+// The intersection of two literal union patterns where one is open and one is closed
+// and all cases of the open pattern have a corresponding case in the closed pattern
+// with the same name and typedness, is a closed literal union pattern
+// with cases corresponding to the closed input literal union pattern,
+// but with the type of each typed case that matches a case in the open pattern
+// being the intersection of the two types.
+//
+// The intersection of two open literal union patterns with disjoint cases
+// or cases that match in name and typedness, where the types intersect,
+// is an open literal union pattern with the union of the disjoint cases,
+// and the intersected types of the matching cases, with all cases sorted by name.
+//
+// The intersection of two literal struct patterns with the same fields in the same order
+// is the literal struct type with the same fields with the type of eacd field being
+// the intersection of the corresponding fields in the intersected patterns.
+//
+// The intersection of two literal function patterns with the same arity
+// is a literal function pattern with parameter types that are the intersection
+// of the corresponding parameter patterns and the return pattern
+// that is the intersection of the two return patterns.
+//
+// The intersection of a literal type with any named type pattern
+// is the named type, with any type arguments substituted
+// based on the intersection of the literal type with the named pattern's
+// definition type pattern.
+//
+// If the two type patterns unify, the intersection is the unification.
+//
+// Otherwise there is no intersection.
+func isection(tparms []*TypeParm, a, b Type) ([]*TypeParm, Type) {
+	var bind map[*TypeParm]Type
+	return _isection(tparms, a, b, &bind)
+}
+
+func _isection(tparms []*TypeParm, a, b Type, bind *map[*TypeParm]Type) ([]*TypeParm, Type) {
+	if isEmptyStruct(a) || isEmptyStruct(b) {
+		return tparms, _empty
+	}
+	if tps, typ, ok := isectLiteralRefs(tparms, a, b); ok {
+		return tps, typ
+	}
+	if tps, typ, ok := isectLiteralArrays(tparms, a, b); ok {
+		return tps, typ
+	}
+	if tps, typ, ok := isectOpenUnions(tparms, a, b); ok {
+		return tps, typ
+	}
+	if tps, typ, ok := isectOpenAndClosedUnions(tparms, a, b); ok {
+		return tps, typ
+	}
+	if tps, typ, ok := isectLiteralStructs(tparms, a, b); ok {
+		return tps, typ
+	}
+	if tps, typ, ok := isectLiteralFuncs(tparms, a, b); ok {
+		return tps, typ
+	}
+	if tps, typ, ok := isectLiteralAndNamed(tparms, a, b); ok {
+		return tps, typ
+	}
+	tparmSet := NewTypeParmSet(tparms...)
+	pat, _ := unify(makeTypePattern(tparmSet, a), makeTypePattern(tparmSet, b), bind)
+	if pat == nil {
+		return tparms, nil
+	}
+	// TODO: use TypeParmSet consistently to get rid of need for slice.
+	if pat.Parms != nil {
+		tparms = append(tparms, pat.Parms.parmSlice...)
+	}
+	return tparms, pat.Type
+}
+
+func isectLiteralRefs(tparms []*TypeParm, _a, _b Type) ([]*TypeParm, Type, bool) {
+	a, ok := _a.(*RefType)
+	if !ok {
+		return nil, nil, false
+	}
+	b, ok := _b.(*RefType)
+	if !ok {
+		return nil, nil, false
+	}
+	tparms, typ := isection(tparms, a.Type, b.Type)
+	if typ == nil {
+		return nil, nil, false
+	}
+	return tparms, &RefType{Type: typ, L: a.L}, true
+}
+
+func isectLiteralArrays(tparms []*TypeParm, _a, _b Type) ([]*TypeParm, Type, bool) {
+	a, ok := _a.(*ArrayType)
+	if !ok {
+		return nil, nil, false
+	}
+	b, ok := _b.(*ArrayType)
+	if !ok {
+		return nil, nil, false
+	}
+	tparms, typ := isection(tparms, a.ElemType, b.ElemType)
+	if typ == nil {
+		return nil, nil, false
+	}
+	return tparms, &ArrayType{ElemType: typ, L: a.L}, true
+}
+
+func isectOpenUnions(tparms []*TypeParm, _a, _b Type) ([]*TypeParm, Type, bool) {
+	a, ok := _a.(*UnionType)
+	if !ok || !a.Open {
+		return nil, nil, false
+	}
+	b, ok := _b.(*UnionType)
+	if !ok || !b.Open {
+		return nil, nil, false
+	}
+	var cases []*CaseDef
+	seen := make(map[string]*CaseDef)
+	for _, c := range a.Cases {
+		copy := c
+		seen[c.Name] = &copy
+		cases = append(cases, &copy)
+	}
+	for _, c := range b.Cases {
+		prev, seen := seen[c.Name]
+		if !seen {
+			copy := c
+			cases = append(cases, &copy)
+			continue
+		}
+		if (prev.Type == nil) != (c.Type == nil) {
+			// Different typedness.
+			return nil, nil, false
+		}
+		if prev.Type == nil {
+			continue
+		}
+		tparms, prev.Type = isection(tparms, prev.Type, c.Type)
+		if prev.Type == nil {
+			return nil, nil, false
+		}
+	}
+	sort.Slice(cases, func(i, j int) bool {
+		return cases[i].Name < cases[j].Name
+	})
+	u := &UnionType{Open: true, L: a.L}
+	for _, c := range cases {
+		u.Cases = append(u.Cases, *c)
+	}
+	return tparms, u, true
+}
+
+func isectOpenAndClosedUnions(tparms []*TypeParm, _a, _b Type) ([]*TypeParm, Type, bool) {
+	a, ok := _a.(*UnionType)
+	if !ok {
+		return nil, nil, false
+	}
+	b, ok := _b.(*UnionType)
+	if !ok {
+		return nil, nil, false
+	}
+	if a.Open && b.Open {
+		// Handled by another case.
+		return nil, nil, false
+	}
+	if a.Open {
+		a, b = b, a
+	}
+
+	var cases []*CaseDef
+	seen := make(map[string]*CaseDef)
+	for _, c := range a.Cases {
+		copy := c
+		seen[c.Name] = &copy
+		cases = append(cases, &copy)
+	}
+	for _, c := range b.Cases {
+		prev, seen := seen[c.Name]
+		if !seen {
+			return nil, nil, false
+		}
+		if (prev.Type == nil) != (c.Type == nil) {
+			// Different typedness.
+			return nil, nil, false
+		}
+		if prev.Type == nil {
+			continue
+		}
+		tparms, prev.Type = isection(tparms, prev.Type, c.Type)
+		if prev.Type == nil {
+			return nil, nil, false
+		}
+	}
+	u := &UnionType{Open: false, L: a.L}
+	for _, c := range cases {
+		u.Cases = append(u.Cases, *c)
+	}
+	return tparms, u, true
+}
+
+func isectLiteralStructs(tparms []*TypeParm, _a, _b Type) ([]*TypeParm, Type, bool) {
+	a, ok := _a.(*StructType)
+	if !ok {
+		return nil, nil, false
+	}
+	b, ok := _b.(*StructType)
+	if !ok {
+		return nil, nil, false
+	}
+	if len(a.Fields) != len(b.Fields) {
+		return nil, nil, false
+	}
+	s := &StructType{L: a.L}
+	for i := range a.Fields {
+		if a.Fields[i].Name != b.Fields[i].Name {
+			return nil, nil, false
+		}
+		f := FieldDef{Name: a.Fields[i].Name, L: a.Fields[i].L}
+		tparms, f.Type = isection(tparms, a.Fields[i].Type, b.Fields[i].Type)
+		if f.Type == nil {
+			return nil, nil, false
+		}
+		s.Fields = append(s.Fields, f)
+	}
+	return tparms, s, true
+}
+
+func isectLiteralFuncs(tparms []*TypeParm, _a, _b Type) ([]*TypeParm, Type, bool) {
+	a, ok := _a.(*FuncType)
+	if !ok {
+		return nil, nil, false
+	}
+	b, ok := _b.(*FuncType)
+	if !ok {
+		return nil, nil, false
+	}
+	if len(a.Parms) != len(b.Parms) {
+		return nil, nil, false
+	}
+	f := &FuncType{L: a.L}
+	for i := range a.Parms {
+		var parm Type
+		tparms, parm = isection(tparms, a.Parms[i], b.Parms[i])
+		if parm == nil {
+			return nil, nil, false
+		}
+		f.Parms = append(f.Parms, parm)
+	}
+	tparms, f.Ret = isection(tparms, a.Ret, b.Ret)
+	if f.Ret == nil {
+		return nil, nil, false
+	}
+	return tparms, f, true
+}
+
+func isectLiteralAndNamed(tparms []*TypeParm, a, b Type) ([]*TypeParm, Type, bool) {
+	// Make a the literal type.
+	if isLiteralType(b) {
+		a, b = b, a
+	}
+	if !isLiteralType(a) || !isVisibleDefinedType(b) {
+		return nil, nil, false
+	}
+
+	// TODO: is it even possible for a type pattern here
+	// to have bound type arguments?
+	// If not, they are always concrete types,
+	// and we don't need to worry about bind/substitute.
+
+	var bind map[*TypeParm]Type
+	tparms2 := append(tparms, b.(*DefType).Def.Parms...)
+	tparms, typ := _isection(tparms2, a, b.(*DefType).Def.Type, &bind)
+	if typ == nil {
+		fmt.Printf("nil\n")
+		return nil, nil, false
+	}
+	if bind != nil {
+		b = subType(bind, b)
+	}
+	// Here, if there is an intersection with the defined type's underlying type,
+	// we return the defined type itself.
+	return tparms, b, true
+}
+
 // A TypeParmSet is an immutable set of type parameters.
 // A nil *TypeParmSet is an empty set.
 type TypeParmSet struct {
 	// parmSlice is the slice of all parameters.
 	parmSlice []*TypeParm
-
 	// parmMap is allocated only if there are enough parameters,
 	// otherwise it is nil.
 	parmMap map[*TypeParm]bool

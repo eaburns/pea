@@ -341,6 +341,9 @@ func (u *UnionType) buildString(w *stringBuilder) {
 			c.Type.buildString(w)
 		}
 	}
+	if u.Open {
+		w.WriteString(", …")
+	}
 	w.WriteRune(']')
 }
 
@@ -715,8 +718,10 @@ func (c ConvertKind) String() string {
 		return "NumConvert"
 	case StrConvert:
 		return "StrConvert"
-	case UnionConvert:
-		return "UnionConvert"
+	case funcConvert:
+		return "funcConvert"
+	case unresolvedConvert:
+		return "unresolvedConvert"
 	default:
 		panic("impossible ConvertKind")
 	}

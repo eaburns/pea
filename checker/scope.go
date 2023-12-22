@@ -16,6 +16,10 @@ type topScope struct {
 	importer            Importer
 	verbose             bool
 	trimErrorPathPrefix string
+
+	locFiles   loc.Files
+	trIndent   string
+	nextBullet int
 }
 
 type blockLitScope struct {
@@ -73,6 +77,16 @@ func file(x scope) *File {
 	for x != nil {
 		if f, ok := x.(*File); ok {
 			return f
+		}
+		x = x.up()
+	}
+	return nil
+}
+
+func blockLit(x scope) *blockLitScope {
+	for x != nil {
+		if b, ok := x.(*blockLitScope); ok {
+			return b
 		}
 		x = x.up()
 	}
@@ -405,12 +419,12 @@ func (m *Mod) findIDs(name string) []id {
 				parmTypes[i] = v
 			}
 			sw := Switch{
-				N:         name,
-				Names:     names,
-				T:         &FuncType{Parms: parmTypes, Ret: vars[len(vars)-1]},
-				typeParms: parms,
+				N:                 name,
+				Names:             names,
+				T:                 &FuncType{Parms: parmTypes, Ret: vars[len(vars)-1]},
+				typeParms:         parms,
 				origParmTypeParms: origTypeParms,
-				origRetTypeParm: vars[len(vars)-1].Def,
+				origRetTypeParm:   vars[len(vars)-1].Def,
 			}
 			if strings.HasPrefix(name, "if:") {
 				// We replace the return type with _empty,

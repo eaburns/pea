@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/eaburns/pea/loc"
+	"github.com/eaburns/pea/parser"
 )
 
 type Mod struct {
@@ -166,7 +167,9 @@ type FieldDef struct {
 
 type UnionType struct {
 	Cases []CaseDef
-	L     loc.Loc
+	// Open indicates whether it is an open literal union type
+	Open bool
+	L    loc.Loc
 }
 
 func (u *UnionType) Loc() loc.Loc { return u.L }
@@ -582,6 +585,10 @@ const (
 	// creating a new block literal to wrap
 	// a call to the converted function.
 	funcConvert
+
+	// We haven't figured out
+	// what kind of conversion it is yet.
+	unresolvedConvert
 )
 
 type Convert struct {
@@ -631,6 +638,26 @@ type Cap struct {
 func (c *Cap) Type() Type   { return c.T }
 func (c *Cap) Loc() loc.Loc { return c.L }
 
+type unresolvedID struct {
+	x    scope
+	T    Type
+	L    loc.Loc
+	Name string
+}
+
+func (u *unresolvedID) String() string               { return u.Name }
+func (u *unresolvedID) Type() Type                   { return u.T }
+func (u *unresolvedID) Loc() loc.Loc                 { return u.L }
+func (u *unresolvedID) buildString(w *stringBuilder) { w.WriteString(u.String()) }
+func (u *unresolvedID) subExpr(bindings) Expr        { panic("unimplemetned") }
+func (u *unresolvedID) eq(Func) bool                 { panic("unimplemented") }
+func (u *unresolvedID) arity() int                   { panic("unimplemented") }
+func (u *unresolvedID) ret() TypePattern             { panic("unimplemented") }
+func (u *unresolvedID) parm(int) TypePattern         { panic("unimplemented") }
+func (u *unresolvedID) sub(*TypeParmSet, map[*TypeParm]Type) (Func, *CandidateError) {
+	panic("unimplemented")
+}
+
 type ArrayLit struct {
 	Array *ArrayType
 	Elems []Expr
@@ -667,8 +694,9 @@ type BlockLit struct {
 	Parms  []ParmDef
 	Locals []*LocalDef
 	Ret    Type // result type of the block
-	Exprs  []Expr
 	Func   *FuncType
+	Exprs  []Expr
+	pexprs []parser.Expr // One of Exprs or pexprs is non-nil.
 	T      Type
 	L      loc.Loc
 }

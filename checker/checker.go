@@ -2,6 +2,7 @@ package checker
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"math/big"
 	"path/filepath"
@@ -13,6 +14,8 @@ import (
 	"github.com/eaburns/pea/mod"
 	"github.com/eaburns/pea/parser"
 )
+
+var checker2 = flag.Bool("checker2", false, "use the new type checker")
 
 // Option is an option to Check.
 type Option func(*topScope)
@@ -43,6 +46,9 @@ func Check(modPath string, files []*parser.File, opts ...Option) (*Mod, loc.File
 	if topScope.importer == nil {
 		r := mod.NewRoot(".")
 		topScope.importer = NewImporter(r, files, topScope.trimErrorPathPrefix)
+	}
+	for _, f := range files {
+		topScope.locFiles = append(topScope.locFiles, f)
 	}
 
 	modPath = cleanImportPath(modPath)
@@ -1178,10 +1184,17 @@ func topoSortVars(mod *Mod) []Error {
 
 func checkFuncDef(def *FuncDef, parserDef *parser.FuncDef) []Error {
 	var errs []Error
-	def.Exprs, errs = checkExprs(def, true, parserDef.Exprs, any())
-	if len(parserDef.Exprs) == 0 && parserDef.Exprs != nil {
-		def.Exprs = []Expr{}
+	if *checker2 {
+		var next int
+		_, def.Exprs, errs = checkParserExprs(def, &next, parserDef.Exprs)
+		return errs
+	} else {
+		def.Exprs, errs = checkExprs(def, true, parserDef.Exprs, any())
+		if len(parserDef.Exprs) == 0 && parserDef.Exprs != nil {
+			def.Exprs = []Expr{}
+		}
 	}
+
 	if n := len(def.Exprs); n > 0 {
 		// checkExprs removes outer conversions for all but the last expression.
 		// The reason it keeps them on the last is because it is called for block literals,
