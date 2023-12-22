@@ -7,6 +7,20 @@ mods=$(
 	done) | sort | uniq
 )
 
+go build -o peafmt/peafmt ./peafmt || exit 1
+o=$(mktemp pea_tmp.XXXXXXXXXX)
+for file in `find $root -name \*.pea`; do
+	cp $file $o
+	./peafmt/peafmt $o
+	if ! diff $file $o 2>&1 > /dev/null; then
+		echo $file is not formatted
+		diff -up $file $o
+		rm -f $o
+		exit 1
+	fi
+done
+rm -f $o
+
 go build -o peac/peac ./peac || exit 1
 
 fail=0
