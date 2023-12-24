@@ -647,13 +647,12 @@ func isUnOp(e parser.Expr) bool {
 func printOpCall(p *printer, mod *parser.Ident, id parser.Ident, e *parser.Call) {
 	switch len(e.Args) {
 	case 1:
-		p = p.withLineBreaksDisallowed()
 		printModAndIdent(p, mod, id)
 		if isUnOp(e.Args[0]) {
 			// Two unary operators in a row need to be separated by whitespace.
 			printSpace(p)
 		}
-		printExpr(p, e.Args[0])
+		printExpr(p.withLineBreaksDisallowed(), e.Args[0])
 	case 2:
 		printExpr(p, e.Args[0])
 		if !strings.ContainsAny(id.Name, "*/%") || strings.HasSuffix(id.Name, "=") {

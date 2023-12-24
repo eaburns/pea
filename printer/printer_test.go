@@ -1355,6 +1355,35 @@ Func =(a civil, b civil) bool {
 	}
 }
 
+func TestReproduceRemovingBlankLines(t *testing.T) {
+	tests := []string{`//
+test pointer {
+	x := 1,
+	xp := int pointer :: &x,
+	assert: *xp eq: 1,
+	assert: x eq: 1,
+
+	*xp := 2,
+	assert: *xp eq: 2,
+	assert: x eq: 2,
+
+	y := 3,
+	xp := &y,
+	assert: *xp eq: 3,
+	assert: y eq: 3,
+	assert: x eq: 2,
+
+	*xp := 4,
+	assert: *xp eq: 4,
+	assert: y eq: 4,
+	assert: x eq: 2
+}
+`}
+	for _, src := range tests {
+		runIdentTest(src, t)
+	}
+}
+
 func runIdentTest(src string, t *testing.T) {
 	t.Helper()
 	p := parser.New()
