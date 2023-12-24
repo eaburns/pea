@@ -69,7 +69,7 @@ func _listener(network string, service string) listener or_error {
 	},
 	return: ok(listener :: [
 		.fd sys#io#descriptor :: fd,
-		.addr addr(ip, port)
+		.addr addr(ip, port),
 	])
 }
 
@@ -103,7 +103,7 @@ func stream(fd sys#io#descriptor) stream or_error {
 	return: ok(stream :: [
 		.fd fd,
 		.local [.network [ip? local_ip], .port local_port],
-		.remote [.network [ip? remote_ip], .port remote_port]
+		.remote [.network [ip? remote_ip], .port remote_port],
 	])
 }
 

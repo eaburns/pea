@@ -21,7 +21,7 @@ Func group() group {
 		.mutex sys#thread#mutex(),
 		.cond sys#thread#condition(),
 		.errors ring_buffer#new(),
-		.count 0
+		.count 0,
 	]
 }
 

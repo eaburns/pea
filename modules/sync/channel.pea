@@ -37,7 +37,7 @@ Func channel(limit int) T channel {
 		.has_value_cond sys#thread#condition(),
 		.has_space_cond sys#thread#condition(),
 		.limit limit < 0 true? { 0 } false? { limit },
-		.data ring_buffer#new()
+		.data ring_buffer#new(),
 	]
 }
 

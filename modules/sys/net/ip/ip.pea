@@ -44,8 +44,8 @@ Func addr(a uint16, b uint16, c uint16, d uint16, e uint16, f uint16, g uint16, 
 			uint8 :: e >> 8, uint8 :: e & 0xFF,
 			uint8 :: f >> 8, uint8 :: f & 0xFF,
 			uint8 :: g >> 8, uint8 :: g & 0xFF,
-			uint8 :: h >> 8, uint8 :: h & 0xFF
-		]
+			uint8 :: h >> 8, uint8 :: h & 0xFF,
+		],
 	]
 }
 
@@ -221,6 +221,6 @@ test lookup_host {
 	// on likely machines to run the test.
 	assert: lookup_host("localhost") ok: [
 		addr(0, 0, 0, 0, 0, 0, 0, 1),
-		addr(127, 0, 0, 1)
+		addr(127, 0, 0, 1),
 	]
 }

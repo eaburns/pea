@@ -691,7 +691,7 @@ func f() {
 	[
 		1,
 		2,
-		3
+		3,
 	]
 }
 `,
@@ -700,7 +700,7 @@ func f() {
 	[
 		1,
 		2,
-		3
+		3,
 	]
 }
 `,
@@ -709,7 +709,7 @@ func f() {
 	[[[[[
 		1,
 		2,
-		3
+		3,
 	]]]]]
 }
 `,
@@ -719,8 +719,8 @@ func f() {
 		[
 			1,
 			2,
-			3
-		]
+			3,
+		],
 	]
 }
 `,
@@ -730,13 +730,13 @@ func f() {
 		[
 			1,
 			2,
-			3
+			3,
 		],
 		[
 			4,
 			5,
-			6
-		]
+			6,
+		],
 	]
 }
 `,
@@ -745,11 +745,11 @@ func f() {
 	[[
 		1,
 		2,
-		3
+		3,
 	], [
 		4,
 		5,
-		6
+		6,
 	]]
 }
 `,
@@ -758,11 +758,11 @@ func f() {
 	[[[[[
 		1,
 		2,
-		3
+		3,
 	]]]], [[[[
 		4,
 		5,
-		6
+		6,
 	]]]]]
 }
 `,
@@ -772,12 +772,12 @@ func f() {
 		[
 			1,
 			2,
-			3
-		]
+			3,
+		],
 	], [[
 		4,
 		5,
-		6
+		6,
 	]]]
 }
 `,
@@ -787,14 +787,14 @@ func f() {
 		[[
 			1,
 			2,
-			3
-		]]
+			3,
+		]],
 	]], [[
 		[[
 			4,
 			5,
-			6
-		]]
+			6,
+		]],
 	]]]
 }
 `,
@@ -804,12 +804,12 @@ func f() {
 		[[
 			1,
 			2,
-			3
-		]]
+			3,
+		]],
 	]], [[[[
 		4,
 		5,
-		6
+		6,
 	]]]]]
 }
 `,
@@ -819,14 +819,14 @@ func f() {
 		[[
 			1,
 			2,
-			3
-		]]
+			3,
+		]],
 	]], [[[
 		[
 			4,
 			5,
-			6
-		]
+			6,
+		],
 	]]]]
 }
 `,
@@ -865,7 +865,7 @@ func foo() {
 func foo() {
 	[
 		.x 5,
-		.y 3.14
+		.y 3.14,
 	]
 }
 `,
@@ -884,7 +884,7 @@ func foo() {
 			bar: 6,
 		.y
 			baz: 3.14
-			qux: 7
+			qux: 7,
 	]
 }
 `,
@@ -892,7 +892,7 @@ func foo() {
 func foo() {
 	[[
 		.x 5,
-		.y 3.14
+		.y 3.14,
 	]]
 }
 `,
@@ -1117,7 +1117,7 @@ test foo {
 		[.key 43, .val 95],
 		[.key 49, .val 13],
 		[.key 50, .val 74],
-		[.key 62, .val 93]
+		[.key 62, .val 93],
 	]
 }
 `}
@@ -1143,7 +1143,7 @@ test foo {
 	assert: (nanosecond + nanosecond)*(int64 :: int#max_uint32)
 	equals: (duration :: [
 		.s (int64 :: int#max_uint32)*(int64 :: 2)/1.0e9,
-		.ns uint32 :: (int64 :: int#max_uint32)*(int64 :: 2)%2.0e9
+		.ns uint32 :: (int64 :: int#max_uint32)*(int64 :: 2)%2.0e9,
 	])
 }
 `}
@@ -1272,7 +1272,7 @@ test foo {
 	addr(l).network ip? (ip){
 		assert: ip one_of: [
 			sys#net#ip#addr(0, 0, 0, 0),
-			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0)
+			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0),
 		]
 	}
 }
@@ -1308,7 +1308,7 @@ test foo {
 		new_root := (K, V) node :: [
 			.n 1,
 			.keys new(m.max_keys + 1, split.med),
-			.kids new(m.max_keys + 2, m.empty)
+			.kids new(m.max_keys + 2, m.empty),
 		],
 		new_root.kids[0] := m.root,
 		new_root.kids[1] := split.right,

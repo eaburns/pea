@@ -37,7 +37,7 @@ Func new() (K, V) tree_map : { <(K, K)bool, =(K, K)bool } {
 		// new kids arrays.
 		.empty empty,
 		.pred (<),
-		.eq (=)
+		.eq (=),
 	]
 }
 
@@ -76,7 +76,7 @@ Func at:put:(m (K, V) tree_map, k K, v V) V option {
 		m.root := [
 			.n 1,
 			.keys new(m.max_keys + 1, [.k k, .v v]),
-			.kids []
+			.kids [],
 		],
 		return: none()
 	},
@@ -88,7 +88,7 @@ Func at:put:(m (K, V) tree_map, k K, v V) V option {
 		new_root := (K, V) node :: [
 			.n 1,
 			.keys new(m.max_keys + 1, split.med),
-			.kids new(m.max_keys + 2, m.empty)
+			.kids new(m.max_keys + 2, m.empty),
 		],
 		new_root.kids[0] := m.root,
 		new_root.kids[1] := split.right,
@@ -138,7 +138,7 @@ func split_node(m (K, V) tree_map, n (K, V) node) (K, V) upsert_result {
 	right := (K, V) node :: [
 		.n n.n - pivot - 1,
 		.keys new(m.max_keys + 1, med),
-		.kids []
+		.kids [],
 	],
 	copy: n.keys[pivot + 1, n.n] to: right.keys,
 	if: n.kids.length > 0 then: {

@@ -104,7 +104,7 @@ test listener_empty {
 	addr(l).network ip? (ip){
 		assert: ip one_of: [
 			sys#net#ip#addr(0, 0, 0, 0),
-			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0)
+			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0),
 		]
 	},
 	assert_false: addr(l).port = 0,
@@ -116,7 +116,7 @@ test listener_empty {
 	addr(l).network ip? (ip){
 		assert: ip one_of: [
 			sys#net#ip#addr(0, 0, 0, 0),
-			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0)
+			sys#net#ip#addr(0, 0, 0, 0, 0, 0, 0, 0),
 		]
 	},
 	assert_false: addr(l).port = 0,

@@ -464,7 +464,7 @@ test times {
 	assert: (nanosecond + nanosecond)*(int64 :: int#max_uint32)
 	equals: (duration :: [
 		.s (int64 :: int#max_uint32)*(int64 :: 2)/1.0e9,
-		.ns uint32 :: (int64 :: int#max_uint32)*(int64 :: 2)%2.0e9
+		.ns uint32 :: (int64 :: int#max_uint32)*(int64 :: 2)%2.0e9,
 	]),
 
 	// 9007199254740993 is the first int that cannot be represented by float64.

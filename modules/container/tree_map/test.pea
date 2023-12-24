@@ -41,7 +41,7 @@ test insert_in_order {
 		[.key "w", .val 23],
 		[.key "x", .val 24],
 		[.key "y", .val 25],
-		[.key "z", .val 26]
+		[.key "z", .val 26],
 	]
 }
 
@@ -77,7 +77,7 @@ test insert_random_order {
 		[.key "w", .val 23],
 		[.key "x", .val 24],
 		[.key "y", .val 25],
-		[.key "z", .val 26]
+		[.key "z", .val 26],
 	]
 }
 
@@ -170,7 +170,7 @@ test for_each {
 		[.key "c", .val 3],
 		[.key "d", .val 4],
 		[.key "e", .val 5],
-		[.key "f", .val 6]
+		[.key "f", .val 6],
 	]
 }
 
@@ -198,17 +198,17 @@ test rotate_left {
 			[
 				.n 1,
 				.keys [[.k 1, .v 1], x, x, x],
-				.kids []
+				.kids [],
 			],
 			[
 				.n 3,
 				.keys [[.k 6, .v 6], [.k 7, .v 7], [.k 8, .v 8], x],
-				.kids []
+				.kids [],
 			],
 			empty,
 			empty,
-			empty
-		]
+			empty,
+		],
 	],
 	rotate_left: n at: 0,
 	m := (int, int) node :: [
@@ -218,17 +218,17 @@ test rotate_left {
 			[
 				.n 2,
 				.keys [[.k 1, .v 1], [.k 5, .v 5], x, x],
-				.kids []
+				.kids [],
 			],
 			[
 				.n 2,
 				.keys [[.k 7, .v 7], [.k 8, .v 8], x, x],
-				.kids []
+				.kids [],
 			],
 			empty,
 			empty,
-			empty
-		]
+			empty,
+		],
 	],
 	if: m != n then: {
 		print("got\n"),
@@ -249,16 +249,16 @@ test rotate_right {
 			[
 				.n 3,
 				.keys [[.k 1, .v 1], [.k 2, .v 2], [.k 3, .v 3]],
-				.kids []
+				.kids [],
 			],
 			[
 				.n 1,
 				.keys [[.k 6, .v 6], x, x],
-				.kids []
+				.kids [],
 			],
 			empty,
-			empty
-		]
+			empty,
+		],
 	],
 	rotate_right: n at: 0,
 	m := (int, int) node :: [
@@ -268,16 +268,16 @@ test rotate_right {
 			[
 				.n 2,
 				.keys [[.k 1, .v 1], [.k 2, .v 2], x],
-				.kids []
+				.kids [],
 			],
 			[
 				.n 2,
 				.keys [[.k 5, .v 5], [.k 6, .v 6], x],
-				.kids []
+				.kids [],
 			],
 			empty,
-			empty
-		]
+			empty,
+		],
 	],
 	if: m != n then: {
 		print("got\n"),
@@ -298,16 +298,16 @@ test merge {
 			[
 				.n 1,
 				.keys [[.k 1, .v 1], x, x],
-				.kids []
+				.kids [],
 			],
 			[
 				.n 1,
 				.keys [[.k 6, .v 6], x, x],
-				.kids []
+				.kids [],
 			],
 			empty,
-			empty
-		]
+			empty,
+		],
 	],
 	merge: n at: 0,
 	m := (int, int) node :: [
@@ -317,12 +317,12 @@ test merge {
 			[
 				.n 3,
 				.keys [[.k 1, .v 1], [.k 5, .v 5], [.k 6, .v 6]],
-				.kids []
+				.kids [],
 			],
 			empty,
 			empty,
-			empty
-		]
+			empty,
+		],
 	],
 	if: m != n then: {
 		print("got\n"),

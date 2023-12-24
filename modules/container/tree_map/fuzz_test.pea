@@ -75,7 +75,7 @@ test fuzz0 {
 		[.key 43, .val 95],
 		[.key 49, .val 13],
 		[.key 50, .val 74],
-		[.key 62, .val 93]
+		[.key 62, .val 93],
 	],
 	assert: find(m, 8) some: 72,
 	assert: find(m, 16) some: 38,
@@ -102,7 +102,7 @@ test fuzz1 {
 		[.key 57, .val 80],
 		[.key 60, .val 10],
 		[.key 79, .val 60],
-		[.key 83, .val 55]
+		[.key 83, .val 55],
 	],
 	assert: find(m, 34) some: 10,
 	assert: find(m, 47) some: 30,
@@ -120,7 +120,7 @@ test fuzz2 {
 	assert: m elements: [
 		[.key 68, .val 65],
 		[.key 70, .val 88],
-		[.key 81, .val 30]
+		[.key 81, .val 30],
 	],
 	assert: find(m, 68) some: 65,
 	assert: find(m, 70) some: 88,
@@ -147,7 +147,7 @@ test fuzz3 {
 		[.key 33, .val 19],
 		[.key 62, .val 94],
 		[.key 75, .val 29],
-		[.key 95, .val 60]
+		[.key 95, .val 60],
 	],
 	assert: find(m, 1) some: 22,
 	assert: find(m, 9) some: 43,
@@ -180,7 +180,7 @@ test fuzz4 {
 		[.key 29, .val 37],
 		[.key 62, .val 27],
 		[.key 96, .val 98],
-		[.key 99, .val 90]
+		[.key 99, .val 90],
 	],
 	assert: find(m, 2) some: 22,
 	assert: find(m, 4) some: 15,
@@ -199,7 +199,7 @@ test fuzz5 {
 	check_invariants(m),
 	assert: m elements: [
 		[.key 25, .val 89],
-		[.key 38, .val 5]
+		[.key 38, .val 5],
 	],
 	assert: find(m, 25) some: 89,
 	assert: find(m, 38) some: 5
@@ -223,7 +223,7 @@ test fuzz6 {
 		[.key 52, .val 11],
 		[.key 54, .val 91],
 		[.key 79, .val 14],
-		[.key 85, .val 6]
+		[.key 85, .val 6],
 	],
 	assert: find(m, 1) some: 57,
 	assert: find(m, 19) some: 91,
@@ -247,7 +247,7 @@ test fuzz7 {
 		[.key 23, .val 99],
 		[.key 41, .val 98],
 		[.key 43, .val 56],
-		[.key 48, .val 67]
+		[.key 48, .val 67],
 	],
 	assert: find(m, 3) some: 61,
 	assert: find(m, 23) some: 99,
@@ -272,7 +272,7 @@ test fuzz8 {
 		[.key 35, .val 86],
 		[.key 54, .val 28],
 		[.key 63, .val 19],
-		[.key 65, .val 61]
+		[.key 65, .val 61],
 	],
 	assert: find(m, 5) some: 56,
 	assert: find(m, 23) some: 52,
@@ -297,7 +297,7 @@ test fuzz9 {
 		[.key 39, .val 56],
 		[.key 70, .val 52],
 		[.key 75, .val 78],
-		[.key 92, .val 18]
+		[.key 92, .val 18],
 	],
 	assert: find(m, 5) some: 60,
 	assert: find(m, 17) some: 37,
@@ -325,7 +325,7 @@ test fuzz10 {
 		[.key 59, .val 79],
 		[.key 60, .val 90],
 		[.key 61, .val 66],
-		[.key 72, .val 73]
+		[.key 72, .val 73],
 	],
 	assert: find(m, 0) some: 32,
 	assert: find(m, 15) some: 65,
@@ -349,7 +349,7 @@ test fuzz11 {
 		[.key 28, .val 18],
 		[.key 38, .val 58],
 		[.key 45, .val 23],
-		[.key 62, .val 26]
+		[.key 62, .val 26],
 	],
 	assert: find(m, 18) some: 11,
 	assert: find(m, 28) some: 18,
@@ -376,7 +376,7 @@ test fuzz12 {
 		[.key 35, .val 76],
 		[.key 58, .val 46],
 		[.key 66, .val 87],
-		[.key 78, .val 5]
+		[.key 78, .val 5],
 	],
 	assert: find(m, 1) some: 49,
 	assert: find(m, 5) some: 67,
@@ -396,7 +396,7 @@ test fuzz13 {
 	assert: m elements: [
 		[.key 22, .val 16],
 		[.key 51, .val 28],
-		[.key 75, .val 79]
+		[.key 75, .val 79],
 	],
 	assert: find(m, 22) some: 16,
 	assert: find(m, 51) some: 28,
@@ -424,7 +424,7 @@ test fuzz14 {
 		[.key 63, .val 59],
 		[.key 67, .val 69],
 		[.key 69, .val 71],
-		[.key 73, .val 49]
+		[.key 73, .val 49],
 	],
 	assert: find(m, 2) some: 50,
 	assert: find(m, 12) some: 21,
@@ -455,7 +455,7 @@ test fuzz15 {
 		[.key 28, .val 95],
 		[.key 29, .val 24],
 		[.key 53, .val 58],
-		[.key 79, .val 41]
+		[.key 79, .val 41],
 	],
 	assert: find(m, 4) some: 66,
 	assert: find(m, 13) some: 23,
@@ -483,7 +483,7 @@ test fuzz16 {
 		[.key 44, .val 94],
 		[.key 54, .val 70],
 		[.key 56, .val 9],
-		[.key 77, .val 21]
+		[.key 77, .val 21],
 	],
 	assert: find(m, 4) some: 47,
 	assert: find(m, 5) some: 0,
@@ -512,7 +512,7 @@ test fuzz17 {
 		[.key 32, .val 10],
 		[.key 68, .val 27],
 		[.key 73, .val 61],
-		[.key 89, .val 24]
+		[.key 89, .val 24],
 	],
 	assert: find(m, 8) some: 11,
 	assert: find(m, 21) some: 83,
@@ -527,7 +527,7 @@ test fuzz18 {
 	m at: 23 put: 10,
 	check_invariants(m),
 	assert: m elements: [
-		[.key 23, .val 10]
+		[.key 23, .val 10],
 	],
 	assert: find(m, 23) some: 10
 }
@@ -538,7 +538,7 @@ test fuzz19 {
 	check_invariants(m),
 	assert: m elements: [
 		[.key 32, .val 66],
-		[.key 69, .val 79]
+		[.key 69, .val 79],
 	],
 	assert: find(m, 32) some: 66,
 	assert: find(m, 69) some: 79
@@ -566,7 +566,7 @@ test fuzz20 {
 		[.key 65, .val 69],
 		[.key 69, .val 93],
 		[.key 70, .val 86],
-		[.key 72, .val 93]
+		[.key 72, .val 93],
 	],
 	assert: find(m, 6) some: 79,
 	assert: find(m, 10) some: 59,
@@ -592,7 +592,7 @@ test fuzz21 {
 		[.key 45, .val 1],
 		[.key 78, .val 91],
 		[.key 82, .val 73],
-		[.key 84, .val 7]
+		[.key 84, .val 7],
 	],
 	assert: find(m, 14) some: 18,
 	assert: find(m, 45) some: 1,
@@ -623,7 +623,7 @@ test fuzz22 {
 		[.key 66, .val 70],
 		[.key 79, .val 24],
 		[.key 87, .val 92],
-		[.key 97, .val 30]
+		[.key 97, .val 30],
 	],
 	assert: find(m, 4) some: 95,
 	assert: find(m, 5) some: 98,
@@ -657,7 +657,7 @@ test fuzz23 {
 		[.key 52, .val 19],
 		[.key 69, .val 73],
 		[.key 77, .val 25],
-		[.key 78, .val 13]
+		[.key 78, .val 13],
 	],
 	assert: find(m, 3) some: 46,
 	assert: find(m, 8) some: 66,
@@ -678,7 +678,7 @@ test fuzz24 {
 	assert: m elements: [
 		[.key 23, .val 13],
 		[.key 33, .val 29],
-		[.key 45, .val 36]
+		[.key 45, .val 36],
 	],
 	assert: find(m, 23) some: 13,
 	assert: find(m, 33) some: 29,
@@ -699,7 +699,7 @@ test fuzz25 {
 		[.key 36, .val 7],
 		[.key 44, .val 62],
 		[.key 83, .val 10],
-		[.key 97, .val 51]
+		[.key 97, .val 51],
 	],
 	assert: find(m, 8) some: 29,
 	assert: find(m, 15) some: 96,
@@ -727,7 +727,7 @@ test fuzz26 {
 		[.key 36, .val 92],
 		[.key 71, .val 5],
 		[.key 78, .val 22],
-		[.key 92, .val 53]
+		[.key 92, .val 53],
 	],
 	assert: find(m, 0) some: 49,
 	assert: find(m, 4) some: 74,
@@ -743,7 +743,7 @@ test fuzz27 {
 	m at: 56 put: 10,
 	check_invariants(m),
 	assert: m elements: [
-		[.key 56, .val 10]
+		[.key 56, .val 10],
 	],
 	assert: find(m, 56) some: 10
 }
@@ -758,7 +758,7 @@ test fuzz28 {
 		[.key 27, .val 66],
 		[.key 34, .val 99],
 		[.key 45, .val 65],
-		[.key 70, .val 23]
+		[.key 70, .val 23],
 	],
 	assert: find(m, 27) some: 66,
 	assert: find(m, 34) some: 99,
@@ -784,7 +784,7 @@ test fuzz29 {
 		[.key 76, .val 57],
 		[.key 77, .val 46],
 		[.key 80, .val 20],
-		[.key 96, .val 37]
+		[.key 96, .val 37],
 	],
 	assert: find(m, 29) some: 2,
 	assert: find(m, 63) some: 88,
@@ -802,7 +802,7 @@ test fuzz30 {
 	check_invariants(m),
 	assert: m elements: [
 		[.key 55, .val 46],
-		[.key 81, .val 65]
+		[.key 81, .val 65],
 	],
 	assert: find(m, 55) some: 46,
 	assert: find(m, 81) some: 65
@@ -824,7 +824,7 @@ test fuzz31 {
 		[.key 61, .val 84],
 		[.key 67, .val 41],
 		[.key 79, .val 63],
-		[.key 93, .val 8]
+		[.key 93, .val 8],
 	],
 	assert: find(m, 5) some: 99,
 	assert: find(m, 9) some: 78,
@@ -839,7 +839,7 @@ test fuzz32 {
 	m at: 44 put: 57,
 	check_invariants(m),
 	assert: m elements: [
-		[.key 44, .val 57]
+		[.key 44, .val 57],
 	],
 	assert: find(m, 44) some: 57
 }
@@ -862,7 +862,7 @@ test fuzz33 {
 		[.key 69, .val 40],
 		[.key 70, .val 6],
 		[.key 74, .val 81],
-		[.key 92, .val 66]
+		[.key 92, .val 66],
 	],
 	assert: find(m, 49) some: 77,
 	assert: find(m, 55) some: 85,
@@ -890,7 +890,7 @@ test fuzz34 {
 		[.key 33, .val 28],
 		[.key 55, .val 40],
 		[.key 75, .val 45],
-		[.key 86, .val 21]
+		[.key 86, .val 21],
 	],
 	assert: find(m, 3) some: 65,
 	assert: find(m, 7) some: 80,
@@ -907,7 +907,7 @@ test fuzz35 {
 	check_invariants(m),
 	assert: m elements: [
 		[.key 25, .val 83],
-		[.key 47, .val 83]
+		[.key 47, .val 83],
 	],
 	assert: find(m, 25) some: 83,
 	assert: find(m, 47) some: 83
@@ -935,7 +935,7 @@ test fuzz36 {
 		[.key 41, .val 71],
 		[.key 61, .val 74],
 		[.key 75, .val 0],
-		[.key 90, .val 36]
+		[.key 90, .val 36],
 	],
 	assert: find(m, 8) some: 5,
 	assert: find(m, 17) some: 57,
@@ -953,7 +953,7 @@ test fuzz37 {
 	m at: 38 put: 88,
 	check_invariants(m),
 	assert: m elements: [
-		[.key 38, .val 88]
+		[.key 38, .val 88],
 	],
 	assert: find(m, 38) some: 88
 }
@@ -964,7 +964,7 @@ test fuzz38 {
 	check_invariants(m),
 	assert: m elements: [
 		[.key 96, .val 72],
-		[.key 98, .val 17]
+		[.key 98, .val 17],
 	],
 	assert: find(m, 96) some: 72,
 	assert: find(m, 98) some: 17
@@ -976,7 +976,7 @@ test fuzz39 {
 	check_invariants(m),
 	assert: m elements: [
 		[.key 32, .val 81],
-		[.key 84, .val 48]
+		[.key 84, .val 48],
 	],
 	assert: find(m, 32) some: 81,
 	assert: find(m, 84) some: 48
@@ -1002,7 +1002,7 @@ test fuzz40 {
 		[.key 50, .val 74],
 		[.key 52, .val 58],
 		[.key 65, .val 56],
-		[.key 87, .val 16]
+		[.key 87, .val 16],
 	],
 	assert: find(m, 11) some: 95,
 	assert: find(m, 17) some: 55,
@@ -1031,7 +1031,7 @@ test fuzz41 {
 		[.key 59, .val 4],
 		[.key 76, .val 56],
 		[.key 77, .val 42],
-		[.key 95, .val 29]
+		[.key 95, .val 29],
 	],
 	assert: find(m, 9) some: 10,
 	assert: find(m, 21) some: 41,
@@ -1046,7 +1046,7 @@ test fuzz42 {
 	m at: 41 put: 78,
 	check_invariants(m),
 	assert: m elements: [
-		[.key 41, .val 78]
+		[.key 41, .val 78],
 	],
 	assert: find(m, 41) some: 78
 }
@@ -1057,7 +1057,7 @@ test fuzz43 {
 	check_invariants(m),
 	assert: m elements: [
 		[.key 1, .val 8],
-		[.key 74, .val 78]
+		[.key 74, .val 78],
 	],
 	assert: find(m, 1) some: 8,
 	assert: find(m, 74) some: 78
@@ -1073,7 +1073,7 @@ test fuzz44 {
 		[.key 8, .val 17],
 		[.key 58, .val 95],
 		[.key 89, .val 43],
-		[.key 94, .val 57]
+		[.key 94, .val 57],
 	],
 	assert: find(m, 8) some: 17,
 	assert: find(m, 58) some: 95,
@@ -1097,7 +1097,7 @@ test fuzz45 {
 		[.key 58, .val 18],
 		[.key 65, .val 61],
 		[.key 91, .val 41],
-		[.key 94, .val 98]
+		[.key 94, .val 98],
 	],
 	assert: find(m, 1) some: 48,
 	assert: find(m, 2) some: 53,
@@ -1129,7 +1129,7 @@ test fuzz46 {
 		[.key 65, .val 82],
 		[.key 68, .val 80],
 		[.key 69, .val 22],
-		[.key 86, .val 53]
+		[.key 86, .val 53],
 	],
 	assert: find(m, 1) some: 24,
 	assert: find(m, 5) some: 30,
@@ -1161,7 +1161,7 @@ test fuzz47 {
 		[.key 76, .val 85],
 		[.key 77, .val 62],
 		[.key 80, .val 7],
-		[.key 88, .val 74]
+		[.key 88, .val 74],
 	],
 	assert: find(m, 8) some: 96,
 	assert: find(m, 14) some: 62,
@@ -1191,7 +1191,7 @@ test fuzz48 {
 		[.key 34, .val 78],
 		[.key 86, .val 58],
 		[.key 92, .val 61],
-		[.key 95, .val 0]
+		[.key 95, .val 0],
 	],
 	assert: find(m, 8) some: 55,
 	assert: find(m, 20) some: 25,
@@ -1211,7 +1211,7 @@ test fuzz49 {
 	assert: m elements: [
 		[.key 14, .val 7],
 		[.key 59, .val 1],
-		[.key 72, .val 58]
+		[.key 72, .val 58],
 	],
 	assert: find(m, 14) some: 7,
 	assert: find(m, 59) some: 1,

@@ -27,7 +27,7 @@ const salt := [uint64] :: [
 	0xe7037ed1a0b428db,
 	0x8ebc6af09c88c6e3,
 	0x589965cc75374cc3,
-	0x1d8e4e27c47d124f
+	0x1d8e4e27c47d124f,
 ]
 
 Func hash(seed uint64, data T) uint64 : {

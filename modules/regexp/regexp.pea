@@ -302,7 +302,7 @@ func empty() regexp {
 		.source "",
 		.prog ring_buffer#new(),
 		.class vector#new(),
-		.ncap 0
+		.ncap 0,
 	]
 }
 
@@ -361,7 +361,7 @@ Type exec_options [
 Func default() exec_options {
 	return: [
 		.longest false,
-		.full false
+		.full false,
 	]
 }
 
@@ -450,7 +450,7 @@ func vm(re regexp, opts exec_options) vm {
 		.run ring_buffer#new(),
 		.next_run ring_buffer#new(),
 		.free_mem vector#new(),
-		.match []
+		.match [],
 	]
 }
 

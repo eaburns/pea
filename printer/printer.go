@@ -815,6 +815,10 @@ func printArrayLit(p *printer, array *parser.ArrayLit) {
 	// 		5,
 	// 		6,
 	// 	]],
+	if p.src.endLine(prevLoc) < p.src.startLine(end(array)) {
+		printLostTokenAfter(p, ",", prevLoc)
+		printLineBreak(p)
+	}
 	printLostTokenBefore(p.withForcedUnnest(), "]", end(array))
 	p.resetContinuationLine()
 }
@@ -838,6 +842,10 @@ func printStructLit(p *printer, strct *parser.StructLit) {
 		printSpace(p)
 		printExpr(p.withLineBreaksAllowed(), fieldVal.Val)
 		prevLoc = fieldVal.Val.Loc()
+	}
+	if p.src.endLine(prevLoc) < p.src.startLine(end(strct)) {
+		printLostTokenAfter(p, ",", prevLoc)
+		printLineBreak(p)
 	}
 	printLostTokenBefore(p.withForcedUnnest(), "]", end(strct))
 	p.resetContinuationLine()
