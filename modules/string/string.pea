@@ -10,7 +10,7 @@ Func index(h S, n S) int option : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int)S,
-	=(S, S)bool
+	=(S, S)bool,
 } {
 	// Rabin-Karp based on https://medium.com/swlh/rabin-karp-algorithm-using-polynomial-hashing-and-modular-arithmetic-437627b37db6,
 	// using rk_base as the base (prime number from Go implementation),
@@ -79,7 +79,7 @@ Func contains(h S, n S) bool : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int)S,
-	=(S, S)bool
+	=(S, S)bool,
 } {
 	return: index(h, n) some? (_){ true } none? { false }
 }
@@ -117,7 +117,7 @@ Func count(s S, sub S) int : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int)S,
-	=(S, S)bool
+	=(S, S)bool,
 } {
 	n := 0,
 	if: sub.length = 0 then: {
@@ -174,7 +174,7 @@ Func split(s S, delim S) [S] : {
 	.length(S)int,
 	[](S, int)uint8,
 	[](S, int, int)S,
-	=(S, S)bool
+	=(S, S)bool,
 } {
 	n := 0,
 	if: delim.length = 0 then: {

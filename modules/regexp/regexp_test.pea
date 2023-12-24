@@ -190,7 +190,7 @@ func =(a rune vector, b rune vector) bool {
 	return: true
 }
 func print(p print#printer, v X vector) print#printer : {
-	++(print#printer, X)print#printer
+	++(print#printer, X)print#printer,
 } {
 	p ++ "[",
 	first := true,

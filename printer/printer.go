@@ -265,9 +265,7 @@ func printConstraints(p *printer, cs []interface{}, prevLoc loc.Loc) loc.Loc {
 			}
 			prevLoc = printConstraint(p, c)
 			if multiLine {
-				if i < len(cs)-1 {
-					printLostTokenAfter(p, ",", prevLoc)
-				}
+				printLostTokenAfter(p, ",", prevLoc)
 				printLineBreak(p)
 			}
 		}

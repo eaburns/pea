@@ -72,14 +72,14 @@ import "print"
 
 func print(p print#printer, a [.key K, .val V]) print#printer : {
 	++(print#printer, K)print#printer,
-	++(print#printer, V)print#printer
+	++(print#printer, V)print#printer,
 } {
 	return: p ++ "[.key " ++ a.key ++ ", .val " ++ a.val ++ "]"
 }
 
 func =(a [.key K, .val V], b [.key K, .val V]) bool : {
 	=(K, K)bool,
-	=(V, V)bool
+	=(V, V)bool,
 } {
 	return: a.key = b.key && a.val = b.val
 }

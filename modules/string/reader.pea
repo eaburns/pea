@@ -20,7 +20,7 @@ Func reader(s S) S reader : { .length(S)int, [](S, int)uint8 } {
 Func read(r S reader, d [uint8]) io#read_result : {
 	.length(S)int,
 	[](S, int)uint8,
-	[](S, int, int)S
+	[](S, int, int)S,
 } {
 	if: r.str.length = 0 then: {
 		return: [end?]

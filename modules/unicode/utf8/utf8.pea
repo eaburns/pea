@@ -28,7 +28,7 @@ test width {
 Func consume(s &S) [.rune rune, .width int] option : {
 	.length(S)int,
 	[](S, int)uint8,
-	[](S, int, int)S
+	[](S, int, int)S,
 } {
 	return: decode(s) some? (rw){
 		s := s[rw.width, s.length],

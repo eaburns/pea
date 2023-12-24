@@ -1089,7 +1089,7 @@ func TestReproduceBlankLineAfterOpenCurlyBrace(t *testing.T) {
 	tests := []string{`//
 Func assert:some:(o T option, b T) : {
 	++(print#printer, T)print#printer,
-	=(T, T)bool
+	=(T, T)bool,
 } {
 	if: o some: (a T){
 		if: !(a = b) then: {
@@ -1179,11 +1179,13 @@ test foo {
 	}
 }
 
-func TestReproduceShouldElideCommaAtEndOfInterface(t *testing.T) {
+// Previously this was reproducing that we _do_ elide the trailing comma,
+// but iI changed my mind on whether that comma should be required.
+func TestNoElideCommaAtEndOfInterface(t *testing.T) {
 	tests := []string{`//
 func max_heap_down(ts C, less (&T, &T){bool}, i int) : {
 	.length(C)int,
-	[](C, int)&T
+	[](C, int)&T,
 } {}
 `}
 	for _, src := range tests {

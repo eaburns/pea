@@ -375,7 +375,7 @@ Type read_result [
 Func read(s &S) read_result : {
 	.length(S)int,
 	[](S, int)uint8,
-	[](S, int, int)S
+	[](S, int, int)S,
 } {
 	return: utf8#consume(s) some? (rw){
 		read_result :: [rune? rw]
@@ -388,7 +388,7 @@ Func read(s &S) read_result : {
 Func read(s &S) read_result : {
 	.length(S)int,
 	[](S, int)rune,
-	[](S, int, int)S
+	[](S, int, int)S,
 } {
 	if: s.length = 0 then: {
 		return: [end?]
