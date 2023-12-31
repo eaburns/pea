@@ -1,6 +1,10 @@
 package parser
 
-import "github.com/eaburns/pea/loc"
+import (
+	"strings"
+
+	"github.com/eaburns/pea/loc"
+)
 
 type File struct {
 	Imports []*Import
@@ -46,6 +50,9 @@ type TypeDef struct {
 }
 
 type Type interface {
+	// String returns a string representation suitable for debugging.
+	String() string
+	buildString(*strings.Builder) *strings.Builder
 	Loc() loc.Loc
 }
 
@@ -160,6 +167,9 @@ type TestDef struct {
 }
 
 type Expr interface {
+	// String returns a string representation suitable for debugging.
+	String() string
+	buildString(*strings.Builder) *strings.Builder
 	Loc() loc.Loc
 }
 
@@ -271,8 +281,7 @@ type TypeVar struct {
 	L    loc.Loc
 }
 
-func (tv TypeVar) Loc() loc.Loc   { return tv.L }
-func (tv TypeVar) String() string { return tv.Name }
+func (tv TypeVar) Loc() loc.Loc { return tv.L }
 
 type Ident struct {
 	Name string
@@ -286,8 +295,7 @@ type Ident struct {
 	L loc.Loc
 }
 
-func (i Ident) Loc() loc.Loc   { return i.L }
-func (i Ident) String() string { return i.Name }
+func (i Ident) Loc() loc.Loc { return i.L }
 
 type Comment struct {
 	Text string
