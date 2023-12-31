@@ -366,7 +366,7 @@ func compileFG(m *mod.Mod, fgOpts ...flowgraph.Option) (fg *flowgraph.Mod, locs 
 		fail(errs...)
 	}
 	if *dumpCheck {
-		checkMod.Print(os.Stdout, checker.PrintLocs(locs))
+		checkMod.PrintTree(os.Stdout, checker.PrintLocs(locs))
 	}
 	return flowgraph.Build(checkMod, fgOpts...), locs
 }

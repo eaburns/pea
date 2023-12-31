@@ -20,7 +20,7 @@ type Error interface {
 func newError(locer loc.Locer, f string, vs ...interface{}) Error {
 	l := locer.Loc()
 	if l == (loc.Loc{}) {
-		if pr, ok := locer.(printer); ok {
+		if pr, ok := locer.(treePrinter); ok {
 			print(os.Stderr, pr)
 		}
 		panic("impossible no location")
