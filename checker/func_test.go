@@ -169,14 +169,14 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 	retPat := sel.ret()
 	retTypeParm := sel.typeParms[1]
 	var bind map[*TypeParm]Type
-	isect, note := intersection(anyPat, retPat, &bind)
+	u, note := unify(anyPat, retPat, &bind)
 	if note != nil {
-		t.Fatalf("intersect(%s, %s)=%s, want nil", anyPat, retPat, note)
+		t.Fatalf("unify(%s, %s)=%s, want nil", anyPat, retPat, note)
 	}
 	if bind == nil {
 		t.Fatalf("bind is nil")
 	}
-	sel, subErr := subSelect(sel, isect.Parms, bind)
+	sel, subErr := subSelect(sel, u.Parms, bind)
 	if subErr != nil {
 		t.Fatalf("sub=%s, want nil", subErr)
 	}
@@ -488,14 +488,14 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 	retPat := sw.ret()
 	retTypeParm := sw.typeParms[0]
 	var bind map[*TypeParm]Type
-	isect, note := intersection(anyPat, retPat, &bind)
+	u, note := unify(anyPat, retPat, &bind)
 	if note != nil {
-		t.Fatalf("intersect(%s, %s)=%s, want nil", anyPat, retPat, note)
+		t.Fatalf("unify(%s, %s)=%s, want nil", anyPat, retPat, note)
 	}
 	if bind == nil {
 		t.Fatalf("bind is nil")
 	}
-	sw, subErr := subSwitch(sw, isect.Parms, bind)
+	sw, subErr := subSwitch(sw, u.Parms, bind)
 	if subErr != nil {
 		t.Fatalf("sub=%s, want nil", subErr)
 	}

@@ -659,7 +659,7 @@ func TestPatternIntersection(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		t.Run("intersect("+test.a+", "+test.b+")", func(t *testing.T) {
+		t.Run("unify("+test.a+", "+test.b+")", func(t *testing.T) {
 			mod, errs := check("test", []string{test.src}, nil)
 			if len(errs) > 0 {
 				t.Fatalf("failed to parse and check: %s", errs[0])
@@ -678,27 +678,27 @@ func TestPatternIntersection(t *testing.T) {
 			copyTypeParmNamesToVars(b.Type)
 
 			var bind map[*TypeParm]Type
-			switch isect, err := intersection(a, b, &bind); {
-			case test.want == "" && isect != nil:
-				t.Fatalf("intersect(%s, %s)=%s, want nil", test.a, test.b, isect)
+			switch u, err := unify(a, b, &bind); {
+			case test.want == "" && u != nil:
+				t.Fatalf("unify(%s, %s)=%s, want nil", test.a, test.b, u)
 			case test.want == "":
 				return // OK
-			case test.want != "" && isect == nil:
+			case test.want != "" && u == nil:
 				var n string
 				if err != nil {
 					p := makeErrorPrinter(mod.topScope)
 					err.print(p)
 					n = ", " + p.String() + ""
 				}
-				t.Fatalf("intersect(%s, %s)=nil%s, want %s", test.a, test.b, n, test.want)
-			case test.want != "" && isect.String() != test.want:
-				t.Fatalf("intersect(%s, %s)=%s, want %s", test.a, test.b, isect, test.want)
+				t.Fatalf("unify(%s, %s)=nil%s, want %s", test.a, test.b, n, test.want)
+			case test.want != "" && u.String() != test.want:
+				t.Fatalf("unify(%s, %s)=%s, want %s", test.a, test.b, u, test.want)
 			default:
-				if aPrime := subType(bind, a.Type); !eqType(aPrime, isect.Type) {
-					t.Errorf("sub(bind, %s)=%s, want %s", a.Type, aPrime, isect.Type)
+				if aPrime := subType(bind, a.Type); !eqType(aPrime, u.Type) {
+					t.Errorf("sub(bind, %s)=%s, want %s", a.Type, aPrime, u.Type)
 				}
-				if bPrime := subType(bind, b.Type); !eqType(bPrime, isect.Type) {
-					t.Errorf("sub(bind, %s)=%s, want %s", b.Type, bPrime, isect.Type)
+				if bPrime := subType(bind, b.Type); !eqType(bPrime, u.Type) {
+					t.Errorf("sub(bind, %s)=%s, want %s", b.Type, bPrime, u.Type)
 				}
 			}
 		})
@@ -713,12 +713,12 @@ func TestPatternIntersectionOfTwoVariables(t *testing.T) {
 	a := parseTestPattern(t, mod, "?")
 	b := parseTestPattern(t, mod, "?")
 	var bind map[*TypeParm]Type
-	isect, _ := intersection(a, b, &bind)
-	if isect == nil {
-		t.Fatalf("intersection(%s, %s)=nil, wanted ?", a, b)
+	u, _ := unify(a, b, &bind)
+	if u == nil {
+		t.Fatalf("unify(%s, %s)=nil, wanted ?", a, b)
 	}
-	if isect.isGroundType() {
-		t.Fatalf("intersection(%s, %s).isGroundType()=true, want false", a, b)
+	if u.isGroundType() {
+		t.Fatalf("unify(%s, %s).isGroundType()=true, want false", a, b)
 	}
 }
 
@@ -739,16 +739,16 @@ func TestPatternIntersectionIgnoreBoundTypeParameters(t *testing.T) {
 	pat1 := parseTestPattern(t, mod, "int list")
 
 	var bind map[*TypeParm]Type
-	isect, note := intersection(pat0, pat1, &bind)
-	if isect == nil {
-		t.Fatalf("intersection(%s, %s) failed %s", pat0, pat1, note)
+	u, note := unify(pat0, pat1, &bind)
+	if u == nil {
+		t.Fatalf("unify(%s, %s) failed %s", pat0, pat1, note)
 	}
 	if bind == nil {
-		t.Fatalf("intersection(%s, %s) got bindings nil, expected a binding to %s",
+		t.Fatalf("unify(%s, %s) got bindings nil, expected a binding to %s",
 			pat0, pat1, pat0.Parms[0].Name)
 	}
 	if _, ok := bind[pat0.Parms[0]]; !ok || len(bind) != 1 {
-		t.Fatalf("intersection(%s, %s) got bindings %v, expected a binding to %s",
+		t.Fatalf("unify(%s, %s) got bindings %v, expected a binding to %s",
 			pat0, pat1, bindAsSlice(bind), pat0.Parms[0].Name)
 	}
 }
@@ -764,21 +764,21 @@ func TestPatternSelfIntersection(t *testing.T) {
 	pat := parseTestPattern(t, mod, "? list")
 
 	var bind map[*TypeParm]Type
-	isect, note := intersection(pat, pattern(pat.Type), &bind)
-	if isect == nil {
-		t.Fatalf("intersection(%s, %s) failed %s", pat, pattern(pat.Type), note)
+	u, note := unify(pat, pattern(pat.Type), &bind)
+	if u == nil {
+		t.Fatalf("unify(%s, %s) failed %s", pat, pattern(pat.Type), note)
 	}
-	if !eqType(isect.Type, pat.Type) || len(isect.Parms) != 0 {
-		t.Fatalf("intersection(%s, %s)=%s, wanted %s\n", pat, pattern(pat.Type), isect, pat.Type)
+	if !eqType(u.Type, pat.Type) || len(u.Parms) != 0 {
+		t.Fatalf("unify(%s, %s)=%s, wanted %s\n", pat, pattern(pat.Type), u, pat.Type)
 	}
 
 	bind = nil
-	isect, note = intersection(pattern(pat.Type), pat, &bind)
-	if isect == nil {
-		t.Fatalf("intersection(%s, %s) failed %s", pattern(pat.Type), pat, note)
+	u, note = unify(pattern(pat.Type), pat, &bind)
+	if u == nil {
+		t.Fatalf("unify(%s, %s) failed %s", pattern(pat.Type), pat, note)
 	}
-	if !eqType(isect.Type, pat.Type) || len(isect.Parms) != 0 {
-		t.Fatalf("intersection(%s, %s)=%s, wanted %s\n", pattern(pat.Type), pat, isect, pat.Type)
+	if !eqType(u.Type, pat.Type) || len(u.Parms) != 0 {
+		t.Fatalf("unify(%s, %s)=%s, wanted %s\n", pattern(pat.Type), pat, u, pat.Type)
 	}
 }
 

@@ -27,6 +27,46 @@ func makeTypePattern(parms []*TypeParm, typ Type) TypePattern {
 	}
 }
 
+// filterTypeParms filters parms to only contain *TypeParms
+// that are referenced by at least one TypeVar in types.
+// The order of the parameters is preserved;
+// and the underlying array is only copied
+// if the slice is actually modified.
+func filterTypeParms(parms []*TypeParm, types ...Type) []*TypeParm {
+	if len(parms) == 0 {
+		return parms
+	}
+	nSeen := 0
+	seen := make([]bool, len(parms))
+	for _, t := range types {
+		walkType(t, func(t Type) bool {
+			if tv, ok := t.(*TypeVar); ok {
+				for i, p := range parms {
+					if !seen[i] && p == tv.Def {
+						seen[i] = true
+						nSeen++
+					}
+				}
+			}
+			return false
+		})
+	}
+	switch {
+	case nSeen == 0:
+		return nil
+	case nSeen == len(parms):
+		return parms
+	default:
+		copy := make([]*TypeParm, 0, nSeen)
+		for i, p := range parms {
+			if seen[i] {
+				copy = append(copy, p)
+			}
+		}
+		return copy
+	}
+}
+
 // any returns a new TypePattern with a single, bound type variable.
 func any() TypePattern {
 	n := "_"
@@ -315,18 +355,22 @@ func common(pats ...TypePattern) TypePattern {
 	return pat
 }
 
-type patternIsectError interface{ Cause }
+type patternUnifyError interface{ Cause }
 
-// intersection returns the intersection of two type patterns or nil if there intersection is empty.
+// unify returns the unification of two type patterns or nil if they cannot unify.
+// The unification of a and b is a type pattern resulting from
+// substituting bound type variables in a with corresponding types in b, and
+// substituting bound type variables in b with corresponding types in a.
+// If there is no such substitution, the type patterns cannot unify.
 //
 // The bind parameter is a pointer to a map from type parameters to their bound types.
 // The pointed-to map may be a nil map (the pointer itself must not be nil).
-// If any type parameters are bound, intersection will first allocate a map if the map is nil,
+// If any type parameters are bound, unify will first allocate a map if the map is nil,
 // and it will add the new bindings to the map.
 //
-// If the intersection is empty returned notes may be non-nil
+// If the patterns cannot unify, notes may be non-nil
 // if there is a note to give more information as to why.
-func intersection(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternIsectError) {
+func unify(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternUnifyError) {
 	if len(a.Parms) == 0 && len(b.Parms) == 0 {
 		// Fast-path the common case of simply checking two types align.
 		if err := alignTypes(nil, a, b); err != nil {
@@ -383,7 +427,7 @@ func intersection(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, pat
 			s.substituted = true
 		}
 		// There may already be a binding if the map was used
-		// on a previous call to intersection().
+		// on a previous call to unify().
 		if prev, ok := (*bind)[parm]; ok && !eqType(prev, s.bind) {
 			return nil, &PatternBindingError{Parm: parm, Prev: prev, Cur: s.bind}
 		}
@@ -808,42 +852,3 @@ func (sets *disjointSets) union(a, b *TypeParm) {
 	}
 }
 
-// filterTypeParms filters parms to only contain *TypeParms
-// that are referenced by at least one TypeVar in types.
-// The order of the parameters is preserved;
-// and the underlying array is only copied
-// if the slice is actually modified.
-func filterTypeParms(parms []*TypeParm, types ...Type) []*TypeParm {
-	if len(parms) == 0 {
-		return parms
-	}
-	nSeen := 0
-	seen := make([]bool, len(parms))
-	for _, t := range types {
-		walkType(t, func(t Type) bool {
-			if tv, ok := t.(*TypeVar); ok {
-				for i, p := range parms {
-					if !seen[i] && p == tv.Def {
-						seen[i] = true
-						nSeen++
-					}
-				}
-			}
-			return false
-		})
-	}
-	switch {
-	case nSeen == 0:
-		return nil
-	case nSeen == len(parms):
-		return parms
-	default:
-		copy := make([]*TypeParm, 0, nSeen)
-		for i, p := range parms {
-			if seen[i] {
-				copy = append(copy, p)
-			}
-		}
-		return copy
-	}
-}

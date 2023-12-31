@@ -349,13 +349,13 @@ func (m convertMode) String() string {
 // In this case, convert will lazily allocate a new map if needed.
 // If the conversion results in any parameter bindings they are added to *bind.
 func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *map[*TypeParm]Type) (TypePattern, *Convert, *ConvertError) {
-	isect, err := intersection(src, dst, bind)
-	if isect != nil {
-		return *isect, conversion(cvt, Noop, isect.Type), nil
+	u, err := unify(src, dst, bind)
+	if u != nil {
+		return *u, conversion(cvt, Noop, u.Type), nil
 	}
 	switch {
 	default:
-		// If nothing below matched, return the note from the intersection error.
+		// If nothing below matched, return the note from the unify error.
 		return TypePattern{}, nil, &ConvertError{
 			Src:      src,
 			Dst:      dst,

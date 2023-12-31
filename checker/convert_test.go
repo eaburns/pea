@@ -345,7 +345,6 @@ func TestConvert(t *testing.T) {
 
 		// This doesn't convert, because [b? int] is not a subset of [a?, b? T, c?].
 		// This is because int != T.
-		// TODO: We should union subset conversion to use intersect?
 		{
 			src: "[b? int]",
 			// type T abc_union_ref &[a?, b? T, c?]

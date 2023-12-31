@@ -459,7 +459,7 @@ func (err *PatternBindingError) print(p errorPrinter) {
 }
 
 // PatternSubError indicates recursive substitution
-// when substituting a type variable during pattern intersection.
+// when substituting a type variable during pattern unification.
 type PatternSubError struct {
 	Loop []*TypeParm
 }
