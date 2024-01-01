@@ -21,50 +21,7 @@ type TypePattern struct {
 func (pat TypePattern) Loc() loc.Loc { return pat.Type.Loc() }
 
 func makeTypePattern(parms []*TypeParm, typ Type) TypePattern {
-	return TypePattern{
-		Parms: filterTypeParms(parms, typ),
-		Type:  typ,
-	}
-}
-
-// filterTypeParms filters parms to only contain *TypeParms
-// that are referenced by at least one TypeVar in types.
-// The order of the parameters is preserved;
-// and the underlying array is only copied
-// if the slice is actually modified.
-func filterTypeParms(parms []*TypeParm, types ...Type) []*TypeParm {
-	if len(parms) == 0 {
-		return parms
-	}
-	nSeen := 0
-	seen := make([]bool, len(parms))
-	for _, t := range types {
-		walkType(t, func(t Type) bool {
-			if tv, ok := t.(*TypeVar); ok {
-				for i, p := range parms {
-					if !seen[i] && p == tv.Def {
-						seen[i] = true
-						nSeen++
-					}
-				}
-			}
-			return false
-		})
-	}
-	switch {
-	case nSeen == 0:
-		return nil
-	case nSeen == len(parms):
-		return parms
-	default:
-		copy := make([]*TypeParm, 0, nSeen)
-		for i, p := range parms {
-			if seen[i] {
-				copy = append(copy, p)
-			}
-		}
-		return copy
-	}
+	return TypePattern{Parms: parms, Type: typ}
 }
 
 // any returns a new TypePattern with a single, bound type variable.
@@ -851,4 +808,3 @@ func (sets *disjointSets) union(a, b *TypeParm) {
 		x.rank++
 	}
 }
-
