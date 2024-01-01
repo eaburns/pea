@@ -534,11 +534,13 @@ type Expr interface {
 	Type() Type
 	Loc() loc.Loc
 
-	buildString(*stringBuilder)
 	// subExpr returns a copy of the Expr
 	// with TypeVars and FuncDecls substituted.
 	// The return is always a copy.
 	subExpr(bindings) Expr
+
+	buildString(*stringBuilder)
+	printExpr(*exprPrinter)
 }
 
 type Call struct {

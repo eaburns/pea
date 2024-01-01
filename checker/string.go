@@ -21,6 +21,7 @@ type stringBuilder struct {
 	// For correctness, this choice must be carried through
 	// even if typeParms is later appended to.
 	typeParm0Name string
+	useSubScripts bool
 
 	// elideMod is a module name to elide in type names.
 	elideMod string
@@ -343,6 +344,20 @@ func (f FuncType) buildString(w *stringBuilder) {
 	w.WriteRune('}')
 }
 
+func toSub(s string) string {
+	s = strings.ReplaceAll(s, "0", "₀")
+	s = strings.ReplaceAll(s, "1", "₁")
+	s = strings.ReplaceAll(s, "2", "₂")
+	s = strings.ReplaceAll(s, "3", "₃")
+	s = strings.ReplaceAll(s, "4", "₄")
+	s = strings.ReplaceAll(s, "5", "₅")
+	s = strings.ReplaceAll(s, "6", "₆")
+	s = strings.ReplaceAll(s, "7", "₇")
+	s = strings.ReplaceAll(s, "8", "₈")
+	s = strings.ReplaceAll(s, "9", "₉")
+	return s
+}
+
 func (t *TypeVar) buildString(w *stringBuilder) {
 	parmIndex := -1
 	for i, p := range w.typeParms {
@@ -360,10 +375,17 @@ func (t *TypeVar) buildString(w *stringBuilder) {
 			w.typeParm0Name = "?"
 		case w.typeParm0Name == "":
 			w.typeParm0Name = "?0"
+			if w.useSubScripts {
+				w.typeParm0Name = toSub(w.typeParm0Name)
+			}
 		}
 		w.WriteString(w.typeParm0Name)
 	default:
-		w.WriteString(fmt.Sprintf("?%d", parmIndex))
+		s := fmt.Sprintf("?%d", parmIndex)
+		if w.useSubScripts {
+			s = toSub(s)
+		}
+		w.WriteString(s)
 	}
 }
 
