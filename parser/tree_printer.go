@@ -9,9 +9,9 @@ import (
 	"github.com/eaburns/pea/loc"
 )
 
-type PrintOpt func(*config)
+type PrintTreeOpt func(*config)
 
-func PrintLocs(fs ...*File) PrintOpt {
+func PrintTreeLocs(fs ...*File) PrintTreeOpt {
 	var files loc.Files
 	for _, f := range fs {
 		files = append(files, f)
@@ -19,8 +19,8 @@ func PrintLocs(fs ...*File) PrintOpt {
 	return func(pc *config) { pc.files = files }
 }
 
-func (f *File) Print(w io.Writer, opts ...PrintOpt) error {
-	return print(w, f, opts...)
+func (f *File) PrintTree(w io.Writer, opts ...PrintTreeOpt) error {
+	return printTree(w, f, opts...)
 }
 
 type config struct {
@@ -30,19 +30,19 @@ type config struct {
 	ident string
 }
 
-type printerError struct{ error }
+type printTreeError struct{ error }
 
-type printer interface {
-	print(*config)
+type treePrinter interface {
+	printTree(*config)
 }
 
-func print(w io.Writer, tree printer, opts ...PrintOpt) (err error) {
+func printTree(w io.Writer, tree treePrinter, opts ...PrintTreeOpt) (err error) {
 	defer func() {
 		r := recover()
 		if r == nil {
 			return
 		}
-		if e, ok := r.(printerError); ok {
+		if e, ok := r.(printTreeError); ok {
 			err = e
 		} else {
 			panic(r)
@@ -52,12 +52,12 @@ func print(w io.Writer, tree printer, opts ...PrintOpt) (err error) {
 	for _, opt := range opts {
 		opt(pc)
 	}
-	tree.print(pc)
+	tree.printTree(pc)
 	pc.p("\n")
 	return err
 }
 
-func (f *File) print(pc *config) {
+func (f *File) printTree(pc *config) {
 	pc.p("File{")
 	pc.field("Path", f.P)
 	pc.field("Comments", f.Comments)
@@ -66,7 +66,7 @@ func (f *File) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (i *Import) print(pc *config) {
+func (i *Import) printTree(pc *config) {
 	pc.p("Import{")
 	pc.loc(i.L)
 	pc.field("Name", i.Name)
@@ -74,7 +74,7 @@ func (i *Import) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (v *VarDef) print(pc *config) {
+func (v *VarDef) printTree(pc *config) {
 	pc.p("VarDef{")
 	pc.loc(v.L)
 	pc.field("Exp", v.Exp)
@@ -85,7 +85,7 @@ func (v *VarDef) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (t *TypeDef) print(pc *config) {
+func (t *TypeDef) printTree(pc *config) {
 	pc.p("TypeDef{")
 	pc.loc(t.L)
 	pc.field("Exp", t.Exp)
@@ -96,7 +96,7 @@ func (t *TypeDef) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (t *IfaceDef) print(pc *config) {
+func (t *IfaceDef) printTree(pc *config) {
 	pc.p("IfaceDef{")
 	pc.loc(t.L)
 	pc.field("Exp", t.Exp)
@@ -111,14 +111,14 @@ func (t *IfaceDef) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (r *RefType) print(pc *config) {
+func (r *RefType) printTree(pc *config) {
 	pc.p("RefType{")
 	pc.loc(r.L)
 	pc.field("Type", r.Type)
 	pc.p("\n}")
 }
 
-func (n *NamedType) print(pc *config) {
+func (n *NamedType) printTree(pc *config) {
 	pc.p("NamedType{")
 	pc.loc(n.L)
 	pc.field("Mod", n.Mod)
@@ -127,21 +127,21 @@ func (n *NamedType) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (a *ArrayType) print(pc *config) {
+func (a *ArrayType) printTree(pc *config) {
 	pc.p("ArrayType{")
 	pc.loc(a.L)
 	pc.field("ElemType", a.ElemType)
 	pc.p("\n}")
 }
 
-func (s *StructType) print(pc *config) {
+func (s *StructType) printTree(pc *config) {
 	pc.p("StructType{")
 	pc.loc(s.L)
 	pc.field("Fields", s.Fields)
 	pc.p("\n}")
 }
 
-func (f FieldDef) print(pc *config) {
+func (f FieldDef) printTree(pc *config) {
 	pc.p("FieldDef{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
@@ -149,14 +149,14 @@ func (f FieldDef) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (u *UnionType) print(pc *config) {
+func (u *UnionType) printTree(pc *config) {
 	pc.p("UnionType{")
 	pc.loc(u.L)
 	pc.field("Cases", u.Cases)
 	pc.p("\n}")
 }
 
-func (c CaseDef) print(pc *config) {
+func (c CaseDef) printTree(pc *config) {
 	pc.p("CaseDef{")
 	pc.loc(c.L)
 	pc.field("Name", c.Name)
@@ -164,7 +164,7 @@ func (c CaseDef) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f *FuncType) print(pc *config) {
+func (f *FuncType) printTree(pc *config) {
 	pc.p("FuncType{")
 	pc.loc(f.L)
 	pc.field("Parms", f.Parms)
@@ -172,7 +172,7 @@ func (f *FuncType) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f *FuncDef) print(pc *config) {
+func (f *FuncDef) printTree(pc *config) {
 	pc.p("FuncDef{")
 	pc.loc(f.L)
 	pc.field("Expr", f.Exp)
@@ -184,7 +184,7 @@ func (f *FuncDef) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f FuncParm) print(pc *config) {
+func (f FuncParm) printTree(pc *config) {
 	pc.p("FuncParm{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
@@ -193,7 +193,7 @@ func (f FuncParm) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f FuncDecl) print(pc *config) {
+func (f FuncDecl) printTree(pc *config) {
 	pc.p("FuncDecl{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
@@ -202,7 +202,7 @@ func (f FuncDecl) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (f *TestDef) print(pc *config) {
+func (f *TestDef) printTree(pc *config) {
 	pc.p("TestDef{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
@@ -210,7 +210,7 @@ func (f *TestDef) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (c *Call) print(pc *config) {
+func (c *Call) printTree(pc *config) {
 	pc.p("Call{")
 	pc.loc(c.L)
 	pc.field("Fun", c.Fun)
@@ -218,7 +218,7 @@ func (c *Call) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (c *Convert) print(pc *config) {
+func (c *Convert) printTree(pc *config) {
 	pc.p("Convert{")
 	pc.loc(c.L)
 	pc.field("Type", c.Type)
@@ -226,14 +226,14 @@ func (c *Convert) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (s *SubExpr) print(pc *config) {
+func (s *SubExpr) printTree(pc *config) {
 	pc.p("SubExpr{")
 	pc.loc(s.L)
 	pc.field("Expr", s.Expr)
 	pc.p("\n}")
 }
 
-func (m *ModSel) print(pc *config) {
+func (m *ModSel) printTree(pc *config) {
 	pc.p("ModSel{")
 	pc.loc(m.L)
 	pc.field("Mod", m.Mod)
@@ -241,20 +241,20 @@ func (m *ModSel) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (a *ArrayLit) print(pc *config) {
+func (a *ArrayLit) printTree(pc *config) {
 	pc.p("ArrayLit{")
 	pc.loc(a.L)
 	pc.field("Exprs", a.Exprs)
 	pc.p("\n}")
 }
 
-func (s *StructLit) print(pc *config) {
+func (s *StructLit) printTree(pc *config) {
 	pc.p("StructLit{")
 	pc.loc(s.L)
 	pc.field("FieldVals", s.FieldVals)
 	pc.p("\n}")
 }
-func (f FieldVal) print(pc *config) {
+func (f FieldVal) printTree(pc *config) {
 	pc.p("FieldVal{")
 	pc.loc(f.L)
 	pc.field("Name", f.Name)
@@ -262,14 +262,14 @@ func (f FieldVal) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (u *UnionLit) print(pc *config) {
+func (u *UnionLit) printTree(pc *config) {
 	pc.p("UnionLit{")
 	pc.loc(u.L)
 	pc.field("CaseVal", u.CaseVal)
 	pc.p("\n}")
 }
 
-func (c *CaseVal) print(pc *config) {
+func (c *CaseVal) printTree(pc *config) {
 	pc.p("CaseVal{")
 	pc.loc(c.L)
 	pc.field("Name", c.Name)
@@ -277,7 +277,7 @@ func (c *CaseVal) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (b *BlockLit) print(pc *config) {
+func (b *BlockLit) printTree(pc *config) {
 	pc.p("BlockLit{")
 	pc.loc(b.L)
 	pc.field("Parms", b.Parms)
@@ -285,37 +285,37 @@ func (b *BlockLit) print(pc *config) {
 	pc.p("\n}")
 }
 
-func (c *CharLit) print(pc *config) {
+func (c *CharLit) printTree(pc *config) {
 	pc.p("CharLit(%c)", c.Rune)
 	pc.loc(c.L)
 }
 
-func (s *StrLit) print(pc *config) {
+func (s *StrLit) printTree(pc *config) {
 	pc.p("StrLit(%q)", s.Data)
 	pc.loc(s.L)
 }
 
-func (i *IntLit) print(pc *config) {
+func (i *IntLit) printTree(pc *config) {
 	pc.p("IntLit(%s)", i.Text)
 	pc.loc(i.L)
 }
 
-func (i *FloatLit) print(pc *config) {
+func (i *FloatLit) printTree(pc *config) {
 	pc.p("FloatLit(%s)", i.Text)
 	pc.loc(i.L)
 }
 
-func (t TypeVar) print(pc *config) {
+func (t TypeVar) printTree(pc *config) {
 	pc.p("TypeVar(%s)", t.Name)
 	pc.loc(t.L)
 }
 
-func (i Ident) print(pc *config) {
+func (i Ident) printTree(pc *config) {
 	pc.p("Id(%s)", i.Name)
 	pc.loc(i.L)
 }
 
-func (c Comment) print(pc *config) {
+func (c Comment) printTree(pc *config) {
 	pc.p("Comment(%s)", c.Text)
 	pc.loc(c.L)
 }
@@ -339,8 +339,8 @@ func (pc *config) field(name string, val interface{}) {
 		pc.slice(val)
 		return
 	}
-	if t, ok := val.(printer); ok {
-		t.print(pc)
+	if t, ok := val.(treePrinter); ok {
+		t.printTree(pc)
 		return
 	}
 	pc.p("%v", val)
@@ -356,7 +356,7 @@ func (pc *config) slice(s interface{}) {
 	pc.p("{")
 	for i := 0; i < v.Len(); i++ {
 		pc.p("\n")
-		v.Index(i).Interface().(printer).print(pc)
+		v.Index(i).Interface().(treePrinter).printTree(pc)
 		pc.p(",")
 	}
 	pc.n--
@@ -367,6 +367,6 @@ func (pc *config) p(f string, vs ...interface{}) {
 	f = strings.ReplaceAll(f, "\n", "\n"+strings.Repeat(pc.ident, pc.n))
 	_, err := fmt.Fprintf(pc.w, f, vs...)
 	if err != nil {
-		panic(printerError{err})
+		panic(printTreeError{err})
 	}
 }

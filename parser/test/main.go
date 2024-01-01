@@ -30,5 +30,5 @@ func main() {
 	if dir, err := os.Getwd(); err == nil {
 		file.P = strings.TrimPrefix(file.P, dir+"/")
 	}
-	p.Files[0].Print(os.Stdout, parser.PrintLocs(file))
+	p.Files[0].PrintTree(os.Stdout, parser.PrintTreeLocs(file))
 }
