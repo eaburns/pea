@@ -12,21 +12,14 @@ type stringBuilder struct {
 	// This is intended for test strings.
 	fullString bool
 
-	// typeParms are the current type parameters;
-	// their type variables are re-named to ?#,
-	// where # is teh index of the TypeParm in the array.
-	typeParms []*TypeParm
-	// typeParm0Name is the name given to the 0th type parameter.
-	// When first named, if there is only one type parameter, its name is ?.
-	// For correctness, this choice must be carried through
-	// even if typeParms is later appended to.
-	typeParm0Name string
-	useSubScripts bool
-
 	// elideMod is a module name to elide in type names.
 	elideMod string
 
-	builder strings.Builder
+	// Whether to use subscripts for bound type variable names.
+	useSubScripts bool
+
+	typeParmNames map[*TypeParm]string
+	builder       strings.Builder
 }
 
 func (v *VarDef) String() string   { return v.Name }
@@ -222,9 +215,29 @@ func (w *stringBuilder) WriteRune(r rune) {
 }
 
 func (pat TypePattern) buildString(w *stringBuilder) {
-	orig := w.typeParms
-	defer func() { w.typeParms = orig }()
-	w.typeParms = appendTypeParmsToCopy(orig, pat.Parms)
+	if w.typeParmNames == nil {
+		w.typeParmNames = make(map[*TypeParm]string)
+	}
+	if len(pat.Parms) == 1 && len(w.typeParmNames) == 0 {
+		w.typeParmNames[pat.Parms[0]] = "?"
+	} else {
+		for _, p := range pat.Parms {
+			n := fmt.Sprintf("?%d", len(w.typeParmNames))
+			if w.useSubScripts {
+				n = strings.ReplaceAll(n, "0", "₀")
+				n = strings.ReplaceAll(n, "1", "₁")
+				n = strings.ReplaceAll(n, "2", "₂")
+				n = strings.ReplaceAll(n, "3", "₃")
+				n = strings.ReplaceAll(n, "4", "₄")
+				n = strings.ReplaceAll(n, "5", "₅")
+				n = strings.ReplaceAll(n, "6", "₆")
+				n = strings.ReplaceAll(n, "7", "₇")
+				n = strings.ReplaceAll(n, "8", "₈")
+				n = strings.ReplaceAll(n, "9", "₉")
+			}
+			w.typeParmNames[p] = n
+		}
+	}
 	pat.Type.buildString(w)
 }
 
@@ -344,52 +357,17 @@ func (f FuncType) buildString(w *stringBuilder) {
 	w.WriteRune('}')
 }
 
-func toSub(s string) string {
-	s = strings.ReplaceAll(s, "0", "₀")
-	s = strings.ReplaceAll(s, "1", "₁")
-	s = strings.ReplaceAll(s, "2", "₂")
-	s = strings.ReplaceAll(s, "3", "₃")
-	s = strings.ReplaceAll(s, "4", "₄")
-	s = strings.ReplaceAll(s, "5", "₅")
-	s = strings.ReplaceAll(s, "6", "₆")
-	s = strings.ReplaceAll(s, "7", "₇")
-	s = strings.ReplaceAll(s, "8", "₈")
-	s = strings.ReplaceAll(s, "9", "₉")
-	return s
-}
-
 func (t *TypeVar) buildString(w *stringBuilder) {
-	parmIndex := -1
-	for i, p := range w.typeParms {
-		if t.Def == p {
-			parmIndex = i
-			break
+	if w.typeParmNames != nil && t.Def != nil {
+		if n, ok := w.typeParmNames[t.Def]; ok {
+			w.WriteString(n)
+			return
 		}
 	}
-	switch {
-	case parmIndex < 0:
-		if t.Def != nil {
-			w.WriteString(t.Def.Name)
-		} else {
-			w.WriteString(t.SourceName)
-		}
-	case parmIndex == 0:
-		switch {
-		case w.typeParm0Name == "" && len(w.typeParms) == 1:
-			w.typeParm0Name = "?"
-		case w.typeParm0Name == "":
-			w.typeParm0Name = "?0"
-			if w.useSubScripts {
-				w.typeParm0Name = toSub(w.typeParm0Name)
-			}
-		}
-		w.WriteString(w.typeParm0Name)
-	default:
-		s := fmt.Sprintf("?%d", parmIndex)
-		if w.useSubScripts {
-			s = toSub(s)
-		}
-		w.WriteString(s)
+	if t.Def != nil {
+		w.WriteString(t.Def.Name)
+	} else {
+		w.WriteString(t.SourceName)
 	}
 }
 
