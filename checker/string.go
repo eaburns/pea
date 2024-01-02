@@ -368,7 +368,11 @@ func (t *TypeVar) buildString(w *stringBuilder) {
 	}
 	switch {
 	case parmIndex < 0:
-		w.WriteString(t.Name)
+		if t.Def != nil {
+			w.WriteString(t.Def.Name)
+		} else {
+			w.WriteString(t.SourceName)
+		}
 	case parmIndex == 0:
 		switch {
 		case w.typeParm0Name == "" && len(w.typeParms) == 1:

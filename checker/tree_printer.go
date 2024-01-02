@@ -228,13 +228,13 @@ func (f *FuncType) printTree(pc *config) {
 
 func (t TypeVar) printTree(pc *config) {
 	if t.Def == nil {
-		pc.p("TypeVar(%s)", t.Name)
+		pc.p("TypeVar(%s)", t.SourceName)
 		pc.loc(t.L)
 		return
 	}
 	pc.p("TypeVar{")
 	pc.loc(t.L)
-	pc.field("Name", t.Name)
+	pc.field("SourceName", t.SourceName)
 	if t.Def != nil {
 		pc.p("\n  Def: ")
 		pc.loc(t.Def.L)

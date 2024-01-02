@@ -671,11 +671,9 @@ func TestPatternIntersection(t *testing.T) {
 			for i := range a.Parms {
 				a.Parms[i].Name = fmt.Sprintf("A%d", i)
 			}
-			copyTypeParmNamesToVars(a.Type)
 			for i := range b.Parms {
 				b.Parms[i].Name = fmt.Sprintf("B%d", i)
 			}
-			copyTypeParmNamesToVars(b.Type)
 
 			var bind map[*TypeParm]Type
 			switch u, err := unify(a, b, &bind); {
@@ -780,15 +778,6 @@ func TestPatternSelfIntersection(t *testing.T) {
 	if !eqType(u.Type, pat.Type) || len(u.Parms) != 0 {
 		t.Fatalf("unify(%s, %s)=%s, wanted %s\n", pattern(pat.Type), pat, u, pat.Type)
 	}
-}
-
-func copyTypeParmNamesToVars(t Type) {
-	walkType(t, func(t Type) bool {
-		if tv, ok := t.(*TypeVar); ok && tv.Def != nil {
-			tv.Name = tv.Def.Name
-		}
-		return false
-	})
 }
 
 // These are the old unify() tests.
@@ -1137,7 +1126,7 @@ func (s *typeParmScope) findType(args []Type, name string, l loc.Loc) []Type {
 	}
 	for _, parm := range s.parms {
 		if parm.Name == name {
-			return []Type{&TypeVar{Name: name, Def: parm, L: l}}
+			return []Type{&TypeVar{SourceName: name, Def: parm, L: l}}
 		}
 	}
 	return nil

@@ -12,7 +12,6 @@ func TestSelectParm0(t *testing.T) {
 		sel.typeParms,
 		&RefType{
 			Type: &TypeVar{
-				Name: sel.typeParms[0].Name,
 				Def:  sel.typeParms[0],
 			},
 		})
@@ -80,7 +79,6 @@ func TestSelectRetBeforeParmAndSub(t *testing.T) {
 		sel.typeParms,
 		&RefType{
 			Type: &TypeVar{
-				Name: sel.typeParms[1].Name,
 				Def:  sel.typeParms[1],
 			},
 		})
@@ -107,7 +105,6 @@ func TestSelectSubRetBeforeParm0(t *testing.T) {
 		sel.typeParms,
 		&RefType{
 			Type: &TypeVar{
-				Name: sel.typeParms[0].Name,
 				Def:  sel.typeParms[0],
 			},
 		})
@@ -188,7 +185,6 @@ func TestSelectSubTypeParmRetBeforeParm0(t *testing.T) {
 		sel.typeParms,
 		&RefType{
 			Type: &TypeVar{
-				Name: sel.typeParms[0].Name,
 				Def:  sel.typeParms[0],
 			},
 		})
@@ -683,5 +679,5 @@ func subSwitch(sw *Switch, parms []*TypeParm, bind map[*TypeParm]Type) (*Switch,
 }
 
 func typeVar(parm *TypeParm) *TypeVar {
-	return &TypeVar{Name: parm.Name, Def: parm}
+	return &TypeVar{Def: parm}
 }

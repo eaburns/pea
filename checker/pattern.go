@@ -26,7 +26,7 @@ func makeTypePattern(parms []*TypeParm, typ Type) TypePattern {
 func any() TypePattern {
 	n := "_"
 	p := &TypeParm{Name: n}
-	v := &TypeVar{Name: n, Def: p}
+	v := &TypeVar{Def: p}
 	return TypePattern{Parms: []*TypeParm{p}, Type: v}
 }
 
@@ -162,7 +162,7 @@ func common(pats ...TypePattern) TypePattern {
 		nextParm++
 		p := &TypeParm{Name: n}
 		pat.Parms = append(pat.Parms, p)
-		return &TypeVar{Name: n, Def: p}
+		return &TypeVar{Def: p}
 	}
 
 	var buildType func(types []Type) Type
@@ -360,7 +360,7 @@ func unify(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternUni
 			}
 			parm := &TypeParm{Name: name}
 			parms = append(parms, parm)
-			set.bind = &TypeVar{Name: parm.Name, Def: parm}
+			set.bind = &TypeVar{Def: parm}
 		}
 	}
 

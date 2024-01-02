@@ -288,7 +288,7 @@ func findTypeVar(parms []*TypeParm, args []Type, name string, l loc.Loc) *TypeVa
 	}
 	for _, p := range parms {
 		if p.Name == name {
-			return &TypeVar{Name: name, Def: p, L: l}
+			return &TypeVar{SourceName: name, Def: p, L: l}
 		}
 	}
 	return nil
@@ -426,7 +426,7 @@ func (m *Mod) findIDs(name string) []id {
 				p := &TypeParm{Name: "T"}
 				b.typeParms = []*TypeParm{p}
 				bind := map[*TypeParm]Type{
-					_P: &TypeVar{Name: p.Name, Def: p},
+					_P: &TypeVar{Def: p},
 				}
 				for i := range b.Parms {
 					b.Parms[i] = subType(bind, b.Parms[i])
@@ -445,7 +445,7 @@ func newAnyParmsAndTypeVars(n int) ([]*TypeParm, []*TypeVar) {
 	for i := 0; i < n; i++ {
 		n := fmt.Sprintf("T%d", i)
 		p := &TypeParm{Name: n}
-		v := &TypeVar{Name: n, Def: p}
+		v := &TypeVar{Def: p}
 		parms = append(parms, p)
 		vars = append(vars, v)
 	}
@@ -456,7 +456,7 @@ var (
 	// _P is a placeholder; before returning a Builtin from the scope,
 	// it is always replaced with a brand new TypeParam.
 	_P       = &TypeParm{Name: "T"}
-	_T       = &TypeVar{Name: _P.Name, Def: _P}
+	_T       = &TypeVar{Def: _P}
 	_end     = basic(End)
 	_int     = basic(Int)
 	_int8    = basic(Int8)
@@ -891,7 +891,7 @@ func newFuncInst(def *FuncDef, l loc.Loc) *FuncInst {
 		copy := *p
 		typeParms[i] = &copy
 		typeArgs[i] = &TypeVar{
-			Name: copy.Name,
+			SourceName: copy.Name,
 			Def:  &copy,
 			L:    copy.L,
 		}

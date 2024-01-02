@@ -186,7 +186,7 @@ type FuncType struct {
 func (f *FuncType) Loc() loc.Loc { return f.L }
 
 type TypeVar struct {
-	Name string
+	SourceName string
 	Def  *TypeParm
 	L    loc.Loc
 }

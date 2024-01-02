@@ -532,7 +532,10 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 		switch types := findType(x, nil, name, parserType.L); {
 		case len(types) == 0:
 			if allowUnboundForTest {
-				typ = &TypeVar{Name: name, L: parserType.L}
+				typ = &TypeVar{
+					SourceName: name,
+					L: parserType.L,
+				}
 			} else {
 				errs = append(errs, &NotFoundError{
 					Item:  parserType,
