@@ -435,7 +435,7 @@ func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *
 				Explicit: mode == explicit,
 			}
 		}
-		pat.Type = &RefType{Type: pat.Type, L: pat.Loc()}
+		pat.Type = &RefType{Type: pat.Type, L: pat.Type.Loc()}
 		return pat, conversion(cvt, Ref, pat.Type), nil
 	}
 }

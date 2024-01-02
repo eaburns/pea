@@ -349,10 +349,10 @@ func importName(path string) string {
 	return filepath.Base(path)
 }
 
-func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm, []Error) {
+func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]*TypeParm, []Error) {
 	var errs []Error
 	seen := make(map[string]loc.Loc)
-	var typeParms []TypeParm
+	var typeParms []*TypeParm
 	for _, parserTypeVar := range parserTypeVars {
 		name := parserTypeVar.Name
 		if prev, ok := seen[name]; ok {
@@ -360,7 +360,7 @@ func makeTypeParms(files loc.Files, parserTypeVars []parser.TypeVar) ([]TypeParm
 		} else {
 			seen[name] = parserTypeVar.L
 		}
-		typeParms = append(typeParms, TypeParm{
+		typeParms = append(typeParms, &TypeParm{
 			Name: name,
 			L:    parserTypeVar.L,
 		})
@@ -615,7 +615,7 @@ func checkTypeAliasCycle(root *TypeDef) Error {
 	return nil
 }
 
-func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
+func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []*TypeParm {
 	typeVars := make(map[string]loc.Loc)
 	for _, parserFuncParm := range parserFuncDef.Parms {
 		findTypeVars(parserFuncParm.Type, typeVars)
@@ -627,9 +627,9 @@ func findTypeParms(files loc.Files, parserFuncDef *parser.FuncDef) []TypeParm {
 	for _, parserConstraint := range parserFuncDef.Constraints {
 		findConstraintTypeVars(parserConstraint, typeVars)
 	}
-	var typeParms []TypeParm
+	var typeParms []*TypeParm
 	for name, l := range typeVars {
-		typeParms = append(typeParms, TypeParm{
+		typeParms = append(typeParms, &TypeParm{
 			Name: name,
 			L:    l,
 		})
@@ -1003,8 +1003,8 @@ nextInst:
 		return inst
 	}
 	bind := make(map[*TypeParm]Type)
-	for i := range def.Parms {
-		bind[&def.Parms[i]] = args[i]
+	for i, p := range def.Parms {
+		bind[p] = args[i]
 	}
 
 	if def.Alias != nil {
@@ -2295,7 +2295,7 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, pat TypePattern) (Expr, 
 			}
 			// Copy the type, because we will later replace the type for the expr case
 			// with the type of the checked expression.
-			lit.Union = copyTypeWithLoc(uni, pat.Loc()).(*UnionType)
+			lit.Union = copyTypeWithLoc(uni, pat.Type.Loc()).(*UnionType)
 		}
 	}
 	if lit.Union == nil {

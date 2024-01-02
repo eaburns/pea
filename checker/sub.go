@@ -25,7 +25,7 @@ func subFuncInstExprs(inst *FuncInst) {
 	// to populate the substitution map, because we are going to be substituting
 	// from the fields of Def, not from the fields of the FuncInst itself.
 	for i := range inst.TypeArgs {
-		bindings.Types[&inst.Def.TypeParms[i]] = inst.TypeArgs[i]
+		bindings.Types[inst.Def.TypeParms[i]] = inst.TypeArgs[i]
 	}
 	inst.Parms = make([]*ParmDef, 0, len(inst.Def.Parms))
 	for i := range inst.Def.Parms {

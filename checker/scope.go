@@ -282,13 +282,13 @@ func (f *FuncDef) findType(args []Type, name string, l loc.Loc) []Type {
 	return nil
 }
 
-func findTypeVar(parms []TypeParm, args []Type, name string, l loc.Loc) *TypeVar {
+func findTypeVar(parms []*TypeParm, args []Type, name string, l loc.Loc) *TypeVar {
 	if len(args) != 0 {
 		return nil
 	}
-	for i := range parms {
-		if parms[i].Name == name {
-			return &TypeVar{Name: name, Def: &parms[i], L: l}
+	for _, p := range parms {
+		if p.Name == name {
+			return &TypeVar{Name: name, Def: p, L: l}
 		}
 	}
 	return nil
@@ -887,15 +887,15 @@ func newFuncInst(def *FuncDef, l loc.Loc) *FuncInst {
 	sub := make(map[*TypeParm]Type)
 	typeArgs := make([]Type, len(def.TypeParms))
 	typeParms := make([]*TypeParm, len(def.TypeParms))
-	for i := range def.TypeParms {
-		copy := def.TypeParms[i]
+	for i, p := range def.TypeParms {
+		copy := *p
 		typeParms[i] = &copy
 		typeArgs[i] = &TypeVar{
 			Name: copy.Name,
 			Def:  &copy,
 			L:    copy.L,
 		}
-		sub[&def.TypeParms[i]] = typeArgs[i]
+		sub[p] = typeArgs[i]
 	}
 
 	var parms []Type

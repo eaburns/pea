@@ -18,8 +18,6 @@ type TypePattern struct {
 	Type  Type
 }
 
-func (pat TypePattern) Loc() loc.Loc { return pat.Type.Loc() }
-
 func makeTypePattern(parms []*TypeParm, typ Type) TypePattern {
 	return TypePattern{Parms: parms, Type: typ}
 }

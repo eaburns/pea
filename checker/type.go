@@ -391,7 +391,7 @@ func resolveAlias(typ Type) Type {
 	aliased := copyTypeWithLoc(defType.Def.Type, defType.L)
 	sub := make(map[*TypeParm]Type)
 	for i, arg := range defType.Args {
-		sub[&defType.Def.Parms[i]] = arg
+		sub[defType.Def.Parms[i]] = arg
 	}
 	return resolveAlias(subType(sub, aliased))
 }
@@ -421,7 +421,7 @@ func newInst(def *TypeDef, args []Type) *TypeInst {
 		// set the canonical instance's arguments
 		// to the corresponding parameter locations.
 		inst.Args[i] = copyTypeWithLoc(arg, def.Parms[i].L)
-		sub[&def.Parms[i]] = inst.Args[i]
+		sub[def.Parms[i]] = inst.Args[i]
 	}
 	def.Insts = append(def.Insts, inst)
 	inst.Type = subType(sub, def.Type)

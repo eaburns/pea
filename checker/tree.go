@@ -96,7 +96,7 @@ type TypeDef struct {
 	Alias  bool
 	Mod    string
 	Name   string
-	Parms  []TypeParm
+	Parms  []*TypeParm
 	Type   Type
 	Exp    bool
 	Opaque bool
@@ -228,7 +228,7 @@ type IfaceDef struct {
 	File  *File
 	Mod   string
 	Name  string
-	Parms []TypeParm
+	Parms []*TypeParm
 	// Iface and Alias are mutually exclusive.
 	// Iface elements are of type *FuncDecl or *IfaceInst.
 	Iface  []interface{}
@@ -264,7 +264,7 @@ type FuncDef struct {
 	File        *File
 	Mod         string
 	Name        string
-	TypeParms   []TypeParm
+	TypeParms   []*TypeParm
 	Parms       []ParmDef
 	Locals      []*LocalDef
 	Ret         Type
