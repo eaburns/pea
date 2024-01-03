@@ -218,10 +218,12 @@ func (pat TypePattern) buildString(w *stringBuilder) {
 	if w.typeParmNames == nil {
 		w.typeParmNames = make(map[*TypeParm]string)
 	}
-	if len(pat.Parms) == 1 && len(w.typeParmNames) == 0 {
-		w.typeParmNames[pat.Parms[0]] = "?"
+	if pat.Parms.Len() == 1 && len(w.typeParmNames) == 0 {
+		var parm *TypeParm
+		pat.Parms.ForEach(func(p *TypeParm) { parm = p })
+		w.typeParmNames[parm] = "?"
 	} else {
-		for _, p := range pat.Parms {
+		pat.Parms.ForEach(func(p *TypeParm) {
 			n := fmt.Sprintf("?%d", len(w.typeParmNames))
 			if w.useSubScripts {
 				n = strings.ReplaceAll(n, "0", "₀")
@@ -236,7 +238,7 @@ func (pat TypePattern) buildString(w *stringBuilder) {
 				n = strings.ReplaceAll(n, "9", "₉")
 			}
 			w.typeParmNames[p] = n
-		}
+		})
 	}
 	pat.Type.buildString(w)
 }

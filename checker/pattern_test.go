@@ -668,12 +668,16 @@ func TestPatternIntersection(t *testing.T) {
 			b := parseTestPattern(t, mod, test.b)
 
 			// Given unique names.
-			for i := range a.Parms {
-				a.Parms[i].Name = fmt.Sprintf("A%d", i)
-			}
-			for i := range b.Parms {
-				b.Parms[i].Name = fmt.Sprintf("B%d", i)
-			}
+			var i int
+			a.Parms.ForEach(func(p *TypeParm) {
+				p.Name = fmt.Sprintf("A%d", i)
+				i++
+			})
+			i = 0
+			b.Parms.ForEach(func(p *TypeParm) {
+				p.Name = fmt.Sprintf("B%d", i)
+				i++
+			})
 
 			var bind map[*TypeParm]Type
 			switch u, err := unify(a, b, &bind); {
@@ -729,10 +733,17 @@ func TestPatternIntersectionIgnoreBoundTypeParameters(t *testing.T) {
 		t.Fatalf("failed to parse and check: %s", errs[0])
 	}
 	pat0 := parseTestPattern(t, mod, "? list")
-	pat0.Parms = append(pat0.Parms,
+	if pat0.Parms.Len() != 1 {
+		t.Fatalf("pat0.Len()=%d, want 1", pat0.Parms.Len())
+	}
+	var parm0 *TypeParm
+	pat0.Parms.ForEach(func(p *TypeParm){ parm0 = p })
+
+	pat0.Parms = pat0.Parms.Union(NewTypeParmSet(
 		&TypeParm{Name: "U0"},
 		&TypeParm{Name: "U1"},
-		&TypeParm{Name: "U2"})
+		&TypeParm{Name: "U2"},
+	))
 
 	pat1 := parseTestPattern(t, mod, "int list")
 
@@ -743,11 +754,11 @@ func TestPatternIntersectionIgnoreBoundTypeParameters(t *testing.T) {
 	}
 	if bind == nil {
 		t.Fatalf("unify(%s, %s) got bindings nil, expected a binding to %s",
-			pat0, pat1, pat0.Parms[0].Name)
+			pat0, pat1, parm0.Name)
 	}
-	if _, ok := bind[pat0.Parms[0]]; !ok || len(bind) != 1 {
+	if _, ok := bind[parm0]; !ok || len(bind) != 1 {
 		t.Fatalf("unify(%s, %s) got bindings %v, expected a binding to %s",
-			pat0, pat1, bindAsSlice(bind), pat0.Parms[0].Name)
+			pat0, pat1, bindAsSlice(bind), parm0.Name)
 	}
 }
 
@@ -766,7 +777,7 @@ func TestPatternSelfIntersection(t *testing.T) {
 	if u == nil {
 		t.Fatalf("unify(%s, %s) failed %s", pat, pattern(pat.Type), note)
 	}
-	if !eqType(u.Type, pat.Type) || len(u.Parms) != 0 {
+	if !eqType(u.Type, pat.Type) || u.Parms.Len() != 0 {
 		t.Fatalf("unify(%s, %s)=%s, wanted %s\n", pat, pattern(pat.Type), u, pat.Type)
 	}
 
@@ -775,7 +786,7 @@ func TestPatternSelfIntersection(t *testing.T) {
 	if u == nil {
 		t.Fatalf("unify(%s, %s) failed %s", pattern(pat.Type), pat, note)
 	}
-	if !eqType(u.Type, pat.Type) || len(u.Parms) != 0 {
+	if !eqType(u.Type, pat.Type) || u.Parms.Len() != 0 {
 		t.Fatalf("unify(%s, %s)=%s, wanted %s\n", pattern(pat.Type), pat, u, pat.Type)
 	}
 }
@@ -1180,7 +1191,7 @@ func _parseTestPattern(t *testing.T, m *Mod, nextName int, src string) (TypePatt
 	if len(errs) > 0 {
 		t.Fatalf("failed to make type: %s", errs[0])
 	}
-	return TypePattern{Parms: parms, Type: typ}, nextName
+	return TypePattern{Parms: NewTypeParmSet(parms...), Type: typ}, nextName
 }
 
 func parseTestType(t *testing.T, m *Mod, src string) Type {

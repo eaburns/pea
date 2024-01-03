@@ -13,11 +13,11 @@ import (
 // The pattern represents all types that are the result of
 // substituting types for the type parameters.
 type TypePattern struct {
-	Parms []*TypeParm
+	Parms *TypeParmSet
 	Type  Type
 }
 
-func makeTypePattern(parms []*TypeParm, typ Type) TypePattern {
+func makeTypePattern(parms *TypeParmSet, typ Type) TypePattern {
 	return TypePattern{Parms: parms, Type: typ}
 }
 
@@ -26,7 +26,7 @@ func any() TypePattern {
 	n := "_"
 	p := &TypeParm{Name: n}
 	v := &TypeVar{Def: p}
-	return TypePattern{Parms: []*TypeParm{p}, Type: v}
+	return TypePattern{Parms: NewTypeParmSet(p), Type: v}
 }
 
 // pattern returns the type pattern for a ground type.
@@ -136,12 +136,7 @@ func (pat TypePattern) isGroundType() bool {
 
 // bound returns whether the type variable is bound to a type parameter of the TypePattern.
 func (pat *TypePattern) bound(v *TypeVar) bool {
-	for _, p := range pat.Parms {
-		if v.Def == p {
-			return true
-		}
-	}
-	return false
+	return pat.Parms.Contains(v.Def)
 }
 
 // common returns a new TypePattern that is the most specific simple common pattern of pats.
@@ -160,7 +155,7 @@ func common(pats ...TypePattern) TypePattern {
 		n := "_" + strconv.Itoa(nextParm)
 		nextParm++
 		p := &TypeParm{Name: n}
-		pat.Parms = append(pat.Parms, p)
+		pat.Parms = pat.Parms.Union(NewTypeParmSet(p))
 		return &TypeVar{Def: p}
 	}
 
@@ -307,4 +302,108 @@ func common(pats ...TypePattern) TypePattern {
 	}
 	pat.Type = buildType(ts)
 	return pat
+}
+
+// A TypeParmSet is an immutable set of type parameters.
+// A nil *TypeParmSet is an empty set.
+type TypeParmSet struct {
+	// parmSlice is the slice of all parameters.
+	parmSlice []*TypeParm
+
+	// parmMap is allocated only if there are enough parameters,
+	// otherwise it is nil.
+	parmMap map[*TypeParm]bool
+}
+
+// NewTypeParmSet returns a new TypeParmSet of the given type parameters.
+func NewTypeParmSet(parms ...*TypeParm) *TypeParmSet {
+	if len(parms) == 0 {
+		return nil
+	}
+	var tps TypeParmSet
+	if len(parms) > 5 {
+		tps.parmMap = make(map[*TypeParm]bool)
+		for _, p := range parms {
+			if !tps.parmMap[p] {
+				tps.parmSlice = append(tps.parmSlice, p)
+				tps.parmMap[p] = true
+			}
+		}
+	} else {
+		for _, p := range parms {
+			var found bool
+			for _, q := range tps.parmSlice {
+				if q == p {
+					found = true
+					break
+				}
+			}
+			if !found {
+				tps.parmSlice = append(tps.parmSlice, p)
+			}
+		}
+	}
+	return &tps
+}
+
+// Len returns the number of *TypeParms in the set.
+func (tps *TypeParmSet) Len() int {
+	if tps == nil {
+		return 0
+	}
+	return len(tps.parmSlice)
+}
+
+// Contains returns whether the TypeParmSet contains a TypeParm.
+func (tps *TypeParmSet) Contains(parm *TypeParm) bool {
+	if tps == nil {
+		return false
+	}
+	if tps.parmMap != nil {
+		return tps.parmMap[parm]
+	}
+	for _, p := range tps.parmSlice {
+		if p == parm {
+			return true
+		}
+	}
+	return false
+}
+
+// ForEach calls f for each *TypeParm in the set,
+// exiting when f returns false.
+func (tps *TypeParmSet) ForEach(f func(*TypeParm)) {
+	if tps == nil {
+		return
+	}
+	for _, p := range tps.parmSlice {
+		f(p)
+	}
+}
+
+// Union returns the union of the tps and others.
+func (tps *TypeParmSet) Union(others ...*TypeParmSet) *TypeParmSet {
+	var parms []*TypeParm
+	if tps != nil {
+		parms = tps.parmSlice
+	}
+	for _, o := range others {
+		if o != nil {
+			parms = append(parms, o.parmSlice...)
+		}
+	}
+	return NewTypeParmSet(parms...)
+}
+
+// Minus the set of type parameters of tps for which remove returns false.
+func (tps *TypeParmSet) Minus(remove func(*TypeParm) bool) *TypeParmSet {
+	var parms []*TypeParm
+	if tps != nil {
+		for _, p := range tps.parmSlice {
+			if !remove(p) {
+				parms = append(parms, p)
+			}
+		}
+	}
+	return NewTypeParmSet(parms...)
 }

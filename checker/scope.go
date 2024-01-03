@@ -395,16 +395,22 @@ func (m *Mod) findIDs(name string) []id {
 		// Multiple default cases are not supported.
 		if defaultCases <= 1 {
 			// One for each case, one for the union, and one for the return.
+			// The return uses parms[len(parms)-1] and vars[len(vars)-1]
+			// The preceeding ones correspond to the function arguments.
 			parms, vars := newAnyParmsAndTypeVars(len(names) + 2)
 			parmTypes := make([]Type, len(vars)-1)
-			for i, v := range vars[1:] {
+			origTypeParms := make([]*TypeParm, len(vars)-1)
+			for i, v := range vars[:len(vars)-1] {
+				origTypeParms[i] = v.Def
 				parmTypes[i] = v
 			}
 			sw := Switch{
 				N:         name,
 				Names:     names,
-				T:         &FuncType{Parms: parmTypes, Ret: vars[0]},
+				T:         &FuncType{Parms: parmTypes, Ret: vars[len(vars)-1]},
 				typeParms: parms,
+				origParmTypeParms: origTypeParms,
+				origRetTypeParm: vars[len(vars)-1].Def,
 			}
 			if strings.HasPrefix(name, "if:") {
 				// We replace the return type with _empty,
@@ -418,13 +424,13 @@ func (m *Mod) findIDs(name string) []id {
 		if builtins[i].N == name {
 			b := builtins[i]
 			b.Parms = append([]Type{}, b.Parms...) // copy
-			if len(b.typeParms) > 0 {
-				if len(b.typeParms) > 1 {
+			if b.typeParms.Len() > 0 {
+				if b.typeParms.Len() > 1 {
 					panic("impossible")
 				}
 				// create a unique type parameter to replaced _P.
 				p := &TypeParm{Name: "T"}
-				b.typeParms = []*TypeParm{p}
+				b.typeParms = NewTypeParmSet(p)
 				bind := map[*TypeParm]Type{
 					_P: &TypeVar{Def: p},
 				}
@@ -439,7 +445,7 @@ func (m *Mod) findIDs(name string) []id {
 	return ids
 }
 
-func newAnyParmsAndTypeVars(n int) ([]*TypeParm, []*TypeVar) {
+func newAnyParmsAndTypeVars(n int) (*TypeParmSet, []*TypeVar) {
 	var parms []*TypeParm
 	var vars []*TypeVar
 	for i := 0; i < n; i++ {
@@ -449,13 +455,14 @@ func newAnyParmsAndTypeVars(n int) ([]*TypeParm, []*TypeVar) {
 		parms = append(parms, p)
 		vars = append(vars, v)
 	}
-	return parms, vars
+	return NewTypeParmSet(parms...), vars
 }
 
 var (
 	// _P is a placeholder; before returning a Builtin from the scope,
 	// it is always replaced with a brand new TypeParam.
 	_P       = &TypeParm{Name: "T"}
+	_PSet    = NewTypeParmSet(_P)
 	_T       = &TypeVar{Def: _P}
 	_end     = basic(End)
 	_int     = basic(Int)
@@ -463,13 +470,13 @@ var (
 	_int16   = basic(Int16)
 	_int32   = basic(Int32)
 	_int64   = basic(Int64)
-	_int128   = basic(Int128)
+	_int128  = basic(Int128)
 	_uint    = basic(Uint)
 	_uint8   = basic(Uint8)
 	_uint16  = basic(Uint16)
 	_uint32  = basic(Uint32)
 	_uint64  = basic(Uint64)
-	_uint128  = basic(Uint128)
+	_uint128 = basic(Uint128)
 	_uintref = basic(UintRef)
 	_float32 = basic(Float32)
 	_float64 = basic(Float64)
@@ -498,8 +505,8 @@ var (
 	_empty  = &StructType{}
 
 	builtins = []Builtin{
-		{N: ":=", Op: Assign, typeParms: []*TypeParm{_P}, Parms: []Type{refLiteral(_T), _T}, Ret: _empty},
-		{N: "new", Op: NewArray, typeParms: []*TypeParm{_P}, Parms: []Type{_int, _T}, Ret: arrayLiteral(_T)},
+		{N: ":=", Op: Assign, typeParms: _PSet, Parms: []Type{refLiteral(_T), _T}, Ret: _empty},
+		{N: "new", Op: NewArray, typeParms: _PSet, Parms: []Type{_int, _T}, Ret: arrayLiteral(_T)},
 
 		{N: "^", Op: BitNot, Parms: []Type{_int}, Ret: _int},
 		{N: "^", Op: BitXor, Parms: []Type{_int, _int}, Ret: _int},
@@ -728,11 +735,11 @@ var (
 		{N: "=", Op: Eq, Parms: []Type{_float64, _float64}, Ret: _bool},
 		{N: "<=>", Op: Cmp, Parms: []Type{_float64, _float64}, Ret: _partialOrdering},
 
-		{N: "[]", Op: Index, typeParms: []*TypeParm{_P}, Parms: []Type{arrayLiteral(_T), _int}, Ret: refLiteral(_T)},
-		{N: "[]", Op: Slice, typeParms: []*TypeParm{_P}, Parms: []Type{arrayLiteral(_T), _int, _int}, Ret: arrayLiteral(_T)},
+		{N: "[]", Op: Index, typeParms: _PSet, Parms: []Type{arrayLiteral(_T), _int}, Ret: refLiteral(_T)},
+		{N: "[]", Op: Slice, typeParms: _PSet, Parms: []Type{arrayLiteral(_T), _int, _int}, Ret: arrayLiteral(_T)},
 		{N: "[]", Op: Index, Parms: []Type{_string, _int}, Ret: _uint8},
 		{N: "[]", Op: Slice, Parms: []Type{_string, _int, _int}, Ret: _string},
-		{N: ".length", Op: Length, typeParms: []*TypeParm{_P}, Parms: []Type{arrayLiteral(_T)}, Ret: _int},
+		{N: ".length", Op: Length, typeParms: _PSet, Parms: []Type{arrayLiteral(_T)}, Ret: _int},
 		{N: ".length", Op: Length, Parms: []Type{_string}, Ret: _int},
 
 		{N: "panic", Op: Panic, Parms: []Type{_string}, Ret: _end},
@@ -892,8 +899,8 @@ func newFuncInst(def *FuncDef, l loc.Loc) *FuncInst {
 		typeParms[i] = &copy
 		typeArgs[i] = &TypeVar{
 			SourceName: copy.Name,
-			Def:  &copy,
-			L:    copy.L,
+			Def:        &copy,
+			L:          copy.L,
 		}
 		sub[p] = typeArgs[i]
 	}
@@ -916,12 +923,12 @@ func newFuncInst(def *FuncDef, l loc.Loc) *FuncInst {
 	}
 	typ := &FuncType{Parms: parms, Ret: ret, L: l}
 	inst := &FuncInst{
-		TypeArgs:       typeArgs,
+		TypeArgs:        typeArgs,
 		ConstraintParms: constraintParms,
-		ConstraintArgs: make([]Func, len(constraintParms)),
-		T:              typ,
-		Def:            def,
-		typeParms:      typeParms,
+		ConstraintArgs:  make([]Func, len(constraintParms)),
+		T:               typ,
+		Def:             def,
+		typeParms:       NewTypeParmSet(typeParms...),
 	}
 	return inst
 }

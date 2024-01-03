@@ -187,8 +187,8 @@ func (f *FuncType) Loc() loc.Loc { return f.L }
 
 type TypeVar struct {
 	SourceName string
-	Def  *TypeParm
-	L    loc.Loc
+	Def        *TypeParm
+	L          loc.Loc
 }
 
 func (t *TypeVar) Loc() loc.Loc { return t.L }
@@ -350,7 +350,7 @@ type Func interface {
 	// If the substitution would not cause
 	// any observable changes to the Func,
 	// the original Func may be returned.
-	sub([]*TypeParm, map[*TypeParm]Type) (Func, *CandidateError)
+	sub(*TypeParmSet, map[*TypeParm]Type) (Func, *CandidateError)
 }
 
 type FuncInst struct {
@@ -373,7 +373,7 @@ type FuncInst struct {
 	// typeParms contains all bound type parameters in this inst.
 	// The entries here are not the same *TypeParms
 	// from the definition, they copies.
-	typeParms []*TypeParm
+	typeParms *TypeParmSet
 
 	// The following fields are populated by subFuncInst.
 
@@ -402,19 +402,7 @@ type Select struct {
 	// By the spec, there are Selector functions defined on every struct literal type,
 	// but we represent this lazily by using type parameters and returning an error
 	// from Select.sub() if that parameter is substituted with a non-struct.
-	//
-	// typeParms[0] is the type parameter of the struct reference type.
-	// typeParms[1] is the type parameter of the return type.
-	//
-	// If typeParms is non-nil, the T.Parm[0] and T.Ret
-	// are TypeVars defined by the typeParms.
-	// If typeParms is nil, T.Parm[0] is as reference literal of the Struct type,
-	// and T.Ret is a reference literal of the Field type.
-	//
-	// Struct is nil until parm 0 is successfully substituted.
-	//
-	// Field is nil until parm0 is successfully substituted.
-	typeParms []*TypeParm
+	typeParms *TypeParmSet
 }
 
 func (s *Select) Type() Type { return s.T }
@@ -440,24 +428,28 @@ type Switch struct {
 	// By the spec, there are Switch functions defined on every union literal type,
 	// but we represent this lazily by using type parameters and returning an error
 	// from Switch.sub() if that parameter is substituted with a non-struct.
+	typeParms *TypeParmSet
+
+	// The original type parameter for each function parameter.
+	// This is used to detect whether the Parm has been substituted.
+	// It could be substituted with another bound type var,
+	// so we need to track the original to see
+	// whether it's been substituted at all.
 	//
-	// typeParms[0] is the type parameter of the return type.
-	// typeParms[1] is the type parameter of the union reference type.
-	// typeParms[2…N+1] are type parameters of the function parameters.
-	// For example, typeParms[2] is a type parameter
-	// that is expected to be substituted with a function type
-	// appropriate to the 1st case function parameter type.
-	//
-	// If typeParms is non-nil, the T.Parms and T.Ret
-	// are TypeVars defined by the typeParms.
-	// If typeParms is nil, T.Parm[0] is as reference literal of the Struct type,
-	// T.Parms[1:] are the parameter types corresponding to the Cases,
-	// and T.Ret is the return type.
-	//
-	// Union is nil until parm 0 is successfully substituted.
-	//
-	// Cases is nil until parm0 is successfully substituted.
-	typeParms []*TypeParm
+	// TODO: confirm this is needed.
+	// Probably best to just go back to requiring parameters be subed in order.
+	// Then we always know which we are subbing.
+	// That is the only way that Func.sub() is used today anyway,
+	// and supporting arbitrary order is very complex and fragile.
+	origParmTypeParms []*TypeParm
+
+	// The original type parameter for the return value.
+	// This is used to detect whether the Ret has been substituted.
+	// It could be substituted with another bound type var,
+	// so we need to track the original to see
+	// whether it's been substituted at all.
+	// TODO: confirm this is needed.
+	origRetTypeParm *TypeParm
 }
 
 func (s *Switch) Type() Type { return s.T }
@@ -496,7 +488,7 @@ type Builtin struct {
 	Parms []Type
 	Ret   Type
 
-	typeParms []*TypeParm
+	typeParms *TypeParmSet
 }
 
 func (b *Builtin) Type() Type { return &FuncType{Parms: b.Parms, Ret: b.Ret} }

@@ -21,7 +21,7 @@ type patternUnifyError interface{ Cause }
 // If the patterns cannot unify, notes may be non-nil
 // if there is a note to give more information as to why.
 func unify(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternUnifyError) {
-	if len(a.Parms) == 0 && len(b.Parms) == 0 {
+	if a.Parms.Len() == 0 && b.Parms.Len() == 0 {
 		// Fast-path the common case of simply checking two types align.
 		if err := alignTypes(nil, a, b); err != nil {
 			return nil, err
@@ -83,8 +83,10 @@ func unify(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternUni
 		}
 		(*bind)[parm] = s.bind
 	}
-	isect := &TypePattern{Parms: parms, Type: subType(*bind, a.Type)}
-	return isect, nil
+	return &TypePattern{
+		Parms: NewTypeParmSet(parms...),
+		Type:  subType(*bind, a.Type),
+	}, nil
 }
 
 func findBoundVars(sets *disjointSets, pat TypePattern) {

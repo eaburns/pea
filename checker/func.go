@@ -32,7 +32,7 @@ next:
 func (f *FuncDecl) arity() int                                                  { return len(f.Parms) }
 func (f *FuncDecl) ret() TypePattern                                            { return pattern(f.Ret) }
 func (f *FuncDecl) parm(i int) TypePattern                                      { return pattern(f.Parms[i]) }
-func (f *FuncDecl) sub([]*TypeParm, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
+func (f *FuncDecl) sub(*TypeParmSet, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
 func (f *FuncDecl) eq(other Func) bool {
 	o, ok := other.(*FuncDecl)
@@ -63,13 +63,13 @@ func (f *FuncInst) parm(i int) TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Parms[i])
 }
 
-func (f *FuncInst) sub(parms []*TypeParm, sub map[*TypeParm]Type) (Func, *CandidateError) {
+func (f *FuncInst) sub(parms *TypeParmSet, sub map[*TypeParm]Type) (Func, *CandidateError) {
 	return subFuncInst(f, parms, sub), nil
 }
 
-func subFuncInst(f *FuncInst, parms []*TypeParm, sub map[*TypeParm]Type) *FuncInst {
+func subFuncInst(f *FuncInst, parms *TypeParmSet, sub map[*TypeParm]Type) *FuncInst {
 	copy := *f
-	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
+	copy.typeParms = copy.typeParms.Union(parms)
 	copy.TypeArgs = subTypes(sub, copy.TypeArgs)
 	copy.ConstraintParms = make([]FuncDecl, len(f.ConstraintParms))
 	for i, c := range f.ConstraintParms {
@@ -123,7 +123,7 @@ func instConstraints(x scope, funcInst *FuncInst, start, end int) (*FuncInst, *C
 
 // findConstraintFunc returns a function that satisfies funInst.Def.Iface[i] if any,
 // along with any type parameter bindings needed to instantiate that function.
-func findConstraintFunc(x scope, typeParms []*TypeParm, decl *FuncDecl) (map[*TypeParm]Type, Func, Error) {
+func findConstraintFunc(x scope, typeParms *TypeParmSet, decl *FuncDecl) (map[*TypeParm]Type, Func, Error) {
 	if decl.Name == "::" && len(decl.Parms) == 1 {
 		srcPat := makeTypePattern(typeParms, decl.Parms[0])
 		dstPat := makeTypePattern(typeParms, decl.Ret)
@@ -504,9 +504,27 @@ func (f *Select) ret() TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Ret)
 }
 
-func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *CandidateError) {
+// subForSelectParm0 returns the Type being substituted for the 0th parm of a Select,
+// or nil if the 0th parm is not a bound type variable or is not being substituted.
+func subForSelectParm0(f *Select, bind map[*TypeParm]Type) Type {
+	ref, ok := f.T.Parms[0].(*RefType)
+	if !ok {
+		return nil
+	}
+	tv, ok := ref.Type.(*TypeVar)
+	if !ok || !f.typeParms.Contains(tv.Def) {
+		return nil
+	}
+	typ, ok := bind[tv.Def]
+	if !ok {
+		return nil
+	}
+	return typ
+}
+
+func (f *Select) sub(parms *TypeParmSet, bind map[*TypeParm]Type) (Func, *CandidateError) {
 	copy := *f
-	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
+	copy.typeParms = copy.typeParms.Union(parms)
 	if copy.Struct != nil {
 		// We have already substituted for the struct type,
 		// this Select is fully grounded; nothing more to do.
@@ -516,13 +534,14 @@ func (f *Select) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *Candida
 	// If this sub is not for the 0th parameter, there is nothing more to do.
 	// However, if it is for the 0th type, we need to make sure it's a struct literal,
 	// and check that the return type (if already substituted) matches the field.
-	typ, ok := bind[copy.typeParms[0]]
-	if !ok {
+	typ := subForSelectParm0(f, bind)
+	if typ == nil {
 		// This is not substituting the 0th parameter type.
 		copy.T = subType(bind, copy.T).(*FuncType)
 		return &copy, nil
 	}
 
+	var ok bool
 	if copy.Struct, ok = valueType(literalType(typ)).(*StructType); !ok {
 		return f, &CandidateError{
 			Candidate: f,
@@ -565,22 +584,36 @@ func (f *Switch) parm(i int) TypePattern {
 func (f *Switch) ret() TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Ret)
 }
+// subForSwitchParm0 returns the Type being substituted for the 0th parm of a Switch,
+// or nil if the 0th parm is not a bound type variable or is not being substituted.
+func subForSwitchParm0(f *Switch, bind map[*TypeParm]Type) Type {
+	tv, ok := f.T.Parms[0].(*TypeVar)
+	if !ok || !f.typeParms.Contains(tv.Def) {
+		return nil
+	}
+	typ, ok := bind[tv.Def]
+	if !ok {
+		return nil
+	}
+	return typ
+}
 
-func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *CandidateError) {
+func (f *Switch) sub(parms *TypeParmSet, bind map[*TypeParm]Type) (Func, *CandidateError) {
 	copy := *f
-	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
+	copy.typeParms = copy.typeParms.Union(parms)
 
 	// If this is not the first time (first determined by len(copy.Cases)>0)
 	// we are substituting the union parameter (type parameter 1),
 	// the only thing to do is substitute the parameter and return types.
 	// All the complex work is either already done or to be done
 	// when the union itself is substituted.
-	typ, ok := bind[copy.typeParms[1]]
-	if !ok || len(copy.Cases) > 0 {
+	typ := subForSwitchParm0(f, bind)
+	if typ == nil || len(copy.Cases) > 0 {
 		copy.T = subType(bind, copy.T).(*FuncType)
 		return &copy, nil
 	}
 
+	var ok bool
 	if copy.Union, ok = valueType(literalType(typ)).(*UnionType); !ok {
 		return f, &CandidateError{
 			Candidate: f,
@@ -634,7 +667,7 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *Candida
 			}
 		}
 		copy.T.Ret = _empty
-	} else if tv, ok := copy.T.Ret.(*TypeVar); ok && tv.Def == copy.typeParms[0] {
+	} else if tv, ok := copy.T.Ret.(*TypeVar); ok && tv.Def == copy.origRetTypeParm {
 		// Otherwise, if the return type has not been substituted yet
 		// If any of the parameters have already been substituted,
 		// check whether we can determine the return type.
@@ -665,7 +698,7 @@ func (f *Switch) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *Candida
 		default:
 			parmType = &FuncType{Parms: []Type{c.Type}, Ret: copy.T.Ret, L: c.L}
 		}
-		if tv, ok := copy.T.Parms[1+i].(*TypeVar); !ok || tv.Def != copy.typeParms[2+i] {
+		if tv, ok := copy.T.Parms[1+i].(*TypeVar); !ok || tv.Def != copy.origParmTypeParms[1+i] {
 			// It has already ben substituted, so we need to check it converts.
 			srcPat := makeTypePattern(copy.typeParms, copy.T.Parms[1+i])
 			dstPat := makeTypePattern(copy.typeParms, parmType)
@@ -722,9 +755,9 @@ func (f *Builtin) parm(i int) TypePattern {
 	return makeTypePattern(f.typeParms, f.Parms[i])
 }
 
-func (f *Builtin) sub(parms []*TypeParm, bind map[*TypeParm]Type) (Func, *CandidateError) {
+func (f *Builtin) sub(parms *TypeParmSet, bind map[*TypeParm]Type) (Func, *CandidateError) {
 	copy := *f
-	copy.typeParms = appendTypeParmsToCopy(copy.typeParms, parms)
+	copy.typeParms = copy.typeParms.Union(parms)
 	copy.Parms = subTypes(bind, copy.Parms)
 	copy.Ret = subType(bind, copy.Ret)
 	return &copy, nil
@@ -746,7 +779,7 @@ func (f *Builtin) eq(other Func) bool {
 func (f *ExprFunc) arity() int                                                  { return len(f.FuncType.Parms) }
 func (f *ExprFunc) ret() TypePattern                                            { return pattern(f.FuncType.Ret) }
 func (f *ExprFunc) parm(i int) TypePattern                                      { return pattern(f.FuncType.Parms[i]) }
-func (f *ExprFunc) sub([]*TypeParm, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
+func (f *ExprFunc) sub(*TypeParmSet, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
 func (f *ExprFunc) eq(other Func) bool {
 	o, ok := other.(*ExprFunc)
@@ -768,7 +801,7 @@ func (f *idFunc) buildString(s *stringBuilder)                                { 
 func (f *idFunc) arity() int                                                  { return len(f.funcType.Parms) }
 func (f *idFunc) ret() TypePattern                                            { return pattern(f.funcType.Ret) }
 func (f *idFunc) parm(i int) TypePattern                                      { return pattern(f.funcType.Parms[i]) }
-func (f *idFunc) sub([]*TypeParm, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
+func (f *idFunc) sub(*TypeParmSet, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
 func (f *idFunc) eq(o Func) bool {
 	g, ok := o.(*idFunc)

@@ -20,6 +20,7 @@ var diffOpts = []cmp.Option{
 	cmp.FilterPath(isLoc, cmp.Ignore()),
 	cmpopts.IgnoreUnexported(LocalDef{}),
 	cmp.AllowUnexported(TypePattern{}),
+	cmp.AllowUnexported(TypeParmSet{}),
 }
 
 func isLoc(path cmp.Path) bool {

@@ -276,7 +276,7 @@ func (pr *exprPrinter) writeStringAndType(s string, t Type) {
 func (pr *exprPrinter) typeString(t Type) string {
 	var w stringBuilder
 	w.useSubScripts = true
-	makeTypePattern(pr.tparms, t).buildString(&w)
+	makeTypePattern(NewTypeParmSet(pr.tparms...), t).buildString(&w)
 	return w.builder.String()
 }
 
