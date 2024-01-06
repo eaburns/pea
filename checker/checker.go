@@ -507,10 +507,13 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 			}
+			if t == nil {
+				t = copyTypeWithLoc(_empty, parserCase.L)
+			}
 			cases = append(cases, CaseDef{
-				Name: parserCase.Name.Name,
+				Name:  parserCase.Name.Name,
 				Type: t,
-				L:    parserCase.L,
+				L:     parserCase.L,
 			})
 		}
 		typ = &UnionType{Cases: cases, L: parserType.L}
@@ -534,7 +537,7 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 			if allowUnboundForTest {
 				typ = &TypeVar{
 					SourceName: name,
-					L: parserType.L,
+					L:          parserType.L,
 				}
 			} else {
 				errs = append(errs, &NotFoundError{
@@ -2292,10 +2295,8 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, pat TypePattern) (Expr, 
 	lit := &UnionLit{L: parserLit.L}
 	caseName := parserLit.CaseVal.Name.Name
 	if uni, ok := pat.Type.(*UnionType); ok {
-		if c := findCase(caseName, uni); c != nil && (c.Type == nil) == (parserLit.CaseVal.Val == nil) {
-			if c.Type != nil {
-				exprPat = pat.withType(c.Type)
-			}
+		if c := findCase(caseName, uni); c != nil && isEmptyStruct(c.Type) == (parserLit.CaseVal.Val == nil) {
+			exprPat = pat.withType(c.Type)
 			// Copy the type, because we will later replace the type for the expr case
 			// with the type of the checked expression.
 			lit.Union = copyTypeWithLoc(uni, pat.Type.Loc()).(*UnionType)
@@ -2315,6 +2316,8 @@ func checkUnionLit(x scope, parserLit *parser.UnionLit, pat TypePattern) (Expr, 
 			return lit, errs
 		}
 		lit.Case.Type = lit.Val.Type()
+	} else {
+		lit.Case.Type = copyTypeWithLoc(_empty, parserLit.L)
 	}
 	lit.T = lit.Union
 	return lit, nil
@@ -2340,7 +2343,10 @@ func checkBlockLit(x scope, parserLit *parser.BlockLit, pat TypePattern) (Expr, 
 	lit.Parms, errs = makeFuncParms(x, parserLit.Parms)
 
 	retPat := any()
-	if fun, ok := pat.Type.(*FuncType); ok && len(fun.Parms) == len(lit.Parms) {
+	// If pat is a function type and lit.Parms == 0,
+	// we allow inferring the return type regardless of whether the arity matches,
+	// since the 0-ary literal will be implicitly converted.
+	if fun, ok := pat.Type.(*FuncType); ok && (len(lit.Parms) == 0 || len(fun.Parms) == len(lit.Parms)) {
 		retPat = pat.withType(fun.Ret)
 		for i := range lit.Parms {
 			patParm := pat.withType(fun.Parms[i])

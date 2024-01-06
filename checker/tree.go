@@ -173,7 +173,7 @@ func (u *UnionType) Loc() loc.Loc { return u.L }
 
 type CaseDef struct {
 	Name string
-	Type Type // nil for untyped
+	Type Type
 	L    loc.Loc
 }
 

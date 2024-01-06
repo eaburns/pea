@@ -336,7 +336,7 @@ func (u *UnionType) buildString(w *stringBuilder) {
 			w.WriteString(", ")
 		}
 		w.WriteString(c.Name)
-		if c.Type != nil {
+		if !isEmptyStruct(c.Type) {
 			w.WriteRune(' ')
 			c.Type.buildString(w)
 		}

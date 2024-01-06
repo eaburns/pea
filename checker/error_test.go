@@ -314,7 +314,9 @@ func TestConvertError(t *testing.T) {
 			mode: implicit,
 			err: "cannot implicitly convert \\[x\\? int\\] to .*\n" +
 				"\\[x\\? int\\] and .* have different cases\n" +
-				"case x\\?: int and untyped$",
+				"case x\\?: int and \\[\\.\\] are different kinds of types\n" +
+				"int is the built-in int type\n" +
+				"\\[\\.\\] is a struct literal type$",
 		},
 		{
 			a:    "[x?]",
@@ -322,7 +324,9 @@ func TestConvertError(t *testing.T) {
 			mode: implicit,
 			err: "cannot implicitly convert \\[x\\?\\] to .*\n" +
 				"\\[x\\?\\] and .* have different cases\n" +
-				"case x\\?: untyped and int$",
+				"case x\\?: \\[\\.\\] and int are different kinds of types\n" +
+				"\\[\\.\\] is a struct literal type\n"+
+				"int is the built-in int type$",
 		},
 		{
 			a:    "[x? int]",

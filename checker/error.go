@@ -404,10 +404,6 @@ func (err *DiffCasesError) print(p errorPrinter) {
 			fallthrough
 		case a == nil || b == nil:
 			panic("impossible")
-		case a.Type == nil:
-			p.printf("\ncase %s: untyped and %s", err.Case, b.Type)
-		case b.Type == nil:
-			p.printf("\ncase %s: %s and untyped", err.Case, a.Type)
 		}
 	}
 }

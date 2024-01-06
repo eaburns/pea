@@ -237,8 +237,7 @@ func common(pats ...TypePattern) TypePattern {
 					return newVar()
 				}
 				for i := range t.Cases {
-					if t.Cases[i].Name != t0.Cases[i].Name ||
-						(t.Cases[i].Type == nil) != (t0.Cases[i].Type == nil) {
+					if t.Cases[i].Name != t0.Cases[i].Name {
 						return newVar()
 					}
 				}
@@ -246,10 +245,6 @@ func common(pats ...TypePattern) TypePattern {
 			u := &UnionType{Cases: make([]CaseDef, len(t0.Cases))}
 			for i := range t0.Cases {
 				u.Cases[i].Name = t0.Cases[i].Name
-				if t0.Cases[i].Type == nil {
-					u.Cases[i].Type = nil
-					continue
-				}
 				ts := make([]Type, len(types))
 				for j, t := range types {
 					ts[j] = t.(*UnionType).Cases[i].Type

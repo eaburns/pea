@@ -465,8 +465,7 @@ func isUnionSubset(src, dst Type) bool {
 	}
 	for _, srcCase := range srcUnion.Cases {
 		dstCase, ok := cases[srcCase.Name]
-		if !ok || (srcCase.Type == nil) != (dstCase.Type == nil) ||
-			(srcCase.Type != nil && !eqType(srcCase.Type, dstCase.Type)) {
+		if !ok || !eqType(srcCase.Type, dstCase.Type) {
 			return false
 		}
 	}

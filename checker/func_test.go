@@ -314,14 +314,16 @@ func TestSwitchSubMatchingParm0(t *testing.T) {
 	wantParms := []Type{
 		&RefType{Type: typ},
 		&FuncType{
-			Ret: typeVar(switchRetTypeParm(sw)),
+			Parms: []Type{_empty},
+			Ret:   typeVar(switchRetTypeParm(sw)),
 		},
 		&FuncType{
 			Parms: []Type{_int},
 			Ret:   typeVar(switchRetTypeParm(sw)),
 		},
 		&FuncType{
-			Ret: typeVar(switchRetTypeParm(sw)),
+			Parms: []Type{_empty},
+			Ret:   typeVar(switchRetTypeParm(sw)),
 		},
 	}
 	for i, wantType := range wantParms {
@@ -352,9 +354,9 @@ func TestSwitchSubMatchingParm0IncompleteSwitch(t *testing.T) {
 
 	wantParms := []Type{
 		&RefType{Type: typ},
-		&FuncType{Ret: _empty},
+		&FuncType{Parms: []Type{_empty}, Ret: _empty},
 		&FuncType{Parms: []Type{_int}, Ret: _empty},
-		&FuncType{Ret: _empty},
+		&FuncType{Parms: []Type{_empty}, Ret: _empty},
 	}
 	for i, wantType := range wantParms {
 		want := makeTypePattern(sw.typeParms, wantType)
@@ -384,7 +386,10 @@ func TestSwitchSubParm1First(t *testing.T) {
 
 	wantParms := []Type{
 		typeVar(switchParmTypeParm(sw, 0)),
-		&FuncType{Ret: _int},
+		// For now, Parms are nil, since we substituted (){int}.
+		// But late when substituting arg 0 (the union),
+		// this will be replaced by ([.]){int}.
+		&FuncType{/* Parms: nil */Ret: _int},
 		typeVar(switchParmTypeParm(sw, 2)),
 		typeVar(switchParmTypeParm(sw, 3)),
 	}
@@ -461,9 +466,9 @@ func TestSwitchSubRetThenParm0(t *testing.T) {
 
 	wantParms := []Type{
 		&RefType{Type: typ},
-		&FuncType{Ret: _string},
+		&FuncType{Parms: []Type{_empty}, Ret: _string},
 		&FuncType{Parms: []Type{_int}, Ret: _string},
-		&FuncType{Ret: _string},
+		&FuncType{Parms: []Type{_empty}, Ret: _string},
 	}
 	for i, wantType := range wantParms {
 		want := makeTypePattern(sw.typeParms, wantType)
@@ -526,9 +531,9 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 	}
 	wantParms = []Type{
 		&RefType{Type: unionType},
-		&FuncType{Ret: bind[retTypeParm]},
+		&FuncType{Parms: []Type{_empty}, Ret: bind[retTypeParm]},
 		&FuncType{Parms: []Type{_int}, Ret: bind[retTypeParm]},
-		&FuncType{Ret: bind[retTypeParm]},
+		&FuncType{Parms: []Type{_empty}, Ret: bind[retTypeParm]},
 	}
 	for i, wantType := range wantParms {
 		want := makeTypePattern(sw.typeParms, wantType)
@@ -551,9 +556,9 @@ func TestSwitchSubTypeParmRetThenParm0ThenRet(t *testing.T) {
 	}
 	wantParms = []Type{
 		&RefType{Type: unionType},
-		&FuncType{Ret: _string},
+		&FuncType{Parms: []Type{_empty}, Ret: _string},
 		&FuncType{Parms: []Type{_int}, Ret: _string},
-		&FuncType{Ret: _string},
+		&FuncType{Parms: []Type{_empty}, Ret: _string},
 	}
 	for i, wantType := range wantParms {
 		want := makeTypePattern(sw.typeParms, wantType)
@@ -589,9 +594,9 @@ func TestSwitchSubParm2ThenMatchingParm0(t *testing.T) {
 
 	wantParms := []Type{
 		&RefType{Type: typ},
-		&FuncType{Ret: _string},
+		&FuncType{Parms: []Type{_empty}, Ret: _string},
 		&FuncType{Parms: []Type{_int}, Ret: _string},
-		&FuncType{Ret: _string},
+		&FuncType{Parms: []Type{_empty}, Ret: _string},
 	}
 	for i, wantType := range wantParms {
 		want := makeTypePattern(sw.typeParms, wantType)

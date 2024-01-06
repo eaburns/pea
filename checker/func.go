@@ -29,9 +29,9 @@ next:
 	return cs
 }
 
-func (f *FuncDecl) arity() int                                                  { return len(f.Parms) }
-func (f *FuncDecl) ret() TypePattern                                            { return pattern(f.Ret) }
-func (f *FuncDecl) parm(i int) TypePattern                                      { return pattern(f.Parms[i]) }
+func (f *FuncDecl) arity() int                                                   { return len(f.Parms) }
+func (f *FuncDecl) ret() TypePattern                                             { return pattern(f.Ret) }
+func (f *FuncDecl) parm(i int) TypePattern                                       { return pattern(f.Parms[i]) }
 func (f *FuncDecl) sub(*TypeParmSet, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
 func (f *FuncDecl) eq(other Func) bool {
@@ -584,6 +584,7 @@ func (f *Switch) parm(i int) TypePattern {
 func (f *Switch) ret() TypePattern {
 	return makeTypePattern(f.typeParms, f.T.Ret)
 }
+
 // subForSwitchParm0 returns the Type being substituted for the 0th parm of a Switch,
 // or nil if the 0th parm is not a bound type variable or is not being substituted.
 func subForSwitchParm0(f *Switch, bind map[*TypeParm]Type) Type {
@@ -691,10 +692,8 @@ func (f *Switch) sub(parms *TypeParmSet, bind map[*TypeParm]Type) (Func, *Candid
 	for i, c := range copy.Cases {
 		var parmType *FuncType
 		switch {
-		case c == nil:
+		case c == nil: // default case
 			parmType = &FuncType{Ret: copy.T.Ret, L: copy.Union.L}
-		case c.Type == nil:
-			parmType = &FuncType{Ret: copy.T.Ret, L: c.L}
 		default:
 			parmType = &FuncType{Parms: []Type{c.Type}, Ret: copy.T.Ret, L: c.L}
 		}
@@ -723,9 +722,7 @@ func eqCase(a, b *CaseDef) bool {
 		return false
 	case a.Name != b.Name:
 		return false
-	case (a.Type == nil) != (b.Type == nil):
-		return false
-	case a.Type != nil && !eqType(a.Type, b.Type):
+	case !eqType(a.Type, b.Type):
 		return false
 	default:
 		return true
@@ -776,9 +773,9 @@ func (f *Builtin) eq(other Func) bool {
 	return eqType(f.Ret, o.Ret)
 }
 
-func (f *ExprFunc) arity() int                                                  { return len(f.FuncType.Parms) }
-func (f *ExprFunc) ret() TypePattern                                            { return pattern(f.FuncType.Ret) }
-func (f *ExprFunc) parm(i int) TypePattern                                      { return pattern(f.FuncType.Parms[i]) }
+func (f *ExprFunc) arity() int                                                   { return len(f.FuncType.Parms) }
+func (f *ExprFunc) ret() TypePattern                                             { return pattern(f.FuncType.Ret) }
+func (f *ExprFunc) parm(i int) TypePattern                                       { return pattern(f.FuncType.Parms[i]) }
 func (f *ExprFunc) sub(*TypeParmSet, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
 func (f *ExprFunc) eq(other Func) bool {
@@ -796,11 +793,11 @@ type idFunc struct {
 	l        loc.Loc
 }
 
-func (f *idFunc) String() string                                              { return f.id.String() }
-func (f *idFunc) buildString(s *stringBuilder)                                { s.WriteString(f.String()) }
-func (f *idFunc) arity() int                                                  { return len(f.funcType.Parms) }
-func (f *idFunc) ret() TypePattern                                            { return pattern(f.funcType.Ret) }
-func (f *idFunc) parm(i int) TypePattern                                      { return pattern(f.funcType.Parms[i]) }
+func (f *idFunc) String() string                                               { return f.id.String() }
+func (f *idFunc) buildString(s *stringBuilder)                                 { s.WriteString(f.String()) }
+func (f *idFunc) arity() int                                                   { return len(f.funcType.Parms) }
+func (f *idFunc) ret() TypePattern                                             { return pattern(f.funcType.Ret) }
+func (f *idFunc) parm(i int) TypePattern                                       { return pattern(f.funcType.Parms[i]) }
 func (f *idFunc) sub(*TypeParmSet, map[*TypeParm]Type) (Func, *CandidateError) { return f, nil }
 
 func (f *idFunc) eq(o Func) bool {

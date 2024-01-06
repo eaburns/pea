@@ -482,23 +482,23 @@ var (
 	_float64 = basic(Float64)
 	_bool    = &UnionType{
 		Cases: []CaseDef{
-			{Name: "false?"},
-			{Name: "true?"},
+			{Name: "false?", Type: _empty},
+			{Name: "true?", Type: _empty},
 		},
 	}
 	_ordering = &UnionType{
 		Cases: []CaseDef{
-			{Name: "less?"},
-			{Name: "equal?"},
-			{Name: "greater?"},
+			{Name: "less?", Type: _empty},
+			{Name: "equal?", Type: _empty},
+			{Name: "greater?", Type: _empty},
 		},
 	}
 	_partialOrdering = &UnionType{
 		Cases: []CaseDef{
-			{Name: "less?"},
-			{Name: "equal?"},
-			{Name: "greater?"},
-			{Name: "none?"},
+			{Name: "less?", Type: _empty},
+			{Name: "equal?", Type: _empty},
+			{Name: "greater?", Type: _empty},
+			{Name: "none?", Type: _empty},
 		},
 	}
 	_string = basic(String)

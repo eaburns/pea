@@ -288,9 +288,6 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 	case *checker.UnionType:
 		var cs []*CaseDef
 		for _, c := range typ.Cases {
-			if c.Type == nil {
-				continue
-			}
 			typ := mb.buildType(c.Type)
 			if typ.isEmpty() {
 				continue
@@ -324,10 +321,14 @@ func (mb *modBuilder) buildType(typ checker.Type) Type {
 		}
 
 	case *checker.FuncType:
-		funcType := &FuncType{Parms: make([]Type, len(typ.Parms)+1)}
-		funcType.Parms[0] = &AddrType{Elem: &StructType{}} // closure
-		for i, p := range typ.Parms {
-			funcType.Parms[i+1] = mb.buildType(p)
+		funcType := &FuncType{}
+		// closure data block.
+		funcType.Parms = append(funcType.Parms, &AddrType{Elem: &StructType{}})
+		for _, p := range typ.Parms {
+			parmType := mb.buildType(p)
+			if !parmType.isEmpty() {
+				funcType.Parms = append(funcType.Parms, parmType)
+			}
 		}
 		funcType.Ret = mb.buildType(typ.Ret)
 		funcType.Terminal = isEnd(typ.Ret)
@@ -447,20 +448,25 @@ func isAddr(typ Type) bool {
 }
 
 func isPointer(typ *checker.UnionType) bool {
-	var isRef func(checker.Type) bool
-	isRef = func(typ checker.Type) bool {
-		switch typ := typ.(type) {
-		case *checker.RefType:
-			return true
-		case *checker.DefType:
-			return isRef(typ.Inst.Type)
-		default:
-			return false
-		}
-	}
 	return len(typ.Cases) == 2 &&
-		(typ.Cases[0].Type == nil || typ.Cases[1].Type == nil) &&
+		(isEmptyStruct(typ.Cases[0].Type) || isEmptyStruct(typ.Cases[1].Type)) &&
 		(isRef(typ.Cases[0].Type) || isRef(typ.Cases[1].Type))
+}
+
+func isRef(typ checker.Type) bool {
+	switch typ := typ.(type) {
+	case *checker.RefType:
+		return true
+	case *checker.DefType:
+		return isRef(typ.Inst.Type)
+	default:
+		return false
+	}
+}
+
+func isEmptyStruct(typ checker.Type) bool {
+	s, ok := typ.(*checker.StructType)
+	return ok && len(s.Fields) == 0
 }
 
 func (mb *modBuilder) buildFuncInst(inst *checker.FuncInst) *funcBuilder {
@@ -1043,7 +1049,7 @@ func (bb *blockBuilder) buildSwitch(sw *checker.Switch, call *checker.Call) (*bl
 		} else {
 			sc.num = caseNum(sw.Union, cas.Name)
 			handledNums[sc.num] = true
-			if cas.Type != nil {
+			if !isEmptyStruct(cas.Type) {
 				union := unionBase.Type().(*AddrType).Elem.(*UnionType)
 				sc.def = caseDef(union, strings.TrimSuffix(cas.Name, "?"))
 				sc.base = unionBase
@@ -1223,7 +1229,7 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 	case len(sw.Cases) == 1 && sw.Cases[0] == nil:
 		// Only a default case.
 		bb.buildBranchCall(funcs[0], nil, res, bDone)
-	case len(sw.Cases) == 1 && sw.Cases[0].Type == nil:
+	case len(sw.Cases) == 1 && isEmptyStruct(sw.Cases[0].Type):
 		tag := bb.load(base)
 		bNil := bb.fun.newBlock(loc.Loc{})
 		bb.ifNull(tag, bNil, bDone)
@@ -1240,11 +1246,11 @@ func (bb *blockBuilder) buildPointerSwitch(sw *checker.Switch, call *checker.Cal
 		nilIndex := 0
 		nonNilIndex := 1
 		if sw.Cases[nilIndex] != nil {
-			if sw.Cases[nilIndex].Type != nil {
+			if !isEmptyStruct(sw.Cases[nilIndex].Type) {
 				nilIndex, nonNilIndex = nonNilIndex, nilIndex
 			}
 		} else {
-			if sw.Cases[nonNilIndex].Type == nil {
+			if isEmptyStruct(sw.Cases[nonNilIndex].Type) {
 				nilIndex, nonNilIndex = nonNilIndex, nilIndex
 			}
 		}
@@ -1370,25 +1376,25 @@ func isOrderingOrPartialOrderingRef(typ checker.Type) bool {
 func isOrdering(typ checker.Type) bool {
 	union, ok := typ.(*checker.UnionType)
 	return ok && len(union.Cases) == 3 &&
-		union.Cases[0].Name == "less?" && union.Cases[0].Type == nil &&
-		union.Cases[1].Name == "equal?" && union.Cases[1].Type == nil &&
-		union.Cases[2].Name == "greater?" && union.Cases[2].Type == nil
+		union.Cases[0].Name == "less?" && isEmptyStruct(union.Cases[0].Type) &&
+		union.Cases[1].Name == "equal?" && isEmptyStruct(union.Cases[1].Type) &&
+		union.Cases[2].Name == "greater?" && isEmptyStruct(union.Cases[2].Type)
 }
 
 func isPartialOrdering(typ checker.Type) bool {
 	union, ok := typ.(*checker.UnionType)
 	return ok && len(union.Cases) == 4 &&
-		union.Cases[0].Name == "less?" && union.Cases[0].Type == nil &&
-		union.Cases[1].Name == "equal?" && union.Cases[1].Type == nil &&
-		union.Cases[2].Name == "greater?" && union.Cases[2].Type == nil &&
-		union.Cases[3].Name == "none?" && union.Cases[3].Type == nil
+		union.Cases[0].Name == "less?" && isEmptyStruct(union.Cases[0].Type) &&
+		union.Cases[1].Name == "equal?" && isEmptyStruct(union.Cases[1].Type) &&
+		union.Cases[2].Name == "greater?" && isEmptyStruct(union.Cases[2].Type) &&
+		union.Cases[3].Name == "none?" && isEmptyStruct(union.Cases[3].Type)
 }
 
 func isBool(typ checker.Type) bool {
 	union, ok := typ.(*checker.UnionType)
 	return ok && len(union.Cases) == 2 &&
-		union.Cases[0].Name == "false?" && union.Cases[0].Type == nil &&
-		union.Cases[1].Name == "true?" && union.Cases[1].Type == nil
+		union.Cases[0].Name == "false?" && isEmptyStruct(union.Cases[0].Type) &&
+		union.Cases[1].Name == "true?" && isEmptyStruct(union.Cases[1].Type)
 }
 
 // boolConstArgs returns "true?", "false?", or ""
@@ -2032,7 +2038,7 @@ func (bb *blockBuilder) unionConvertAddrToUnion(cvt *checker.Convert, dstType *S
 	for i := range srcUnion.Cases {
 		srcCase := &srcUnion.Cases[i]
 		name := srcCase.Name
-		if srcCase.Type == nil {
+		if isEmptyStruct(srcCase.Type) {
 			nullCaseNum = caseNum(dstUnion, name)
 		} else {
 			nonNullCaseNum = caseNum(dstUnion, srcCase.Name)
@@ -2430,6 +2436,16 @@ func (bb *blockBuilder) call(fun Value, args []Value) *Call {
 	if !ok {
 		panic(fmt.Sprintf("calling non-function type %s", fun.Type()))
 	}
+
+	nParms := len(funcType.Parms)
+	if !funcType.Ret.isEmpty() {
+		nParms++
+	}
+	if nParms != len(args) {
+		panic(fmt.Sprintf("%d-ary function %s called with %d args %s",
+			nParms, funcType, len(args), args))
+	}
+
 	r := &Call{Func: fun, Args: args, L: bb.L}
 	bb.addInstr(r)
 	if funcType.Terminal {

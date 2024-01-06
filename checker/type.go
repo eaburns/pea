@@ -307,9 +307,7 @@ func eqType(a, b Type) bool {
 		for i := range a.Cases {
 			aCase := &a.Cases[i]
 			bCase := &b.Cases[i]
-			if aCase.Name != bCase.Name ||
-				(aCase.Type == nil) != (bCase.Type == nil) ||
-				(aCase.Type != nil && !eqType(aCase.Type, bCase.Type)) {
+			if aCase.Name != bCase.Name || !eqType(aCase.Type, bCase.Type) {
 				return false
 			}
 		}
@@ -529,9 +527,6 @@ func walkType(t Type, f func(Type) bool) bool {
 		}
 	case *UnionType:
 		for i := range t.Cases {
-			if t.Cases[i].Type == nil {
-				continue
-			}
 			if walkType(t.Cases[i].Type, f) {
 				return true
 			}

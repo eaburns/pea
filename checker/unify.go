@@ -188,21 +188,12 @@ func alignTypes(sets *disjointSets, a, b TypePattern) patternAlignError {
 			if aCase.Name != bCase.Name {
 				return &DiffCasesError{A: aUnionType, B: bType}
 			}
-			if (aCase.Type == nil) != (bCase.Type == nil) {
+			if err := alignTypes(sets, a.Case(i), b.Case(i)); err != nil {
 				return &DiffCasesError{
-					A:    aUnionType,
-					B:    bType,
-					Case: aCase.Name,
-				}
-			}
-			if aCase.Type != nil {
-				if err := alignTypes(sets, a.Case(i), b.Case(i)); err != nil {
-					return &DiffCasesError{
-						A:     aUnionType,
-						B:     bType,
-						Cause: err,
-						Case:  aCase.Name,
-					}
+					A:     aUnionType,
+					B:     bType,
+					Cause: err,
+					Case:  aCase.Name,
 				}
 			}
 		}
@@ -309,9 +300,6 @@ func bindSets(sets *disjointSets, a, b TypePattern) *PatternBindingError {
 
 	case *UnionType:
 		for i := range bType.Cases {
-			if bType.Cases[i].Type == nil {
-				continue
-			}
 			if note := bindSets(sets, a.Case(i), b.Case(i)); note != nil {
 				return note
 			}
@@ -387,13 +375,11 @@ func subSets(sets *disjointSets, onPath map[*set]bool, path []*TypeParm, typ Typ
 		copy.Cases = nil
 		for i := range typ.Cases {
 			c := typ.Cases[i]
-			if c.Type != nil {
-				typeCopy, err := subSets(sets, onPath, path, c.Type)
-				if err != nil {
-					return nil, err
-				}
-				c.Type = typeCopy
+			typeCopy, err := subSets(sets, onPath, path, c.Type)
+			if err != nil {
+				return nil, err
 			}
+			c.Type = typeCopy
 			copy.Cases = append(copy.Cases, c)
 		}
 		return &copy, nil
