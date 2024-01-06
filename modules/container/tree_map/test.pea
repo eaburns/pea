@@ -421,7 +421,7 @@ func print_node(n (K, V) node, depth int) : {
 	++(print#printer, V)print#printer,
 } {
 	indent := {
-		for: 0 to: depth - 1 do: (_){
+		for: 0 to: depth - 1 do: {
 			print("      ")
 		}
 	},

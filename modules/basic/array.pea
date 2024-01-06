@@ -274,7 +274,7 @@ Func for:each:(a [T], f (T){}) {
 
 test array_for_each {
 	i := 0,
-	for: [int] :: [] each: (_){ ++i },
+	for: [int] :: [] each: { ++i },
 	assert_true: i = 0,
 
 	i := 0,

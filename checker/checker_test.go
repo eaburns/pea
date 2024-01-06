@@ -6959,18 +6959,18 @@ func TestBlockLiteralInference(t *testing.T) {
 		{pat: `&(){}`, expr: `(_ int, _ string){}`, err: `cannot convert`},
 		{pat: `&(){}`, expr: `(_ int, _ string){5}`, err: `cannot convert`},
 
-		{pat: `(int){}`, expr: `(){}`, err: `cannot convert`},
-		{pat: `(int){}`, expr: `(){5}`, err: `cannot convert`},
-		{pat: `(int){}`, expr: `(){panic("")}`, err: `cannot convert`},
+		{pat: `(int){}`, expr: `(){}`, want: `(int){}`},
+		{pat: `(int){}`, expr: `(){5}`, want: `(int){}`},
+		{pat: `(int){}`, expr: `(){panic("")}`, want: `(int){}`},
 		{pat: `(int){}`, expr: `(_ int){}`, want: `(int){}`},
 		{pat: `(int){}`, expr: `(_ int, _ string){}`, err: `cannot convert`},
 		{pat: `(int){}`, expr: `(_ int){5}`, want: `(int){}`},
 		{pat: `(int){}`, expr: `(_ int){panic("")}`, want: `(int){}`},
 		{pat: `(int){}`, expr: `(_ string){5}`, err: `cannot implicitly convert string to int`},
 
-		{pat: `(int, string){}`, expr: `(){}`, err: `cannot convert`},
-		{pat: `(int, string){}`, expr: `(){5}`, err: `cannot convert`},
-		{pat: `(int, string){}`, expr: `(){panic("")}`, err: `cannot convert`},
+		{pat: `(int, string){}`, expr: `(){}`, want: `(int, string){}`},
+		{pat: `(int, string){}`, expr: `(){5}`, want: `(int, string){}`},
+		{pat: `(int, string){}`, expr: `(){panic("")}`, want: `(int, string){}`},
 		{pat: `(int, string){}`, expr: `(_ int){}`, err: `cannot convert`},
 		{pat: `(int, string){}`, expr: `(_ int, _ string){}`, want: `(int, string){}`},
 		{pat: `(int, string){}`, expr: `(_ int, _ string){5}`, want: `(int, string){}`},
@@ -6978,8 +6978,8 @@ func TestBlockLiteralInference(t *testing.T) {
 		{pat: `(int, string){}`, expr: `(_ int){5}`, err: `cannot convert`},
 
 		{pat: `(int){int}`, expr: `(){}`, err: `cannot convert`},
-		{pat: `(int){int}`, expr: `(){5}`, err: `cannot convert`},
-		{pat: `(int){int}`, expr: `(){panic("")}`, err: `cannot convert`},
+		{pat: `(int){int}`, expr: `(){5}`, want: `(int){int}`},
+		{pat: `(int){int}`, expr: `(){panic("")}`, want: `(int){int}`},
 		{pat: `(int){int}`, expr: `(_ int){}`, err: `cannot convert`},
 		{pat: `(int){int}`, expr: `(_ int, _ string){}`, err: `cannot convert`},
 		{pat: `(int){int}`, expr: `(_ int){5}`, want: `(int){int}`},
@@ -6998,13 +6998,15 @@ func TestBlockLiteralInference(t *testing.T) {
 		{src: `type t &(){}`, pat: `t`, expr: `(){}`, want: `t`},
 		{src: `type t &(){}`, pat: `&t`, expr: `(){}`, want: `&t`},
 
-		{src: `type T t (T){}`, pat: `int t`, expr: `(){}`, err: `cannot convert`},
+		{src: `type T t (T){}`, pat: `int t`, expr: `(){}`, want: `int t`},
 		{src: `type T t (T){}`, pat: `int t`, expr: `(_ int){}`, want: `int t`},
 		{src: `type T t (T){}`, pat: `&int t`, expr: `(_ int){}`, want: `&int t`},
 		{src: `type T t &(T){}`, pat: `int t`, expr: `(_ int){}`, want: `int t`},
 		{src: `type T t &(T){}`, pat: `&int t`, expr: `(_ int){}`, want: `&int t`},
 
-		{src: `type T t (T){}`, pat: `? t`, expr: `(){}`, err: `cannot convert`},
+		// We end up with (?){}, and we cannot infer the ?.
+		{src: `type T t (T){}`, pat: `? t`, expr: `(){}`, err: `cannot infer`},
+
 		{src: `type T t (T){}`, pat: `? t`, expr: `(_ int){}`, want: `int t`},
 		{src: `type T t (T){}`, pat: `&? t`, expr: `(_ int){}`, want: `&int t`},
 		{src: `type T t &(T){}`, pat: `? t`, expr: `(_ int){}`, want: `int t`},
@@ -7024,7 +7026,9 @@ func TestBlockLiteralInference(t *testing.T) {
 		{src: `type T t &(){T}`, pat: `? t`, expr: `(){5}`, want: `int t`},
 		{src: `type T t &(){T}`, pat: `&? t`, expr: `(){5}`, want: `&int t`},
 
-		{src: `type (T, U) t (T){U}`, pat: `(?, ?) t`, expr: `(){}`, err: `cannot convert`},
+		// We end up with (?){[.]}, and we cannot infer the ?.
+		{src: `type (T, U) t (T){U}`, pat: `(?, ?) t`, expr: `(){}`, err: `cannot infer`},
+
 		{src: `type (T, U) t (T){U}`, pat: `(?, ?) t`, expr: `(_ int){}`, want: `(int, [.]) t`},
 		{src: `type (T, U) t (T){U}`, pat: `(?, ?) t`, expr: `(_ int){panic("")}`, want: `(int, !) t`},
 		{src: `type (T, U) t (T){U}`, pat: `(?, ?) t`, expr: `(_ int){5}`, want: `(int, int) t`},
@@ -7405,7 +7409,7 @@ func TestLiteralInference(t *testing.T) {
 		{expr: "(i int){}", infer: "&int t", want: "&int t", src: "type T t (T){}"},
 		{expr: "(i int){}", infer: "int t", want: "int t", src: "type T t &(T){}"},
 		{expr: "(i int){}", infer: "&int t", want: "&int t", src: "type T t &(T){}"},
-		{expr: "(){1}", infer: "int t", want: "(){int}", src: "type T t (T){T}"},
+		{expr: "(){1}", infer: "int t", want: "int t", src: "type T t (T){T}"},
 		{expr: "(i int){1}", infer: "int t", want: "int t", src: "type T t (T){T}"},
 		{expr: "(s string){1}", infer: "int t", want: "int t", src: "type T t (T){T}"},
 		{expr: "(i int, s string){1}", infer: "int t", want: "(int, string){int}", src: "type T t (T){T}"},

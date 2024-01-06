@@ -239,13 +239,23 @@ func doConvertExpr(x scope, expr Expr, cvt *Convert) Expr {
 	case cvt.Kind == funcConvert:
 		dstFunc := cvt.T.(*FuncType)
 		if blk, ok := cvt.Expr.(*BlockLit); ok {
-			// If it is a block literal; just set its return type.
+			// If it is a block literal; just set its return type and parms.
 			//
 			// Note that this takes advantage of the fact
 			// that currently the only function conversions
-			// convert the return type, not the parameters.
+			// convert the return type and/or adds unused parameters.
 			// And further, the only return types converted to
 			// are compatible with simply setting the blk.Ret.
+			if len(dstFunc.Parms) > len(blk.Parms) {
+				for i, p := range dstFunc.Parms {
+					blk.Parms = append(blk.Parms, ParmDef{
+						// TODO: use "_" once the llvm backend supports that.
+						Name: fmt.Sprintf("z%d", i),
+						T:    p,
+						L:    p.Loc(),
+					})
+				}
+			}
 			blk.Ret = dstFunc.Ret
 			blk.Func = dstFunc
 			blk.T = dstFunc
@@ -353,6 +363,9 @@ func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *
 	if u != nil {
 		return *u, conversion(cvt, Noop, u.Type), nil
 	}
+	if u := implicitFuncConvert(src, dst, bind); u != nil {
+		return *u, conversion(cvt, funcConvert, u.Type), nil
+	}
 	switch {
 	default:
 		// If nothing below matched, return the note from the unify error.
@@ -409,9 +422,6 @@ func convertPattern(cvt *Convert, src, dst TypePattern, mode convertMode, bind *
 	case mode == explicit && isUnionSubset(src.Type, dst.Type):
 		return dst, conversion(cvt, UnionConvert, dst.Type), nil
 
-	case isImplicitFuncConvertible(src.Type, dst.Type):
-		return dst, conversion(cvt, funcConvert, dst.Type), nil
-
 	case isRefLiteral(src.Type):
 		cvt = conversion(cvt, Deref, src.refElem().Type)
 		pat, cvt, err := convertPattern(cvt, src.refElem(), dst, mode, bind)
@@ -463,21 +473,34 @@ func isUnionSubset(src, dst Type) bool {
 	return true
 }
 
-func isImplicitFuncConvertible(src, dst Type) bool {
-	srcFunc, ok := src.(*FuncType)
+func implicitFuncConvert(src, dst TypePattern, bind *map[*TypeParm]Type) *TypePattern {
+	srcFunc, ok := src.Type.(*FuncType)
 	if !ok {
-		return false
+		return nil
 	}
-	dstFunc, ok := dst.(*FuncType)
-	if !ok || len(dstFunc.Parms) != len(srcFunc.Parms) {
-		return false
+	dstFunc, ok := dst.Type.(*FuncType)
+	if !ok {
+		return nil
 	}
-	for i := range srcFunc.Parms {
-		if !eqType(srcFunc.Parms[i], dstFunc.Parms[i]) {
-			return false
-		}
+	convertedSrcFunc := copyTypeWithLoc(srcFunc, srcFunc.L).(*FuncType)
+	if len(srcFunc.Parms) == 0 {
+		// If the source function is 0-ary, it can convert to
+		// whatever parameters the dst function has.
+		convertedSrcFunc.Parms = dstFunc.Parms
 	}
-	return isEmptyStruct(dstFunc.Ret) || isEnd(srcFunc.Ret)
+	if isEnd(srcFunc.Ret) {
+		// If the source return type is !, it can convert to
+		// whatever return type the dst function has.
+		convertedSrcFunc.Ret = dstFunc.Ret
+	}
+	if isEmptyStruct(dstFunc.Ret) {
+		// If the dst function has a [.] return,
+		// any source return can convert to [.].
+		convertedSrcFunc.Ret = _empty
+	}
+	// The converted source function must unify with the dest function.
+	u, _ := unify(makeTypePattern(src.Parms, convertedSrcFunc), dst, bind)
+	return u
 }
 
 func conversion(cvt *Convert, kind ConvertKind, typ Type) *Convert {

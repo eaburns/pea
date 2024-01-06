@@ -21,7 +21,7 @@ Func index(h S, n S) int option : {
 
 	// m = rk_base^(n.length-1)
 	m := uint32 :: 1,
-	for: 1 to: n.length - 1 do: (_){
+	for: 1 to: n.length - 1 do: {
 		m *= rk_base
 	},
 
@@ -81,7 +81,7 @@ Func contains(h S, n S) bool : {
 	[](S, int, int)S,
 	=(S, S)bool,
 } {
-	return: index(h, n) some? (_){ true } none? { false }
+	return: index(h, n) some? { true } none? { false }
 }
 
 test contains {
@@ -121,7 +121,7 @@ Func count(s S, sub S) int : {
 } {
 	n := 0,
 	if: sub.length = 0 then: {
-		while: { utf8#consume(s) } some: (_){
+		while: { utf8#consume(s) } some: {
 			++n
 		},
 		return: n + 1

@@ -399,13 +399,13 @@ func TestConvertError(t *testing.T) {
 				"return: string and int$",
 		},
 		{
-			a:    "(){}",
-			b:    "(int){}",
+			a:    "(int){}",
+			b:    "(int, int){}",
 			mode: implicit,
-			err: "cannot implicitly convert \\(\\){} to .*\n" +
-				"\\(\\){} and .* have different arity\n" +
-				"\\(\\){} has 0 parameters\n" +
-				".* has 1 parameters$",
+			err: "cannot implicitly convert \\(int\\){} to .*\n" +
+				"\\(int\\){} and .* have different arity\n" +
+				"\\(int\\){} has 1 parameters\n" +
+				".* has 2 parameters$",
 		},
 		{
 			a:    "(string){}",

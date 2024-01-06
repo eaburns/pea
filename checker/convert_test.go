@@ -265,6 +265,12 @@ func TestConvert(t *testing.T) {
 		{src: "(int){!}", dst: "(int){int}", want: c("(int){!}", funcConvert, "(int){int}")},
 		{src: "(int){!}", dst: "(int){[int]}", want: c("(int){!}", funcConvert, "(int){[int]}")},
 		{src: "(float32){!}", dst: "(int){int}", want: nil},
+		{src: "(int){!}", dst: "(int){?}", want: c("(int){!}", Noop, "(int){!}")},
+		// Convert 0-ary function.
+		{src: "(){}", dst: "(int){}", want: c("(){}", funcConvert, "(int){}")},
+		{src: "(){}", dst: "(int, string){}", want: c("(){}", funcConvert, "(int, string){}")},
+		{src: "(){int}", dst: "(int){int}", want: c("(){int}", funcConvert, "(int){int}")},
+		{src: "(){int}", dst: "(int){?}", want: c("(){int}", funcConvert, "(int){int}")},
 
 		// Implicit dereference
 		{src: "&int", dst: "int", want: c("&int", Deref, "int")},

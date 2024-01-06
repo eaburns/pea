@@ -69,7 +69,7 @@ test group_wait_ok {
 	results := [0, 0, 0, 0, 0],
 	for: 0 to: results.length - 1 do: (i){
 		gr add: {
-			for: 0 to: i do: (_){
+			for: 0 to: i do: {
 				++results[i]
 			},
 			error option :: none()
@@ -113,5 +113,5 @@ test group_wait_errors_and_non_errors {
 
 // TODO: move is_some  to be exported in option.pea.
 func is_some(o error option) bool {
-	return: o none? { false } some? (_){ true }
+	return: o none? { false } some? { true }
 }

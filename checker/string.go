@@ -717,6 +717,8 @@ func (c ConvertKind) String() string {
 		return "StrConvert"
 	case UnionConvert:
 		return "UnionConvert"
+	case funcConvert:
+		return "funcConvert"
 	default:
 		panic("impossible ConvertKind")
 	}

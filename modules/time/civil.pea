@@ -913,7 +913,7 @@ func print(p print#printer, x zero_pad) print#printer {
 		x.i := -x.i
 	},
 	tens := int64 :: 10,
-	for: 1 to: x.width - 1 do: (_){
+	for: 1 to: x.width - 1 do: {
 		if: x.i < tens then: {
 			p ++ "0"
 		},

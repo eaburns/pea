@@ -50,7 +50,7 @@ Func while:some:(cond (){T option}, f (T){}) {
 
 test while_some {
 	iters := 0,
-	while: { int option :: none() } some: (_){ ++iters },
+	while: { int option :: none() } some: { ++iters },
 	assert_true: iters = 0,
 
 	iters := 0,

@@ -1,0 +1,37 @@
+// ok
+// ok
+// loop
+// loop
+// loop
+// ok
+// ok
+// ok
+//
+func main() {
+	call_func_with_int_parm({ print("ok\n") }),
+	call_func_with_int_parm(print_ok),
+
+	// Test passing a 0-ary func to for:to:do:.
+	for: 1 to: 3 do: {
+		print("loop\n")
+	},
+	for: 1 to: 3 do: print_ok
+}
+
+func print_ok() {
+	print("ok\n")
+}
+
+func call_func_with_int_parm(f (int){}) {
+	f(5)
+}
+
+Func for:to:do:(start int, end int, f (int){}) {
+	if: start <=> end greater: {
+		return()
+	},
+	f(start),
+	for: start + 1 to: end do: f
+}
+
+func print_int(_ int)

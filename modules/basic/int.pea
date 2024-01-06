@@ -185,19 +185,19 @@ Func for:to:do:(start int, end int, f (int){}) {
 
 test for_to_do {
 	iters := 0,
-	for: 0 to: -1 do: (_){ ++iters },
+	for: 0 to: -1 do: { ++iters },
 	assert_true: iters = 0,
 
 	iters := 0,
-	for: 0 to: 0 do: (_){ ++iters },
+	for: 0 to: 0 do: { ++iters },
 	assert_true: iters = 1,
 
 	iters := 0,
-	for: 0 to: 1 do: (_){ ++iters },
+	for: 0 to: 1 do: { ++iters },
 	assert_true: iters = 2,
 
 	iters := 0,
-	for: -1 to: 1 do: (_){ ++iters },
+	for: -1 to: 1 do: { ++iters },
 	assert_true: iters = 3,
 
 	iters := 0,
@@ -231,19 +231,19 @@ Func for:down_to:do:(start int, end int, f (int){}) {
 
 test for_down_to_do {
 	iters := 0,
-	for: -1 down_to: 0 do: (_){ ++iters },
+	for: -1 down_to: 0 do: { ++iters },
 	assert_true: iters = 0,
 
 	iters := 0,
-	for: 0 down_to: 0 do: (_){ ++iters },
+	for: 0 down_to: 0 do: { ++iters },
 	assert_true: iters = 1,
 
 	iters := 0,
-	for: 1 down_to: 0 do: (_){ ++iters },
+	for: 1 down_to: 0 do: { ++iters },
 	assert_true: iters = 2,
 
 	iters := 0,
-	for: 1 down_to: -1 do: (_){ ++iters },
+	for: 1 down_to: -1 do: { ++iters },
 	assert_true: iters = 3,
 
 	iters := 0,
@@ -286,23 +286,23 @@ Func for:to:by:do:(start int, end int, d int, f (int){}) {
 
 test for_to_by_do_positive {
 	iters := 0,
-	for: 0 to: -1 by: 5 do: (_){ ++iters },
+	for: 0 to: -1 by: 5 do: { ++iters },
 	assert_true: iters = 0,
 
 	iters := 0,
-	for: 0 to: 0 by: 5 do: (_){ ++iters },
+	for: 0 to: 0 by: 5 do: { ++iters },
 	assert_true: iters = 1,
 
 	iters := 0,
-	for: 0 to: 1 by: 5 do: (_){ ++iters },
+	for: 0 to: 1 by: 5 do: { ++iters },
 	assert_true: iters = 1,
 
 	iters := 0,
-	for: -1 to: 1 by: 1 do: (_){ ++iters },
+	for: -1 to: 1 by: 1 do: { ++iters },
 	assert_true: iters = 3,
 
 	iters := 0,
-	for: -1 to: 1 by: 2 do: (_){ ++iters },
+	for: -1 to: 1 by: 2 do: { ++iters },
 	assert_true: iters = 2,
 
 	iters := 0,
@@ -334,23 +334,23 @@ test for_to_by_do_positive {
 
 test for_to_by_do_negative {
 	iters := 0,
-	for: -1 to: 0 by: -5 do: (_){ ++iters },
+	for: -1 to: 0 by: -5 do: { ++iters },
 	assert_true: iters = 0,
 
 	iters := 0,
-	for: 0 to: 0 by: -5 do: (_){ ++iters },
+	for: 0 to: 0 by: -5 do: { ++iters },
 	assert_true: iters = 1,
 
 	iters := 0,
-	for: 1 to: 0 by: -5 do: (_){ ++iters },
+	for: 1 to: 0 by: -5 do: { ++iters },
 	assert_true: iters = 1,
 
 	iters := 0,
-	for: 1 to: -1 by: -1 do: (_){ ++iters },
+	for: 1 to: -1 by: -1 do: { ++iters },
 	assert_true: iters = 3,
 
 	iters := 0,
-	for: 1 to: -1 by: -2 do: (_){ ++iters },
+	for: 1 to: -1 by: -2 do: { ++iters },
 	assert_true: iters = 2,
 
 	iters := 0,
