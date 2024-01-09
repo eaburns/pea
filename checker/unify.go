@@ -22,8 +22,9 @@ type patternUnifyError interface{ Cause }
 // if there is a note to give more information as to why.
 func unify(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternUnifyError) {
 	if a.Parms.Len() == 0 && b.Parms.Len() == 0 {
-		// Fast-path the common case of simply checking two types align.
-		if err := alignTypes(nil, a, b); err != nil {
+		// Fast-path the common case of simply checking two types align,
+		// but there are no type parameters to bind.
+		if err := unionAndBindTypeParms(nil, a, b); err != nil {
 			return nil, err
 		}
 		return &a, nil
@@ -34,15 +35,12 @@ func unify(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternUni
 	var sets disjointSets
 	findBoundVars(&sets, a)
 	findBoundVars(&sets, b)
-	if err := alignTypes(&sets, a, b); err != nil {
+	if err := unionAndBindTypeParms(&sets, a, b); err != nil {
 		return nil, err
 	}
 
-	// Find the unique binding for each type parameter set.
-	// If there are multiple bindings, it's an error (note).
-	if err := bindSets(&sets, a, b); err != nil {
-		return nil, err
-	}
+	// Make a new type parameter for bound type variables in the input patterns
+	// that did not bind to a type.
 	var parms []*TypeParm
 	seen := make(map[string]int)
 	for _, parm := range sets.setSlice {
@@ -100,21 +98,59 @@ func findBoundVars(sets *disjointSets, pat TypePattern) {
 
 type patternAlignError interface{ Cause }
 
-// alignTypes returns an error if two types do not "align".
-// If sets is non-nil, sets corresponding to
-// aligned, bound type variables are unioned.
-func alignTypes(sets *disjointSets, a, b TypePattern) patternAlignError {
+// unionAndBindTypeParms assigns types to type parameters,
+// and unions type parameters that would be assigned to eachother.
+//
+// If sets is nil, unionAndBindTypeParms panics if there are any bound type variables.
+// If the caller guarantees there are no bound type variables, sets may be passed as nil,
+// in which case unionAndBindTypeParms will return an error if the types are not aligned.
+func unionAndBindTypeParms(sets *disjointSets, a, b TypePattern) patternAlignError {
 	aVar, aOk := a.Type.(*TypeVar)
 	bVar, bOk := b.Type.(*TypeVar)
 	switch {
 	case aOk && bOk && a.bound(aVar) && b.bound(bVar):
-		if sets != nil {
-			sets.union(aVar.Def, bVar.Def)
+		if sets == nil {
+			panic("unexpected bound type variable")
+		}
+		aSet := sets.find(aVar.Def)
+		bSet := sets.find(bVar.Def)
+		switch set := sets.union(aSet, bSet); {
+		case aSet.bind != nil && bSet.bind != nil:
+			if !eqType(aSet.bind, bSet.bind) {
+				return &PatternBindingError{Parm: aVar.Def, Prev: bSet.bind, Cur: bSet.bind}
+			}
+			set.bind = aSet.bind
+		case aSet.bind != nil:
+			set.bind = aSet.bind
+		case bSet.bind != nil:
+			set.bind = bSet.bind
 		}
 		return nil
 	case aOk && a.bound(aVar):
+		if sets == nil {
+			panic("unexpected bound type variable")
+		}
+		set := sets.find(aVar.Def)
+		if set.bind == nil {
+			set.bind = b.Type
+			return nil
+		}
+		if !eqType(set.bind, b.Type) {
+			return &PatternBindingError{Parm: aVar.Def, Prev: set.bind, Cur: b.Type}
+		}
 		return nil
 	case bOk && b.bound(bVar):
+		if sets == nil {
+			panic("unexpected bound type variable")
+		}
+		set := sets.find(bVar.Def)
+		if set.bind == nil {
+			set.bind = a.Type
+			return nil
+		}
+		if !eqType(set.bind, a.Type) {
+			return &PatternBindingError{Parm: bVar.Def, Prev: set.bind, Cur: a.Type}
+		}
 		return nil
 	}
 	switch bType := b.Type.(type) {
@@ -128,7 +164,7 @@ func alignTypes(sets *disjointSets, a, b TypePattern) patternAlignError {
 			return &DiffTypeKindError{A: a.Type, B: b.Type}
 		}
 		for i := range bType.Args {
-			if err := alignTypes(sets, a.typeArg(i), b.typeArg(i)); err != nil {
+			if err := unionAndBindTypeParms(sets, a.typeArg(i), b.typeArg(i)); err != nil {
 				return err
 			}
 		}
@@ -138,13 +174,13 @@ func alignTypes(sets *disjointSets, a, b TypePattern) patternAlignError {
 		if _, ok := a.Type.(*RefType); !ok {
 			return &DiffTypeKindError{A: a.Type, B: b.Type}
 		}
-		return alignTypes(sets, a.refElem(), b.refElem())
+		return unionAndBindTypeParms(sets, a.refElem(), b.refElem())
 
 	case *ArrayType:
 		if _, ok := a.Type.(*ArrayType); !ok {
 			return &DiffTypeKindError{A: a.Type, B: b.Type}
 		}
-		return alignTypes(sets, a.arrayElem(), b.arrayElem())
+		return unionAndBindTypeParms(sets, a.arrayElem(), b.arrayElem())
 
 	case *StructType:
 		aStructType, ok := a.Type.(*StructType)
@@ -163,7 +199,7 @@ func alignTypes(sets *disjointSets, a, b TypePattern) patternAlignError {
 			if aField.Type == nil || bField.Type == nil {
 				continue
 			}
-			if err := alignTypes(sets, a.field(i), b.field(i)); err != nil {
+			if err := unionAndBindTypeParms(sets, a.field(i), b.field(i)); err != nil {
 				return &DiffFieldsError{
 					A:     aStructType,
 					B:     bType,
@@ -188,7 +224,7 @@ func alignTypes(sets *disjointSets, a, b TypePattern) patternAlignError {
 			if aCase.Name != bCase.Name {
 				return &DiffCasesError{A: aUnionType, B: bType}
 			}
-			if err := alignTypes(sets, a.Case(i), b.Case(i)); err != nil {
+			if err := unionAndBindTypeParms(sets, a.Case(i), b.Case(i)); err != nil {
 				return &DiffCasesError{
 					A:     aUnionType,
 					B:     bType,
@@ -208,11 +244,11 @@ func alignTypes(sets *disjointSets, a, b TypePattern) patternAlignError {
 			return &DiffFuncError{A: aFuncType, B: bType}
 		}
 		for i := range bType.Parms {
-			if err := alignTypes(sets, a.parm(i), b.parm(i)); err != nil {
+			if err := unionAndBindTypeParms(sets, a.parm(i), b.parm(i)); err != nil {
 				return &DiffFuncError{A: aFuncType, B: bType, Cause: err, Parm: i}
 			}
 		}
-		if err := alignTypes(sets, a.ret(), b.ret()); err != nil {
+		if err := unionAndBindTypeParms(sets, a.ret(), b.ret()); err != nil {
 			return &DiffFuncError{A: aFuncType, B: bType, Cause: err, Parm: -1}
 		}
 		return nil
@@ -235,89 +271,6 @@ func alignTypes(sets *disjointSets, a, b TypePattern) patternAlignError {
 			}
 			return &DiffTypeKindError{A: a.Type, B: b.Type}
 		}
-		return nil
-
-	default:
-		panic(fmt.Sprintf("impossible Type type: %T", b))
-	}
-}
-
-// bindSets adds bindings for the type of each set.
-// It panics if the types don't align (since it's assumed to be called after alignTypes).
-func bindSets(sets *disjointSets, a, b TypePattern) *PatternBindingError {
-	aVar, aOk := a.Type.(*TypeVar)
-	bVar, bOk := b.Type.(*TypeVar)
-	switch {
-	case aOk && bOk && a.bound(aVar) && b.bound(bVar):
-		return nil
-	case aOk && a.bound(aVar):
-		set := sets.find(aVar.Def)
-		if set.bind == nil {
-			set.bind = b.Type
-			return nil
-		}
-		if !eqType(set.bind, b.Type) {
-			return &PatternBindingError{Parm: aVar.Def, Prev: set.bind, Cur: b.Type}
-		}
-		return nil
-	case bOk && b.bound(bVar):
-		set := sets.find(bVar.Def)
-		if set.bind == nil {
-			set.bind = a.Type
-			return nil
-		}
-		if !eqType(set.bind, a.Type) {
-			return &PatternBindingError{Parm: bVar.Def, Prev: set.bind, Cur: a.Type}
-		}
-		return nil
-	}
-	switch bType := b.Type.(type) {
-	case *DefType:
-		for i := range bType.Args {
-			if note := bindSets(sets, a.typeArg(i), b.typeArg(i)); note != nil {
-				return note
-			}
-		}
-		return nil
-
-	case *RefType:
-		return bindSets(sets, a.refElem(), b.refElem())
-
-	case *ArrayType:
-		return bindSets(sets, a.arrayElem(), b.arrayElem())
-
-	case *StructType:
-		for i := range bType.Fields {
-			if a.Type.(*StructType).Fields[i].Type == nil ||
-				b.Type.(*StructType).Fields[i].Type == nil {
-				continue
-			}
-			if note := bindSets(sets, a.field(i), b.field(i)); note != nil {
-				return note
-			}
-		}
-		return nil
-
-	case *UnionType:
-		for i := range bType.Cases {
-			if note := bindSets(sets, a.Case(i), b.Case(i)); note != nil {
-				return note
-			}
-		}
-		return nil
-
-	case *FuncType:
-		for i := range bType.Parms {
-			if note := bindSets(sets, a.parm(i), b.parm(i)); note != nil {
-				return note
-			}
-		}
-		return bindSets(sets, a.ret(), b.ret())
-
-	case *BasicType:
-		return nil
-
-	case *TypeVar:
 		return nil
 
 	default:
@@ -475,11 +428,9 @@ func (sets *disjointSets) find(t *TypeParm) *set {
 	return root
 }
 
-func (sets *disjointSets) union(a, b *TypeParm) {
-	x := sets.find(a)
-	y := sets.find(b)
+func (sets *disjointSets) union(x, y *set) *set {
 	if x == y {
-		return
+		return x
 	}
 	if x.rank < y.rank {
 		x, y = y, x
@@ -488,4 +439,5 @@ func (sets *disjointSets) union(a, b *TypeParm) {
 	if x.rank != y.rank {
 		x.rank++
 	}
+	return x
 }

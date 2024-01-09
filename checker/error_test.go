@@ -568,9 +568,10 @@ func TestConvertError(t *testing.T) {
 			a:    "[.x ?1, .y ?1]",
 			b:    "[.x int, .y string]",
 			mode: implicit,
-			err: "cannot implicitly convert \\[.x \\?, .y \\?] to .*\n" +
+			err: "cannot implicitly convert \\[\\.x \\?, \\.y \\?] to .*\n" +
 				// Z0 is what the test framework internally names ?1.
-				"Z0 binds int and string$",
+				"\\[\\.x Z0, \\.y Z0\\] and \\[\\.x int, \\.y string\\] have different fields\n" +
+				"field \\.y: Z0 binds int and string$",
 		},
 
 		// Recursive substitution error.
