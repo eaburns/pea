@@ -23,6 +23,10 @@ type Parser struct {
 	// TrimErrorPathPrefix is trimmed from path names
 	// in parse error messages.
 	TrimErrorPathPrefix string
+	// parseTypePatterns indicates whether to parse type patterns.
+	// This is intended for use in testing the type checker.
+	// Parsing type patterns allows type variables with the name ?.
+	parseTypePatterns bool
 	// All comments sorted by their start location.
 	comments []Comment
 	offs                int
@@ -136,12 +140,37 @@ func ParseExpr(str string) (Expr, error) {
 	return *expr, nil
 }
 
+// ParseType parses str as a type.
 func ParseType(str string) (Type, error) {
 	_p, err := _NewParser(str)
 	if err != nil {
 		return nil, err
 	}
 	_p.data = New()
+	if pos, perr := _TypeAccepts(_p, 0); pos < 0 {
+		_, t := _TypeFail(_p, 0, perr)
+		return nil, parseError{loc: perr, text: _p.text, fail: t}
+	}
+	_, typ := _TypeAction(_p, 0)
+	return *typ, nil
+}
+
+// ParseTypePattern parses str as a type pattern.
+// Type patterns are not part of the Pea syntax;
+// this is intended for testing the type checker.
+//
+// ParseTypePattern is just like ParseType,
+// but allow type variables named ?.
+// The intent is that these will be interpreted as bound type parameters,
+// but it is up to the caller to enforce that interpretation.
+func ParseTypePattern(str string) (Type, error) {
+	_p, err := _NewParser(str)
+	if err != nil {
+		return nil, err
+	}
+	parser := New()
+	parser.parseTypePatterns = true
+	_p.data = parser
 	if pos, perr := _TypeAccepts(_p, 0); pos < 0 {
 		_, t := _TypeFail(_p, 0, perr)
 		return nil, parseError{loc: perr, text: _p.text, fail: t}
@@ -403,4 +432,8 @@ func comment(_p *_Parser, text string, s, e int) string {
 		L: loc.Loc{s, e},
 	})
 	return text
+}
+
+func parseTypePatterns(p *_Parser) bool {
+	return p.data.(*Parser).parseTypePatterns
 }

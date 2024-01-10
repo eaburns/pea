@@ -197,6 +197,17 @@ func (m *Mod) findType(args []Type, name string, l loc.Loc) []Type {
 	if t := findBuiltInType(args, name, l); t != nil {
 		return []Type{t}
 	}
+
+	var parm *TypeParm
+	m.testTypeParms.ForEach(func (p *TypeParm) {
+		if p.Name == name {
+			parm = p
+		}
+	})
+	if parm != nil {
+		return []Type{&TypeVar{SourceName: name, Def: parm, L: l}}
+	}
+
 	return nil
 }
 

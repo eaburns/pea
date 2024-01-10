@@ -518,7 +518,7 @@ FloatLit <- _ text:(("+" / "-")? D+ "." D+ ([eE] [+\-]? D+)?) {
 	return Expr(&FloatLit{Text: text, L: l(parser, start, end)})
 }
 
-TypeVar "type variable" <- _ name:([A-Z] D*) !L {
+TypeVar "type variable" <- _ name:(([A-Z] / &{parseTypePatterns(parser)} "?") D*) !L {
 	return TypeVar{Name: name, L: l(parser, start, end)}
 }
 

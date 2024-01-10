@@ -413,17 +413,17 @@ func makeType(x scope, parserType parser.Type) (typ Type, errs []Error) {
 	return _makeType(x, parserType, true, false)
 }
 
-func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) (typ Type, errs []Error) {
+func _makeType(x scope, parserType parser.Type, inst, mintNewTypeParmsForTest bool) (typ Type, errs []Error) {
 	switch parserType := parserType.(type) {
 	case nil:
 		return nil, nil
 	case *parser.RefType:
-		typ, errs = _makeType(x, parserType.Type, inst, allowUnboundForTest)
+		typ, errs = _makeType(x, parserType.Type, inst, mintNewTypeParmsForTest)
 		typ = &RefType{Type: typ, L: parserType.L}
 	case *parser.NamedType:
 		var args []Type
 		for _, parserArg := range parserType.Args {
-			arg, fs := _makeType(x, parserArg, inst, allowUnboundForTest)
+			arg, fs := _makeType(x, parserArg, inst, mintNewTypeParmsForTest)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 				continue
@@ -484,12 +484,12 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 		}
 	case *parser.ArrayType:
 		var elemType Type
-		elemType, errs = _makeType(x, parserType.ElemType, inst, allowUnboundForTest)
+		elemType, errs = _makeType(x, parserType.ElemType, inst, mintNewTypeParmsForTest)
 		typ = &ArrayType{ElemType: elemType, L: parserType.L}
 	case *parser.StructType:
 		var fields []FieldDef
 		for _, parserField := range parserType.Fields {
-			t, fs := _makeType(x, parserField.Type, inst, allowUnboundForTest)
+			t, fs := _makeType(x, parserField.Type, inst, mintNewTypeParmsForTest)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 			}
@@ -503,7 +503,7 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 	case *parser.UnionType:
 		var cases []CaseDef
 		for _, parserCase := range parserType.Cases {
-			t, fs := _makeType(x, parserCase.Type, inst, allowUnboundForTest)
+			t, fs := _makeType(x, parserCase.Type, inst, mintNewTypeParmsForTest)
 			if len(fs) > 0 {
 				errs = append(errs, fs...)
 			}
@@ -518,11 +518,11 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 		}
 		typ = &UnionType{Cases: cases, L: parserType.L}
 	case *parser.FuncType:
-		parms, fs := _makeTypes(x, parserType.Parms, inst, allowUnboundForTest)
+		parms, fs := _makeTypes(x, parserType.Parms, inst, mintNewTypeParmsForTest)
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
-		ret, fs := _makeType(x, parserType.Ret, inst, allowUnboundForTest)
+		ret, fs := _makeType(x, parserType.Ret, inst, mintNewTypeParmsForTest)
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}
@@ -534,9 +534,23 @@ func _makeType(x scope, parserType parser.Type, inst, allowUnboundForTest bool) 
 		name := parserType.Name
 		switch types := findType(x, nil, name, parserType.L); {
 		case len(types) == 0:
-			if allowUnboundForTest {
+			if mintNewTypeParmsForTest {
+				// This is for a test, so mint a new type parameter
+				// and stick it as a new global Mod-level type parm.
+				p := &TypeParm{
+					Name: name,
+					L: parserType.L,
+				}
+				var m *Mod
+				for xx := x; xx != nil; xx = xx.up() {
+					if m, _ = xx.(*Mod); m != nil {
+						break
+					}
+				}
+				m.testTypeParms = m.testTypeParms.Union(NewTypeParmSet(p))
 				typ = &TypeVar{
 					SourceName: name,
+					Def: p,
 					L:          parserType.L,
 				}
 			} else {
@@ -571,11 +585,11 @@ func makeTypes(x scope, parserTypes []parser.Type) ([]Type, []Error) {
 	return _makeTypes(x, parserTypes, true, false)
 }
 
-func _makeTypes(x scope, parserTypes []parser.Type, inst bool, allowUnboundForTest bool) ([]Type, []Error) {
+func _makeTypes(x scope, parserTypes []parser.Type, inst bool, mintNewTypeParmsForTest bool) ([]Type, []Error) {
 	var errs []Error
 	var types []Type
 	for _, parserType := range parserTypes {
-		t, fs := _makeType(x, parserType, inst, allowUnboundForTest)
+		t, fs := _makeType(x, parserType, inst, mintNewTypeParmsForTest)
 		if len(fs) > 0 {
 			errs = append(errs, fs...)
 		}

@@ -326,11 +326,10 @@ func TestConvert(t *testing.T) {
 		{src: "&int", dst: "&?", want: c("&int", Noop, "&int")},
 		{src: "int", dst: "&?", want: c("int", Ref, "&int")},
 		{src: "[.x int]", dst: "[.x ?]", want: c("[.x int]", Noop, "[.x int]")},
-		{src: "(int, string) pair", dst: "[.x ?, .y ?]", want: c("(int, string) pair", Noop, "[.x int, .y string]")},
-		{src: "[.x int, .y string]", dst: "(?, ?) pair", want: c("[.x int, .y string]", Noop, "(int, string) pair")},
-		{src: "(int, string) pair", dst: "(?, ?) pair2", explicit: true, want: c("(int, string) pair", Noop, "(int, string) pair2")},
-		// TODO: ? gets renamed to Z0 during parseTestPattern.
-		{src: "[.x int, .y ?]", dst: "[.x ?, .y string]", want: c("[.x int, .y Z0]", Noop, "[.x int, .y string]")},
+		{src: "(int, string) pair", dst: "[.x ?1, .y ?2]", want: c("(int, string) pair", Noop, "[.x int, .y string]")},
+		{src: "[.x int, .y string]", dst: "(?1, ?2) pair", want: c("[.x int, .y string]", Noop, "(int, string) pair")},
+		{src: "(int, string) pair", dst: "(?1, ?2) pair2", explicit: true, want: c("(int, string) pair", Noop, "(int, string) pair2")},
+		{src: "[.x int, .y ?1]", dst: "[.x ?2, .y string]", want: c("[.x int, .y ?1]", Noop, "[.x int, .y string]")},
 
 		// Some obvious failing conversions.
 		{src: "[.x int]", dst: "int_val", explicit: true, want: nil},
@@ -339,9 +338,9 @@ func TestConvert(t *testing.T) {
 		{src: "(){}", dst: "[int]", explicit: true, want: nil},
 
 		// It is not an error if the conversion does not fully ground the resulting type.
-		{src: "?", dst: "?", explicit: false, want: c("Z0", Noop, "Z")},
-		{src: "?", dst: "?", explicit: true, want: c("Z0", Noop, "Z")},
-		{src: "[.x ?, .y ?]", dst: "[.x int, .y ?]", want: c("[.x Z0, .y Z1]", Noop, "[.x int, .y Z]")},
+		{src: "?1", dst: "?2", explicit: false, want: c("?1", Noop, "?")},
+		{src: "?1", dst: "?2", explicit: true, want: c("?1", Noop, "?")},
+		{src: "[.x ?1, .y ?2]", dst: "[.x int, .y ?3]", want: c("[.x ?1, .y ?2]", Noop, "[.x int, .y ?]")},
 
 		{
 			src:  "[.x int, .y int]",

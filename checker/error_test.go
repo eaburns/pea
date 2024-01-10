@@ -569,9 +569,8 @@ func TestConvertError(t *testing.T) {
 			b:    "[.x int, .y string]",
 			mode: implicit,
 			err: "cannot implicitly convert \\[\\.x \\?, \\.y \\?] to .*\n" +
-				// Z0 is what the test framework internally names ?1.
-				"\\[\\.x Z0, \\.y Z0\\] and \\[\\.x int, \\.y string\\] have different fields\n" +
-				"field \\.y: Z0 binds int and string$",
+				"\\[\\.x \\?1, \\.y \\?1\\] and \\[\\.x int, \\.y string\\] have different fields\n" +
+				"field \\.y: \\?1 binds int and string$",
 		},
 
 		// Recursive substitution error.
@@ -580,9 +579,7 @@ func TestConvertError(t *testing.T) {
 			b:    "[.a [.x ?10],	.b ?10,	.c [.x ?11],	.d ?11]",
 			mode: implicit,
 			err: "cannot implicitly convert .* to .*\n" +
-				// ZN is what the test framework internally names ?N.
-				// TODO: stop leaking internal type variable names in tests.
-				"recursive binding: Z2 -> Z1 -> Z3 -> Z0 -> Z2$",
+				"recursive binding: \\?10 -> \\?1 -> \\?11 -> \\?0 -> \\?10$",
 		},
 
 		// Test an explicit conversion.
@@ -610,8 +607,8 @@ func TestConvertError(t *testing.T) {
 			if len(errs) > 0 {
 				t.Fatalf("failed to parse and check: %s", errs[0])
 			}
-			a, n := _parseTestPattern(t, mod, 0, test.a)
-			b, _ := _parseTestPattern(t, mod, n, test.b)
+			a := parseTestPattern(t, mod, test.a)
+			b := parseTestPattern(t, mod, test.b)
 			var bind map[*TypeParm]Type
 			_, _, err := convertPattern(nil, a, b, test.mode, &bind)
 			if err == nil {

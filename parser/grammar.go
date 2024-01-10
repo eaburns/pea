@@ -22978,51 +22978,76 @@ func _TypeVarAccepts(parser *_Parser, start int) (deltaPos, deltaErr int) {
 	}
 	pos, perr := start, -1
 	// action
-	// _ name:([A-Z] D*) !L
+	// _ name:(([A-Z]/&{…} "?") D*) !L
 	// _
 	if !_accept(parser, __Accepts, &pos, &perr) {
 		goto fail
 	}
-	// name:([A-Z] D*)
+	// name:(([A-Z]/&{…} "?") D*)
 	{
 		pos1 := pos
-		// ([A-Z] D*)
-		// [A-Z] D*
-		// [A-Z]
-		if r, w := _next(parser, pos); r < 'A' || r > 'Z' {
-			perr = _max(perr, pos)
+		// (([A-Z]/&{…} "?") D*)
+		// ([A-Z]/&{…} "?") D*
+		// ([A-Z]/&{…} "?")
+		// [A-Z]/&{…} "?"
+		{
+			pos6 := pos
+			// [A-Z]
+			if r, w := _next(parser, pos); r < 'A' || r > 'Z' {
+				perr = _max(perr, pos)
+				goto fail7
+			} else {
+				pos += w
+			}
+			goto ok3
+		fail7:
+			pos = pos6
+			// &{…} "?"
+			// pred code
+			if ok := func() bool { return parseTypePatterns(parser) }(); !ok {
+				perr = _max(perr, pos)
+				goto fail8
+			}
+			// "?"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
+				perr = _max(perr, pos)
+				goto fail8
+			}
+			pos++
+			goto ok3
+		fail8:
+			pos = pos6
 			goto fail
-		} else {
-			pos += w
+		ok3:
 		}
 		// D*
 		for {
-			pos4 := pos
+			pos11 := pos
 			// D
 			if !_accept(parser, _DAccepts, &pos, &perr) {
-				goto fail6
+				goto fail13
 			}
 			continue
-		fail6:
-			pos = pos4
+		fail13:
+			pos = pos11
 			break
 		}
 		labels[0] = parser.text[pos1:pos]
 	}
 	// !L
 	{
-		pos8 := pos
-		perr10 := perr
+		pos15 := pos
+		perr17 := perr
 		// L
 		if !_accept(parser, _LAccepts, &pos, &perr) {
-			goto ok7
+			goto ok14
 		}
-		pos = pos8
-		perr = _max(perr10, pos)
+		pos = pos15
+		perr = _max(perr17, pos)
 		goto fail
-	ok7:
-		pos = pos8
-		perr = perr10
+	ok14:
+		pos = pos15
+		perr = perr17
 	}
 	perr = start
 	return _memoize(parser, _TypeVar, start, pos, perr)
@@ -23043,52 +23068,87 @@ func _TypeVarFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 	}
 	key := _key{start: start, rule: _TypeVar}
 	// action
-	// _ name:([A-Z] D*) !L
+	// _ name:(([A-Z]/&{…} "?") D*) !L
 	// _
 	if !_fail(parser, __Fail, errPos, failure, &pos) {
 		goto fail
 	}
-	// name:([A-Z] D*)
+	// name:(([A-Z]/&{…} "?") D*)
 	{
 		pos1 := pos
-		// ([A-Z] D*)
-		// [A-Z] D*
-		// [A-Z]
-		if r, w := _next(parser, pos); r < 'A' || r > 'Z' {
-			if pos >= errPos {
-				failure.Kids = append(failure.Kids, &peg.Fail{
-					Pos:  int(pos),
-					Want: "[A-Z]",
-				})
+		// (([A-Z]/&{…} "?") D*)
+		// ([A-Z]/&{…} "?") D*
+		// ([A-Z]/&{…} "?")
+		// [A-Z]/&{…} "?"
+		{
+			pos6 := pos
+			// [A-Z]
+			if r, w := _next(parser, pos); r < 'A' || r > 'Z' {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "[A-Z]",
+					})
+				}
+				goto fail7
+			} else {
+				pos += w
 			}
+			goto ok3
+		fail7:
+			pos = pos6
+			// &{…} "?"
+			// pred code
+			if ok := func() bool { return parseTypePatterns(parser) }(); !ok {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "&{" + "parseTypePatterns(parser)" + "}",
+					})
+				}
+				goto fail8
+			}
+			// "?"
+			if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
+				if pos >= errPos {
+					failure.Kids = append(failure.Kids, &peg.Fail{
+						Pos:  int(pos),
+						Want: "\"?\"",
+					})
+				}
+				goto fail8
+			}
+			pos++
+			goto ok3
+		fail8:
+			pos = pos6
 			goto fail
-		} else {
-			pos += w
+		ok3:
 		}
 		// D*
 		for {
-			pos4 := pos
+			pos11 := pos
 			// D
 			if !_fail(parser, _DFail, errPos, failure, &pos) {
-				goto fail6
+				goto fail13
 			}
 			continue
-		fail6:
-			pos = pos4
+		fail13:
+			pos = pos11
 			break
 		}
 		labels[0] = parser.text[pos1:pos]
 	}
 	// !L
 	{
-		pos8 := pos
-		nkids9 := len(failure.Kids)
+		pos15 := pos
+		nkids16 := len(failure.Kids)
 		// L
 		if !_fail(parser, _LFail, errPos, failure, &pos) {
-			goto ok7
+			goto ok14
 		}
-		pos = pos8
-		failure.Kids = failure.Kids[:nkids9]
+		pos = pos15
+		failure.Kids = failure.Kids[:nkids16]
 		if pos >= errPos {
 			failure.Kids = append(failure.Kids, &peg.Fail{
 				Pos:  int(pos),
@@ -23096,9 +23156,9 @@ func _TypeVarFail(parser *_Parser, start, errPos int) (int, *peg.Fail) {
 			})
 		}
 		goto fail
-	ok7:
-		pos = pos8
-		failure.Kids = failure.Kids[:nkids9]
+	ok14:
+		pos = pos15
+		failure.Kids = failure.Kids[:nkids16]
 	}
 	failure.Kids = nil
 	parser.fail[key] = failure
@@ -23129,43 +23189,76 @@ func _TypeVarAction(parser *_Parser, start int) (int, *TypeVar) {
 	// action
 	{
 		start0 := pos
-		// _ name:([A-Z] D*) !L
+		// _ name:(([A-Z]/&{…} "?") D*) !L
 		// _
 		if p, n := __Action(parser, pos); n == nil {
 			goto fail
 		} else {
 			pos = p
 		}
-		// name:([A-Z] D*)
+		// name:(([A-Z]/&{…} "?") D*)
 		{
 			pos2 := pos
-			// ([A-Z] D*)
-			// [A-Z] D*
+			// (([A-Z]/&{…} "?") D*)
+			// ([A-Z]/&{…} "?") D*
 			{
 				var node3 string
-				// [A-Z]
-				if r, w := _next(parser, pos); r < 'A' || r > 'Z' {
+				// ([A-Z]/&{…} "?")
+				// [A-Z]/&{…} "?"
+				{
+					pos7 := pos
+					var node6 string
+					// [A-Z]
+					if r, w := _next(parser, pos); r < 'A' || r > 'Z' {
+						goto fail8
+					} else {
+						node3 = parser.text[pos : pos+w]
+						pos += w
+					}
+					goto ok4
+				fail8:
+					node3 = node6
+					pos = pos7
+					// &{…} "?"
+					{
+						var node10 string
+						// pred code
+						if ok := func() bool { return parseTypePatterns(parser) }(); !ok {
+							goto fail9
+						}
+						node10 = ""
+						node3, node10 = node3+node10, ""
+						// "?"
+						if len(parser.text[pos:]) < 1 || parser.text[pos:pos+1] != "?" {
+							goto fail9
+						}
+						node10 = parser.text[pos : pos+1]
+						pos++
+						node3, node10 = node3+node10, ""
+					}
+					goto ok4
+				fail9:
+					node3 = node6
+					pos = pos7
 					goto fail
-				} else {
-					node3 = parser.text[pos : pos+w]
-					pos += w
+				ok4:
 				}
 				label0, node3 = label0+node3, ""
 				// D*
 				for {
-					pos5 := pos
-					var node6 string
+					pos12 := pos
+					var node13 string
 					// D
 					if p, n := _DAction(parser, pos); n == nil {
-						goto fail7
+						goto fail14
 					} else {
-						node6 = *n
+						node13 = *n
 						pos = p
 					}
-					node3 += node6
+					node3 += node13
 					continue
-				fail7:
-					pos = pos5
+				fail14:
+					pos = pos12
 					break
 				}
 				label0, node3 = label0+node3, ""
@@ -23174,17 +23267,17 @@ func _TypeVarAction(parser *_Parser, start int) (int, *TypeVar) {
 		}
 		// !L
 		{
-			pos9 := pos
+			pos16 := pos
 			// L
 			if p, n := _LAction(parser, pos); n == nil {
-				goto ok8
+				goto ok15
 			} else {
 				pos = p
 			}
-			pos = pos9
+			pos = pos16
 			goto fail
-		ok8:
-			pos = pos9
+		ok15:
+			pos = pos16
 		}
 		node = func(
 			start, end int, name string) TypeVar {

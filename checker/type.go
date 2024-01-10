@@ -332,13 +332,7 @@ func eqType(a, b Type) bool {
 		if !ok {
 			return false
 		}
-		// The Def==nil case only comes up in tests,
-		// where we create un-bound type variables
-		// by passing allowUnboundForTest to _makeType.
-		// This creates a new TypeVar without a Def;
-		// but we want it to compare equal in tests to other instances
-		// of the same type variable name.
-		return ok && (a.Def == nil && b.Def == nil && a.SourceName == b.SourceName || a.Def != nil && a.Def == b.Def)
+		return ok && a.Def != nil && a.Def == b.Def
 	default:
 		panic(fmt.Sprintf("impossible Type type: %T", a))
 	}

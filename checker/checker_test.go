@@ -6916,7 +6916,7 @@ func TestStructLiteralInference(t *testing.T) {
 		},
 		{
 			src:  `type (X, Y) pair [.x X, .y Y]`,
-			pat:  `(?, ?) pair`,
+			pat:  `(?1, ?2) pair`,
 			expr: `[.x 5, .y "hello"]`,
 			want: `(int, string) pair`,
 		},
@@ -6989,9 +6989,9 @@ func TestBlockLiteralInference(t *testing.T) {
 		{pat: `(){?}`, expr: `(){}`, want: `(){}`},
 		{pat: `(){?}`, expr: `(){5}`, want: `(){int}`},
 		{pat: `(?){}`, expr: `(_ int){}`, want: `(int){}`},
-		{pat: `(?, ?){}`, expr: `(_ int, _ string){}`, want: `(int, string){}`},
-		{pat: `(?, ?){?}`, expr: `(_ int, _ string){5}`, want: `(int, string){int}`},
-		{pat: `(?, ?){}`, expr: `(a, b){}`, err: `cannot infer`},
+		{pat: `(?1, ?2){}`, expr: `(_ int, _ string){}`, want: `(int, string){}`},
+		{pat: `(?1, ?2){?}`, expr: `(_ int, _ string){5}`, want: `(int, string){int}`},
+		{pat: `(?1, ?2){}`, expr: `(a, b){}`, err: `cannot infer`},
 
 		{src: `type t (){}`, pat: `t`, expr: `(){}`, want: `t`},
 		{src: `type t (){}`, pat: `&t`, expr: `(){}`, want: `&t`},
@@ -7027,14 +7027,14 @@ func TestBlockLiteralInference(t *testing.T) {
 		{src: `type T t &(){T}`, pat: `&? t`, expr: `(){5}`, want: `&int t`},
 
 		// We end up with (?){[.]}, and we cannot infer the ?.
-		{src: `type (T, U) t (T){U}`, pat: `(?, ?) t`, expr: `(){}`, err: `cannot infer`},
+		{src: `type (T, U) t (T){U}`, pat: `(?1, ?2) t`, expr: `(){}`, err: `cannot infer`},
 
-		{src: `type (T, U) t (T){U}`, pat: `(?, ?) t`, expr: `(_ int){}`, want: `(int, [.]) t`},
-		{src: `type (T, U) t (T){U}`, pat: `(?, ?) t`, expr: `(_ int){panic("")}`, want: `(int, !) t`},
-		{src: `type (T, U) t (T){U}`, pat: `(?, ?) t`, expr: `(_ int){5}`, want: `(int, int) t`},
-		{src: `type (T, U) t (T){U}`, pat: `&(?, ?) t`, expr: `(_ int){5}`, want: `&(int, int) t`},
-		{src: `type (T, U) t &(T){U}`, pat: `(?, ?) t`, expr: `(_ int){5}`, want: `(int, int) t`},
-		{src: `type (T, U) t &(T){U}`, pat: `&(?, ?) t`, expr: `(_ int){5}`, want: `&(int, int) t`},
+		{src: `type (T, U) t (T){U}`, pat: `(?1, ?2) t`, expr: `(_ int){}`, want: `(int, [.]) t`},
+		{src: `type (T, U) t (T){U}`, pat: `(?1, ?2) t`, expr: `(_ int){panic("")}`, want: `(int, !) t`},
+		{src: `type (T, U) t (T){U}`, pat: `(?1, ?2) t`, expr: `(_ int){5}`, want: `(int, int) t`},
+		{src: `type (T, U) t (T){U}`, pat: `&(?1, ?2) t`, expr: `(_ int){5}`, want: `&(int, int) t`},
+		{src: `type (T, U) t &(T){U}`, pat: `(?1, ?2) t`, expr: `(_ int){5}`, want: `(int, int) t`},
+		{src: `type (T, U) t &(T){U}`, pat: `&(?1, ?2) t`, expr: `(_ int){5}`, want: `&(int, int) t`},
 	}
 	for _, test := range tests {
 		t.Run(test.name(), test.run)

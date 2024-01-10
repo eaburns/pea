@@ -23,6 +23,9 @@ type Mod struct {
 
 	toSub []*FuncInst
 
+	// testTypeParms are type parameters added for tests.
+	testTypeParms *TypeParmSet
+
 	*topScope
 }
 

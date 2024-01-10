@@ -188,7 +188,7 @@ func TestTypePatternString(t *testing.T) {
 		{pat: "(int, ?){}", want: "(int, ?){}"},
 		{pat: "[.x ?, .y ?0, .z ?0]", want: "[.x ?0, .y ?1, .z ?1]"},
 		{pat: "[.x ?, .y ?1, .z ?1]", want: "[.x ?0, .y ?1, .z ?1]"},
-		{pat: "[.x ?, .y U, .z ?]", want: "[.x ?0, .y U, .z ?1]"},
+		{pat: "[.x ?0, .y U, .z ?1]", want: "[.x ?0, .y U, .z ?1]"},
 		{pat: "[.high [.med [.low ?]]]", want: "[.high [.med [.low ?]]]"},
 		{
 			src:  "type (X, Y) pair [.x X, .y Y]",
@@ -197,7 +197,7 @@ func TestTypePatternString(t *testing.T) {
 		},
 		{
 			src:  "type (X, Y) pair [.x X, .y Y]",
-			pat:  "(?, ?) pair",
+			pat:  "(?0, ?1) pair",
 			want: "(?0, ?1) pair",
 		},
 		{
