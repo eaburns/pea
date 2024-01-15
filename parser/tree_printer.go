@@ -138,6 +138,7 @@ func (s *StructType) printTree(pc *config) {
 	pc.p("StructType{")
 	pc.loc(s.L)
 	pc.field("Fields", s.Fields)
+	pc.field("Open", s.Open)
 	pc.p("\n}")
 }
 
@@ -153,6 +154,7 @@ func (u *UnionType) printTree(pc *config) {
 	pc.p("UnionType{")
 	pc.loc(u.L)
 	pc.field("Cases", u.Cases)
+	pc.field("Open", u.Open)
 	pc.p("\n}")
 }
 

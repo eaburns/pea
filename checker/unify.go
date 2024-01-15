@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -21,6 +22,8 @@ type patternUnifyError interface{ Cause }
 // If the patterns cannot unify, notes may be non-nil
 // if there is a note to give more information as to why.
 func unify(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternUnifyError) {
+	a.Type, b.Type = expandOpenLits(a.Type, b.Type)
+
 	if a.Parms.Len() == 0 && b.Parms.Len() == 0 {
 		// Fast-path the common case of simply checking two types align,
 		// but there are no type parameters to bind.
@@ -85,6 +88,300 @@ func unify(a, b TypePattern, bind *map[*TypeParm]Type) (*TypePattern, patternUni
 		Parms: NewTypeParmSet(parms...),
 		Type:  subType(*bind, a.Type),
 	}, nil
+}
+
+func expandOpenLits(a, _b Type) (Type, Type) {
+	open := walkType(a, isOpenLit) || walkType(_b, isOpenLit)
+	if !open {
+		// If there are no open literals, short-circuit and just return the types.
+		return a, _b
+	}
+	switch a := a.(type) {
+	case *RefType:
+		b, ok := _b.(*RefType)
+		if !ok {
+			return a, _b
+		}
+		aa, bb := expandOpenLits(a.Type, b.Type)
+		return &RefType{Type: aa, L: a.L},
+			&RefType{Type: bb, L: b.L}
+
+	case *ArrayType:
+		b, ok := _b.(*ArrayType)
+		if !ok {
+			return a, _b
+		}
+		aa, bb := expandOpenLits(a.ElemType, b.ElemType)
+		return &ArrayType{ElemType: aa, L: a.L},
+			&ArrayType{ElemType: bb, L: b.L}
+
+	case *StructType:
+		b, ok := _b.(*StructType)
+		if !ok {
+			return a, _b
+		}
+		switch {
+		case a.Open && b.Open:
+			return expandStructOpenOpen(a, b)
+		case a.Open:
+			return expandStructOpenClosed(a, b)
+		case b.Open:
+			bbType, aaType := expandStructOpenClosed(b, a)
+			return aaType, bbType
+		case len(a.Fields) != len(b.Fields):
+			return a, _b
+		}
+		aaFields := make([]FieldDef, len(a.Fields))
+		bbFields := make([]FieldDef, len(b.Fields))
+		for i, aField := range a.Fields {
+			bField := b.Fields[i]
+			name := aField.Name
+			if bField.Name != name {
+				return a, _b
+			}
+			aaFieldType, bbFieldType := expandOpenLits(aField.Type, bField.Type)
+			aaFields[i] = FieldDef{Name: name, Type: aaFieldType, L: aField.L}
+			bbFields[i] = FieldDef{Name: name, Type: bbFieldType, L: bField.L}
+		}
+		return &StructType{Fields: aaFields, L: a.L},
+			&StructType{Fields: bbFields, L: b.L}
+
+	case *UnionType:
+		b, ok := _b.(*UnionType)
+		if !ok {
+			return a, _b
+		}
+		switch {
+		case a.Open && b.Open:
+			return expandUnionOpenOpen(a, b)
+		case a.Open:
+			return expandUnionOpenClosed(a, b)
+		case b.Open:
+			bbType, aaType := expandUnionOpenClosed(b, a)
+			return aaType, bbType
+		case len(a.Cases) != len(b.Cases):
+			return a, _b
+		}
+		aaCases := make([]CaseDef, len(a.Cases))
+		bbCases := make([]CaseDef, len(b.Cases))
+		for i, aCase := range a.Cases {
+			bCase := b.Cases[i]
+			name := aCase.Name
+			if bCase.Name != name {
+				return a, _b
+			}
+			aaCaseType, bbCaseType := expandOpenLits(aCase.Type, bCase.Type)
+			aaCases[i] = CaseDef{Name: name, Type: aaCaseType, L: aCase.L}
+			bbCases[i] = CaseDef{Name: name, Type: bbCaseType, L: bCase.L}
+		}
+		return &UnionType{Cases: aaCases, L: a.L},
+			&UnionType{Cases: bbCases, L: b.L}
+
+	case *FuncType:
+		b, ok := _b.(*FuncType)
+		if !ok || len(a.Parms) != len(b.Parms) {
+			return a, _b
+		}
+		aaParms := make([]Type, len(a.Parms))
+		bbParms := make([]Type, len(b.Parms))
+		for i := range a.Parms {
+			aaParms[i], bbParms[i] = expandOpenLits(a.Parms[i], b.Parms[i])
+		}
+		aaRet, bbRet := expandOpenLits(a.Ret, b.Ret)
+		return &FuncType{Parms: aaParms, Ret: aaRet, L: a.L},
+			&FuncType{Parms: bbParms, Ret: bbRet, L: b.L}
+
+	case *DefType, *BasicType, *TypeVar:
+		return a, _b
+
+	default:
+		panic(fmt.Sprintf("impossible Type type: %T", a))
+	}
+}
+
+func isOpenLit(t Type) bool {
+	switch t := t.(type) {
+	case *StructType:
+		return t.Open
+	case *UnionType:
+		return t.Open
+	default:
+		return false
+	}
+}
+
+func expandStructOpenOpen(a, b *StructType) (Type, Type) {
+	aFields := structFields(a)
+	aa := &StructType{Fields: copyFields(a.Fields), Open: true, L: a.L}
+	for _, f := range b.Fields {
+		if _, ok := aFields[f.Name]; ok {
+			continue
+		}
+		aa.Fields = append(aa.Fields, FieldDef{
+			Name: f.Name,
+			Type: copyTypeWithLoc(f.Type, f.L),
+			L:    f.L,
+		})
+	}
+	sort.Slice(aa.Fields, func(i, j int) bool {
+		return aa.Fields[i].Name < aa.Fields[j].Name
+	})
+
+	bFields := structFields(b)
+	bb := &StructType{Fields: copyFields(b.Fields), Open: true, L: b.L}
+	for _, f := range a.Fields {
+		if _, ok := bFields[f.Name]; ok {
+			continue
+		}
+		bb.Fields = append(bb.Fields, FieldDef{
+			Name: f.Name,
+			Type: copyTypeWithLoc(f.Type, f.L),
+			L:    f.L,
+		})
+	}
+	sort.Slice(bb.Fields, func(i, j int) bool {
+		return bb.Fields[i].Name < bb.Fields[j].Name
+	})
+	return aa, bb
+}
+
+func copyFields(fs []FieldDef) []FieldDef {
+	copy := make([]FieldDef, len(fs))
+	for i, f := range fs {
+		copy[i] = FieldDef{
+			Name: f.Name,
+			Type: copyTypeWithLoc(f.Type, f.L),
+			L:    f.L,
+		}
+	}
+	return copy
+}
+
+func expandStructOpenClosed(open, closed *StructType) (Type, Type) {
+	if closed.Open {
+		panic("impossible")
+	}
+	if len(open.Fields) > len(closed.Fields) {
+		return open, closed
+	}
+	// Make sure all fields in open and in closed.
+	closedFields := structFields(closed)
+	for i := range open.Fields {
+		if _, ok := closedFields[open.Fields[i].Name]; !ok {
+			return open, closed
+		}
+	}
+	// The resulting struct has all fields from closed, in the order from closed,
+	// but with the type copied from open if the field was in open.
+	openFields := structFields(open)
+	oopen := &StructType{L: open.L}
+	for _, f := range closed.Fields {
+		if openField, ok := openFields[f.Name]; ok {
+			// If the open struct already has this field, copy from there.
+			f = *openField
+		}
+		oopen.Fields = append(oopen.Fields, FieldDef{
+			Name: f.Name,
+			Type: copyTypeWithLoc(f.Type, f.L),
+			L:    f.L,
+		})
+	}
+	return oopen, closed
+}
+
+func structFields(s *StructType) map[string]*FieldDef {
+	fields := make(map[string]*FieldDef, len(s.Fields))
+	for i := range s.Fields {
+		fields[s.Fields[i].Name] = &s.Fields[i]
+	}
+	return fields
+}
+
+func expandUnionOpenOpen(a, b *UnionType) (Type, Type) {
+	aCases := unionCases(a)
+	aa := &UnionType{Cases: copyCases(a.Cases), Open: true, L: a.L}
+	for _, f := range b.Cases {
+		if _, ok := aCases[f.Name]; ok {
+			continue
+		}
+		aa.Cases = append(aa.Cases, CaseDef{
+			Name: f.Name,
+			Type: copyTypeWithLoc(f.Type, f.L),
+			L:    f.L,
+		})
+	}
+	sort.Slice(aa.Cases, func(i, j int) bool {
+		return aa.Cases[i].Name < aa.Cases[j].Name
+	})
+
+	bCases := unionCases(b)
+	bb := &UnionType{Cases: copyCases(b.Cases), Open: true, L: b.L}
+	for _, f := range a.Cases {
+		if _, ok := bCases[f.Name]; ok {
+			continue
+		}
+		bb.Cases = append(bb.Cases, CaseDef{
+			Name: f.Name,
+			Type: copyTypeWithLoc(f.Type, f.L),
+			L:    f.L,
+		})
+	}
+	sort.Slice(bb.Cases, func(i, j int) bool {
+		return bb.Cases[i].Name < bb.Cases[j].Name
+	})
+	return aa, bb
+}
+
+func copyCases(fs []CaseDef) []CaseDef {
+	copy := make([]CaseDef, len(fs))
+	for i, f := range fs {
+		copy[i] = CaseDef{
+			Name: f.Name,
+			Type: copyTypeWithLoc(f.Type, f.L),
+			L:    f.L,
+		}
+	}
+	return copy
+}
+
+func expandUnionOpenClosed(open, closed *UnionType) (Type, Type) {
+	if closed.Open {
+		panic("impossible")
+	}
+	if len(open.Cases) > len(closed.Cases) {
+		return open, closed
+	}
+	// Make sure all cases in open and in closed.
+	closedCases := unionCases(closed)
+	for i := range open.Cases {
+		if _, ok := closedCases[open.Cases[i].Name]; !ok {
+			return open, closed
+		}
+	}
+	// The resulting union has all cases from closed, in the order from closed,
+	// but with the type copied from open if the case was in open.
+	openCases := unionCases(open)
+	oopen := &UnionType{L: open.L}
+	for _, f := range closed.Cases {
+		if openCase, ok := openCases[f.Name]; ok {
+			// If the open union already has this case, copy from there.
+			f = *openCase
+		}
+		oopen.Cases = append(oopen.Cases, CaseDef{
+			Name: f.Name,
+			Type: copyTypeWithLoc(f.Type, f.L),
+			L:    f.L,
+		})
+	}
+	return oopen, closed
+}
+
+func unionCases(s *UnionType) map[string]*CaseDef {
+	fields := make(map[string]*CaseDef, len(s.Cases))
+	for i := range s.Cases {
+		fields[s.Cases[i].Name] = &s.Cases[i]
+	}
+	return fields
 }
 
 func findBoundVars(sets *disjointSets, pat TypePattern) {

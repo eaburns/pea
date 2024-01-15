@@ -81,7 +81,13 @@ func (t *ArrayType) Loc() loc.Loc { return t.L }
 
 type StructType struct {
 	Fields []FieldDef
-	L      loc.Loc
+	// Open indicates whether this is an open literal struct type.
+	// The language has no syntax to specify an open literal type,
+	// but the ParseTypePattern function for use in tests,
+	// allows a trailing ", ..." after literal struct type fields,
+	// to indicate that it should be interpreted as an open struct literal.
+	Open bool
+	L    loc.Loc
 }
 
 func (t *StructType) Loc() loc.Loc { return t.L }
@@ -94,7 +100,13 @@ type FieldDef struct {
 
 type UnionType struct {
 	Cases []CaseDef
-	L     loc.Loc
+	// Open indicates whether this is an open literal union type.
+	// The language has no syntax to specify an open literal type,
+	// but the ParseTypePattern function for use in tests,
+	// allows a trailing ", ..." after literal union type cases,
+	// to indicate that it should be interpreted as an open union literal.
+	Open bool
+	L    loc.Loc
 }
 
 func (t *UnionType) Loc() loc.Loc { return t.L }

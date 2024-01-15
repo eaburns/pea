@@ -326,6 +326,9 @@ func (s *StructType) buildString(w *stringBuilder) {
 	if len(s.Fields) == 0 {
 		w.WriteRune('.')
 	}
+	if s.Open {
+		w.WriteString(", ...")
+	}
 	w.WriteRune(']')
 }
 
@@ -340,6 +343,16 @@ func (u *UnionType) buildString(w *stringBuilder) {
 			w.WriteRune(' ')
 			c.Type.buildString(w)
 		}
+	}
+	if u.Open {
+		if len(u.Cases) == 0 {
+			// This should never come up, but in case,
+			// let's make it visually distinct from an empty open struct.
+			// The empty struct will print as [., ...].
+			// The empty union will print as [?, ...].
+			w.WriteRune('?')
+		}
+		w.WriteString(", ...")
 	}
 	w.WriteRune(']')
 }

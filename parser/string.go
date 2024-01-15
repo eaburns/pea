@@ -71,7 +71,11 @@ func (x *ArrayType) buildString(s *strings.Builder) *strings.Builder {
 
 func (x *StructType) buildString(s *strings.Builder) *strings.Builder {
 	if len(x.Fields) == 0 {
-		s.WriteString("[.]")
+		if x.Open {
+			s.WriteString("[., ...]")
+		} else {
+			s.WriteString("[.]")
+		}
 		return s
 	}
 	s.WriteString("[")
@@ -82,6 +86,9 @@ func (x *StructType) buildString(s *strings.Builder) *strings.Builder {
 		s.WriteString(f.Name.Name)
 		s.WriteString(" ")
 		f.Type.buildString(s)
+	}
+	if x.Open {
+		s.WriteString(", ...")
 	}
 	s.WriteString("]")
 	return s
@@ -98,6 +105,12 @@ func (x *UnionType) buildString(s *strings.Builder) *strings.Builder {
 			s.WriteString(" ")
 			c.Type.buildString(s)
 		}
+	}
+	if x.Open {
+		if len(x.Cases) == 0 {
+			s.WriteString("?")
+		}
+		s.WriteString(", ...")
 	}
 	s.WriteString("]")
 	return s

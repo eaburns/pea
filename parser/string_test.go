@@ -119,3 +119,29 @@ func TestTypeString(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenLiteralString(t *testing.T) {
+	tests := []struct {
+		src, want string
+	}{
+		{"[., ...]", "[., ...]"},
+		{"[.x int, ...]", "[.x int, ...]"},
+		{"[.x int, .y string, ...]", "[.x int, .y string, ...]"},
+
+		{"[?, ...]", "[?, ...]"},
+		{"[x? int, ...]", "[x? int, ...]"},
+		{"[x? int, y?, ...]", "[x? int, y?, ...]"},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.src, func(t *testing.T) {
+			expr, err := ParseTypePattern(test.src)
+			if err != nil {
+				t.Fatalf("failed to parse: %s", err.Error())
+			}
+			if got := expr.String(); got != test.want {
+				t.Errorf("«%s».String()=%s, want %s\n", test.src, got, test.want)
+			}
+		})
+	}
+}

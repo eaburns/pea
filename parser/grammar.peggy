@@ -1,6 +1,7 @@
 {
 package parser
 
+import "strings"
 import "github.com/eaburns/peggy/peg"
 }
 
@@ -106,31 +107,46 @@ ArrayType <- _ "[" elem:Type _ "]" {
 }
 
 StructType <-
-	_ "[" _ "." _ "]" {
-		return Type(&StructType{L: l(parser, start, end)})
+	_ "[" _ "." o:(&{parseTypePatterns(parser)} _ "," _ "...")?_ "]" {
+		return Type(&StructType{
+			Open: strings.HasSuffix(o, "..."),
+			L: l(parser, start, end),
+		})
 	} /
-	_ "[" fields:FieldDefs _ "]" {
-		return Type(&StructType{Fields: fields, L: l(parser, start, end)})
+	_ "[" fields:FieldDefs o:(&{parseTypePatterns(parser)} _ "," _ "..." / _ ",")?_ "]" {
+		return Type(&StructType{
+			Fields: fields,
+			Open: strings.HasSuffix(o, "..."),
+			L: l(parser, start, end),
+		})
 	}
 
 FieldDef <- name:FieldId typ:Type {
 	return FieldDef{Name: name, Type: typ, L: l(parser, start, end)}
 }
 
-FieldDefs <- f0:FieldDef fs:(_ "," f1:FieldDef { return FieldDef(f1) })* (_ ",")? {
+FieldDefs <- f0:FieldDef fs:(_ "," f1:FieldDef { return FieldDef(f1) })* {
 	return []FieldDef(append([]FieldDef{f0}, fs...))
 }
 
-UnionType <- _ "[" cases:CaseDefs _ "]" {
-	return Type(&UnionType{Cases: cases, L: l(parser, start, end)})
-}
+UnionType <-
+	&{parseTypePatterns(parser)} _ "[" _"?" _ "," _ "..." _ "]" {
+		return Type(&UnionType{Open: true, L: l(parser, start, end)})
+	} /
+	_ "[" cases:CaseDefs o:(&{parseTypePatterns(parser)} _ "," _ "..." / _ ",")? _ "]" {
+		return Type(&UnionType{
+			Cases: cases,
+			Open: strings.HasSuffix(o, "..."),
+			L: l(parser, start, end),
+		})
+	}
 
 CaseDef <- name:CaseId t:Type? {
 	var typ Type; if t != nil { typ = *t }
 	return CaseDef{Name: name, Type: typ, L: l(parser, start, end)}
 }
 
-CaseDefs <- c0:CaseDef cs:(_ "," c1:CaseDef { return CaseDef(c1) })* (_ ",")? {
+CaseDefs <- c0:CaseDef cs:(_ "," c1:CaseDef { return CaseDef(c1) })* {
 	return []CaseDef(append([]CaseDef{c0}, cs...))
 }
 

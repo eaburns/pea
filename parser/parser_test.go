@@ -1366,6 +1366,25 @@ func TestStripLeadingComments(t *testing.T) {
 	}
 }
 
+func TestTypePatternsDisallowed(t *testing.T) {
+	tests := []string{
+		// These should all be disallowed outside of ParseTypePattern.
+		"?",
+		"? foo",
+		"[., ...]",
+		"[.x int, ...]",
+		"[?, ...]",
+		"[x?, ...]",
+		"[x? int, ...]",
+		"[x? int, y?, ...]",
+	}
+	for _, test := range tests {
+		if _, err := ParseType(test); err == nil {
+			t.Errorf("ParseType(%s)=nil, wanted error", test)
+		}
+	}
+}
+
 func TestImportsOnly(t *testing.T) {
 	const src = `
 		import "bar"

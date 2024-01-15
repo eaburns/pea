@@ -156,6 +156,7 @@ func (a *ArrayType) Loc() loc.Loc { return a.L }
 
 type StructType struct {
 	Fields []FieldDef
+	Open   bool
 	L      loc.Loc
 }
 
@@ -169,6 +170,7 @@ type FieldDef struct {
 
 type UnionType struct {
 	Cases []CaseDef
+	Open  bool
 	L     loc.Loc
 }
 

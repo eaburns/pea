@@ -499,7 +499,13 @@ func _makeType(x scope, parserType parser.Type, inst, mintNewTypeParmsForTest bo
 				L:    parserField.L,
 			})
 		}
-		typ = &StructType{Fields: fields, L: parserType.L}
+		typ = &StructType{
+			Fields: fields,
+			// parserType.Open is only true from parser.ParseTypePattern,
+			// which is intended only for tests.
+			Open: parserType.Open,
+			L:    parserType.L,
+		}
 	case *parser.UnionType:
 		var cases []CaseDef
 		for _, parserCase := range parserType.Cases {
@@ -511,12 +517,18 @@ func _makeType(x scope, parserType parser.Type, inst, mintNewTypeParmsForTest bo
 				t = copyTypeWithLoc(_empty, parserCase.L)
 			}
 			cases = append(cases, CaseDef{
-				Name:  parserCase.Name.Name,
+				Name: parserCase.Name.Name,
 				Type: t,
-				L:     parserCase.L,
+				L:    parserCase.L,
 			})
 		}
-		typ = &UnionType{Cases: cases, L: parserType.L}
+		typ = &UnionType{
+			Cases: cases,
+			// parserType.Open is only true from parser.ParseTypePattern,
+			// which is intended only for tests.
+			Open: parserType.Open,
+			L:    parserType.L,
+		}
 	case *parser.FuncType:
 		parms, fs := _makeTypes(x, parserType.Parms, inst, mintNewTypeParmsForTest)
 		if len(fs) > 0 {
@@ -539,7 +551,7 @@ func _makeType(x scope, parserType parser.Type, inst, mintNewTypeParmsForTest bo
 				// and stick it as a new global Mod-level type parm.
 				p := &TypeParm{
 					Name: name,
-					L: parserType.L,
+					L:    parserType.L,
 				}
 				var m *Mod
 				for xx := x; xx != nil; xx = xx.up() {
@@ -550,7 +562,7 @@ func _makeType(x scope, parserType parser.Type, inst, mintNewTypeParmsForTest bo
 				m.testTypeParms = m.testTypeParms.Union(NewTypeParmSet(p))
 				typ = &TypeVar{
 					SourceName: name,
-					Def: p,
+					Def:        p,
 					L:          parserType.L,
 				}
 			} else {
