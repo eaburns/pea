@@ -7,28 +7,6 @@ import (
 	"github.com/eaburns/pea/loc"
 )
 
-// appendTypeParmsToCopy appends bs to the end of a copy of as
-// eliding items of bs that are already in as
-// (as is assumed to already be deduplicated);
-// however if len(bs) == 0, then as is simply returned.
-func appendTypeParmsToCopy(as, bs []*TypeParm) []*TypeParm {
-	if len(bs) == 0 {
-		return as
-	}
-	cs := make([]*TypeParm, len(as), len(as)+len(bs))
-	copy(cs, as)
-next:
-	for _, b := range bs {
-		for _, c := range cs {
-			if c == b {
-				goto next
-			}
-		}
-		cs = append(cs, b)
-	}
-	return cs
-}
-
 func (f *FuncDecl) arity() int                                                   { return len(f.Parms) }
 func (f *FuncDecl) ret() TypePattern                                             { return pattern(f.Ret) }
 func (f *FuncDecl) parm(i int) TypePattern                                       { return pattern(f.Parms[i]) }
